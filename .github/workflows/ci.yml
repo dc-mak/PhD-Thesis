@@ -1,0 +1,31 @@
+name: CI
+
+on:
+  pull_request:
+  push:
+    branches:
+      - main
+
+# cancel in-progress job when a new push is performed
+concurrency:
+  group: ci-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  build:
+    runs-on: ubuntu-22.04
+
+    steps:
+    - uses: actions/checkout@v3
+      with:
+          submodules: recursive
+
+    - name: System dependencies (Ubuntu)
+      run: |
+        sudo apt-get install texlive python3-pip texlive-fonts-extra fonts-firacode
+        pip install alectryon
+
+    - name: Build
+      run: |
+        cd Manuscript
+        latexmk -xelatex -shell-escapae main.tex
