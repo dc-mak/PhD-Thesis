@@ -23,33 +23,32 @@ jobs:
       with:
           submodules: recursive
 
-    - name: System dependencies (Ubuntu)
-      run: |
-        sudo apt-get update
-        sudo apt-get install texlive-full latexmk python3-pip fonts-firacode
-        pip install alectryon
+#   - name: System dependencies (Ubuntu)
+#     run: |
+#       sudo apt-get update
+#       sudo apt-get install texlive-full latexmk python3-pip fonts-firacode
+#       pip install alectryon
 
-    - name: Download Libertinus Fonts
-      uses: robinraju/release-downloader@v1
-      with:
-        repository: alerque/libertinus
-        tag: v7.051
-        fileName: Libertinus-7.051.tar.zst
+#   - name: Download Libertinus Fonts
+#     uses: robinraju/release-downloader@v1
+#     with:
+#       repository: alerque/libertinus
+#       tag: v7.051
+#       fileName: Libertinus-7.051.tar.zst
 
-    - name: Unzip and install Libertinus Font
-      run: |
-        tar --use-compress-program=unzstd -xvf Libertinus-7.051.tar.zst
-        sudo cp -r Libertinus-7.051/static/OTF /usr/local/share/fonts
-        fc-cache -f -v
+#   - name: Unzip and install Libertinus Font
+#     run: |
+#       tar --use-compress-program=unzstd -xvf Libertinus-7.051.tar.zst
+#       sudo cp -r Libertinus-7.051/static/OTF /usr/local/share/fonts
+#       fc-cache -f -v
 
-    - name: Build
-      run: |
-        cd Manuscript
-        latexmk -xelatex -shell-escape main.tex
+#   - name: Build
+#     run: |
+#       cd Manuscript
+#       latexmk -xelatex -shell-escape main.tex
 
     - name: Release
       uses: softprops/action-gh-release@v2
       if: startsWith(github.ref, 'refs/tags/')
       with:
-        draft: true
         files: Manuscript/main.tex
