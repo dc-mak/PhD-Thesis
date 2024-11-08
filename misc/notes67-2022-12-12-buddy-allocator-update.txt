@@ -1,0 +1,205 @@
+Experience report from updating the buddy allocator proofs
+
+
+Context: the buddy allocator, taken from pKVM, is the first significant CN
+example. While it was being verified, the pKVM authors adjusted the standing
+buddy allocator implementation to a new one which keeps more data in the free
+space being managed and less elsewhere. The existing verification has now been
+updated, yielding the second significant CN example.
+
+The change is to move the forward/backward pointers of the per-order free list
+out of the vmemmap array and into new nodes that are created in free pages when
+they are available, specifically, when they have refcount 0 (not handed out for
+use by a client) and order not equal to HYP_NO_ORDER (not coalesced into another
+entry).
+
+The relevant verification already claimed all three arrays, and found necessary
+ownership in them, that is, it treats the pointers as ways of storing indices
+into the arrays. This moves this process from the claimed vmemmap array to the
+claimed memory array, but it is essentially the same.
+
+Complications:
+(a) the memory array is sparse, with ownership only under the conditions above.
+(b) both extra arrays are needed anyway, e.g. the vmemmap array has to be
+examined to establish that the conditions above hold
+(c) the extra arrays are indexed by physical page number (vmemmap) and by
+virtual address (memory), so physical/virtual adjustments need to be made in
+many places, and the system doesn't have a good way to provide feedback when
+the incorrect address is used.
+
+The initial work of the update was carried out by someone unfamiliar with both
+CN and the code base. First there was overhead in creating a standalone version
+of the new code: essentially cutting out the relevant parts of the code by hand
+like the first time. This took roughly 3 weeks.
+
+This initial cutting down was slow and tedious. It was also occasionally
+error-prone, because although clang and Cerberus were used to sanity check the
+new cutdown version, they are not going to complain if redundant,
+verification-only code is missing. Also, the fact that resource predicates and
+logical functions are defined outside of magic comments made using clang
+annoying, since all of those definitions had to be commented out (at the time,
+they were not factored out into one dedicated header file as they are now,
+after the rebase, see later).  Thankfully, a tool is under development to
+automate cutting-down work.
+
+The next point of order was commenting out all the instances where struct
+fields had changed (forward/backward pointers deleted from the vmemmap array),
+and verifying `hyp_put_page`. This took about 1 week.
+
+This change was straightforward in specifications because CN reliably showed
+errors where non-existent fields were accessed.  It was less clear, for someone
+new to the code and its invariants, what the required adjustments to the
+well-formedness conditions needed to be. But this could be (surprisingly)
+reliably put off unitl later - perhaps because the changes were close to
+dependency leaf nodes, and the original design & use of the resource and
+logical predicate definitions (on the non-leaf functions) did a good job of
+encapsulating their details.
+
+One thing that was clear also was that there didn't seem to be particular rhyme
+or reason to the order in which CN checked functions. Automatically verifying
+leaf functions first would be a small but useful usability improvement. This
+didn't matter too much though - often one was using the `--only` flag to only
+check a particular, rather than all, functions.
+
+Then work slowed, as changes required understanding the code more, namely
+understanding - and then writing the correct resource predicate for - storing
+list pointers in the free pages themselves. This was pointed out by someone who
+worked on the previous verification (TS), who also wrote the first draft of the
+required new `AllocatorPage` resource predicate. This took about 1 day, and the
+propogation of this change (using the logical ouput values) took about 2 weeks.
+
+A couple of issues came up next, which took 1-2 days to resolve.
+
+First was that in some instances, macros are used like functions (e.g. for
+converting back-and-forth from physical addresses, virtual addresses, and
+vmmemap indices). There was some discussion entertaining the idea that such
+macros could be auto-magically turned into CN functions, but the main issue
+there were two-fold (1) eventually such definitions need to be in magic
+comments, and macros are not expanded in comments (b) the macros refer to
+global (but constant after initialisation) variables like `__hyp_vmemmap` and
+`hyp_physvirt_offset`). Despite this, it would have been better practice to
+define this conversions as separate logical functions, instead of inlining
+their meaning into every use-site. Doing so was error-prone, though didn't slow
+down the verification terribly (few hours, but not few days).
+
+Second issue was that magic constants were prevalent in the original code. Part
+of this was just human verifier inconsistency, part of this was an annoying
+syntax discrepancy between the annotation languages of definitions vs
+magic-comment specifications, part of this was a limitation resulting from an
+overly strict, purely syntactic enforcment of the (reasonable) requirement that
+the step-size of an iterated resource be constant. The discrepancy was simply
+that in definitions, one could write `sizeof <struct hyp_page>` but not in the
+magic-comment specifications. The overly strict, purely syntactic enforcement
+was only allowing integer literals to be used in step-sizes. Again, this didn't
+take too long to fix (few hours) but was annoying because the size (in bytes)
+of `struct hyp_page` (the element type of the vmemmap array, used frequently)
+changed from 32 to 4.  This in turn exarcebated the aforementioned human
+verifier inconsitency, since the type of the field of `order` in `struct
+hyp_page` shrank from `u32` (with `HYP_NO_ORDER = UINT_MAX = 4294967295` to
+`HYP_NO_ORDER = 0xff = 255`). Thankfully, the use of magic constants was
+reduced, and CN is being updated to fix the syntax discrepancy (it was already
+in the to-do list to simplify the CN implementation) and step-size expression
+limitation.
+
+The next bit of progress also came after consultation with someone who worked
+on the previous verification (CP). This change removed the use of the
+`vmemmap_b_wf` logical function, and constraining the indices for which
+`AllocatorPage` predicates were iterated over (for `.refcount == 0` and
+`.order != hyp_no_order()`). Propogating this change took about 2 weeks.
+
+At this point, around 2 months into the update, all the work until this point
+had to be re-done, as the original verified code was changed underneath,
+requiring a rebase.  Ordinarily, a rebase should not be so bad, mostly cosmetic
+and straightforward.  In this case, the rebase required a fair amount of work
+because the update-work uncovered a discrepancy between how the C code assumed
+ownership over virtual addresses, but the original definitions assumed resource
+ownership over physical addresses. A large gap in the commit log dates,
+suggests that fixing and then propogating these changes, alongside cosmetic
+changes, in the rebase took one month.
+
+After the rebase, two new helper functions `page_add_to_list` and
+`page_remove_from_list` were verified. This was not too difficult - both of
+these functions wrapped-up standard list functions, which were already verified
+in the previous verification. So it was a matter of translating specifications
+to the new types/contexts. This took about 1 week.
+
+This work exposed three issues in working with CN:
+  1. It increases the cost of adding helper functions and the required code
+     adaptation/duplication can (and did) go wrong (even though this was later
+     found and fixed).
+  2. It cannot pass around logical/ghost variables. For example, the initial
+     verification (mistakenly, later removed when found to be unnecessary)
+     required the pool pointer, and ownership of it to be able to about
+     `range_start` and `range_end`, to constrain pointer values.  Furthermore,
+     the C code had to be changed to pass in the pool pointer to be able to
+     refer to its values (for verification, not execution). However, ownership
+     of the pool pointer also entails ownership of the `free_area` array, and
+     the other argument passed in was a `struct list_head*` pointing to an
+     element of that array, so although CN correctly showed an error for that
+     (hooray!) it took a long time (for someone learning the code) to figure
+     out why that was the case. (See commit `Make progress on
+     __hyp_attach_page`). Not being able to pass around logical/ghost values
+     also requires judicious use of `unchanged`, which whilst obvious in
+     retrospect, requires some experience to understand and spot that values
+     that shouldn't be changing, are doing so in the counter-example model.
+  3. CN's presentation of counter-example models is unhelpful. Though an 
+     update to wrap up outputs of a callsite in a record did make things more
+     understandable (modulo longer names), the output of failing index terms
+     (and subterms, thanks to another update) was not very helpful. Three
+     things were particularly annoying (a) subterms were annotated on their own
+     lines, not in the context of the terms they were a part of (b) index terms
+     were not pretty-printed with helpful indentations (c) index terms were not
+     pretty-printed according to what the user wrote in the source language.
+     Points (a) and (b) were fixed (DM) and helped a little, though (c) would
+     have been most helpful (some progress on the implementation of this, such
+     as retaining the top-level let-structure, was made).
+
+With the `page_*_list` functions verified, the next major thing was fixing
+indexing into `AllocatorPage` arrays. Basically, `V[i]` corresponds to
+`AP[i+off_i]` as setup in the `Hyp_pool` predicate, but elsewhere (in
+`vmemmap_l_wf`, and all function specifications) it was incorrectly assumed to
+correspond to `AP[i]`.  `node_to_page` was also verified (this was incidental -
+the aforementioned indexing change broke the placeholder spec for some reason,
+which maybe in retrospect should have been investigated). The worrying thing
+about this change was that it's not at all obvious what prompted it - just lots
+of staring and suddenly realising it's not right. This took about 1 week.
+
+At this point, the first/novice updater was stuck and had another project
+(cutting down C source repositories) which he thought he might be able to make
+progress on (DM) and the second/experienced updater was free (TS) to take over
+and potentially finish the update.
+
+Finishing up the update made use of some strategies which might be reusable.
+
+The new functions page_add_to_list and page_remove_from_list turn out to be
+convenient points to separate some of the list-structure reasoning from the
+loops (attach_page/extract_page) they live in. The update adds a redundant
+indirection to these, e.g. a new page_add_list_to_pool function which just
+calls page_add_to_list, but specialises its specification to one relevant to
+the scenario. This new simple straight-line function can be verified with less
+moving parts in context.
+
+One trick that was discovered is to add requirements to a function failing to
+verify which assert that, for instance, the physical/virtual offset is 0 and
+the pool is limited to a tiny range of small memory addresses. This makes the
+mental calculations needed to interpret counterexamples much easier.
+
+Some list functions were given more general specifications, in particular, the
+remove functions now support "removal" from a self-cyclic list, which amounts
+to a no-op.
+
+CN feedback:
+
+This would be a pretty good use-case for a gadget that allows you to "hold" the
+counterexample and query it with a diagnostic script. It would be easy to
+imagine a diagnostic for vmemmap_l_wf which "drew" the loops to make it obvious
+what was wrong in a counterexample.
+
+Any situation where memory is "split" into logical operations gets confusing.
+For instance, in the return contracts of the list functions, which have
+input/ouput values "Owned(next) if next != prev", *next doesn't mean what you
+might think, with the C *next being (next == prev ? *prev : *next) in CN.
+
+
+
+

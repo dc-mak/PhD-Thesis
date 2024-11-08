@@ -1,0 +1,310 @@
+This is a short note recording the experience of Dhruv Makwana (dcm41) in using
+[Verifast](https://github.com/verifast/verifast) and
+[Frama-C](https://frama-c.com/) on the examples in
+https://github.com/cp526/c-tests, especially `early.c`.
+
+# Verifast
+
+## Has fractional permissions
+
+I didn't really need to use these but they are there.
+
+## Has a similar annotation overhead
+
+Global variables need to be mentioned as accessed (and unchanged).
+
+```c
+//@ requires base |-> ?base_val &*& cur |-> ?cur_val &*& base_val <= cur_val;
+//@ ensures base|-> base_val &*& cur |-> cur_val &*& result == (cur_val-base_val) >> PAGE_SHIFT;
+```
+
+This is similar to `accesses` in CN:
+```c
+[[cn::accesses("cur", "base")]]
+```
+
+## Can be quite fast
+
+Verifast is able to work through (an optimised) version of `early.c` in just
+a few seconds, and so is CN (though with custom, hard-coded as opposed to
+user-defined predicate definitions).
+
+## Has good GUI and visibility into proof state
+
+You can even replay the steps of the proof leading up to that state,
+though this is cool, I didn't end up using it. Can also be used via
+the command-line.
+
+## Has good support for proof-scripting
+
+You can define fixpoint functions and also state and prove lemmas.
+This takes a bit of getting used to but is actually quite clever and usable
+(using asserts and 'prove up until this point').
+
+```c
+/*@
+fixpoint_auto list<t> create<t>(int n, t x)
+  decreases n;
+{
+  return n <= 0 ? nil : cons(x, create(n-1, x));
+}
+
+// This is the key lemma (and also slows down verification A LOT
+lemma_auto void if_zero_then_nil<t>(list<t> a)
+  requires 0 == length(a);
+  ensures a == nil;
+{
+  switch(a) {
+   case nil: return;
+   case cons(ha, tla): { assert false; }
+  }
+}
+
+lemma void if_zero_then_eq(list<char> a, list<char> b)
+  requires true;
+  ensures !(0 == length(a) && length(a) == length(b)) || (nil == a && a == b);
+{
+  if (0 == length(a) && length(a) == length(b)) {
+    if_zero_then_nil(a);
+    if_zero_then_nil(b);
+  }
+}
+@*/
+```
+
+## Supports malloc (and seperation logic generally)
+
+`malloc` is supported through the use of a `malloc_block` declaration.
+It's important to note that this is just represents the permission to
+free, rather than ownership of the (typed) object at that memory
+location per-se (need a different permission for that). I didn't need
+to use this.
+
+## Does not encapsulate nested-structure predicate definitions
+
+```c
+struct s2 { signed int x; };
+struct s1 { struct s2 inner; };
+
+/*@ predicate s2(struct s2 *p, int x) =
+       s2_x(p, x);
+@*/
+
+/*@ predicate s1(struct s1 *p, struct s2 s2) =
+       s2(&p->inner, _) &*& s1_inner(p, s2) &*& malloc_block_s1(p);
+@*/
+```
+
+One should read the first as defining a predicate `s2` for pointers to
+s2s. `s2_x` is an auto-generated predicate, expressing `p->x == x`.
+
+One should read the second as defining a predicate `s1` for pointers to
+s1s. `s1_inner` and `malloc_block_s1` are auto-generated predicates.
+The first expresses `p->inner == s2` and the second gives the ability
+expresses that the pointer represents one that can be passed to `free()`.
+
+If we were to add more fields to the s2 struct, we'd have to update the
+definition in both the predicate definition for s2, but also for every
+struct that uses s2, so s1. If the following is true, then having to do
+such an cascading-update due to poor encapsulation would be redundant:
+
+```c
+    s1_inner(p, inner) <==> s2_x(&p->inner, inner.x)
+```
+
+And so this would be enough, without mentioning aspects of s2's structure in s1.
+```c
+predicate s1(struct s1 *p, struct s2 inner) =
+    s1_inner(p, inner) &*& malloc_block_s1(p);
+```
+
+Obviously, CN can't handle anything like this at all, so it's not a mark against
+Verifast, but it is I think an important observation.
+
+## Can stumble into situations in which the automation guiding is insufficient
+
+Automation also has no fallback to external assistants.
+
+Guiding automation is actually possible in Verifast, with the use of `lemma_auto`
+hints, but I could not figure out if it could and how to make it work for the
+below example.
+
+These are the (Tuerk-style) pre- and post-conditions for a loop which sets 4096
+bytes to 0. `chars(p, count, contents)` is a predicate which says the pointer
+`p` points-to `count` contiguous chars of content `contents` (list\<char\>).
+`create(count, item)` is a fixpoint function that I defined, which creates a
+list of only `item` of length `count`.
+
+```c
+//@ requires 0 <= i && i <= 4096 &*& chars(to + i, 4096 - i, ?unzeroed);
+//@ ensures 0 <= old_i && old_i <= 4096 &*& chars(to + old_i, 4096 - old_i, create(4096 - old_i , 0));
+```
+
+The problem is that for the base-case/loop exit (i == 4096) means that
+`length(unzeroed) == 0` and so `unzeroed == nil == create(0,0)`. However, this
+is too much for automation to figure out, so we can add a lemma (see
+`if_zero_then_nil` above). Then, the problem is trying to tell the automation
+system to use this lemma. We can mark it as a `lemma_auto`, and this works, but
+it slows down verification considerably, beyond the point of interactive
+usability.
+
+It is possible to give a hint, e.g. `lemma_auto(length(append<t>(xs, ys))`,
+though the conditions for what can appear inside the parentheses was not super
+clear to me, beyond that it must be a `precise` predicate. (Precise predicates
+are ones in which existentially quantified variables can be completely
+determined by the other ('input') arguments. They also don't leak resources.
+Verifast supports automatically opening and closing them.) I did pursue this
+line of optimisation, by defining a precise predicate which wraps the
+post-condition. But for some reason, using the lemma did not fire for proving
+this condition, and since these can be opened and closed automatically, they
+just left the problem state effectively unaltered.
+
+## Does not support all the intricacies of C
+
+C is a complicated language and understandably, the Verifast semantics for it
+don't attempt to capture all the possible interepretations of the C standard.
+
+That being said, the below are stills somewhat surprising.
+
+For example, there is an implicit type-promotion allowed in the below, for
+which Verifast requires an explicit cast.
+
+```c
+typedef signed long long s64;
+typedef unsigned long long phys_addr_t;
+#define __hyp_va(virt)  (void*)((phys_addr_t)(virt) - hyp_physvirt_offset)
+```
+
+Also the parser is hand-written and so does not support complex function types
+as members of structs without typedefs.
+```c
+  typedef void* zalloc_page_t(void* arg);
+  typedef void* zalloc_pages_exact_t(size_t size);
+  typedef void  free_pages_exact_t(void* addr, size_t size);
+  typedef void  get_page_t(void* addr);
+  typedef void  put_page_t(void* addr);
+  typedef int   page_count_t(void* addr);
+  typedef void* phys_to_virt_t(phys_addr_t phys);
+  typedef phys_addr_t virt_to_phys_t(void* addr);
+
+  struct kvm_pgtable_mm_ops {
+          zalloc_page_t* zalloc_page;
+          zalloc_pages_exact_t* zalloc_pages_exact;
+          free_pages_exact_t* free_pages_exact;
+          get_page_t* get_page;
+          put_page_t* put_page;
+          page_count_t* page_count;
+          phys_to_virt_t* phys_to_virt;
+          virt_to_phys_t* virt_to_phys;
+  };
+```
+
+There is also surprising difference between subscripting and `*(e1 + e2)`.
+However, this could end up being a useful heuristic. Original comment here:
+https://github.com/verifast/verifast/issues/259
+
+>  Indeed, VeriFast symbolically evaluates *(start + i) and start[i]
+>  differently. *(start + i) is symbolically evaluated just like any other
+>  dereference of a pointer to int, whereas evaluation of start[i] first looks
+>  for an ints(start, ?n, ?vs) chunk where i <= n and, if it finds one,
+>  returns nth(i, vs). This is convenient for "random access" to ints-encoded
+>  arrays. If it does not find such a chunk, it falls back to looking for an
+>  integer(start + i, _) chunk, but the start + i computation is indeed not
+>  checked for overflow. This seems sound because if the integer chunk exists,
+>  it implies that the address is within the limits."
+
+
+## Does not support taking the address of local variables
+
+This is mentioned in the [tutorial](https://people.cs.kuleuven.be/~bart.jacobs/verifast/tutorial.pdf).
+
+## Does not support catching uninitialised reads
+
+Generally it over-approximates safety.
+
+https://github.com/verifast/verifast/blob/57fa89b1128d253c2206b6a24da72606b3695512/soundness.md?plain=1#L18
+
+## Has syntax that is not clear about input/output existential variable
+
+The ordering here is important, the output of s2 (_) must be
+ existentially quantified to enable it to be updated.
+
+```c
+/*@ predicate s1(struct s1 *p, struct s2 s2) =
+       s2(&p->inner, _) &*& s1_inner(p, s2) &*& malloc_block_s1(p);
+@*/
+```
+
+For example, the below doesn't work, because s2 becomes exposed/fixed in the output
+predicate s1(struct s1 *p, struct s2 s2) =
+
+```c
+/*@ predicate s1(struct s1 *p, struct s2 s2) =
+    s1_inner(p, s2) &*& s2(&p->inner, s2.x) &*& malloc_block_s1(p);
+@*/
+```
+
+# Frama-C
+
+## Has a similar annotation overhead
+
+## Has many features I don't understand / couldn't get to work
+
+This includes the `\from` syntax and structs with record updates
+(error `Assignment operators not allowed in annotations.` but the ACSL manual's
+specification grammar clearly states this is allowed).
+
+Also don't understand how they work with malloc.
+
+## Has an ok GUI
+
+It doesn't allow editing files. It shows details of proof state but not in a
+way that made it clear (to me) what to do.
+
+## Over-approximates
+
+If there aren't any annotations, and runtime-error-assertion-generation is
+turned off (e.g. for erroring on unitiliazed reads), code will pass checking.
+
+## Undecidable logic, falls back to Coq (not used)
+
+This does allow forall syntax in predicates.
+
+## Uses Hoare logic, not separation logic
+
+So it only enables talking about validity of pointers rather than ownership of 
+sub-heaps/resources.
+
+## Has issues with typing
+
+In the below, it is somewhat unclear what 'seperated' means.
+
+It gives this warning
+
+```
+[wp] early.c:130: Warning:
+  Memory model hypotheses for function 'hyp_phys_to_virt':
+  /*@ behavior wp_typed:
+        ensures \separated(\result, &hyp_physvirt_offset); */
+  __inline static void *hyp_phys_to_virt(phys_addr_t phys);
+```
+
+Despite this being in the code
+```c
+//@  ensures \separated((s64*)\result, &hyp_physvirt_offset);
+```
+
+Similarly here:
+```
+[wp] early.c:139: Warning:
+  Memory model hypotheses for function 'hyp_virt_to_phys':
+  /*@
+     behavior wp_typed:
+       requires \separated(addr + (..), &hyp_physvirt_offset);
+     */
+  __inline static phys_addr_t hyp_virt_to_phys(void *addr);
+```
+
+For this:
+```
+//@ requires \separated((s64*)((phys_addr_t)addr + hyp_physvirt_offset), &hyp_physvirt_offset);
