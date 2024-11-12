@@ -1,2 +1,0 @@
-- hack continued floats for references
-- once chapter 6 is written: refer to it in the note on names at the beginning of chapter 3
