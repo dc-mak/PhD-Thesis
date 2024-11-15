@@ -52,7 +52,8 @@ jobs:
     - name: Build
       run: |
         cd src
-        latexmk -xelatex -shell-escape main.tex -output-directory=_build -quiet || (cat _build/main.log; exit 1)
+        mv main.tex old_minted.tex && tail -n +2 old_minted.tex > main.tex # hack to build with newer version of minted
+        latexmk -quiet || (cat _build/main.log; exit 1)
         texcount -inc main.tex | tee _build/wordcount.tex
 
     - name: Release
