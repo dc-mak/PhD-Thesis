@@ -1,39 +1,202 @@
 \chapter{Introduction}\label{chap:intro}
 
-\emph{“Some witty quote about \kl{C}.”}
+\emph{“Our goal as computer scientist today, is to design the legacy systems of tomorrow.”}
 \vspace{-1.5em}
 \begin{flushright}
-  \sidecite[][citing someone]{Placeholder}
+  \sidecite[][Timothy G.\ Griffin]{griffin2017legacy}
 \end{flushright}
 
-\margintoc[4em]
+\margintoc%
 
-\paragraph{Thesis Statement}%
-Building a verification tool for C is
-two parts engineering, and one part theory. The theory is not particularly
-sophisticated, but its application at scale present new challenges and
-insights.
+\section{Context}
 
-\begin{enumerate}
-    \item Formalisation, heap factoring, and Ott engineering
-    \item Memory object model
-    \item Tree Carver, buddy allocator update, working with Galois.
-\end{enumerate}
+On the 1\nth{9} of July, 2024, 8.5 million Windows computers inside banks, airlines, TV
+broadcasters, supermarkets and many other businesses suffered the infamous `Blue Screen of
+Death' after (ironically) a faulty security update from cybersecurity
+provider CrowdStrike was released.\sidecite[4\baselineskip]{verge2024crowdstrike}.
 
-\section{C and Verification}
+Even though it took only 78 minutes between when the issue was identified and
+rectified, the ensuing chaos and disruption lasted hours if not days, as getting
+the fix on affected machines and restarting complex systems was very difficult.
+Although not as important as the human cost, the total finacial cost in terms
+of downtime for businesses was estimated by one insurer to be between 5 and 9
+billion USD.\sidecite{fitch2024crowdstrike}.
 
-\subsection{The C Programming Language}
+\begin{itemize}
+    \item Explain \kl[OS]{operating system} and \kl{kernel} in lay terms.
+    \item Explain \kl{systems programming language} in lay terms.
+\end{itemize}
 
-Setting the stage: why C, where is it used (Linux kernel).
+Whilst most of the commentary, including the root cause
+analysis,\sidecite{rca2024crowdstrike} emphasised the need for better testing
+and better deployment strategies, both of which are eminently sensible,
+\emph{what} to test, and more importantly \emph{what's missing} in the tests
+are only sufficiently clear with hindsight.
 
-\subsection{Verification with Separation Logic}
+\emph{%
+``The new IPC Template Type defined 21 input parameter fields, but the
+integration code \ldots supplied only 20 input values to match against. This
+\ldots evaded multiple layers of build validation and testing, as it was not
+discovered during the sensor release testing process, the Template Type (using
+a test Template Instance) stress testing or the first several successful
+deployments of IPC Template Instances in the field.''
+}
+
+Aside from testing, Microsoft is also reported to be discussing locking down
+access to the kernel with security vendors, and genereally designing it to be
+more robust to rogue drivers and updates.
+
+To me, the situation seems akin to building a wall with Swiss cheese, and when
+something gets through, saying `we should have had more layers' or `layers
+designed this way'. Surely one might wonder if we can consider a less porous
+material?
+
+So far, the answer has been no: methods for improving the reliability of such
+software are \emph{costly}, mainly in terms of expertise, but also in term of
+time and effort, with little scope for critical \emph{ongoing} maintenance. And
+whilst the exact contributions of this thesis would not have prevented
+CrowdStrike (even hinting at that would be temeritous), they are extremely
+relevant to the general domain.
+
+This thesis argues that the answer is now a \emph{qualified yes}. A `less
+porous material' is possible with what we know now, and not too complex
+conceptually (though novel in its application). The main challenges come due to
+\emph{scale}. Whilst the cost of the technology is still too high for mass
+deployment, the trend is downward and should continue that way with sustained
+effort.
+
+
+\section{Thesis statement}
+
+In this thesis, I will argue that building a verification tool for C, suitable
+for handling lowl-level systems programming idioms, is two parts engineering,
+and one part theory. Little of the theory are novel or complex, but its
+application at scale present new challenges and insights. The proportions do
+not correspond to three different topics, which fit neatly in either bucket.
+Rather, each conceptual part of this thesis has varying mix of those
+categories, which I will explain later in \nameref{sec:contributions}.
+
+To put those parts into context, I first need to explain the role and quirks of
+the venerable C programming language, and the relevant developments in
+verification theory.
+
+\section{The C Programming Language}
+
+\begin{itemize}
+    \item More than fifty years after its introduction, and despite competition
+        from C++\sidecite{isocpp1998} and Rust\sidecite{rust}, C remains in common use.
+    \item Designed for portability, relative simplicity (but with plenty of
+        subtlety around pointers), ease of compilation, proximity to hardware/control.
+    \item Is the primary language of the Linux kernel.
+    \item Is it really easy to compile though? Alias analysis, pointer rules.
+    \item Is it really so simple? Shifts burden from compiler writer to the programmer.
+    \item ISO standard vs.\ de facto C\@.
+    \item \kl{Cerberus} executable and \emph{empiricaly validated} semantics.
+    \item Maybe some sort of list append example?
+\end{itemize}
+
+\section{Verification with Separation Logic}
+
+\begin{itemize}
+    \item John Reynolds and Peter O'Hearn
+    \item Pen and paper proofs about sequential, then concurrent imperative programming.
+    \item Continue with list append example?
+    \item Iris?
+\end{itemize}
 
 \section{CN:\ C, No bugs!}
 
+Before I explain how \intro{CN}\sidenote{`\kl{CN}' does not stand for anything; its name is
+a historical accident.} \emph{works}, I will explain how it is \emph{used}.
 
-\emph{Lots} of examples of CN,\sidenote{`CN' does not stand for anything; its
-name is a historical accident.} to introduce each feature (especially ones
-discussed later).\sidetextcite{Placeholder}
+\kl{CN} is a program, which, in its \intro{proof mode}\sidenote{There are other
+modes to CN, most notably instrumentation and test generation, which I will
+mostly ignore.} given a C file, ensures that (a) the input code is free of
+undefined behaviour and (b) correctly implements any specification written in
+\intro{annotations} in comments demarcated by \cinline{this} and \cinline{@*/}
+(so that they are first and foremost, for almost all C tools, a regular C
+comment). Importantly, for several reasons (NEEL\@: explain here? or later?),
+these are checked on a \intro{per function} basis.
+
+This means that even in the absence of annoations, code is being checked for
+undefined behaviour. Incrementing an unsigned integer is perfectly acceptable
+\begin{figure}[h]
+\centering
+\cfile{code/unsigned_increment.c}
+\caption{Example unsigned\_increment.c.}\label{fig:un-incr}
+\end{figure}%
+\ldots but incrementing a signed integer triggers an error message.%
+\begin{figure}[h]
+    \centering
+    \cfile{code/increment_broken.c}
+    \caption{Example increment\_broken.c.}\label{fig:incr-broken}
+\end{figure}
+
+The wording of the error message is inherited from \kl{Cerberus}, and shows its
+origins as an formal, executable specification for \kl{ISO} and \kl{de facto}
+\kl{C}. In particular, it points to the relevant section of the standard which
+has been violated, and uses jargon (``exceptional condition'') to indicate that
+there are values of \cinline{x} for which executing this function would result
+in \kl{UB}. Because of the \intro{per function} checking, the violation is not
+guaranteed, but \emph{possible}. Specifically, it is considered an error
+because there exist values, which if used to call this function, would result
+in \kl{UB}. Phrased differently, it is the combination of the absence
+\kl{annotation}s constraining the input, \emph{with respect to} what the body
+of the function does with those inputs, which is erroneous.
+
+Admittedly, as we shall discuss in \cref{sec:error-msgs}, there is much room
+for improvement to take the language of the \kl{standards committee} and
+translate it into something suitable for mere mortals. Yet the source location
+and the \intro{state file} it points to is helpful. If \kl{proof mode} fails
+because \kl{CN} was not able to prove a constraint, it produces a
+\kl{counter-example} with values assigned (see \cref{sec:counter-ex})
+internal representations of program variables.
+
+\begin{figure}[h]
+    \centering
+    \includegraphics[width=.8\textwidth]{figures/increment_broken_state.png}
+    \caption{Counter example for increment\_broken.c.}\label{fig:incr-broken-counter-ex}
+\end{figure}
+
+We can avoid this error by constraining the values of the input with a
+precondition annotation as follows.
+
+\begin{figure}[h]
+    \centering
+    \cfile{code/increment.c}
+    \caption{Example increment.c.}\label{fig:incr}
+\end{figure}
+
+Here we see the keyword \cinline{requires} is used to introduce a pre-condition
+on the input. \cinline{MAXi32()} is an in-built function which represents the
+maximum value a signed 32-bit integer can represent. By constraining the input
+so that it is strictly less than the maxiumum value, the function is now
+guaranteed to have no \kl{UB} for all its inputs, no matter what the context.
+This is because whilst pre-conditions are \emph{assumed} inside the function,
+they are \emph{required} when calling it.
+
+\begin{figure}[h]
+    \centering
+    \cfile{code/call_increment.c}
+    \caption{Example call\_increment.c.}\label{fig:call-incr}
+\end{figure}
+
+In the first example, we see that from the constraint \cinline{y <=
+100i32},\sidenote{Integer literals are currently written with a
+type annotation, similar to Rust.} \kl{CN} deduces that \cinline{y <= MAXi32}
+and permits the call to \cinline{increment}. Conversely, \cinline{INT_MAX} does
+not meet that constraint, and so CN raises an error.
+
+\begin{figure}[h]
+    \centering
+    \cfile{code/decrement_broken.c}
+    \caption{Example decrement\_broken.c.}\label{fig:decr-broken}
+\end{figure}
+
+However, if we try to decrement the result of the successful call, \kl{CN}
+raises an error. This is because that \kl{CN} has no indication on the
+constraints of the return value (other than those deduced from its C type,
+namely that it fits within a signed 32-bit integer).
 
 \begin{marginfigure}
   \ContinuedFloat*
@@ -58,6 +221,19 @@ Reference the rule: \ruleref{rule:cic-var} opposite.
 
 You can see more at work in \cref{fig:cic-nondep-fun}.
 
+\section{Contributions of this thesis}\label{sec:contributions}
+
+\subsection{Formalisation of CN}
+
+Kernel CN, heap factoring, and Ott engineering.
+
+\subsection{Design, formalisation and implementation of CN-VIP}
+
+Memory object model
+
+\subsection{Will the real world C, please stand up?}
+
+Tree Carver, buddy allocator update, working with Galois.
 
 \begin{comment}
 
