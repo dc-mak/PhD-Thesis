@@ -85,12 +85,15 @@ verification theory.
 \begin{itemize}
     \item More than fifty years after its introduction, and despite competition
         from C++\sidecite{isocpp1998} and Rust\sidecite{rust}, C remains in common use.
-    \item Designed for portability, relative simplicity (but with plenty of
-        subtlety around pointers), ease of compilation, proximity to hardware/control.
+    \item Initially designed for portability, relative simplicity (but with plenty of
+        subtlety around pointers), ease of compilation, proximity to hardware/control, was simple back then.
+    \item Two forces: portable (underspecified for freedome), optimise (because performance critical code)
+            have evolved it.
     \item Is the primary language of the Linux kernel.
     \item Is it really easy to compile though? Alias analysis, pointer rules.
+        Provenance examples and optimisation issues here.
     \item Is it really so simple? Shifts burden from compiler writer to the programmer.
-    \item ISO standard vs.\ de facto C\@.
+    \item ISO standard vs.\ de facto C\@. Consensus artifact hence not simple (lots of stakeholders).
     \item \kl{Cerberus} executable and \emph{empiricaly validated} semantics.
     \item Maybe some sort of list append example?
 \end{itemize}
@@ -98,10 +101,15 @@ verification theory.
 \section{Verification with Separation Logic}
 
 \begin{itemize}
-    \item John Reynolds and Peter O'Hearn
-    \item Pen and paper proofs about sequential, then concurrent imperative programming.
+    \item Floyd and Hoare, key ideas in the 1960s.
+    \item People tried to use this and failed (Euclid system for Pascal).
+    \item Specifications of pointers because of aliasing issues, $n^2$ no aliasing conditions,
+        do not compose well ${(n + m)}^2$ conditions.
+    \item Key breakthrough, John Reynolds and Peter O'Hearn
+    \item Frame rule (and the name comes from AI, asserting facts modularly, frame problem)
+    \item This enables working with pointers and heap objects.
+    \item Pen and paper proofs about sequential (then concurrent imperative programming, Iris?).
     \item Continue with list append example?
-    \item Iris?
 \end{itemize}
 
 \section{CN:\ C, No bugs!}
@@ -113,10 +121,11 @@ a historical accident.} \emph{works}, I will explain how it is \emph{used}.
 modes to CN, most notably instrumentation and test generation, which I will
 mostly ignore.} given a C file, ensures that (a) the input code is free of
 undefined behaviour and (b) correctly implements any specification written in
-\intro{annotations} in comments demarcated by \cinline{this} and \cinline{@*/}
+\intro{annotations} in comments demarcated by \cinline{/*@} and \cinline{@*/}
 (so that they are first and foremost, for almost all C tools, a regular C
-comment). Importantly, for several reasons (NEEL\@: explain here? or later?),
-these are checked on a \intro{per function} basis.
+comment). Importantly, for compositionality, performance (paralellisability),
+and ease of annotation,\sidenote{Annotations follow the structure/units of the
+program.} these are checked on a \intro{per function} basis.
 
 This means that even in the absence of annoations, code is being checked for
 undefined behaviour. Incrementing an unsigned integer is perfectly acceptable
@@ -125,7 +134,9 @@ undefined behaviour. Incrementing an unsigned integer is perfectly acceptable
 \cfile{code/unsigned_increment.c}
 \caption{Example unsigned\_increment.c.}\label{fig:un-incr}
 \end{figure}%
+
 \ldots but incrementing a signed integer triggers an error message.%
+
 \begin{figure}[h]
     \centering
     \cfile{code/increment_broken.c}
@@ -133,7 +144,7 @@ undefined behaviour. Incrementing an unsigned integer is perfectly acceptable
 \end{figure}
 
 The wording of the error message is inherited from \kl{Cerberus}, and shows its
-origins as an formal, executable specification for \kl{ISO} and \kl{de facto}
+origins as a formal, executable specification for \kl{ISO} and \kl{de facto}
 \kl{C}. In particular, it points to the relevant section of the standard which
 has been violated, and uses jargon (``exceptional condition'') to indicate that
 there are values of \cinline{x} for which executing this function would result
@@ -168,12 +179,12 @@ precondition annotation as follows.
 \end{figure}
 
 Here we see the keyword \cinline{requires} is used to introduce a pre-condition
-on the input. \cinline{MAXi32()} is an in-built function which represents the
-maximum value a signed 32-bit integer can represent. By constraining the input
-so that it is strictly less than the maxiumum value, the function is now
-guaranteed to have no \kl{UB} for all its inputs, no matter what the context.
-This is because whilst pre-conditions are \emph{assumed} inside the function,
-they are \emph{required} when calling it.
+on the input. \cinline{MAXi32()} is an in-built function which represents the maximum
+value a signed 32-bit integer can represent. By constraining the input so that
+it is strictly less than the maxiumum value, the function is now guaranteed to
+have no \kl{UB} for all its inputs, no matter what the context. This is because
+whilst pre-conditions are \emph{assumed} inside the function, they are
+\emph{required} when calling it.
 
 \begin{figure}[h]
     \centering
@@ -182,10 +193,11 @@ they are \emph{required} when calling it.
 \end{figure}
 
 In the first example, we see that from the constraint \cinline{y <=
-100i32},\sidenote{Integer literals are currently written with a
-type annotation, similar to Rust.} \kl{CN} deduces that \cinline{y <= MAXi32}
-and permits the call to \cinline{increment}. Conversely, \cinline{INT_MAX} does
-not meet that constraint, and so CN raises an error.
+100i32},\sidenote{Integer literals are currently written with a type
+annotation, similar to Rust.} \kl{CN} deduces that \cinline{y <=
+MAXi32()}\sidenote{Foreshadow subtyping, and bidirectional things.} and permits
+the call to \cinline{increment}. Conversely, \cinline{INT_MAX} does not meet
+that constraint, and so CN raises an error.
 
 \begin{figure}[h]
     \centering
@@ -197,6 +209,12 @@ However, if we try to decrement the result of the successful call, \kl{CN}
 raises an error. This is because that \kl{CN} has no indication on the
 constraints of the return value (other than those deduced from its C type,
 namely that it fits within a signed 32-bit integer).
+
+\begin{itemize}
+    \item Pointers
+    \item User defined predicates
+    \item Array example
+\end{itemize}
 
 \begin{marginfigure}
   \ContinuedFloat*
@@ -225,15 +243,18 @@ You can see more at work in \cref{fig:cic-nondep-fun}.
 
 \subsection{Formalisation of CN}
 
-Kernel CN, heap factoring, and Ott engineering.
+Kernel CN (type safety), the gap between CN and this (inferring output
+arguments, historical note on inferring indices), heap factoring, and Ott
+engineering.
 
 \subsection{Design, formalisation and implementation of CN-VIP}
 
-Memory object model
+Memory object model and adapting it to CN
 
 \subsection{Will the real world C, please stand up?}
 
-Tree Carver, buddy allocator update, working with Galois.
+Tree Carver (preprocessor), buddy allocator update, issues/pain points (on
+GitHub repo), working with Galois.
 
 \begin{comment}
 
