@@ -1,0 +1,73 @@
+IntList_append: 'struct int_list* (struct int_list*, struct int_list*)'
+-- Fun map
+proc IntList_append (xs: loaded pointer, ys: loaded pointer): eff loaded pointer :=
+  let strong xs: pointer =
+    create(Ivalignof('struct int_list*'), 'struct int_list*') in
+  store('struct int_list*', xs, xs) ;
+  let strong ys: pointer =
+    create(Ivalignof('struct int_list*'), 'struct int_list*') in
+  store('struct int_list*', ys, ys) ;
+  let strong a_432: loaded integer =
+    bound(
+      let weak (a_434: loaded integer, a_435: loaded integer) =
+        unseq(
+          let weak a_440: loaded pointer =
+            let weak a_439: pointer = pure(xs) in
+            load('struct int_list*', a_439) in
+          case a_440 of
+            | Specified(a_441: pointer) =>
+                let weak a_442: boolean =
+                  memop(PtrEq, a_441, NULL(struct int_list*)) in
+                pure(if a_442 then Specified(1) else Specified(0))
+            | _: loaded pointer =>
+                pure(undef(<<UB_CERB004_unspecified__equality_ptr_vs_NULL>>))
+          end
+        ,
+          pure(Specified(0))
+        ) in
+      pure(
+        case (a_434, a_435) of
+          | (Specified(a_436: integer), Specified(a_437: integer)) =>
+              if conv_int('signed int', a_436) = conv_int('signed int', a_437) then
+                Specified(1)
+              else
+                Specified(0)
+          | _: (loaded integer,loaded integer) =>
+              Unspecified('signed int')
+        end
+      )
+    ) in
+  let strong a_431: boolean =
+    case a_432 of
+      | Specified(a_433: integer) =>
+          pure(if not(a_433 = 1) then True else False)
+      | Unspecified(_: ctype) =>
+          nd(pure(True), pure(False))
+    end in
+  if a_431 then
+    let strong a_444: loaded pointer =
+      bound(
+        let weak a_443: pointer = pure(ys) in
+        load('struct int_list*', a_443)
+      ) in
+    kill('struct int_list*', xs) ;
+    kill('struct int_list*', ys) ;
+    run ret_430(a_444) ;
+    pure(Unit)
+  else
+    let strong new_tail: pointer =
+      create(Ivalignof('struct int_list*'), 'struct int_list*') in
+    ...
+    kill('struct int_list*', new_tail) ;
+    kill('struct int_list*', xs) ;
+    kill('struct int_list*', ys) ;
+    run ret_430(a_481) ;
+    kill('struct int_list*', new_tail) ;
+    pure(Unit) ;
+  pure(Unit) ;
+  kill('struct int_list*', xs) ;
+  kill('struct int_list*', ys) ;
+  pure(Unit) ;
+  save ret_430: loaded pointer (a_482: loaded pointer:= undef(<<UB088_reached_end_of_function>>)) in
+    pure(a_482)
+

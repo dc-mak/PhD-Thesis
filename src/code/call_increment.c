@@ -16,4 +16,4 @@ int call_incr_INT_MAX()
 // Constraint from code/increment.c:2:14:
 // /*@ requires x < MAXi32(); @*/
 //              ^~~~~~~~~~~~~ 
-// State file: file:///tmp/state__call_increment.c__call_incr_INT_MAX.html
+// State file: ...
