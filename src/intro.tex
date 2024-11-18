@@ -22,10 +22,38 @@ Although not as important as the human cost, the total finacial cost in terms
 of downtime for businesses was estimated by one insurer to be between 5 and 9
 billion USD.\sidecite{fitch2024crowdstrike}.
 
-\begin{itemize}
-    \item Explain \kl[OS]{operating system} and \kl{kernel} in lay terms.
-    \item Explain \kl{systems programming language} in lay terms.
-\end{itemize}
+To explain what went wrong, I need to outline some key concepts. An
+\intro[OS]{operating sytems} (OS), such as iOS, macOS, Windows or Ubuntu, is
+the ``software you don't care about which runs the software you do care
+about'', knowns as applications (`apps') or programs, such as a timer, a web
+browser or a spreadsheet editor. It provides services to software, in a way
+that abstracts from the details of the particular kind of hardware, for
+example, the ability to respond to click from a mouse, or a tap from a touch
+screen, or to play a sound via headphones or speakers. At the heart of the
+operating system is the \intro[OS]{kernel} (for example Linux or Darwin for
+Apple systems); it is the lowest level of abstraction within the operating
+system. It uses the hardware via \emph{drivers} to provide key services like
+deciding what gets to run (scheduling),and how much of the hardware it gets to
+use (resource management), and protecting itself and other code from each other
+(isolation).
+
+As such, kernels are critical bits of a sometimes precarious tower of
+abstractions, since they need to be both \emph{fast} \textemdash{} since any
+latency here compounds throughout the whole computer \textemdash{} and
+\emph{secure} \textemdash{} since any vulnerability here could crash or leak
+data throughout the whole system. They are \emph{by necessity}, low-level
+software, and need to be written in programming languages which expose lots of
+control to the programmer, known as \intro{systems programming languages}.
+However, more human control means more chance for human error. Historically,
+this did not pose a multi-million computer, multi-billion dollar risk: both
+hardware and software were much rarer, simpler and more trusted.
+
+Cyber-security providers like CrowdStrike are written in \kl{systems
+programming languages} and run at the kernel level\sidenote{A technically
+questionable design choice, likely motivated by other factors.} to scan and
+protect computers at a fundamental level, but this great power comes with great
+responsibilty, since, as we witnessed, the risks of an error is magnified
+greatly at this level.
 
 Whilst most of the commentary, including the root cause
 analysis,\sidecite{rca2024crowdstrike} emphasised the need for better testing
@@ -82,35 +110,257 @@ verification theory.
 
 \section{The C Programming Language}
 
+More than fifty years after its introduction, and despite competition from
+C++\sidecite{isocpp1998} and Rust\sidecite{rust}, C remains in common use. Part
+of this is simply legacy: a lot of old and useful software is written in C.
+However, most of this is the success C had in meeting its initial design goals:
+
 \begin{itemize}
-    \item More than fifty years after its introduction, and despite competition
-        from C++\sidecite{isocpp1998} and Rust\sidecite{rust}, C remains in common use.
-    \item Initially designed for portability, relative simplicity (but with plenty of
-        subtlety around pointers), ease of compilation, proximity to hardware/control, was simple back then.
-    \item Two forces: portable (underspecified for freedome), optimise (because performance critical code)
-            have evolved it.
-    \item Is the primary language of the Linux kernel.
-    \item Is it really easy to compile though? Alias analysis, pointer rules.
-        Provenance examples and optimisation issues here.
-    \item Is it really so simple? Shifts burden from compiler writer to the programmer.
-    \item ISO standard vs.\ de facto C\@. Consensus artifact hence not simple (lots of stakeholders).
-    \item \kl{Cerberus} executable and \emph{empiricaly validated} semantics.
-    \item Maybe some sort of list append example?
+    \item \textbf{Portability}. C was designed to have a relatively small set
+        of defined behaviours, leaving several key choices as
+        \intro[UB]{undefined behaviour}s (UBs). This allows C programs to run
+        performantly on several different kinds of hardware.
+    \item \textbf{Simplicity}. C was designed to be concise and simple to
+        compile (in one pass if need be), so that it was relatively
+        straightforward to write C compilers to support new hardware.
+    \item \textbf{Proximity to hardware}. C was designed to be a `portable
+        assembly', close to hardware, so that the programmer had precise
+        control over the resources used (especially when CPUs were much slower
+        and memory far more constrained).
 \end{itemize}
+
+As time went on, hardware became faster, by becoming more complex and so C's
+proximity to it waned. However, it continued to be used in performacne critical
+code such as the Linux \kl{kernel}. Portability, assisted by a large set of
+\kl{UB}, became avenues for optimisations. Under pressure for faster code,
+simplicity of compilation gave way to complex alias analysis and pointer
+provenance reasoning to optimise code.
+
+\begin{figure}[h]
+\centering
+\cfile{code/pointer_from_integer_1pg.c}
+\caption{Example pointer\_from\_integer\_1pg.c.}\label{fig:ptr-from-int-ub}
+\end{figure}%
+
+\cref{fig:ptr-from-int-ub} shows a slightly contrived example (courtesy
+of~\sidetextcite{memarian2019exploring}), which nevertheless illustrates the
+alias assumptions at play here. It assumes that \cinline{ADDRESS_PFI_1PG} is
+the guess the address of a variable local to function \cinline{f}, which is
+cast to a pointer in \cinline{main}, and then passed in as an argument to
+\cinline{f}. The question this raises is: even if the guess matches the runtime
+address of the local variable, should the compiler be allowed to assume that
+pointers passed in as arguments cannot alias local variables? From a purely
+concrete point of view of pointers (they are simply numbers), the answer is no,
+yet this would disable constant propagation in the printed value in this
+example.
+
+\begin{figure}[h]
+\centering
+\cfile{code/pointer_from_integer_1ie.c}
+\caption{Example pointer\_from\_integer\_1ie.c.}\label{fig:ptr-from-int}
+\end{figure}%
+
+However, the other extreme, of assuming pointers are purely symbolic and always
+non-aliasing is definitely incorrect in C, because of C's ability to
+\emph{compute} with pointers (increment, calculate offsets, cast them to and
+from integers). An example similar to the previous one is shown
+\cref{fig:ptr-from-int}, with the difference that instead of the address being
+cast to a pointer in the calling function \emph{before} the local variable is
+in scope one, it is cast to a pointer \emph{after} and its address has been
+variable is \intro{exposed}: cast to an integer (but otherwise unused). Though
+we can clearly see that there is no dataflow beteween \cinline{k} and
+\cinline{i}, in general, the compiler cannot rule it out, so it conservatively
+disables constant propagation to the call to \cinline{printf} later.
+
+Stakeholders have attempted to resovle such questions by the formation of and
+continual updates to the ISO standard of C\cite{isoC1990}, however, the
+resolutions can be complex and subtle. This is because of the different
+preferences for performance, control and language simplicity, amongst
+application programmers, systems programmers and compiler writers. To add to
+the confusion, as a prose English document, the standard has some irreducable
+ambiguities, and does not necessarily reflect \intro{de facto} C, as is it
+used in practice, so even memorising the standard would not be enough to
+safeguard against unexpected language quirks.
+
+Given this state of affairs, the \intro{Cerberus} project aims to provide a
+formally defined, executable and \emph{empirically validated} semantics of C,
+both ISO and \kl{de facto}. We shall explain Cerberus' particular advantages
+over other tools in \cref{sec:cerberus-core}. For now, it suffices to say that
+Cerberus works by \emph{\kl{compositional}ly} elaborating C into a first-order
+functional language (known as `\intro{Core}') with a few purpose-built
+constructs. It makes explicit many implicit quirks of C such as integer
+promotion, \kl{UB} and loose evaluation order.
+
+The \intro{compositional} nature of in particular allows a user to see how the
+elaborated \kl{Core} relates to the C a user wrote. I will use a function which
+appends singly-linked list of integers to another as a running example.
+
+\begin{figure}[h]
+\centering
+\cfile{code/append_plain.c}
+\caption{Example append\_plain.c.}\label{fig:append-c}
+\end{figure}%
+
+In this (admittedly unidiomatic) example, \cinline{NULL} pointers represent
+empty lists, and so the function returns \cinline{ys} if \cinline{xs} is empty,
+otherwise it recurses on \cinline{xs->tail} to get the new tail
+\cinline{new_tail} and sets \cinline{xs->tail} to point to that,  returning the
+result as \cinline{xs}.
+
+\begin{figure*}[h]
+\centering
+\corefile{code/append_plain.core}
+\caption{Example append\_plain.core.}\label{fig:append-core}
+\end{figure*}%
+
+This is elaborated into a \kl{Core} as see in \cref{fig:append-core}. To save
+space, definitions the \kl{Core} standard library are omitted, as are choices
+about implementation-defined details and the elaboration of the \cinline{else}-branch.
+A few things are note-worthy:
+\begin{itemize}
+    \item Each variable function argument and local gets its own storage via the
+        \coreinline{create} function. Reads, writes, and de-allocations are
+        represented with \coreinline{load}, \coreinline{store},
+        \coreinline{kill} respectively.
+    \item Loose evaluation order (for example between the expressions of a \cinline{==}) 
+        are represented using \coreinline{unseq} and \coreinline{let weak} constructs.
+    \item UB is made explicit in the syntax of the program, for example if \cinline{xs} was
+        an unspecified pointer value (line 23) or if the function exited without a return statement
+        and its `return value' was used elsewhere (line 71).
+\end{itemize}
+
+Aside from subtleties around pointers, and loose evaluation order, there are
+many other sources of \kl{UB} in C, including signed integer over/underflow,
+use-after-free, leaking, and double-free memory management errors,
+\kl[OOB]{out-of-bounds} indexing in arrays, and dereferencing a \cinline{NULL}
+pointer. These form the contract between the compiler and the programmer, and
+violations can result in difficult to debug, and costly mistakes. From the
+perspective of the compiler, they are \emph{assumptions about the program and
+its execution}, and so ideally be \emph{proven} absent; they are not things one
+can check by running the program (though there are tools which instrument code
+in various ways can find such errors, CN included). To aid programmers in
+proving such \kl{UB} absent, we must understand how we can prove things about
+imperative, memory manipulating programs.
 
 \section{Verification with Separation Logic}
 
-\begin{itemize}
-    \item Floyd and Hoare, key ideas in the 1960s.
-    \item People tried to use this and failed (Euclid system for Pascal).
-    \item Specifications of pointers because of aliasing issues, $n^2$ no aliasing conditions,
-        do not compose well ${(n + m)}^2$ conditions.
-    \item Key breakthrough, John Reynolds and Peter O'Hearn
-    \item Frame rule (and the name comes from AI, asserting facts modularly, frame problem)
-    \item This enables working with pointers and heap objects.
-    \item Pen and paper proofs about sequential (then concurrent imperative programming, Iris?).
-    \item Continue with list append example?
-\end{itemize}
+The key ideas around proving properties about imperative programs originate all
+the way back towards the end of the 1960s, with~\citeauthor{floyd1993assigning}
+and~\citeauthor{hoare1969axiomatic}. The basic setup is a triple of
+$\{P\} \;C \; \{Q\}$, where $P$ is a \intro{precondition}, a predicate describing the
+intial state of the program; $C$ is the program which executes; and $Q$ is
+\intro{postcondition}, a predicate describing the final state of the program.
+Combined with a set of inference rules to construct proofs from smaller parts
+of $C$, this gave programmers a way to do pen-and-paper proofs about the
+behaviour of imperative programs.
+
+This approach works well enough, up until the programming language introduces
+support for potentially aliasing pointers, at which it becomes
+unfeasible.\sidenote{This and the following two paragraphs rely heavily on the
+explanation of \textcite{pichon2017hlogmodc}.} In short, the issue is that
+whilst assertions in the specification language might \emph{syntactically}
+refer to different locations, \emph{semantically} those locations may alias,
+thus breaking the rule of constancy (\cref{fig:rule-of-constancy}). This rule
+is critical for \intro{modular} verification for programs because we can use it
+to glue togethter two separately verified programs, and compose them (e.g.\
+sequentially) so long as they refer to separate program variables.
+
+\begin{marginfigure}
+  \begin{mathpar}
+      \inferrule{\vdash{} \{P\} \; C \; \{Q\}  \\ \mod{(C)} \cup{} \mathit{FV} (R)}{\vdash{} \{ P \wedge{} R \} \; C \; \{ Q \wedge{} R \}}
+  \end{mathpar}
+  \caption{The rule of constancy, where $\mathrm{FV}$ refers to the free
+      variables of an assertion and $\mod{}$ is a syntactic
+      over-approximation to the set of program variables a program might
+      modify. It states that \kl{precondition}s which do not refer to mutated
+      program variables remain true that program terminates.}\label{fig:rule-of-constancy}
+\end{marginfigure}
+
+To prevent this, we would have to use the following rule, which requires the
+pre- and postconditions to mention $E_3$ and $E_4$ even though they are not
+mentioned syntactically in $ [ E_1 ] \mathbin{{:}{=}} E_2$, so that the
+non-aliasing condition $E_1 \noteq E_3$ can be stated, and the morally disjoint
+fact $E_3 \hookrightarrow{} E_4$ is preserved into the postcondition.%
+\[
+    \inferrule{}{\vdash{} \{ \exists{} v.\ E_1 \hookrightarrow{} v \wedge{} E_1 \noteq E_3 \wedge{} E_3 \hookrightarrow{} E_4 \} \; [ E_1 ] \mathbin{{:}{=}} E_2 \; \{ E_1 \hookrightarrow{} E_2 \wedge{} E_3 \hookrightarrow{} E_4 \} }
+\]
+
+This scales poorly: composing one program with $n$ variables and up to $O(n^2)$
+no-aliasing conditions, with another program of $m$ variables and up to
+$O(m^2)$ leads to new assertions with up to ${O(n + m)}^2$ conditions. The
+problem is bad enough that the design of the verification-oriented Euclid
+programming language put in place several restrictions to prevent aliasing in
+the language, unlike its main influence, Pascal, which permitted
+it.\sidecite{popek1977notes}
+
+The key breakthrough came with the arrival of separation logic by John C\@.
+Reynolds and Peter O'Hearn.\sidecite{reynolds2002separation} Specifically, the
+introduction of the \intro{separating conjunction}, $\astRef$, allows us to
+state a version of the rule of constancy which is sound, known as a the
+\intro{frame rule} (\cref{fig:frame-rule}). Not only did this enable the
+practical pen-and-paper verification of programs with pointers, aliasing, and
+dynamic memory management, it was very soon extended to aid in reasoning about
+several types of concurrency and is now mechanised in a very general way in
+proof assistants~\cite{jung2018iris, appel2011verified}, enabling complex
+proofs about large and subtle systems.
+
+\begin{marginfigure}
+  \begin{mathpar}
+      \inferrule{\vdash{} \{P\} \; C \; \{Q\}  \\ \mod{(C)} \cap{} \mathit{FV} (R)}{\vdash{} \{ P \ast{} R \} \; C \; \{ Q \ast{} R \}}
+  \end{mathpar}
+  \caption{The frame rule. We still need to be careful about non-intereference
+      about program variables on the stack, so we retain $\mod{(C)} \cup{} \mathrm{FV}(R) = \emptyset{}$,
+      but locations on the heap are ensured disjoint by the definition of $\astRef$.
+      The name comes from the \emph{frame problem} in artificial intelligence, where
+      using first-order logic to represent the world requires many axioms simply to state
+      that things do not change arbitrarily.}\label{fig:frame-rule}
+\end{marginfigure}
+
+To conclude this section, I will continue the example of appending to a list,
+but this time in separation logic, in a simple imperative language. It says
+that expression $\mathrm{i}$ is either $\mathsf{NULL}$ and thus represents an
+empty list in memory, or there exists an integer $v$ and list $l'$ and location
+$\mathrm{j}$ such that $l = v {:}{:} l'$, $\mathrm{i}$ points to $v$, its
+adjacent cell $\mathrm{i}+1$ points to $\mathrm{j}$ and the list predicate
+holds recursively for values $\mathrm{j}$ and $l'$. In this way, it relates the
+contents of linked heaps cells, laid out in a particular format, to a
+mathematical list \intro{ghost} value, which exists only in the specification
+of the program but not in the runtime.
+
+\begin{align*}
+    \mathrm{list}(\mathrm{i}, l) &\mathrel{{=}^\mathrm{def}} \\
+                                 &(\mathrm{i} = \mathsf{NULL} \wedge{} l = []) \astRef{} \mathsf{emp} \\
+                                 &\vee{} \exists{} v, l', \mathrm{j}.\ (l = v {:}{:} l') \wedge{} (i \mapsto v) \astRef{} (\mathrm{i} + 1) \mapsto{} j \astRef{} \mathrm{list}(\mathrm{j}, l')
+\end{align*}
+
+With this predicate, we can write a proof sketch of a version of the list
+\mintinline{text}{append} program from \cref{fig:append-c}, with intermediate
+assertions inserted (\cref{fig:append-annot}). Because the definition
+\mintinline{text}{append} is recursive, we annotate it with a pre- and
+postcondition, and prove that the implementation matches it (assuming it holds
+at structurally smaller values). The precondition states we start with two
+disjoint heaplets representing two \kl{ghost} lists,
+$\mathrm{list}(\mathrm{xs}, l_1)$ and $\mathrm{list}(\mathrm{ys}, l_2)$, and
+the postcondition says that the value returned by this function is a represents
+the concatenation of the two logical lists from the input.
+
+Under the true-branch of the \mintinline{text}{if}, we have that $\mathrm{xs} =
+\mathsf{NULL}$ and so it represents the empty heap, meaning the return value
+and associated \kl{ghost} list is simply $\mathrm{ys}$ and $l_2$ respectively.
+Under the false-branch, because $\mathrm{xs} \noteq{} \mathsf{NULL}$, we may
+assume we can unroll the definition of $\mathrm{list}$, before calling
+\mintinline{text}{append} recursively on the smaller
+$\mathrm{list}(\mathrm{xs}', l_1')$, which allows us to conclude
+$\mathrm{list}(\mathrm{new\_tail}, l_1' @ l2)$. Using the frame rule, the
+$\mathrm{xs} \mapsto v \astRef (\mathrm{xs} + 1) \mapsto \mathrm{xs}'$ remains
+unchanged and so we can fold these components into $\mathrm{list}(xs, l_1 @
+l_2)$.
+
+\begin{figure}[h]
+    \inputminted[fontsize=\small]{text}{code/append_annot.txt}
+    \caption{A separation logic proof sketch of a list append.}\label{fig:append-annot}
+\end{figure}
+
 
 \section{CN:\ C, No bugs!}
 
@@ -121,7 +371,7 @@ a historical accident.} \emph{works}, I will explain how it is \emph{used}.
 modes to CN, most notably instrumentation and test generation, which I will
 mostly ignore.} given a C file, ensures that (a) the input code is free of
 undefined behaviour and (b) correctly implements any specification written in
-\intro{annotations} in comments demarcated by \cinline{/*@} and \cinline{@*/}
+\intro{annotations} in comments with an @ symbol \cinline{/*@..@*/}
 (so that they are first and foremost, for almost all C tools, a regular C
 comment). Importantly, for compositionality, performance (paralellisability),
 and ease of annotation,\sidenote{Annotations follow the structure/units of the
@@ -192,12 +442,12 @@ whilst pre-conditions are \emph{assumed} inside the function, they are
     \caption{Example call\_increment.c.}\label{fig:call-incr}
 \end{figure}
 
-In the first example, we see that from the constraint \cinline{y <=
+In \cinline{call_incr_100}, we see that from the constraint \cinline{y <=
 100i32},\sidenote{Integer literals are currently written with a type
 annotation, similar to Rust.} \kl{CN} deduces that \cinline{y <=
 MAXi32()}\sidenote{Foreshadow subtyping, and bidirectional things.} and permits
-the call to \cinline{increment}. Conversely, \cinline{INT_MAX} does not meet
-that constraint, and so CN raises an error.
+the call to \cinline{increment}. Conversely, for \cinline{call_incr_INT_MAX},
+\cinline{INT_MAX} does not meet that constraint, and so CN raises an error.
 
 \begin{figure}[h]
     \centering
@@ -208,12 +458,53 @@ that constraint, and so CN raises an error.
 However, if we try to decrement the result of the successful call, \kl{CN}
 raises an error. This is because that \kl{CN} has no indication on the
 constraints of the return value (other than those deduced from its C type,
-namely that it fits within a signed 32-bit integer).
+namely that it fits within a signed 32-bit integer). To fix this, we need to
+provide a postcondition for the function, so that there we can express
+additional constraints on the returned value (\cref{fig:decr}).
+
+\begin{figure}[h]
+    \centering
+    \cfile{code/decrement.c}
+    \caption{Example decrement.c.}\label{fig:decr}
+\end{figure}
+
+To specify pointer manipulating programs, I need to introduce some new syntax.
+Where in separation logic, we may say $p \mapsto v$ for arbitrary expressions
+$p$ and $v$, in \kl{CN}, we restrict it so that $v$ is always a variable, akin
+to $\exists{} v.\ p \mapsto v \wedge v = e$ for some expression $e$. For both
+usability and technical reasons explained later (\cref{sec:mode-syntax}), we
+write this as \cninline{take v = Owned(p);}. % chktex 36
+
+\begin{figure}[h]
+    \centering
+    \cfile{code/owned_increment.c}
+    \caption{Example owned\_increment.c.}\label{fig:owned-incr}
+\end{figure}
+
+This generalises to work with arrays, with syntax of the form \cninline{take
+arr = each (u64 i; .. ) { Owned(p) };}, called \intro{quantified} or % chktex 26 chktex 37 chktex 36
+\intro{iterated} resources, for the pre- and postconditions of the function.
+\kl{CN} can also handle (in a limited, careful fashion to preserve
+decidability) \intro{quantified constraints}, such as the one in the
+postcondition of \cref{fig:owned-array}, to express constraints about the
+elements of an array. Within the body of the function, we use \kl{CN
+statement}, which acts a proof hint to \kl{CN}. \cninline{extract Owned<int>,
+0u64;} statement to tell CN which index of the \kl{iterated} resource we wish
+to read or write from.
+
+\begin{figure}[h]
+    \centering
+    \cfile{code/owned_array.c}
+    \caption{Example owned\_array.c.}\label{fig:owned-array}
+\end{figure}
+
+In the same way that separation logic predicates use $\mapsto$ as a building
+block to express more complex relations between heaps and \kl{ghost} values,
+\kl{CN} allows users to write \intro{resource predicate} to express more
+complex relations between heaps and \kl{ghost} values.
 
 \begin{itemize}
-    \item Pointers
     \item User defined predicates
-    \item Array example
 \end{itemize}
 
 \begin{marginfigure}
