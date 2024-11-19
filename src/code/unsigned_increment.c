@@ -1,3 +1,3 @@
-unsigned int u_increment(unsigned int x)
+unsigned int u_incr(unsigned int x)
 { return x + 1; }
-// [1/1]: u_increment -- pass
+// [1/1]: u_incr -- pass

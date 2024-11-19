@@ -1,4 +1,74 @@
-Prelude to this part.
+In the \cref{sec:c-lang}, I discussed how competing forces of inherited
+portability requirements, proximity to hardware, and the desire for more
+aggressive optimisations led to complex and subtle technical resolution by
+stakeholders in the \kl{ISO} standard of C. I also mentioned that its nature as
+a prose document, with natural language ambiguities and omissions, as well as
+divergence C as used \kl{de facto}, mean that its semantics are unreasonable
+for a human to adhere to, and challenging to build into tools directly,
+without making some sort of simplifying assumptions.
+
+Existing program logic frameworks for C such as Verifiable C~\sidecite{appelSF5}
+and RefinedC~\sidecite{sammler2021refinedc} take the approach of building a
+logic directly above an operational semantics for a language which is
+recognisably C, minus some desugaring to consolidate similar constructs. They
+attempt to retain as many C features (control flow, variable scoping, aliasing,
+loose evaluation order, pointer manipulation rules) as possible, but make
+simplifying assumptions where it would be impractical otherwise.
+
+Given that one of \kl{CN}'s goals (\cref{sec:cn-intro}) is to work with
+pre-existing C programs, which rely on many if not all of those impractical
+features, adopting the conventional approach would quickly use up most of its
+complexity budget and make the other goal (of reducing the expertise required
+to do verification) unfeasible.
+
+Instead, \kl{CN} builds directly upon the
+\kl{Cerberus}~\sidecite{memarian2022cerberus} executable and empirically
+validated semantics for C. Not only does \kl{CN} benefit from the
+\emph{accurate} semantics for both \kl{ISO} and \kl{de facto} C, it benefits
+most from the \emph{usability} of it. This is because, Cerberus is elaborated
+into a relatively small calculus \emph{\kl{Core}}, which translates all of C's
+complexity into a first-order functional language with a few special (but easy
+to understand and specify) constructs.
+
+Additionally, \kl{CN} is intended to be used more like a \emph{type system} in
+an IDE than a program logic inside a proof assistant. Ideally, instead of
+seeing intermediate goals in a sophisticated separation logic, and needing to
+be well versed with a range of inference rules and automation tactics, a user
+sees their C program, scattered with predictable and lightweight annotations in
+comments, in an editor which either indicates success, or clear and helpful
+error message.
+
+Aside from the fact that the notion and mode of use of a type system is more
+familiar to most programmers (an advantage not to be scoffed at), this approach
+also allows \kl{CN} to use and advance the extant literature on building
+refinement type systems on top of existing languages.
+
+This type system approach also leads to other desiderata and their
+corresponding responses. If we want to follow a type system approach, we want
+to minimise obvious annotations, so need some sort of automation so as to not
+burden the programmer with proving things like $1 + 1 = 2$. Similar to
+VeriFast~\sidecite{jacobs2011verifast} and Frama-C\sidecite{kirchner2015frama},
+\kl{CN} enlists the support of SMT solvers to mitigate this. When trying to
+verify code against expressive specifications, this could lead to
+non-termination, so \kl{CN} also restricts the expressiveness of the assertion
+language, and the queries it sends to the SMT solver. And given the importance
+of managing resources in C, the typing discipline needs to be substructural.
+
+The \kl{CN} assertion language syntax aims to be expressive enough to verify
+real world C, but also restricted enough to limit the aforementioned technical
+problems, and intuitive enough to a target audience of systems programmers who
+happen to know Haskell (or Rust).
+
+With this many constraints and design decisions, it is easy to doubtful of the
+elegance and feasibility of this approach, let alone consider proving such a
+type system sound. As I will show in \nameref{chap:kernel-cn}, whilst the setup
+might be novel, multi-faceted and large, the definitions are relatively
+straightforward, and the proof of soundness can be done syntactically. Both the
+definitions and the proof are modular with respect to the heap, so that
+changing the memory object model does not require redoing the entire soundness
+proof. The formalisation is close enough to the surface syntax of \kl{CN} so
+that a correspondence between the two can be stated simply and precisely, and
+close enough to the implementation to offer actionable insights.
 
 \chapter{Formalisation Background}%
 \label{chap:formal-background}
@@ -26,7 +96,7 @@ rule for undef means (previously YOLO) to context has to be false. E\.g\. same i
 
 Liquid types.
 
-\subsection{A friendly syntax which happens to enforce mode correctness}\label{sec:mode-syntax}
+\subsection{Friendly and convenient syntax}\label{sec:friendly-syntax}
 Separation logic types, syntax and restrictions for it.
 
 Explicit witness to having permissions, which are linearly typed (just ingredients).
