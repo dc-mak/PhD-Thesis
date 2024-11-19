@@ -6,4 +6,4 @@ int increment(int x)
 //          ~~^~~ 
 // an exceptional condition occurs during the evaluation of an
 // expression (§6.5#5)
-// State file: file:///tmp/state__increment_broken.c__increment.html
+// State file: ...

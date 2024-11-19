@@ -18,12 +18,12 @@ provider CrowdStrike was released.\sidecite[4\baselineskip]{verge2024crowdstrike
 Even though it took only 78 minutes between when the issue was identified and
 rectified, the ensuing chaos and disruption lasted hours if not days, as getting
 the fix on affected machines and restarting complex systems was very difficult.
-Although not as important as the human cost, the total finacial cost in terms
+Although not as important as the human cost, the total financial cost in terms
 of downtime for businesses was estimated by one insurer to be between 5 and 9
 billion USD.\sidecite{fitch2024crowdstrike}.
 
 To explain what went wrong, I need to outline some key concepts. An
-\intro[OS]{operating sytems} (OS), such as iOS, macOS, Windows or Ubuntu, is
+\intro[OS]{operating systems} (OS), such as iOS, macOS, Windows or Ubuntu, is
 the ``software you don't care about which runs the software you do care
 about'', knowns as applications (`apps') or programs, such as a timer, a web
 browser or a spreadsheet editor. It provides services to software, in a way
@@ -52,7 +52,7 @@ Cyber-security providers like CrowdStrike are written in \kl{systems
 programming languages} and run at the kernel level\sidenote{A technically
 questionable design choice, likely motivated by other factors.} to scan and
 protect computers at a fundamental level, but this great power comes with great
-responsibilty, since, as we witnessed, the risks of an error is magnified
+responsibility, since, as we witnessed, the risks of an error is magnified
 greatly at this level.
 
 Whilst most of the commentary, including the root cause
@@ -71,7 +71,7 @@ deployments of IPC Template Instances in the field.''
 }
 
 Aside from testing, Microsoft is also reported to be discussing locking down
-access to the kernel with security vendors, and genereally designing it to be
+access to the kernel with security vendors, and generally designing it to be
 more robust to rogue drivers and updates.
 
 To me, the situation seems akin to building a wall with Swiss cheese, and when
@@ -97,7 +97,7 @@ effort.
 \section{Thesis statement}
 
 In this thesis, I will argue that building a verification tool for C, suitable
-for handling lowl-level systems programming idioms, is two parts engineering,
+for handling low-level systems programming idioms, is two parts engineering,
 and one part theory. Little of the theory are novel or complex, but its
 application at scale present new challenges and insights. The proportions do
 not correspond to three different topics, which fit neatly in either bucket.
@@ -108,18 +108,19 @@ To put those parts into context, I first need to explain the role and quirks of
 the venerable C programming language, and the relevant developments in
 verification theory.
 
-\section{The C Programming Language}
+\section{The C programming language}\label{sec:c-lang}
 
 More than fifty years after its introduction, and despite competition from
-C++\sidecite{isocpp1998} and Rust\sidecite{rust}, C remains in common use. Part
+C++~\sidecite{isocpp1998} and Rust~\sidecite{rust}, C remains in common use. Part
 of this is simply legacy: a lot of old and useful software is written in C.
 However, most of this is the success C had in meeting its initial design goals:
 
 \begin{itemize}
     \item \textbf{Portability}. C was designed to have a relatively small set
         of defined behaviours, leaving several key choices as
-        \intro[UB]{undefined behaviour}s (UBs). This allows C programs to run
-        performantly on several different kinds of hardware.
+        \intro[UB]{undefined behaviour}s (UBs). This allows C programs to
+        exploit the advantages of several different kinds of hardware to run
+        quickly.
     \item \textbf{Simplicity}. C was designed to be concise and simple to
         compile (in one pass if need be), so that it was relatively
         straightforward to write C compilers to support new hardware.
@@ -136,11 +137,11 @@ code such as the Linux \kl{kernel}. Portability, assisted by a large set of
 simplicity of compilation gave way to complex alias analysis and pointer
 provenance reasoning to optimise code.
 
-\begin{figure}[h]
-\centering
-\cfile{code/pointer_from_integer_1pg.c}
-\caption{Example pointer\_from\_integer\_1pg.c.}\label{fig:ptr-from-int-ub}
-\end{figure}%
+\begin{marginfigure}
+    \centering
+    \cfile{code/pointer_from_integer_1pg.c}
+    \caption{Example pointer\_from\_integer\_1pg.c.}\label{fig:ptr-from-int-ub}
+\end{marginfigure}%
 
 \cref{fig:ptr-from-int-ub} shows a slightly contrived example (courtesy
 of~\sidetextcite{memarian2019exploring}), which nevertheless illustrates the
@@ -154,52 +155,54 @@ concrete point of view of pointers (they are simply numbers), the answer is no,
 yet this would disable constant propagation in the printed value in this
 example.
 
-\begin{figure}[h]
-\centering
-\cfile{code/pointer_from_integer_1ie.c}
-\caption{Example pointer\_from\_integer\_1ie.c.}\label{fig:ptr-from-int}
-\end{figure}%
+\begin{marginfigure}
+    \centering
+    \cfile{code/pointer_from_integer_1ie.c}
+    \caption{Example pointer\_from\_integer\_1ie.c.}\label{fig:ptr-from-int}
+\end{marginfigure}%
 
 However, the other extreme, of assuming pointers are purely symbolic and always
 non-aliasing is definitely incorrect in C, because of C's ability to
 \emph{compute} with pointers (increment, calculate offsets, cast them to and
-from integers). An example similar to the previous one is shown
-\cref{fig:ptr-from-int}, with the difference that instead of the address being
-cast to a pointer in the calling function \emph{before} the local variable is
-in scope one, it is cast to a pointer \emph{after} and its address has been
-variable is \intro{exposed}: cast to an integer (but otherwise unused). Though
-we can clearly see that there is no dataflow beteween \cinline{k} and
-\cinline{i}, in general, the compiler cannot rule it out, so it conservatively
-disables constant propagation to the call to \cinline{printf} later.
+from integers). An example similar to the previous one (from the same source)
+is shown in \cref{fig:ptr-from-int}, with the difference that instead of the
+address being cast to a pointer in the calling function \emph{before} the local
+variable is in scope one, it is cast to a pointer \emph{after} and its address
+has been variable is \intro{exposed}: cast to an integer (but otherwise
+unused). Though we can clearly see that there is no dataflow beteween
+\cinline{k} and \cinline{i}, in general, the compiler cannot rule it out, so it
+conservatively disables constant propagation to the call to \cinline{printf}
+later.
 
 Stakeholders have attempted to resovle such questions by the formation of and
-continual updates to the ISO standard of C\cite{isoC1990}, however, the
+continual updates to the \kl{ISO} standard of C,\cite{isoC1990} however, the
 resolutions can be complex and subtle. This is because of the different
 preferences for performance, control and language simplicity, amongst
 application programmers, systems programmers and compiler writers. To add to
-the confusion, as a prose English document, the standard has some irreducable
+the confusion, as a prose English document, the standard has some irreducible
 ambiguities, and does not necessarily reflect \intro{de facto} C, as is it
 used in practice, so even memorising the standard would not be enough to
 safeguard against unexpected language quirks.
 
-Given this state of affairs, the \intro{Cerberus} project aims to provide a
-formally defined, executable and \emph{empirically validated} semantics of C,
-both ISO and \kl{de facto}. We shall explain Cerberus' particular advantages
-over other tools in \cref{sec:cerberus-core}. For now, it suffices to say that
-Cerberus works by \emph{\kl{compositional}ly} elaborating C into a first-order
-functional language (known as `\intro{Core}') with a few purpose-built
-constructs. It makes explicit many implicit quirks of C such as integer
-promotion, \kl{UB} and loose evaluation order.
+Given this state of affairs, the \intro{Cerberus}
+project~\sidecite{memarian2022cerberus} aims to provide a formally defined,
+executable and \emph{empirically validated} semantics of C, both ISO and \kl{de
+facto}. We shall explain Cerberus' particular advantages over other tools in
+\cref{sec:cerberus-core}. For now, it suffices to say that Cerberus works by
+\emph{\kl{compositional}ly} elaborating C into a first-order functional
+language (known as `\intro{Core}') with a few purpose-built constructs. It
+makes explicit many implicit quirks of C such as integer promotion, \kl{UB} and
+loose evaluation order.
 
 The \intro{compositional} nature of in particular allows a user to see how the
 elaborated \kl{Core} relates to the C a user wrote. I will use a function which
 appends singly-linked list of integers to another as a running example.
 
-\begin{figure}[h]
-\centering
-\cfile{code/append_plain.c}
-\caption{Example append\_plain.c.}\label{fig:append-c}
-\end{figure}%
+\begin{marginfigure}
+    \centering
+    \cfile[breaklines]{code/append_plain.c}
+    \caption{Singly-linked integer list append in C.}\label{fig:append-c}
+\end{marginfigure}%
 
 In this (admittedly unidiomatic) example, \cinline{NULL} pointers represent
 empty lists, and so the function returns \cinline{ys} if \cinline{xs} is empty,
@@ -207,10 +210,14 @@ otherwise it recurses on \cinline{xs->tail} to get the new tail
 \cinline{new_tail} and sets \cinline{xs->tail} to point to that,  returning the
 result as \cinline{xs}.
 
-\begin{figure*}[h]
-\centering
-\corefile{code/append_plain.core}
-\caption{Example append\_plain.core.}\label{fig:append-core}
+\begin{figure*}[p]
+    \centering
+    \begin{minipage}{1.2\textwidth}
+        \corefile{code/append_plain.core}
+    \end{minipage}
+    \caption{Elaboration of singly-linked int list append in C into
+        \kl{Cerberus} \kl{Core}; library functions and \cinline{else}-branch
+        omitted.}\label{fig:append-core}
 \end{figure*}%
 
 This is elaborated into a \kl{Core} as see in \cref{fig:append-core}. To save
@@ -222,7 +229,7 @@ A few things are note-worthy:
         \coreinline{create} function. Reads, writes, and de-allocations are
         represented with \coreinline{load}, \coreinline{store},
         \coreinline{kill} respectively.
-    \item Loose evaluation order (for example between the expressions of a \cinline{==}) 
+    \item Loose evaluation order (for example between the expressions of a \cinline{==})
         are represented using \coreinline{unseq} and \coreinline{let weak} constructs.
     \item UB is made explicit in the syntax of the program, for example if \cinline{xs} was
         an unspecified pointer value (line 23) or if the function exited without a return statement
@@ -267,7 +274,8 @@ sequentially) so long as they refer to separate program variables.
 
 \begin{marginfigure}
   \begin{mathpar}
-      \inferrule{\vdash{} \{P\} \; C \; \{Q\}  \\ \mod{(C)} \cup{} \mathit{FV} (R)}{\vdash{} \{ P \wedge{} R \} \; C \; \{ Q \wedge{} R \}}
+      \inferrule{\vdash{} \{P\} \; C \; \{Q\}  \\ \mod{(C)} \cup{} \mathit{FV} (R)}
+                {\vdash{} \{ P \wedge{} R \} \; C \; \{ Q \wedge{} R \}}
   \end{mathpar}
   \caption{The rule of constancy, where $\mathrm{FV}$ refers to the free
       variables of an assertion and $\mod{}$ is a syntactic
@@ -282,7 +290,10 @@ mentioned syntactically in $ [ E_1 ] \mathbin{{:}{=}} E_2$, so that the
 non-aliasing condition $E_1 \noteq E_3$ can be stated, and the morally disjoint
 fact $E_3 \hookrightarrow{} E_4$ is preserved into the postcondition.%
 \[
-    \inferrule{}{\vdash{} \{ \exists{} v.\ E_1 \hookrightarrow{} v \wedge{} E_1 \noteq E_3 \wedge{} E_3 \hookrightarrow{} E_4 \} \; [ E_1 ] \mathbin{{:}{=}} E_2 \; \{ E_1 \hookrightarrow{} E_2 \wedge{} E_3 \hookrightarrow{} E_4 \} }
+    \inferrule{}{\vdash{}
+        \{ \exists{} v.\ E_1 \hookrightarrow{} v \wedge{} E_1 \noteq E_3 \wedge{} E_3 \hookrightarrow{} E_4 \}
+        \; [ E_1 ] \mathbin{{:}{=}} E_2 \;
+        \{ E_1 \hookrightarrow{} E_2 \wedge{} E_3 \hookrightarrow{} E_4 \} }
 \]
 
 This scales poorly: composing one program with $n$ variables and up to $O(n^2)$
@@ -306,70 +317,99 @@ proofs about large and subtle systems.
 
 \begin{marginfigure}
   \begin{mathpar}
-      \inferrule{\vdash{} \{P\} \; C \; \{Q\}  \\ \mod{(C)} \cap{} \mathit{FV} (R)}{\vdash{} \{ P \ast{} R \} \; C \; \{ Q \ast{} R \}}
+      \inferrule{\vdash{} \{P\} \; C \; \{Q\}  \\ \mod{(C)} \cap{} \mathit{FV} (R)}
+                {\vdash{} \{ P \ast{} R \} \; C \; \{ Q \ast{} R \}}
   \end{mathpar}
   \caption{The frame rule. We still need to be careful about non-intereference
-      about program variables on the stack, so we retain $\mod{(C)} \cup{} \mathrm{FV}(R) = \emptyset{}$,
-      but locations on the heap are ensured disjoint by the definition of $\astRef$.
-      The name comes from the \emph{frame problem} in artificial intelligence, where
-      using first-order logic to represent the world requires many axioms simply to state
-      that things do not change arbitrarily.}\label{fig:frame-rule}
+      about program variables on the stack, so we retain $\mod{(C)} \cup{}
+      \mathrm{FV}(R) = \emptyset{}$, but locations on the heap are ensured
+      disjoint by the definition of $\astRef$. The name comes from the
+      \emph{frame problem} in artificial intelligence, where using first-order
+      logic to represent the world requires many axioms simply to state that
+      things do not change arbitrarily.}\label{fig:frame-rule}
 \end{marginfigure}
 
 To conclude this section, I will continue the example of appending to a list,
 but this time in separation logic, in a simple imperative language. It says
-that expression $\mathrm{i}$ is either $\mathsf{NULL}$ and thus represents an
+that expression $\mathsf{i}$ is either $\mathsf{NULL}$ and thus represents an
 empty list in memory, or there exists an integer $v$ and list $l'$ and location
-$\mathrm{j}$ such that $l = v {:}{:} l'$, $\mathrm{i}$ points to $v$, its
-adjacent cell $\mathrm{i}+1$ points to $\mathrm{j}$ and the list predicate
-holds recursively for values $\mathrm{j}$ and $l'$. In this way, it relates the
+$\mathsf{j}$ such that $l = v {:}{:} l'$, $\mathsf{i}$ points to $v$, its
+adjacent cell $\mathsf{i}+1$ points to $\mathsf{j}$ and the list predicate
+holds recursively for values $\mathsf{j}$ and $l'$. In this way, it relates the
 contents of linked heaps cells, laid out in a particular format, to a
 mathematical list \intro{ghost} value, which exists only in the specification
 of the program but not in the runtime.
 
-\begin{align*}
-    \mathrm{list}(\mathrm{i}, l) &\mathrel{{=}^\mathrm{def}} \\
-                                 &(\mathrm{i} = \mathsf{NULL} \wedge{} l = []) \astRef{} \mathsf{emp} \\
-                                 &\vee{} \exists{} v, l', \mathrm{j}.\ (l = v {:}{:} l') \wedge{} (i \mapsto v) \astRef{} (\mathrm{i} + 1) \mapsto{} j \astRef{} \mathrm{list}(\mathrm{j}, l')
-\end{align*}
+\begin{marginfigure}
+    \centering
+    \begin{align*}
+        \mathrm{list} &(\mathsf{p}, l) \mathrel{{=}^\mathrm{def}} \\
+                      &\mathsf{emp} \astRef{} (\mathsf{p} = \mathsf{NULL} \wedge{} l = []) \\
+                      &\vee{} \exists{} \; {head}, \; {tl}, \mathsf{p\_tail}.\\
+                      &\qquad l = {head} {:}{:} {tl} \\
+                      &\qquad \astRef{} (\mathsf{p} \mapsto{} {head}) \\
+                      &\qquad \astRef{} (\mathsf{p} + 1 \mapsto{} \mathsf{p\_tail}) \\
+                      &\qquad \astRef{} \mathrm{list} (\mathsf{p\_tail}, {tl})
+    \end{align*}
+    \caption{Definition of a recursive list predicate in a simple separation
+        logic.}\label{fig:list-pred}
+\end{marginfigure}
 
-With this predicate, we can write a proof sketch of a version of the list
-\mintinline{text}{append} program from \cref{fig:append-c}, with intermediate
-assertions inserted (\cref{fig:append-annot}). Because the definition
-\mintinline{text}{append} is recursive, we annotate it with a pre- and
-postcondition, and prove that the implementation matches it (assuming it holds
-at structurally smaller values). The precondition states we start with two
-disjoint heaplets representing two \kl{ghost} lists,
-$\mathrm{list}(\mathrm{xs}, l_1)$ and $\mathrm{list}(\mathrm{ys}, l_2)$, and
-the postcondition says that the value returned by this function is a represents
-the concatenation of the two logical lists from the input.
+With the predicate in \cref{fig:list-pred}, we can write a proof sketch of a
+version of the list \mintinline{text}{append} program from \cref{fig:append-c},
+with intermediate assertions inserted (\cref{fig:append-annot}). Because the
+definition \mintinline{text}{append} is recursive, we annotate it with a pre-
+and postcondition, and prove that the implementation matches it (assuming it
+holds at structurally smaller values). The precondition states we start with
+two disjoint heaplets representing two \kl{ghost} lists,
+$\mathrm{list}(\mathsf{xs}, l_1)$ and $\mathrm{list}(\mathsf{ys}, l_2)$, and
+the postcondition says that the value returned by this function
+($\mathsf{ret}$) represents the concatenation ($@$) of the two logical lists
+from the input.
 
-Under the true-branch of the \mintinline{text}{if}, we have that $\mathrm{xs} =
+Under the true-branch of the \mintinline{text}{if}, we have that $\mathsf{xs} =
 \mathsf{NULL}$ and so it represents the empty heap, meaning the return value
-and associated \kl{ghost} list is simply $\mathrm{ys}$ and $l_2$ respectively.
-Under the false-branch, because $\mathrm{xs} \noteq{} \mathsf{NULL}$, we may
+and associated \kl{ghost} list is simply $\mathsf{ys}$ and $l_2$ respectively.
+Under the false-branch, because $\mathsf{xs} \noteq{} \mathsf{NULL}$, we may
 assume we can unroll the definition of $\mathrm{list}$, before calling
 \mintinline{text}{append} recursively on the smaller
-$\mathrm{list}(\mathrm{xs}', l_1')$, which allows us to conclude
-$\mathrm{list}(\mathrm{new\_tail}, l_1' @ l2)$. Using the frame rule, the
-$\mathrm{xs} \mapsto v \astRef (\mathrm{xs} + 1) \mapsto \mathrm{xs}'$ remains
-unchanged and so we can fold these components into $\mathrm{list}(xs, l_1 @
-l_2)$.
+$\mathrm{list}(\mathsf{xs}', l_1')$, which allows us to conclude
+$\mathrm{list}(\mathsf{new\_tail}, l_1' @ l2)$. Using the frame rule, the
+$\mathsf{xs} \mapsto v \astRef (\mathsf{xs} + 1) \mapsto \mathsf{xs}'$ remains
+unchanged and so we can fold these components into $\mathrm{list}(\mathsf{xs},
+l_1 @ l_2)$.
 
-\begin{figure}[h]
-    \inputminted[fontsize=\small]{text}{code/append_annot.txt}
-    \caption{A separation logic proof sketch of a list append.}\label{fig:append-annot}
-\end{figure}
+\begin{marginfigure}
+    \inputminted[breaklines,mathescape,fontsize=\small]{py}{code/append_annot.py}
+    \caption{A separation logic proof sketch of a singly-linked integer list
+        append.}\label{fig:append-annot}
+\end{marginfigure}
 
+Whilst very useful, and certainly a huge leap forward based on what was
+available before, this example also highlights the limitations of the
+traditional approach. It works over an idealised imperative language, suitable
+for simple proofs of algorithms and their implementations, and the link between
+this and the C implementation in \cref{fig:append-c} is based on trust. This
+issue persists with contemporary, mechanised frameworks for separation
+logic,\sidecite{appelSF5,sammler2021refinedc,jacobs2011verifast}
+which use trust-based model of C, rather than an \emph{empirically validated}
+one.
 
-\section{CN:\ C, No bugs!}
+\section{CN:\ C, No bugs!}\label{sec:cn-intro}
 
-Before I explain how \intro{CN}\sidenote{`\kl{CN}' does not stand for anything; its name is
-a historical accident.} \emph{works}, I will explain how it is \emph{used}.
+\intro{CN},\sidenote{`\kl{CN}' does not stand for anything; its name is a
+historical accident, though the backronym in the section title was suggested by
+Elizabeth Austell.} in its \intro{proof mode}\sidenote{There are other modes to
+\kl{CN}, most notably instrumentation and test generation, which I will mostly
+ignore.} is a verification tool whose aspirational goal is to lower the cost of
+C verification from a Rocq~\sidecite{CDT2024} programmer who knows separation
+logic to a systems programmer who knows Haskell~\sidecite{haskell}.\sidenote{This pithy wording is
+courtesy of Neel Krishnaswami.} It is designed to be used pre-existing C
+programs (so they are not written or structured in a way to be verified
+beforehand). Before I explain how \emph{works}, I will first explain how it is
+\emph{used}.
 
-\kl{CN} is a program, which, in its \intro{proof mode}\sidenote{There are other
-modes to CN, most notably instrumentation and test generation, which I will
-mostly ignore.} given a C file, ensures that (a) the input code is free of
+When given a C file, \kl{CN} ensures that (a) the input code is free of
 undefined behaviour and (b) correctly implements any specification written in
 \intro{annotations} in comments with an @ symbol \cinline{/*@..@*/}
 (so that they are first and foremost, for almost all C tools, a regular C
@@ -377,21 +417,22 @@ comment). Importantly, for compositionality, performance (paralellisability),
 and ease of annotation,\sidenote{Annotations follow the structure/units of the
 program.} these are checked on a \intro{per function} basis.
 
-This means that even in the absence of annoations, code is being checked for
+This means that even in the absence of annotations, code is being checked for
 undefined behaviour. Incrementing an unsigned integer is perfectly acceptable
-\begin{figure}[h]
-\centering
-\cfile{code/unsigned_increment.c}
-\caption{Example unsigned\_increment.c.}\label{fig:un-incr}
-\end{figure}%
+(\cref{fig:un-incr}) but incrementing a signed integer triggers an error message
+(\cref{fig:incr-broken}).
 
-\ldots but incrementing a signed integer triggers an error message.%
-
-\begin{figure}[h]
+\begin{marginfigure}
     \centering
-    \cfile{code/increment_broken.c}
-    \caption{Example increment\_broken.c.}\label{fig:incr-broken}
-\end{figure}
+    \cfile[breaklines]{code/unsigned_increment.c}
+    \caption{Unsigned integer increment in CN.}\label{fig:un-incr}
+\end{marginfigure}%
+
+\begin{marginfigure}
+    \centering
+    \cfile[breaklines,breakafter=\_]{code/increment_broken.c}
+    \caption{Failing signed integer increment in CN.}\label{fig:incr-broken}
+\end{marginfigure}%
 
 The wording of the error message is inherited from \kl{Cerberus}, and shows its
 origins as a formal, executable specification for \kl{ISO} and \kl{de facto}
@@ -410,780 +451,290 @@ for improvement to take the language of the \kl{standards committee} and
 translate it into something suitable for mere mortals. Yet the source location
 and the \intro{state file} it points to is helpful. If \kl{proof mode} fails
 because \kl{CN} was not able to prove a constraint, it produces a
-\kl{counter-example} with values assigned (see \cref{sec:counter-ex})
-internal representations of program variables.
+\kl{counter-example} with values assigned (\cref{fig:incr-broken-counter-ex})
+internal representations of program variables (see \cref{sec:counter-ex}).
 
-\begin{figure}[h]
+\begin{marginfigure}
     \centering
-    \includegraphics[width=.8\textwidth]{figures/increment_broken_state.png}
+    \includegraphics[width=\textwidth]{figures/increment_broken_state.png}
     \caption{Counter example for increment\_broken.c.}\label{fig:incr-broken-counter-ex}
-\end{figure}
+\end{marginfigure}
 
 We can avoid this error by constraining the values of the input with a
-precondition annotation as follows.
-
-\begin{figure}[h]
-    \centering
-    \cfile{code/increment.c}
-    \caption{Example increment.c.}\label{fig:incr}
-\end{figure}
-
-Here we see the keyword \cinline{requires} is used to introduce a pre-condition
-on the input. \cinline{MAXi32()} is an in-built function which represents the maximum
-value a signed 32-bit integer can represent. By constraining the input so that
-it is strictly less than the maxiumum value, the function is now guaranteed to
-have no \kl{UB} for all its inputs, no matter what the context. This is because
+precondition annotation, as in \cref{fig:incr}. Here we see the keyword
+\cinline{requires} is used to introduce a pre-condition on the input.
+\cinline{MAXi32()} is an in-built function which represents the maximum value a
+signed 32-bit integer can represent. By constraining the input so that it is
+strictly less than the maximum value, the function is now guaranteed to have
+no \kl{UB} for all its inputs, no matter what the context. This is because
 whilst pre-conditions are \emph{assumed} inside the function, they are
 \emph{required} when calling it.
 
-\begin{figure}[h]
+\begin{marginfigure}
     \centering
-    \cfile{code/call_increment.c}
-    \caption{Example call\_increment.c.}\label{fig:call-incr}
-\end{figure}
+    \cfile[breaklines]{code/increment.c}
+    \caption{Successful signed integer increment in CN.}\label{fig:incr}
+\end{marginfigure}
 
-In \cinline{call_incr_100}, we see that from the constraint \cinline{y <=
+\begin{marginfigure}
+    \ContinuedFloat*
+    \centering
+    \cfile[breaklines,lastline=8]{code/call_increment.c}
+    \caption{Calling a signed integer increment in CN.}\label{fig:call-incr}
+\end{marginfigure}
+
+\begin{marginfigure}
+    \ContinuedFloat{}
+    \centering
+    \cfile[breaklines,firstline=10]{code/call_increment.c}
+    \caption{Calling a signed integer increment in CN.}\label{fig:call-incr-fail}
+\end{marginfigure}
+
+This is demonstrated in \cref{fig:call-incr} and \cref{fig:call-incr-fail}. In
+the first, we see that from the constraint \cinline{y <=
 100i32},\sidenote{Integer literals are currently written with a type
-annotation, similar to Rust.} \kl{CN} deduces that \cinline{y <=
-MAXi32()}\sidenote{Foreshadow subtyping, and bidirectional things.} and permits
-the call to \cinline{increment}. Conversely, for \cinline{call_incr_INT_MAX},
-\cinline{INT_MAX} does not meet that constraint, and so CN raises an error.
+annotation, similar to Rust.} \kl{CN} deduces that \cinline[breaklines]{y <=
+MAXi32()}\sidenote{As we shall see in \cref{chap:kernel-cn}, this is a
+\kl{subtyping} relation, and integrating it smoothly relies on
+\kl{bidirectional} type-checking.} and permits the call to \cinline{increment}.
+Conversely, for the second, \cinline{INT_MAX} does not meet that constraint,
+and so \kl{CN} raises an error.
 
-\begin{figure}[h]
+\begin{marginfigure}
     \centering
-    \cfile{code/decrement_broken.c}
-    \caption{Example decrement\_broken.c.}\label{fig:decr-broken}
-\end{figure}
+    \cfile[breaklines,firstline=4]{code/decrement_broken.c}
+    \caption{Failing to decrement the result of a signed integer increment in
+        CN.}\label{fig:decr-broken}
+\end{marginfigure}
 
 However, if we try to decrement the result of the successful call, \kl{CN}
-raises an error. This is because that \kl{CN} has no indication on the
-constraints of the return value (other than those deduced from its C type,
-namely that it fits within a signed 32-bit integer). To fix this, we need to
-provide a postcondition for the function, so that there we can express
-additional constraints on the returned value (\cref{fig:decr}).
+raises an error (\cref{fig:decr-broken}). This is because that \kl{CN} has no
+indication on the constraints of the return value (other than those deduced
+from its C type, namely that it fits within a signed 32-bit integer). To fix
+this, we need to provide a postcondition for the function which
+expresses additional constraints on the returned value (\cref{fig:decr}).
 
-\begin{figure}[h]
+\begin{marginfigure}
     \centering
-    \cfile{code/decrement.c}
-    \caption{Example decrement.c.}\label{fig:decr}
-\end{figure}
+    \cfile[breaklines]{code/decrement.c}
+    \caption{Successfully decrementing the result of a signed integer increment
+        in CN.}\label{fig:decr}
+\end{marginfigure}
 
 To specify pointer manipulating programs, I need to introduce some new syntax.
 Where in separation logic, we may say $p \mapsto v$ for arbitrary expressions
 $p$ and $v$, in \kl{CN}, we restrict it so that $v$ is always a variable, akin
 to $\exists{} v.\ p \mapsto v \wedge v = e$ for some expression $e$. For both
-usability and technical reasons explained later (\cref{sec:mode-syntax}), we
+usability and technical reasons explained later (\cref{sec:friendly-syntax}), we
 write this as \cninline{take v = Owned(p);}. % chktex 36
 
-\begin{figure}[h]
+\begin{marginfigure}
     \centering
-    \cfile{code/owned_increment.c}
-    \caption{Example owned\_increment.c.}\label{fig:owned-incr}
-\end{figure}
+    \cfile[breaklines]{code/owned_increment.c}
+    \caption{Incrementing a signed integer via a pointer in CN.}\label{fig:owned-incr}
+\end{marginfigure}
 
-This generalises to work with arrays, with syntax of the form \cninline{take
-arr = each (u64 i; .. ) { Owned(p) };}, called \intro{quantified} or % chktex 26 chktex 37 chktex 36
-\intro{iterated} resources, for the pre- and postconditions of the function.
-\kl{CN} can also handle (in a limited, careful fashion to preserve
-decidability) \intro{quantified constraints}, such as the one in the
-postcondition of \cref{fig:owned-array}, to express constraints about the
-elements of an array. Within the body of the function, we use \kl{CN
-statement}, which acts a proof hint to \kl{CN}. \cninline{extract Owned<int>,
-0u64;} statement to tell CN which index of the \kl{iterated} resource we wish
-to read or write from.
+This generalises to work with arrays, with syntax of the form
+\cninline[breaklines,breakafter=\{=()]{take arr = each (u64 i; .. ) { Owned(p) };}, % chktex 26 chktex 37 chktex 36
+called \intro{quantified} or \intro{iterated} resources, for the pre- and
+postconditions of the function. \kl{CN} can also handle (in a limited, careful
+fashion to preserve decidability) \intro{quantified constraints}, such as the
+one in the postcondition of \cref{fig:owned-array}, to express constraints
+about the elements of an array. Within the \cninline{Owned}, we express the
+location with \cninline{array_shift(p,i)}, which is the specification language % chktex 36
+equivalent of pointer arithmetic in \cinline{&p[i]}. Within the body of the
+function, we use a \intro{CN statement}, \cninline{extract Owned<int>, 0u64;},
+which acts a proof hint to \kl{CN} to tell which index of the \kl{iterated}
+resource we wish to read or write from.
 
-\begin{figure}[h]
+\begin{figure*}[tp]
     \centering
-    \cfile{code/owned_array.c}
-    \caption{Example owned\_array.c.}\label{fig:owned-array}
-\end{figure}
+    \begin{minipage}{1.5\textwidth}
+        \cfile[breaklines]{code/owned_array.c}
+    \end{minipage}
+    \caption{Summing up a two-element array of unsigned integers in
+        CN.}\label{fig:owned-array}
+\end{figure*}
 
-In the same way that separation logic predicates use $\mapsto$ as a building
-block to express more complex relations between heaps and \kl{ghost} values,
-\kl{CN} allows users to write \intro{resource predicate} to express more
-complex relations between heaps and \kl{ghost} values.
+\kl{Iterated} resources are powerful because they supports random access
+(unlike a recursive predicate over an array, which would fix the order of
+traversal).\cref{fig:init-arr-rev} shows how \kl{CN} can transform an array of
+uninitialised values (\cninline{Block}s) from the precondition, into an array
+of initialised values (\cninline{Owned}s) in the postcondition, by looping over
+it \emph{in reverse}. All loops in \kl{CN} must be annotated with \intro{loop
+invariants}, which are mostly as expected with exception of the verbose and
+confusing \cninline|{_} unchanged|
+syntax,\sidenote{\url{https://github.com/rems-project/cerberus/issues/443}}
+which tells CN that the loop does not mutate the function arguments.
 
+Within the loop, writing to a \cninline{Block} (or an \cninline{Owned}) transforms
+it into a new \cninline{Owned}. We need two \cninline{extract}s to tell CN we
+wish to first take a \cninline{Block} out of \cinline{Uninit} and then move
+it into the \cninline{Init}.
+
+\begin{figure*}[tp]
+    \centering
+    \begin{minipage}{1.5\textwidth}
+        \cfile{code/init_array_reverse.c}
+    \end{minipage}
+    \caption{Initialising an array of characters in reverse in
+        CN.}\label{fig:init-arr-rev}
+\end{figure*}
+
+Lastly, in the same way that separation logic predicates use $\mapsto$ as a
+building block to express more complex relations between heaps and \kl{ghost}
+values, \kl{CN} allows users to write \intro{resource predicate} to express
+more complex relations between heaps and \kl{ghost} values.
+
+Continuing our running example of appending two singly-linked lists of
+integers, \cref{fig:append-cn} shows how one might annotate and prove such an
+example in \kl{CN}. Firstly, it declares the datatype for \cninline{i32} lists,
+since these are not part of \kl{CN}'s base logic. Notably, arguments to
+constructors are named, not positional. After that, it declares a recursive
+\cninline{[rec]} mathematical function \cninline{function} which defines what
+it means to append two lists, serving the same function that $@$ did in
+\cref{fig:append-annot}. The final \kl{CN} declaration is for the equivalent of
+the recursive list predicate in \cref{fig:list-pred}. There are many
+differences:
 \begin{itemize}
-    \item User defined predicates
+    \item The \kl{CN} \cninline{predicate} looks like a function definition,
+        with a signature that takes a \cninline{pointer p}, and a
+        return type \cninline{(datatype seq)}, as opposed to
+        $\mathrm{list}(\mathsf{p}, l)$ which has two arguments.
+    \item It uses \cninline{return} statements to constrain the ghost list,
+        rather than $l = \mathsf{NULL}$ or $l = {head}{:}{:}{tl}$.
+    \item It uses the \cninline{take} syntax, to give names to the pointee of
+        \cninline{p} (\cninline{H}) and the tail of the list \cninline{tl},
+        rather than existentials $\exists{} \; {head}, \; {tl}, \mathsf{p}$.
+    \item The pointee of \cninline{p} is a record \cninline{H}, with fields
+        \cninline{head} and \cninline{tail} corresponding to the C struct
+        fields, rather than using pointer arithmetic $\mathsf{p} + 1$.
 \end{itemize}
 
-\begin{marginfigure}
-  \ContinuedFloat*
-  \begin{mathpar}
-      \inferdef{Var}{\vdash{} \Gamma{} \\ (x: A) \in{} \Gamma{}}{\Gamma{} \vdash{} x \ty{} A}\label{rule:cic-var}
-  \end{mathpar}
-  \caption{Integrate Ott into this system.}\label{fig:cic-var}
-\end{marginfigure}
+All of these differences will be explained in more detail and justified in
+\cref{sec:friendly-syntax}. I will note in passing that the syntax can also be
+seen as tracing out the footprint of the heaplet containing the list, and
+constructing the ghost value it represents.
 
-Reference the rule: \ruleref{rule:cic-var} opposite.
+For now, I will move on to the annotations on the implementation. The
+precondition can be read as saying ``\emph{\cinline{IntList_append} requires
+\cninline{L1} to be the ghost list constructed using \cninline{IntList}
+with \cinline{xs}, and similarly for \cninline{L2} and \cinline{ys}}''. The
+postcondition can be read as saying ``\emph{\cinline{IntList_append} ensures that
+\cninline{L3} is a ghost list constructed using \cninline{IntList} with the
+return value \cninline{return}, and \cninline{L3} is equal to \cninline{L2}
+appended to \cninline{L1}}''.
 
-\begin{marginfigure}
-\ContinuedFloat{}
-  \begin{mathpar}
-      \inferrule{\Gamma{} \vdash{} A \ty{} \uni{} \\ \Gamma, x: A \vdash{} t \ty{} T}
-      {\Gamma{} \vdash{} \l x: A.\ t \ty{} A \to{} T}
-    \and
-    \inferrule{\Gamma{} \vdash{} f \ty{} A \to{} T \\ \Gamma{} \vdash{} u \ty{} A }{\Gamma{} \vdash{} f\ u \ty{} T}
-  \end{mathpar}
-  \caption{Ott in here too.}\label{fig:cic-nondep-fun}
-\end{marginfigure}
+Within the body of the function, in both branches of the \cinline{if}, there is
+a \kl{CN statement}, this time to instruct CN to manually unfold the definition
+of the recursive function at that point to aid proving the postcondition.
+Conveniently, albeit
+inconsistently,\sidenote{\url{https://github.com/rems-project/cerberus/issues/483}}
+\kl{CN} auto-unfolds branching predicate definitions, including recursive ones,
+when it is able to prove or disprove the branch conditions of that predicate,
+based on the assertions in its context at a particular program point.
 
-You can see more at work in \cref{fig:cic-nondep-fun}.
+\begin{figure*}[tp]
+    \begin{minipage}{.85\textwidth}
+        \cfile[breaklines,firstline=5,lastline=24]{code/append_annot.c}
+    \end{minipage}%
+    \begin{minipage}{.65\textwidth}
+        \cfile[breaklines,firstline=26,lastline=41]{code/append_annot.c}
+    \end{minipage}
+    \caption{Appending a singly-linked list of integers in CN.}\label{fig:append-cn}
+\end{figure*}%
 
 \section{Contributions of this thesis}\label{sec:contributions}
 
-\subsection{Formalisation of CN}
+\kl{CN} has been developed by many people; my particular contributions relate
+to the following subsections, which provide an overview of the remaining parts
+of this thesis.
 
-Kernel CN (type safety), the gap between CN and this (inferring output
-arguments, historical note on inferring indices), heap factoring, and Ott
-engineering.
+\subsection{Formalisation of \kl{CN}}
 
-\subsection{Design, formalisation and implementation of CN-VIP}
+Whilst Christopher Pulte and Thomas Sewell are the primary implementers of
+\kl{CN}'s \kl{proof mode}; my contributions to this part of the project have
+been to clarify and formalise \kl{CN}'s theory. The end result of this work was
+not only more confidence in the theoretical merits of the approach of \kl{CN},
+but also clarifying its principles, and generating insights for feeding back to
+the implementation.
 
-Memory object model and adapting it to CN
+My contributions in this part include:
+\begin{itemize}
+    \item A grammar of resource terms for book-keeping resource manipulations.
+    \item \intro{ResCore}: A let-normal form of \kl{Cerberus}' \kl{Core} with
+        reified resources.
+    \item A novel, modular heap definition in a dynamic semantics for \kl{ResCore}.
+    \item \intro{Kernel CN}: A formal definition of a bidirectional,
+        \kl{separation logic}, \intro{refinement type} system for \kl{ResCore}.
+    \item A proof of soundness of \kl{Kernel CN} with respect to the
+        \kl{ResCore} dynamic semantics.
+    \item A formalisation of two inference algorithms used by \kl{CN}, one for inferring
+        quantifiers and one for inferring indices for \kl{iterated} predicates.
+    \item A formalisation of the link between the surface syntax of \kl{CN} and
+        the formal presentation in this thesis.
+    \item An experience report on (a) iterating on the design of a very large type
+        system using Ott~\sidecite{sewell2010ott} and (b) feeding back insights
+        from the theory to the implementation.
+\end{itemize}
+
+\subsection{Design, formalisation and implementation of \kl{CN-VIP}}
+
+In its initial version, to simplify matters, \kl{CN} was built on top of a
+simple concrete \kl{memory object model}, where pointers were treated as
+interchangeable with integers. However, as I briefly alluded to in
+\cref{sec:c-lang}, this is not accurate with respect to how the standard and
+modern compilers treat pointers. To remedy this, building on the work of
+\sidetextcite{memarian2019exploring} and \sidetextcite{lepigre2022vip}, I
+designed, formalised and implemented, \intro{CN-VIP}, a memory model based on
+(and sound with respect to) prior work. Because of this, \kl{CN} will now
+automatically check and enforce a large number of subtle rules regarding the
+creation, modification and destruction of pointers and associated allocations,
+at the cost of \kl{CN} becoming harder and slower to use.
+
+
+My contributions in this part include:
+\begin{itemize}
+    \item An exploration of the design space and trade-offs when designing a
+        type system for real-world memory object models.
+    \item The formalisation of \kl{CN-VIP}, focusing on its modular integration into
+        \kl{Kernel CN} and \kl{ResCore}.
+    \item A proof of soundness of \kl{CN-VIP}, with respect to the VIP dynamic semantics.
+    \item A walk-through of the implementation of \kl{CN-VIP}, along with the
+        approach required to integrate it without causing pain to myself, other
+        developers or users.
+    \item A discussion on the problems with supporting byte-level provenance
+        and round-trip casts in \kl{CN}, potential resolutions and trade-offs.
+    \item A roadmap on the integration of mechanised, sound resourceful lemmas
+        into \kl{CN} inspired by the design of \kl{CN-VIP}.
+\end{itemize}
 
 \subsection{Will the real world C, please stand up?}
 
-Tree Carver (preprocessor), buddy allocator update, issues/pain points (on
-GitHub repo), working with Galois.
-
-\begin{comment}
-
-\emph{“\kl{Coq} is an old man now, and it has a lot of scars.”}
-\vspace{-1.5em}
-\begin{flushright}
-  \sidecite[][citing Assia Mahboubi]{QuantaPA}
-\end{flushright}
-
-\margintoc[4em]
-
-This thesis belongs to the domain of \kl[dependent type]{type theory},%
-\sidenote{If you do not know what this or any other word in this introduction
-means, read on! They will be explained in due time.}
-itself at the crossroads between computer science and mathematical logic.
-One of the field’s goals is to give theoretical and practical foundations
-for software tools helping humans in constructing and verifying proofs –
-in the mathematical sense.
-Such tools are called \kl{proof assistants}, and \kl{Coq}, the one
-on which my work was mainly focused, is central in this thesis.
-
-Over their more than 50 years of existence, proof assistants have
-turned into an established technology. This history is both a blessing and a curse: as
-the field matured, the tools have become more and more complex, making them more and more
-powerful, but also more and more prone to critical bugs hiding in dark corners. At a time
-when they are gaining traction in an increasing number of communities
-concerned with high trust levels, this simply cannot be.
-The historical solution of keeping a small, trusted \kl{kernel}
-– the so-called De Bruijn criterion –
-is not enough if we wish to keep moving on and integrate new, powerful features
-to keep up with the needs of users.
-
-There is a straightforward solution to this:
-proof assistants have been used for decades to certify programs correctness.
-Why could they not prove \emph{themselves} correct? After all, if this is
-the gold standard we demand for software, it should apply first and foremost to the ones
-used to justify that trust. For the proof assistant \kl{Coq},
-this is the ambition of the \kl{MetaCoq} project,
-which aims at providing a drop-in replacement for \kl{Coq}’s \kl{kernel} that has been
-proven correct,
-even though it handles all the subtleties and quirks of said \kl{kernel}.
-No more trusting a complex and ever-evolving implementation, trust the formally validated
-\emph{proofs} instead!
-
-But before we can hope to achieve that goal, we need a deeper study of the structures at work
-in the \kl{kernel}. In particular, its typing algorithm is \emph{bidirectional}, meaning that
-it constantly alternates between the two problems of type \emph{inference} –
-finding a type for a term – and type \emph{checking} –
-verifying that a type is adequate for a term. While this
-structure is crucial in relating the specification of the type system to its implementation,
-it has been rather little studied in the context of the
-\kl{Calculus of Inductive Constructions} (\kl{CIC}),
-the theoretical foundation of \kl{Coq} – but also of the closely related
-\kl{Lean}, \kl{Agda}…
-
-This thesis aims at filling that gap, by providing a thorough study of bidirectional \kl{CIC},
-formalized in the framework offered by \kl{MetaCoq} project. This is a key
-ingredient in the first formal proof of soundness and completeness of a type-checking
-algorithm for a realistic proof assistant kernel.
-It was also able to uncover bugs in \kl{Coq}’s kernel that had gone unnoticed until then.
-
-But bidirectional typing is also an interesting theoretical tool in its own right,
-giving a valuable form of control over computation.
-In particular, it is a necessary piece in the design of a gradual extension of
-\kl{CIC}, \kl{GCIC}.
-\kl{Gradual typing} aims at bringing to programmers both the flexibility of
-development offered by dynamic typing, and the strong guarantees given
-by static typing, in one and the same system. \kl{GCIC} intends
-to bring that flexibility to dependently-typed programming,
-and, by using the power of the \kl{Curry-Howard correspondence}, to proof writing.
-But this endeavour comes with subtle difficulties,
-that can only be solved in a bidirectional setting.
-
-To replace this work in its larger context, this introduction begins with a very
-short history of mathematical logic (\cref{sec:logic-history}), which exposes the
-main questions of that field. Follows a presentation of the links between logic and
-computer science, through \kl{proof assistants} (\cref{sec:proof-assistants}).
-Next, \cref{sec:intro-coq-en} focuses more closely on presenting
-the research questions I worked on: bidirectional typing, \kl{MetaCoq} and gradual typing.
-Finally, \cref{sec:this-thesis} summarizes my contributions to these questions.
-
-\section{A Very Short History of Logic}
-\label{sec:logic-history}
-
-\subsection{Syllogisms}
-
-The main question that logic seeks to answer is that of finding criteria in order to determine
-if a reasoning is valid. In Western tradition, this challenge can be traced back to the
-Antiquity, and particularly to Aristotle's \textit{Organon}.
-The main contribution of this work is to introduce the notion of syllogism.
-These are simple fragments of reasoning, whose validity stems from the
-fixed structure they follow, rather than a specific content.%
-\sidenote{The most well-known is probably the \textit{Barbara} syllogism, and example
-of which is: \emph{all humans are mortals; Socrates is human; so Socrates is mortal.}}
-If complex reasoning is built from assembling such syllogisms, it must necessarily be valid as
-a whole, since every assembled fragment is. There are two important ideas at work here.
-
-The first is that reasoning can be valid or not, depending only on its structure,
-independently of its content.
-It can be syllogisms, but many other systems. We will come across a certain number of them
-in this thesis!
-
-The second idea is that of a construction from elementary components.
-Starting from a set of rules
-we have identified as valid \textit{a priori}, we have a means to ensure the validity
-of potentially very complex reasoning: it suffices to check that these
-can be decomposed into the base components.
-
-For the Greek philosophers, logic was also conceived as a means towards communication.
-The aim was to check one’s own reasoning, but also to be able to convey
-it, by fixing a logical formal system.%
-\sidenote{Structural rules reasoning should obey, as those of syllogisms.}
-A person wanting their conclusion to be accepted by others would only have to express their
-reasoning in a perfectly precise way in the framework of such a formal system.
-
-From that point on, the main focus of logic as a discipline
-concentrates on this structure which underlies reasoning.
-The main challenge is to construct a formal system, adapted to a specific
-field of reasoning. In the case we are interested in, mathematical logic, this
-allows us to give a precise meaning to what constitutes a valid mathematical proof.
-
-
-\subsection{The beginning of mathematical logic: towards a formal foundation}[Towards a formal foundation]
-
-Following Aristotle, mathematicians seized logic in order to build a formal system
-able to serve as a rigorous foundation for mathematics.
-The links between logic and mathematics go back to Greek Antiquity, but
-mathematical logic as a standalone discipline really established itself
-during the 19\textsuperscript{th} century, thanks to important progress on two main aspects.
-
-The first consisted in freeing mathematical logic from natural languages%
-\sidenote{By opposition with the formal languages which appear in mathematics,
-  computer science, etc.},
-unsuited to a formal description of reasoning, and to instead design a new specific
-form of language that could serve as a basis for mathematical reasoning.
-An important step here was \citeauthor{Begriffsschrift}'s
-\citetitle{Begriffsschrift}~\sidecite{Begriffsschrift}, which, for the first time,
-gave a formal language rich enough to express mathematics satisfyingly. Its
-major addition was the notion of quantifier, essential to the mathematical vernacular,
-as they give a faithful way to account for universal%
-\sidenote{For instance: “Every even natural number is the sum of two prime numbers”.}
-and existential%
-\sidenote{For instance: “There exists a real whose square is 2”.}
-properties.
-
-The second aimed at showing that mathematics as a whole could be reconstructed from a
-few simple properties. An important step was the reduction of analysis to the properties
-of real numbers, followed by constructions of those from arithmetic given almost
-simultaneously by – among others – \sidetextcite{Dedekind1872} and
-\sidetextcite{Cantor1872} in 1872.
-Meanwhile, \sidetextcite{Peano1889} proposed an axiomatization of natural numbers close to the
-one still used today. Finally, Cantor again proposed set theory \sidecite{Cantor1883}
-as a formalism expressive enough to describe all mathematical object as sets of elements.
-
-\subsection{The foundational crisis of mathematics}[The foundational crisis]
-
-Unfortunately, the system proposed in the \citetitle{Begriffsschrift} is inconsistent!
-That is, it is possible to use it to prove falsity, 
-making the logical system collapse.%
-\sidenote{In a system where falsity is provable, all propositions are,
-  which is known as the principle of explosion.
-  Such a system, where everything – and its negation – is provable can obviously not
-  serve as an adequate foundation for mathematics.
-}
-This result, due to Russell%
-\sidenote{%
-  In a letter to Frege in 1902 the latter made made public
-  in \textcite[Nachwort p.~253]{Frege1903}.}%
-\margincite{Frege1903}
-marked the opening of a crisis period.
-Indeed, it cast doubt upon the systems that had started to establish
-themselves as good candidates to serve as foundations – that of Frege, but
-mainly those of Cantor, which were affected by the same difficulties.
-
-A possible solution has been suggested ten years later  by \citeauthor{Whitehead1913} in their
-\citetitle{Whitehead1913} \sidecite{Whitehead1913}. This colossal piece of work
-not only proposed a formal system avoiding the inconsistency
-of \citetitle{Begriffsschrift}. It also built a significant amount
-of mathematics in this system, including a construction of integers,
-some arithmetic, and finally real numbers.
-
-In parallel, in the continuity of Cantor’s work, \sidetextcite{Zermelo1908} and others
-worked towards giving a version of Cantor’s set theory that is consistent. This lead to what
-is colloquially referred to as Zermelo-Fraenkel set theory – ZF, or ZFC when the
-axiom of choice%
-\sidenote{An axiom very useful in numerous branches of mathematics, but which is often treated
-separately, as it is both less crucial than the other axioms of ZF and at the root of
-counter-intuitive results.}
-\sidecite{Zermelo1904} is added –, which also seemed able to serve as a
-solid foundation for mathematics.
-
-\subsection{Incompleteness}
-
-The search for a formal system adequate as a foundation for mathematics however hit a
-second major difficulty: Gödel’s incompleteness theorem \sidecite{Goedel1931}. It asserts
-that a formal system in which one can construct integers such as those of Peano – and so
-\textit{a fortiori} any system rich enough to serve mathematician’s needs – cannot
-prove its own consistency.%
-\sidenote{Unless the system is inconsistent, in which case it can prove \emph{everything},
-by virtue on the explosion principle, including its own consistency… and inconsistency!}
-Thus, no formal system can serve as a basis for mathematics
-with a formal certitude as to its adequacy.
-Indeed, as we cannot prove the consistency of the system in itself, it could very well
-turn out to be inconsistent, ruining all the efforts put into its use – just like what
-happened with Frege’s \citetitle{Begriffsschrift}. And if we were to use a second system
-to prove the first consistent, we would only shift the prolem: now we rely on the
-consistency of the second system.
-
-A consequence of this theorem is that a system rich enough to found mathematics is
-necessarily incomplete.%
-\sidenote{%
-  This means that there exist independent statements, that is assertions which
-  cannot be proven, and whose negation cannot be proven either.
-  The consistency of the system under consideration is one example of such a statement.
-}
-Thus, in what follows, I will never refer to truth in an absolute sense – which could
-only be meaningful in a complete system where every statement is true or false –, but
-only about provability \emph{relatively to a given system}.
-
-\subsection{A satisfactory situation?}
-
-Despite the difficulties put into light in the beginning of the 20\textsuperscript{th}
-century, the research in mathematical logic reached a somewhat satisfactory situation
-a few decades later.
-First, ZFC is a reasonable formal system on which mathematics can be founded. Moreover,
-the mathematical community is overall convinced it would be \emph{theoretically} possible
-to write down all mathematics using ZFC\@. This is enough for most of its members,
-even if those who attempt to actually give it a try, in the vein of the
-\citetitle{Whitehead1913}, are quite few.
-
-In \emph{practice}, however, things are very different. The human development and
-verification of formalized mathematics%
-\sidenote{%
-  That is, effectively expressed in a fixed formal system.}
-seems both impossible, and unnecessary.
-On the one hand, it would demand a considerable effort, because such mathematics would
-require an extremely high level of precision, both from the author of the formal proof
-and from the reader. At the same time, this would not significantly reduce the risk of
-errors. It would indeed be very hard for humans to check that some reasoning doubtlessly
-follows the rules of the system: a tiny error can easily creep inside thousands of pages
-of formal reasoning. Finally, describing mathematics in this way would drown the vital
-mathematical intuitions, making communication sterile.
-
-If we wish to make formal mathematics practicable, and benefit from the guarantees
-they bring while eliminating these crippling defaults, we thus need new tools.
-
-\section{Computers Enter the Scene}
-\label{sec:proof-assistants}
-
-A new element however radically modifies the previous situation: the advent of computers.
-Indeed, computer science provides new tools, making formalized mathematics both possible
-and attracting.
-
-\subsection{Proof assistants}
-
-Computers excel where humans are weak: their speciality is to treat large volumes of
-information in a very precise way, exactly the kind of needs brought up when manipulating
-formalized mathematics. Therefore, already at the beginning of the 70s,%
-\sidenote{With systems like Automath \cite{DeBruijn1970}, or Mizar
-  \cite{Rudnicki1992}.}%
-\margincite{DeBruijn1970}%
-\margincite{Rudnicki1992}
-software tools, collectively called \intro{proof assistants}, start to
-appear, that are dedicated to writing and verifying formal proofs.
-Through the formalization of proofs and the verification by computers that they
-actually follow the rules of the underlying logical system, proof assistants open the
-door to a level of trust much higher than that allowed by “informal” proofs.
-Renowned mathematicians, such as \sidetextcite{Voevodsky2010},
-\sidetextcite[][Preface, p.\ xi]{Hales2012}, or \sidetextcite{Scholze2021} have indeed
-turned to proof assistants, particularly in order to lift uncertainties regarding the
-solidity of their own work.
-
-Moreover, proof \emph{assistants} are not simply proof checkers: beyond verification,
-they supply users with a large range of tools to ease the conception of
-formal proofs. These tools allow users to write proofs at a
-high level, and in an interactive manner,%
-\sidenote{In most modern proof assistants, the final proof is built as the result of
-  an exchange between the programmer and the tool, rather than written as a single block.}
-leaving it to the proof assistant to construct the formal proofs.
-They range from simple facilities, such as the possibility to visualize the structure
-of proofs, or the tracking of hypotheses, to much more ambitious techniques.
-
-Indeed, computer science lets us automatize entire parts of
-proof writing, for instance through the use of tactic languages \sidecite{Delahaye2000},
-with which one can program proof generation.
-In addition, the automatic construction of proofs is a research field by itself,
-and the question of its integration intro proof assistants is an active topic
-\sidecite{Blanchette2016,Ekici2017}. Computer science has also proven its worth in the
-setting of mathematical computations (computer algebra systems, numerical analysis),
-and here again promising interactions with proof assistants are starting to arise
-\sidecite{Lewis2022,Mahboubi2019}.
-
-Finally, if the use of software eases the writing of proofs, proof assistants conversely
-open new possibilities for programming. They indeed offer a natural framework to describe in
-the same place the source code of a program, its specification, and the formal proof that the
-former fulfils the latter. This way, we can \emph{prove} that the program runs correctly,
-without encountering any bugs.
-This mathematical certainty is much more reliable than any test set!
-In this field, numerous projects have already achieved large scale programs, entirely proven
-correct: compiler for the C language \sidecite{Kaestner2017}, implementation of the
-\textsc{Https} protocol \sidecite{Bhargavan2017}, differential equations solving
-\sidecite{Immler2018}…
-
-\subsection{Logic, Programming and Type Theory}
-
-In order to work, proof assistants must be founded on a formal system, corresponding to
-the “rules” of the mathematical “game” they are supposed to enforce.
-Thus, they require a renewed study of mathematical logic, but with the practical aim of
-building tools that are at the same time powerful and easy to use.
-There are multiple families of proof assistants, based on very different formal systems.
-The one I am interested in in this thesis relies on the \kl{Curry-Howard correspondence}
-and \kl[dependent type]{dependent type theory}. The proof assistant \kl{Coq}
-\sidecite{CoqDevelopmentTeam2022}, which is at the heart of my work, belongs to this family.
-
-If one compares a computer program with a text in a natural language,
-\intro(en){types}
-are a kind of equivalent of grammatical categories. However, contrarily to natural
-languages, these types are conceived at the same time as the programming language, in order
-to mirror properties of the objects it manipulates.
-Their first use is to detect manifest errors. For instance, if a procedure
-intended for an object of type “image” is applied to an object of type “character string”,
-an error can be reported to the programmer.%
-\sidenote{A well-known slogan due to \textcite{Milner1978} claims that
-“Well-typed programs cannot go wrong.”}%
-\margincite{Milner1978}
-But types are very versatile, and their capacity to encode properties of the underlying
-programs can be used for compilation, documentation, and many other applications. In our
-framework, for instance, types correspond to the validity of a logical reasoning.
-
-This idea is that of the \intro{Curry-Howard correspondence}.%
-\sidenote{Made explicit for the first time in informal notes by Howard dating back to 1969,
-but published only much later \cite{Howard1980},
-themselves based upon previous remarks by Curry \cite{Curry1958}.}%
-\margincite{Howard1980}%
-\margincite{Curry1958}
-Rather than a precise theorem,
-it is more of a very general concept, according to which two worlds closely resemble each
-other: on the one hand, that of logic and proofs, on the other that of programs
-and their types.
-
-\begin{marginfigure}
-
-  % \begin{mathpar}
-  %   \inferrule{ \Gamma, A \vdash B}{\Gamma \vdash A \Rightarrow B} \and
-  %   \inferrule{\Gamma \vdash A \Rightarrow B \\ \Gamma \vdash A}{\Gamma \vdash B} \and
-  %   \inferrule{\Gamma, x : A \vdash t : B}{\Gamma \vdash \lambda x : A . t : A \to B} \and
-  %   \inferrule{\Gamma \vdash f : A \to B \\ \Gamma \vdash u : A}{\Gamma \vdash f~u : B}
-
-  % \end{mathpar}
-
-  % \caption{Règles d’inférence pour l’implication et de typage des fonctions}
-
-  \begin{mathpar}
-    \inferrule{A \\ B}{A \wedge B} \and
-    \inferrule{A \wedge B}{A} \and
-    \inferrule{A \wedge B}{B} \\
-    \inferrule{a \ty A \\ b \ty B}{(a,b) \ty A \times B} \\
-    \inferrule{p \ty A \times B}{p.1 \ty A} \and
-    \inferrule{p \ty A \times B}{p.2 \ty B}
-  \end{mathpar}
-  
-  \caption{Inference rules for conjunction and typing rules for pairs}
-  \label{fig:curry-howard-example-en}
-\end{marginfigure}
-
-A short example says more than a long abstract talk, so let’s look at the correspondence
-at work in \cref{fig:curry-howard-example-en}, in the form of inference/typing rules:
-each bloc presents a rule, with above the bar the hypotheses, and below the conclusion.
-The first three rules govern the logical conjunction “and”, written $\wedge$.
-The first means that to deduce the proposition $A \wedge B$ (“$A$ and $B$”), it is enough
-to deduce $A$ and $B$ taken individually.
-Conversely, if we have as hypothesis $A \wedge B$, then we can deduce both $A$ (second rule),
-and $B$ (third rule).
-The last three rules govern typing%
-\sidenote{Written using a colon.}
-for the pair type $A \times B$. A pair $(a,b)$ built
-from a first object $a$ of type $A$ and a second object $b$ of type $B$ has type $A \times B$.
-Conversely, if $p$ is a pair of type $A \times B$, then we can retrieve its first component
-$p.1$, which is of type $A$, and its second $p.2$, of type $B$.
-If we erase the terms%
-\sidenote{In the context of type theory, we often talk about \emph{terms} instead of programs,
-  but the two are synonyms.
-}
-of the bottom rules, we obtain \emph{exactly} the rules above!
-Thus, the programming construct of pairs corresponds to the logical concept of conjunction.
-
-This extends well beyond the specific case of conjunction, in a general correspondence
-between, on one side, logical propositions and their proofs, and, on the other, types and programs.
-We can see properties as types, and a proof of a given property as a program of the
-corresponding type – or the other way around!
-Beyond a simple analogy between formalisms of different origins, this correspondence
-is a powerful tool to establish a dialogue between two worlds. In particular, it
-relates two \textit{a priori} quite distant problems: checking that a proof
-is valid, and checking that a term is well-typed. In both cases, it amounts to checking that
-a construction – program on one side, proof on the other – respects a set of formal
-rules guaranteeing it is well-formed.
-
-The \kl{Curry-Howard correspondence} is therefore ideal to serve as a foundation for
-\kl{proof assistants}, since it gives access, when studying formal logical systems,
-to the rich literature on programming languages, in particular on the theory and
-implementation of types. In this framework, the
-\intro[dependent types]{dependent type systems} are a specific family of type systems,
-whose main characteristic is the ability for types to depend on terms. The archetypical
-example from the point of view of programming is the type $\Vect(A,n)$
-of vectors of length $n$. These are lists that contain exactly $n$ elements of type $A$ – with
-$n$ a natural number.
-This type depends on $n$, in the sense that the type’s inhabitants differ depending on the
-integer’s value.
-From the point of view of logic, this dependency corresponds to quantification: if we
-wish to express a universal property “for all $x$, the property $P(x)$ holds”, then we need
-the property $P$ to depend on $x$.
-Thanks to this ability to express quantification, dependent types are rich enough
-to serve as foundations for mathematics.
-
-\section{\kl{Coq} and Its Kernel}
-\label{sec:intro-coq-en}
-
-Let us now focus a bit more on the proof assistant which we will consider mainly in this
-thesis: \kl{Coq}.
-
-\subsection[The kernel]{The kernel, cornerstone of the system}
-
-\begin{figure}[h]
-
-  \centering
-  \includegraphics{./figures/coq-kernel-en.pdf}
-
-  \caption{\kl{Coq}’s schematic architecture}
-  \label{fig:coq-en}
-\end{figure}
-
-\kl{Coq} is based on the \kl{Curry-Howard correspondence}: proofs are seen as programs,
-in a language called \intro{Gallina}, and their verification is done using an algorithm
-close to those used for types in conventional languages. However, if, in the first versions
-from the 80s, \kl{Coq} proof were mostly written directly in \kl{Gallina}, it is
-no longer the case at all. The reason is that the major part of the tool in its
-current versions aims at helping the user in generating a correct proof. It is a true
-\kl[proof assistant]{proof \emph{assistant}}!
-The way \kl{Coq} works is illustrated in \cref{fig:coq-en} : the user interactively exchanges
-with \kl{Coq}, which uses this interaction to generate a proof term. This proof term is then
-sent to a very specific part of the tool, called the \intro{kernel}.
-This is the part implementing the type-checking algorithm, and thus responsible for ensuring
-that the proof terms built interactively are correct.
-The \kl{kernel} is thus the crucial part of \kl{Coq}, because it is the one – and only –
-ultimately responsible for proof-checking.
-This architecture, which clearly isolates the critical part of the system, is called
-\intro{De Bruijn criterion} \sidecite{Barendregt2001}, in tribute to one of the pioneer
-of proof assistants.
-
-If the rest of the ecosystem has grown much more than the \kl{kernel} since the beginning,
-the latter has also evolved, becoming gradually more complex.
-And, as any other software development, it is not safe from bugs.%
-\sidenote{The magnitude is that of one critical bug found every year, a list is maintained
-at the following address: \url{https://github.com/coq/coq/blob/master/dev/doc/critical-bugs}.}
-These are in general hard to exploit for a user, even more so without noticing.
-But still, they exist, and since the \kl{kernel} tends to get more and more complex, they
-are likely to continue appearing.
-
-\subsection{\kl{MetaCoq}, a formalization in \kl{Coq}, for \kl{Coq}}[\kl{MetaCoq}]
-\label{sec:intro-metacoq-fr}
-
-If we wish to guarantee a trust level as high as possible in the \kl{kernel}, we must
-resort to new ideas. This is what the \kl{MetaCoq} project is all about. The idea
-is simple: use \kl{Coq} itself to certify the correctness of its \kl{kernel}.
-
-More precisely, the first step is to describe formally the type system on which the \kl{kernel}
-is based, and to show its theoretical properties.
-This is already a difficult endeavour: in order to ease its use, \kl{Coq}’s type theory
-incorporates a lot of complex features.
-
-Once this meta-theory is established, the second step
-% \sidenote{This is the one on which I mostly work, and on which we will come back in more
-% length later on.}
-consists in implementing a type-checking algorithm as close as possible to the one of the
-\kl{kernel}, directly in \kl{Gallina}%
-\sidenote{Indeed, thanks to the \kl{Curry-Howard correspondence}, \kl{Gallina} is not
-only a proof language, but also a true programming language!}.
-We show, while defining the algorithm, that it is indeed \reintro(bidir){sound}%
-\sidenote{If the algorithm claims that a term is well-typed, then it is the case.}
-and \reintro(bidir){complete}%
-\sidenote{The algorithm answers positively on all well-typed programs.}.
-Together, these two properties correspond to the \intro(bidir){correctness} of
-the program.
-
-Finally, in a third step, we extract out of this certified \kl{Gallina} program another
-more efficient program, by erasing the content related to the proof of correctness, in order
-to keep only the algorithmically relevant one.
-This extraction is a complex but crucial step if we wish to replace the current \kl{kernel}
-while keeping a reasonable efficiency. Therefore, we also prove that said extraction
-is correct,%
-\sidenote{Meaning that it preserves the semantics of programs.}
-once again by programming it in \kl{Gallina}.
-
-\subsection{Checking, inference and bidirectional typing}[Bidirectional typing]
-
-While proving the correctness of the type-checker is relatively easy once the
-meta-theoretical properties of the type system have been established, completeness is harder.
-In order to prove it, it is very useful to go through an intermediate specification,
-which is more structured than the theoretical one.
-In particular, it is important to separate two close but distinct questions:
-on the one side, type-checking, where we \emph{check} that a term indeed has a
-given type;
-on the other side, inference, where we try and \emph{find} a type for a term, if such a
-type exists.
-The typing algorithm of \kl{Coq}'s \kl{kernel} is \intro{bidirectional}, meaning that it
-alternates constantly between these two processes when it checks that a term is well-typed.
-Describing this bidirectional structure independently of the algorithm allows for a
-clear separation between, on the one side, its equivalence with the original specification,
-and, on the other, the part purely dedicated to implementation questions.
-
-In the specific case of dependent types, even if present in type-checking algorithms since
-the origin – see \eg \sidecite{Huet1989} –, bidirectional typing has been relatively little
-studied. However, beyond its strong relation to algorithms, this approach also presents
-theoretical advantages: its more constrained structure makes it easier
-to obtain properties that are difficult to obtain in the standard context.
-
-\subsection{Gradual types: some flexibility in a desperately static world}
-  [Gradual types]
-\label{sec:intro-graduel-en}
-
-There are two main approaches to program type-checking. In the static approach,%
-\sidenote{On which \kl{Coq} is based.}
-types are verified prior to the execution, whereas, in the dynamic approach, the well-typedness
-of operations is verified on the fly during that same execution.
-The dynamic discipline is more flexible, as it checks exactly what is necessary
-for the good execution of a program.
-The strictness of static typing, conversely, allows for error detection earlier in the
-development, and imposes invariants useful to optimize compilation or execution.
-
-Instead of opting exclusively for one of the two approaches,
-\reintro{gradual typing} \sidecite{Siek2015} aims at integrating
-the static and dynamic disciplines in one and the
-same language.
-The main idea is to have a first pass of verification before the execution, as in static typing,
-while leaving the possibility to defer parts of the verification to the execution, as in
-dynamic typing.
-This gives access to a whole spectrum of options, from a rigid completely static
-discipline to a flexible dynamic one. It particularly allows for a fine-grained, local choice
-of how each part of a program is type-checked.
-One can thus evolve the discipline during software development, benefiting from
-the flexibility of dynamic typing in early phases, and from the guarantees of static typing
-later on.
-
-As the case of \kl{MetaCoq} illustrates, \kl{Coq} can be used as a true programming language.
-Even better: its type system can express very complex properties of programs, and thus
-verify even before their execution that the code indeed enforces them.
-Sadly, these reinforced constraints can turn against the user, by making the
-early development phase more difficult. Indeed, nobody writes correct code on the first try,
-and it would often be nice to temporarily lift the strong guarantees of typing to
-facilitate experimentation. The idea then is to take inspiration from gradual typing,
-in order to pave the way for a more flexible logical or software development. Once again, the
-\kl{Curry-Howard correspondence} is at work, since we adapt concepts from the world of
-programming languages to the logical one.
-
-\section{And this Thesis?}
-\label{sec:this-thesis}
-
-My doctoral work itself is centred around bidirectional typing, under three main aspects,
-corresponding to the three parts of this thesis.
-They are preceded by \cref{chap:tech-intro}, which introduces the main technical notions
-used in what follows.
-
-\subsection{Theory of bidirectional typing}
-
-The first part (\nameref{part:bidir}) proposes to – partially – fill the theoretical gap around
-bidirectional typing for dependent types. More precisely, it contains a proof of equivalence
-between the standard presentation of CIC in the literature, and a bidirectional one.
-\Cref{chap:bidir-ccw} presents the main ideas in a relatively
-simple setting, in order to ease the exposition. \Cref{chap:bidir-pcuic} shows how to extend
-them to a more realistic setting, close to the type theory implemented in \kl{Coq}.
-Finally, \cref{chap:bidir-conv} focuses on the particular status of conversion%
-\sidenote{This crucial notion allows the integration into dependent type theory of
-the notion of computation of programs.},
-and the links between recent work on this subject and bidirectional typing.
-
-\subsection{Bidirectional typing in \kl{MetaCoq}}
-
-The second part of the thesis (\nameref{part:metacoq}) focuses on the \kl{MetaCoq} project,
-and especially the formalization, in \kl{Coq}, of the ideas presented in the first part.
-\Cref{chap:metacoq-general} gives a general overview of the project, while
-\cref{chap:kernel-correctness} concentrates more specifically on the proof that the
-\kl{kernel} implemented in \kl{MetaCoq} fulfils its specification.
-
-\subsection{Gradual dependent types}
-
-Finally, the third and last part (\nameref{part:gradual}) presents my work in the area
-of \kl{gradual types}. Since dependent types already form complex systems, their adaptation
-to the gradual approach is particularly delicate. A summary of the possibilities and issues is
-presented in \cref{chap:gradual-dependent}. An interesting point of emphasis is that the
-usual presentation of dependent types turns out to be unsuited, as it is too flexible.
-The additional structure provided by bidirectional typing is key to solve this issue. It is also
-relevant to present the type-directed elaboration of terms from a source language
-to a target one, an important characteristic shared by all \kl[gradual types]{gradual languages}.
-The use of a bidirectional elaboration, and the properties it allows us to obtain, are described
-in \cref{chap:bidir-gradual-elab}. Finally, \cref{chap:beyond-gcic} describes follow-up work
-complementing that of \cref{chap:bidir-gradual-elab}, but which is not directly linked to
-bidirectional typing.
-
-\subsection{Technical contributions}
-
-My doctoral work started with the study of \kl(typ){gradual}
-\kl(typ){dependent} types.
-I contributed, together with Kenji Maillard, Nicolas Tabareau and Éric Tanter, to
-\sidetextcite{LennonBertrand2022}, where we study a gradual extension to the
-Calculus of Inductive Constructions. My main technical contribution corresponds
-to \cref{chap:bidir-gradual-elab}. The precise literature review and the impossibility
-theorem of \cref{chap:gradual-dependent} it leads to also comes from this
-publication.
-The second technical part of \textcite{LennonBertrand2022}, in which I participated but
-whose main author is Kenji Maillard, as well as a second article,%
-\sidenote{\textcite{Maillard2022}, currently under review.}%
-\margincite{Maillard2022}
-together with the same authors and again Kenji Maillard as main investigator,
-correspond to \cref{chap:beyond-gcic}.
-
-This work having shown the relevance of a bidirectional dependent type system and the relative
-scarceness of results on the subject, I focused more closely on it, both on
-paper and by means of a formalization based on \kl{MetaCoq}. This led to a second publication
-\sidecite{LennonBertrand2021}, and corresponds to \cref{chap:bidir-ccw,chap:bidir-pcuic}
-for the theoretical part, and \cref{sec:kernel-bidir} for the formalized proof
-of equivalence between bidirectional and undirected typing.
-The completeness bug in the kernel of \kl{Coq} found during this formalisation, together with
-the impact of this discovery on the implementation of \kl{Coq} is presented in
-\sidetextcite{Sozeau2022}.
-
-I then turned to the closer integration of this formalization into \kl{MetaCoq}, and its use
-in order to prove completeness of the \kl{kernel} it implements.%
-\sidenote{A definition of a type-checking algorithm proven sound but not complete by
-Simon Boulier was already present, although I had to alter it during the completeness
-proof.}
-This is described in \cref{sec:kernel-typing}.
-I also contributed more generally to the project on various more minor points.
-This part of my thesis work has not been published yet, but the other contributors to
-\kl{MetaCoq} and I are currently working on it.
-
-Finally, \cref{chap:bidir-conv} corresponds to a project I initiated in order to extend
-\kl{MetaCoq} to integrate extensionality η rules to conversion,
-but which did not reach the stage of publication yet. Yet, I presented the difficulties
-that led me to it in \sidetextcite{LennonBertrand2022a}.
-
-\end{comment}
+Though it is developed inside academia, \kl{CN} is fundamentally a piece of
+software, and its job is not to advance cool theory for its own sake, but to
+bring a new level of assurance to \emph{existing, real-world} \kl{systems} C
+code. This requires substantial engineering effort, and benefits immensely from
+modern software development best practices. Though a lot of it seems obvious in
+retrospect, it was not initially clear \emph{if} and \emph{when} many of
+engineering challenges would become a bottleneck. I worked on three major
+problems, was successful in two of them, and collaborated closely with partners
+in industry looking to use \kl{CN}. As such, \kl{CN} is better poised to meet
+the challenges facing any verification tool aiming to be useful outside of
+academia.
+
+My contributions in this part include:
+\begin{itemize}
+    \item \intro[tree-carver]{A tree carver for C}. This is Clang based tool
+        which, given a C file in a large source tree, and a root file or
+        functions, carves out that file and its transitive dependencies,
+        including macros, for processing by other tools.
+    \item \emph{An experience report}, on updating an existing proof of a \intro{buddy
+        allocator} (used in the \intro{pKVM} hypervisor) to work with (a)
+        bit-vectors and (b) an early version of CN-VIP\@. In particular, due to
+        poor source location information, poor proof migration path and
+        performance degradation, this port failed.
+    \item A summary of several developer- and user-experience issues we faced,
+        with reference to the their technical origin and if they exist,
+        solutions.
+\end{itemize}

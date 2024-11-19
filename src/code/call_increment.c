@@ -12,8 +12,6 @@ int call_incr_INT_MAX()
 // [3/3]: call_incr_INT_MAX -- fail
 // code/call_increment.c:9:10: error: Unprovable constraint
 // { return increment(INT_MAX); }
-//          ^~~~~~~~~~~~~~~~~~~~~~~~~~~~ 
 // Constraint from code/increment.c:2:14:
 // /*@ requires x < MAXi32(); @*/
-//              ^~~~~~~~~~~~~ 
 // State file: ...

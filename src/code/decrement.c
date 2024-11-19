@@ -1,10 +1,10 @@
-int increment_ensures(int x)
+int incr_ensures(int x)
 /*@ requires x < MAXi32();
     ensures  return == x + 1i32; @*/
 { return x + 1; }
-// [1/2]: increment_ensures -- pass
+// [1/2]: incr_ensures -- pass
 
-int call_incr_100_broken(int y)
+int call_incr_100(int y)
 /*@ requires y <= 100i32; @*/
-{ return increment_ensures(y)-1; }
-// [2/2]: call_incr_100_broken -- pass
+{ return incr_ensures(y)-1; }
+// [2/2]: call_incr_100 -- pass
