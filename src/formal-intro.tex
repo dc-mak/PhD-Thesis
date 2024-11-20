@@ -15,7 +15,7 @@ attempt to retain as many C features (control flow, variable scoping, aliasing,
 loose evaluation order, pointer manipulation rules) as possible, but make
 simplifying assumptions where it would be impractical otherwise.
 
-Given that one of \kl{CN}'s goals (\cref{sec:cn-intro}) is to work with
+Given that \kl{CN}'s headline goal (\cref{sec:cn-intro}) is to work with
 pre-existing C programs, which rely on many if not all of those impractical
 features, adopting the conventional approach would quickly use up most of its
 complexity budget and make the other goal (of reducing the expertise required
@@ -45,7 +45,9 @@ refinement type systems on top of existing languages.
 
 This type system approach also leads to other desiderata and their
 corresponding responses. If we want to follow a type system approach, we want
-to minimise obvious annotations, so need some sort of automation so as to not
+to minimise obvious annotations and justify why the necessary ones are so, we
+need to track carefully the flow of information in the type system, using a
+\kl{bidirectional} approach. We also need some sort of automation so as to not
 burden the programmer with proving things like $1 + 1 = 2$. Similar to
 VeriFast~\sidecite{jacobs2011verifast} and Frama-C\sidecite{kirchner2015frama},
 \kl{CN} enlists the support of SMT solvers to mitigate this. When trying to
@@ -73,18 +75,306 @@ close enough to the implementation to offer actionable insights.
 \chapter{Formalisation Background}%
 \label{chap:formal-background}
 
+\margintoc{}
+
+The components of \intro{Kernel CN} all have precedent in prior work; the main
+new contribution is the adaptation and confluence of those ideas. This chapter
+will set out \kl{CN}'s design goals and origins, recapitulate the disparate
+concepts used in CN, and along the way discuss how they satisfy the
+aforementioned design goals.
+
+\section{\kl{CN} Design goals and constraints}%
+\label{sec:cn-goals}
+
+Aiming for \emph{``a verification tool whose aspirational goal is to lower the
+cost of C verification from a Rocq programmer who knows separation logic to a
+systems programmer who knows Haskell''} (\cref{sec:cn-intro}) helps narrow
+down the large design space of verification tools.
+
+The reason for picking this particular goal is in \kl{CN}'s origins as
+an attempt to verify the pKVM hypervisor, developed by Google.
+
+Before I explain pKVM, I need to explain the context for this. The Android
+operating system runs on billions of devices worldwide, playing a central role
+in many lives, including handling an enormous amount of sensitive data. This
+means that security is paramount, however because each device runs its own
+kernel (up to half the code is not Android's version of Linux), updates are
+very challenging and expensive to test and deploy to each device. Aside from
+security issues, this also leads to fragmentation of Android, so devices and
+apps are not all up-to-date and the long delay (at least 18 months) between
+Linux and device releases makes to difficult upstream features and fixes.%
+\sidenote{%
+TODO: cite these properly.
+\begin{itemize}
+    \item \url{https://youtu.be/7novnkldMmQ?feature=shared}
+    \item \url{https://youtu.be/wY-u6n75iXc?feature=shared} and \url{https://lwn.net/Articles/836693/}
+    \item \url{https://source.android.com/docs/core/architecture/kernel/generic-kernel-image}
+    \item \url{https://source.android.com/docs/core/virtualization/whyavf}
+    \item \url{https://googleprojectzero.blogspot.com/2020/02/mitigations-are-attack-surface-too.html}
+    \item \url{https://lpc.events/event/7/contributions/780/}
+\end{itemize}
+}
+
+Whilst some of this has been mitigated with the introduction of
+\intro[GKI]{Generic Kernel Images (GKI)}, which provide a small and stable
+kernel ABI \emph{for a particular long-term release} version of Android, there
+are still security issues present in this model, because the kernel is too
+large (20 million lines of code) to be a reasonable trusted computing base, and
+the drivers vendors ship with a device are part of it.
+
+Some manufacturers use hypervisors, which attempt to isolate the kernel from
+the rest of the system by running Android and other hardware components in
+virtual machines, such `secure' parts of the device storing sensitive data.
+Aside from security, hypervisors are also used to partition memory at boot-time
+so that devices can use it for things like direct memory access, and run
+arbitrary code outside of Android, which is worrying because this code would
+run at a more privileged level than Android itself. All of this just
+\emph{shifts} the attack surface, and has also resulted in \emph{more}
+fragmentation at the hypervisor layer.
+
+Similar to GKI, the proposed solution to standardise the hypervisor used. There
+is already a mature hypervisor which is part of the Linux kernel, the
+Kernel-based Virtual Machine (KVM)\@. It is set up so that a host kernel can
+dynamically allocate virtual machines for guests to run on, and protect the
+host from the guests. However, at the start of the project, the API exposed by
+the hypervisor to the host kernel offered too much control, and guests were not
+protected from the \emph{host}. This is a problem because the guest could be
+running code for a secure hardware component (e.g.\ a biometric authenticator),
+the host could be a compromised version of Android, so an attacker could still
+get access to sensitive information.
+
+To solve this, Google, as part of the Android Virtualisation Framework, is
+developing a \intro[pKVM]{protected KVM (pKVM)}, which runs \emph{underneath}
+the kernel, and ships \emph{as part} of the kernel image. Not only does this
+tight coupling remove issues around ABI compatibility between the hypervisor
+and the kernel, since the source is always in the same repository, it also
+allows pKVM to commit to only handling implementing a select few functions such
+as virtual memory management and remain very small, and rely on the Linux
+kernel to manage the rest, such as scheduling, device drivers and power
+management.
+
+If successful, this could make the attack surface a lot smaller, but it could
+also make it one that is used very widely. It is in this context that Google
+sought assistance from the research community to see if verifying the kernel
+was feasible, \emph{on an ongoing basis}. A one-and-done verification of pKVM
+which takes an army of PhD students and postdocs a few years to verify and is
+years out of date by the time is developed is not worth the investment, a
+tool which C kernel hackers can understand, use and maintain proofs as they
+make changes to very important security critical code is.
+
+So not only does this background explain \kl{CN}'s headline goal, it also
+clarifies some of the \emph{constraints} on its design:
+\begin{itemize}
+    \item Because kernel hackers wrote the code, and are intending to use
+        conventional compilers to build and run it,\sidenote{Assuming the
+        binary can be verified as well, perhaps with input from \kl{CN}.} we
+        cannot rely on (hopefully sound) approximation to the semantics of C
+        \textemdash{} we want and need something that matches and can handle
+        its real world behaviour as closely as possible.
+    \item Because it will be used by kernel hackers, we want a story that is
+        is accessible and acceptable to them. These are very smart and
+        capable people, who do not have the time or support to get up to
+        speed with separation logics and interactive proof assistants, or be
+        amenable to change their (or more importantly, their organisations)
+        workflows substantially. A ``fancier type system'' which runs as part of
+        the \intro[CI]{continuous integration (CI)} pipeline is much more
+        likely to be used and adopted in this context.
+    \item Similarly, because the annotations will be read by kernel hackers,
+        and upstreamed into Linux, we want them to be minimal and relatively
+        easy to understand. Not only does this affect the design of the type
+        system to manage the flow of information carefully, this encourages
+        exploring how best to automate as many obvious things as feasible.
+\end{itemize}
+
+In turn, these constraints feed into concrete technical choices which \kl{CN}
+makes:
+\begin{itemize}
+    \item To capture real-word C behaviour, \kl{CN} uses the \kl{Cerberus}
+        empirically validated semantics.
+    \item To integrate into existing workflows, \kl{CN} appears to users
+        as a fancy type system.
+    \item To minimise annotations, \kl{CN}'s type system is
+        formalised and implemented in a \kl{bidirectional} style.
+    \item To retrofit the type system on top of existing ones, and in particular
+        to preserve erasure properties, \kl{CN}'s type system uses
+        \intro{refinement types}.
+    \item To avoid the need for proofs of trivial statement, \kl{CN} relies
+        on SMT solvers.
+    \item To ensure decidability (termination), and aim for reasonable in
+        practice performance, \kl{CN} restricts the syntax of its assertion
+        language, and restricts the queries it sends to the SMT solver.
+    \item To check the resource management of C programs, \kl{CN}'s type
+        system uses \intro{linear} types, using the grammar of separation
+        logic assertions.
+\end{itemize}
+
 \section{Cerberus and Core}%
 \label{sec:cerberus-core}
 
-An empirically validated, compositional elaboration semantics from C to Core.
-Why does this matter \textemdash{} for placing user-annotation into refinement types
-easily at the appropriate program points!
+\intro{Cerberus} is an empirically validated and executable semantics for
+\kl{ISO} and \kl{de facto} C, specifically C11. A detailed comparison
+between it and other C semantics is available in the Related Work chapter
+of \sidetextcite{memarian2022cerberus}, but for the purposes of \kl{CN},
+it suffices to say it captures real-world C.
 
-Relatively small, simpler, variables that make sense (but this bites later because SMT error messages).
+Where \kl{Cerberus} really shines with respect to \kl{CN}'s use case in
+\emph{how} it captures this executable semantics. In particular, it does so by
+\emph{compositional elaboration} into a \emph{relatively simple first-order
+functional language}, unlike other semantics, which are defined over some
+desugared and consolidated grammar closely resembling C.
 
-Compositional elab, annotations.
+This approach drastically simplifies many tricky parts of C. For example,
+\cref{fig:perplexing-ub} is accepted by the frontend, complete with strange
+scoping and strange control flow which jumps \emph{into} a loop body. And in
+this particular program, the fact that the \emph{mutable variables} \cinline{x}
+and \cinline{*p} alias, or the myriad of \kl[UB]{undefined} or \kl{unspecified}
+behaviours programmers might usually be familiar with, is not the reason it is
+illegal, but due to subtle rules around block scopes and variable
+initialisation. The way Cerberus does this is by making explicit C features
+such as \kl{UB}, \kl{unspecified} or implementation-defined behaviours,
+coercions, loose evaluation order and so on.
 
-Example (list append) and example in the Core.
+\begin{marginfigure}
+    \cfile[breaklines]{code/perplexing-ub.c}
+    \caption{This example has undefined behaviour because of the subtle
+        interaction between block scopes, variable initialisation and
+        \cinline{goto} statements in C. But, if the comment is uncommented,
+        then the program has defined behaviour.}\label{fig:perplexing-ub}
+\end{marginfigure}
+
+Instead of working directly over something similar to C and trying to express
+static and dynamic semantics over something so complex, \kl{Cerberus}
+elaborates C into \intro{Core}, a not-too-large calculus where each construct
+is designed to capture some peculiarity of C. It is split into two fragments, a
+pure (\cref{fig:pure-core-grammar}) and effectful
+(\cref{fig:effectful-core-grammar}) which embeds the pure one.
+
+The pure fragment is pure in the sense that it allows no memory operations, but does
+include the effect of undefined behaviour explicitly with the
+\coreinline{undef()} operator. This aspect of the language handles % chktex 36
+things like implicit type conversions or bounded arithmetic. As visible from the
+grammar, the pure part is very much a first-order functional language with
+recursive functions with some constructs specific to C such as pointer
+arithmetic on arrays and struct fields, structs, unions and
+specified/unspecified/integer values.
+
+\begin{figure*}[tp]
+    \ContinuedFloat*
+    \includegraphics{figures/pure-core.png}
+    \caption{The pure fragment of Core.}\label{fig:pure-core-grammar}
+\end{figure*}
+
+The effectful fragment captures interactions with memory (via a memory
+interface), various ordering constraints, and more exotic control flow with a
+goto-like operator used in the elaboration of C's iteration and \cinline{goto}
+statements. The distinction between the pure and effectful fragments is is in
+fact unrelated to the distinction between expressions and statements in C,
+since both are elaborated into effectful expressions (for example,
+\coreinline{PtrEq} which tests for for pointer equality).
+
+I will discuss \coreinline{memop()} in more detail in % chktex 36
+\nameref{chap:mem-model-explained}. For now it suffices to say that the
+operations are effects, part of the memory interface \kl{Core} uses to abstract
+over choices of different handlers, implementations of those effects in a
+specific memory object model.
+
+The following constructs are all related to evaluation order:
+\coreinline{neg()}, \coreinline{unseq()}, \coreinline{let weak}, % chktex 36
+\coreinline{let strong}, \coreinline{bound()}, \coreinline{nd()}, % chktex 36
+\coreinline{par()}. These were supported in the implementation but  % chktex 36
+stopped working due to a refactor of the resource inference scheme, and not
+enough of a priority to re-enable. I did not attempt to formalise their
+operational behaviour.\sidenote{The technique for doing so would simple
+enough conceptually (using fractional-permissions), but capturing the allowable
+behaviours in the type system accurately and threading it through the rest of
+the formalisation would add unnecessary noise and complexity at this stage.}
+
+The \coreinline{ccall()} and \coreinline{pcall()} constructs for calling % chktex 36
+elaborate C functions and Core procedures (effectful functions) respectively.
+They differ only in how the name of the procedure to be called is found, with
+\coreinline{ccall()} using the memory interface to do so. % chktex 36
+
+The \coreinline{save()} operator is \kl{Core}'s way of introducing named % chktex 36
+continuations with default arguments. The label $l$ and arguments $x_1, \ldots,
+x_n$ are in scope in $E$; those variables are associated pure expressions
+provided by the \coreinline{run()} operator or with the default $e_1, \ldots, % chktex 36
+e_n$ otherwise if the operator is reached otherwise. This is the \cinline{goto}-like
+operator referred to earlier, which is used to elaborate all of C's iteration
+and \cinline{goto} statements.
+
+The important aspect from our purposes is that while control flows into
+\coreinline{ccall()}, \coreinline{pcall()} and \coreinline{run()}, it % chktex 36
+only returns from the first two and not the last.
+
+\begin{figure*}[tp]
+    \ContinuedFloat{}
+    \includegraphics{figures/effectful-core.png}
+    \caption{The effectful fragment of Core.}\label{fig:effectful-core-grammar}
+\end{figure*}
+
+We can see an example of Cerberus' elaboration into \kl{Core}, by recalling the
+singly-linked integer list append function from \cref{fig:append-c}, reproduced
+in \cref{fig:append-c-formal} for convenience.
+
+\begin{marginfigure}
+    \centering
+    \cfile[breaklines]{code/append_plain.c}
+    \caption{Singly-linked integer list append in C.}\label{fig:append-c-formal}
+\end{marginfigure}%
+
+\begin{figure*}[p]
+    \centering
+    \begin{minipage}{1.2\textwidth}
+        \corefile{code/append_plain.core}
+    \end{minipage}
+    \caption{Elaboration of singly-linked int list append in C into
+        \kl{Cerberus} \kl{Core}; library functions and \cinline{else}-branch
+        omitted.}\label{fig:append-core}
+\end{figure*}%
+
+The elaboration is presented in \cref{fig:append-core}. To save space,
+definitions the \kl{Core} standard library are omitted, as are choices about
+implementation-defined details and the elaboration of the
+\cinline{else}-branch. A few things are note-worthy:
+\begin{itemize}
+    \item The translation is \intro{compositional}. Each function, block,
+        statement and expression is elaborated in isolation, based only
+        on its parts, and follows the structure of the original C program.
+    \item Each variable function argument and local gets its own storage via the
+        \coreinline{create} function. Reads, writes, and de-allocations are
+        represented with \coreinline{load}, \coreinline{store},
+        \coreinline{kill} respectively.
+    \item Loose evaluation order (for example between the expressions of a \cinline{==})
+        are represented using \coreinline{unseq} and \coreinline{let weak} constructs.
+    \item UB is made explicit in the syntax of the program, for example if \cinline{xs} was
+        an unspecified pointer value (line 23) or if the function exited without a return statement
+        and its `return value' was used elsewhere (line 71).
+\end{itemize}
+
+In particular, \kl{compositional}ity is just as important, if not more, than the
+target language being a first-order functional language with effects. Given
+that we want users to annotate programs at the C level, if we wish to type
+check \kl{Core}, we need to be able to transport those annotations through the
+elaboration process too, and place them at the appropriate program points.
+
+If \kl{Cerberus} were to have elaborated into a dataflow graph instead of \kl{Core},
+such transporting would be a major undertaking in itself. It might achievable
+for function pre- and postconditions, but would become much more challenging
+for loops, and \coreinline{goto} and even between specific statement as proof
+hints to \kl{CN}. With a \kl{compositional} mapping, placing annotations
+structurally, and relating annotations mentioning C variables to \kl{Core}
+variables becomes feasible.
+
+In principle, the compositional mapping also ensures that errors in \kl{Core}
+elaboration can be related back to useful source locations in the original C
+program. However, in practice, though \emph{compositional}ity does
+\emph{enable} this, it requires a good amount of engineering effort to
+accomplish (\cref{sec:error-msgs}). Another challenge is that though
+elaboration simplifies greatly the checked language, it also increases the
+distance between the checked and the typed language, which is felt acutely when
+attempting to relate failures in SMT queries back to what users wrote,
+particularly when those SMT are part of an inference procedure, rather checking
+C source assertions (\cref{sec:counter-ex}).
 
 \section{Refinement Types}
 
@@ -96,10 +386,14 @@ rule for undef means (previously YOLO) to context has to be false. E\.g\. same i
 
 Liquid types.
 
+\section{Linearity}
+
 \subsection{Friendly and convenient syntax}\label{sec:friendly-syntax}
 Separation logic types, syntax and restrictions for it.
 
 Explicit witness to having permissions, which are linearly typed (just ingredients).
+
+\section{Alternatives and Related Work}
 
 \chapter{Kernel CN:\ A Bidirectional, Separation Logic Refinement Type System for Core}%
 \label{chap:kernel-cn}
