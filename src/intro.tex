@@ -210,34 +210,8 @@ otherwise it recurses on \cinline{xs->tail} to get the new tail
 \cinline{new_tail} and sets \cinline{xs->tail} to point to that,  returning the
 result as \cinline{xs}.
 
-\begin{figure*}[p]
-    \centering
-    \begin{minipage}{1.2\textwidth}
-        \corefile{code/append_plain.core}
-    \end{minipage}
-    \caption{Elaboration of singly-linked int list append in C into
-        \kl{Cerberus} \kl{Core}; library functions and \cinline{else}-branch
-        omitted.}\label{fig:append-core}
-\end{figure*}%
-
-This is elaborated into a \kl{Core} as see in \cref{fig:append-core}. To save
-space, definitions the \kl{Core} standard library are omitted, as are choices
-about implementation-defined details and the elaboration of the \cinline{else}-branch.
-A few things are note-worthy:
-\begin{itemize}
-    \item Each variable function argument and local gets its own storage via the
-        \coreinline{create} function. Reads, writes, and de-allocations are
-        represented with \coreinline{load}, \coreinline{store},
-        \coreinline{kill} respectively.
-    \item Loose evaluation order (for example between the expressions of a \cinline{==})
-        are represented using \coreinline{unseq} and \coreinline{let weak} constructs.
-    \item UB is made explicit in the syntax of the program, for example if \cinline{xs} was
-        an unspecified pointer value (line 23) or if the function exited without a return statement
-        and its `return value' was used elsewhere (line 71).
-\end{itemize}
-
-Aside from subtleties around pointers, and loose evaluation order, there are
-many other sources of \kl{UB} in C, including signed integer over/underflow,
+This is elaborated into \kl{Core} (\cref{fig:append-core}). All the
+subtleties and sources of \kl{UB} in C, including signed integer over/underflow,
 use-after-free, leaking, and double-free memory management errors,
 \kl[OOB]{out-of-bounds} indexing in arrays, and dereferencing a \cinline{NULL}
 pointer. These form the contract between the compiler and the programmer, and
