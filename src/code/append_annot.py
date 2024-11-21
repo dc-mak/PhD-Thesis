@@ -1,5 +1,5 @@
 def append(xs, ys):
-# $\forall \mathsf{xs}, \mathsf{ys}, l_1, l_2.\ \vdash{} \{ \mathrm{list}(\mathsf{xs}, l_1) \ast{} \mathrm{list}(\mathsf{ys}, l_2) \} \; \mathsf{append}(\mathsf{xs}, \mathsf{ys}) \; \{ \mathsf{ret}.\ \mathrm{list}(\mathsf{ret}, l_1 @ l_2) \}$
+# $\forall l_1, l_2.\ \vdash{} \{ \mathrm{list}(\mathsf{xs}, l_1) \ast{} \mathrm{list}(\mathsf{ys}, l_2) \} \; \mathsf{append}(\mathsf{xs}, \mathsf{ys}) \; \{ \mathsf{ret}.\ \mathrm{list}(\mathsf{ret}, l_1 @ l_2) \}$
 if (xs == NULL) then
   # $\{ \mathrm{list}(\mathsf{NULL}, []) \ast{} \mathrm{list}(\mathsf{ys}, l_2) \}$
   return ys
