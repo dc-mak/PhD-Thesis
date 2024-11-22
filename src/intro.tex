@@ -320,10 +320,10 @@ of the program but not in the runtime.
         \mathrm{list} &(\mathsf{p}, l) \mathrel{{=}^\mathrm{def}} \\
                       &\mathsf{emp} \astRef{} (\mathsf{p} = \mathsf{NULL} \wedge{} l = []) \\
                       &\vee{} \exists{} \; {head}, \; {tl}, \mathsf{p\_tail}.\\
-                      &\qquad l = {head} {:}{:} {tl} \\
-                      &\qquad \astRef{} (\mathsf{p} \mapsto{} {head}) \\
+                      &\qquad (\mathsf{p} \mapsto{} {head}) \\
                       &\qquad \astRef{} (\mathsf{p} + 1 \mapsto{} \mathsf{p\_tail}) \\
-                      &\qquad \astRef{} \mathrm{list} (\mathsf{p\_tail}, {tl})
+                      &\qquad \astRef{} \mathrm{list} (\mathsf{p\_tail}, {tl}) \\
+                      &\qquad \astRef{} l = {head} {:}{:} {tl} \\
     \end{align*}
     \caption{Definition of a recursive list predicate in a simple separation
         logic.}\label{fig:list-pred}
@@ -389,7 +389,7 @@ undefined behaviour and (b) correctly implements any specification written in
 (so that they are first and foremost, for almost all C tools, a regular C
 comment). Importantly, for compositionality, performance (paralellisability),
 and ease of annotation,\sidenote{Annotations follow the structure/units of the
-program.} these are checked on a \intro{per function} basis.
+program.} these are checked on a per function basis (\cref{sec:bidir-subtyping}).
 
 This means that even in the absence of annotations, code is being checked for
 undefined behaviour. Incrementing an unsigned integer is perfectly acceptable
@@ -468,11 +468,11 @@ This is demonstrated in \cref{fig:call-incr} and \cref{fig:call-incr-fail}. In
 the first, we see that from the constraint \cinline{y <=
 100i32},\sidenote{Integer literals are currently written with a type
 annotation, similar to Rust.} \kl{CN} deduces that \cinline[breaklines]{y <=
-MAXi32()}\sidenote{As we shall see in \cref{chap:kernel-cn}, this is a
-\kl{subtyping} relation, and integrating it smoothly relies on
-\kl{bidirectional} type-checking.} and permits the call to \cinline{increment}.
-Conversely, for the second, \cinline{INT_MAX} does not meet that constraint,
-and so \kl{CN} raises an error.
+MAXi32()}\sidenote{As I shall discuss in \cref{sec:bidir-subtyping,
+chap:kernel-typing}, this is a \kl{subtyping} relation, and integrating it smoothly
+relies on \kl{bidirectional} type-checking.} and permits the call to
+\cinline{increment}. Conversely, for the second, \cinline{INT_MAX} does not
+meet that constraint, and so \kl{CN} raises an error.
 
 \begin{marginfigure}
     \centering
@@ -499,7 +499,7 @@ To specify pointer manipulating programs, I need to introduce some new syntax.
 Where in separation logic, we may say $p \mapsto v$ for arbitrary expressions
 $p$ and $v$, in \kl{CN}, we restrict it so that $v$ is always a variable, akin
 to $\exists{} v.\ p \mapsto v \wedge v = e$ for some expression $e$. For both
-usability and technical reasons explained later (\cref{sec:friendly-syntax}), we
+usability and technical reasons explained later (\cref{sec:monadic-syntax}), we
 write this as \cninline{take v = Owned(p);}. % chktex 36
 
 \begin{marginfigure}
@@ -586,7 +586,7 @@ differences:
 \end{itemize}
 
 All of these differences will be explained in more detail and justified in
-\cref{sec:friendly-syntax}. I will note in passing that the syntax can also be
+\cref{sec:monadic-syntax}. I will note in passing that the syntax can also be
 seen as tracing out the footprint of the heaplet containing the list, and
 constructing the ghost value it represents.
 
