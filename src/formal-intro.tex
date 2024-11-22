@@ -63,7 +63,7 @@ happen to know Haskell (or Rust).
 
 With this many constraints and design decisions, it is easy to doubtful of the
 elegance and feasibility of this approach, let alone consider proving such a
-type system sound. As I will show in \nameref{chap:kernel-cn}, whilst the setup
+type system sound. As I will show in \nameref{chap:kernel-typing}, whilst the setup
 might be novel, multi-faceted and large, the definitions are relatively
 straightforward, and the proof of soundness can be done syntactically. Both the
 definitions and the proof are modular with respect to the heap, so that
@@ -83,7 +83,7 @@ will set out \kl{CN}'s design goals and origins, recapitulate the disparate
 concepts used in CN, and along the way discuss how they satisfy the
 aforementioned design goals.
 
-\section{\kl{CN} Design goals and constraints}%
+\section{\kl{CN} design goals and constraints}%
 \label{sec:cn-goals}
 
 Aiming for \emph{``a verification tool whose aspirational goal is to lower the
@@ -193,22 +193,26 @@ makes:
         empirically validated semantics.
     \item To integrate into existing workflows, \kl{CN} appears to users
         as a fancy type system.
-    \item To minimise annotations, \kl{CN}'s type system is
-        formalised and implemented in a \kl{bidirectional} style.
-    \item To retrofit the type system on top of existing ones, and in particular
-        to preserve erasure properties, \kl{CN}'s type system uses
-        \intro{refinement types}.
-    \item To avoid the need for proofs of trivial statement, \kl{CN} relies
-        on SMT solvers.
+    \item To retrofit the type system on top of existing ones, and in
+	particular to ensure erasure, \kl{CN}'s type system uses
+	\intro{refinement types}.
+    \item To automate proofs of constraints, \kl{CN} relies on SMT solvers.
     \item To ensure decidability (termination), and aim for reasonable in
-        practice performance, \kl{CN} restricts the syntax of its assertion
-        language, and restricts the queries it sends to the SMT solver.
+        practice performance, \kl{CN} follows a \emph{liquid} typing
+	discipline, restricting the queries it sends to the SMT solver.
+    \item To minimise constraint annotations, \kl{CN}'s type system is
+        formalised and implemented in a \kl{bidirectional} style.
     \item To check the resource management of C programs, \kl{CN}'s type
         system uses \intro{linear} types, using the grammar of separation
         logic assertions.
+    \item To stay within the \kl{liquid} typing discipline \emph{and} avoid
+	quantifier instantiation annotations, \kl{CN} uses precise assertions
+	with a \kl{mode}d disciple for predicate arguments.
+    \item To make such precise assertions with a mode discipline easier to read,
+	write and explain, \kl{CN} presents users with \emph{monadic} syntax.
 \end{itemize}
 
-\section{Cerberus and Core}%
+\section{Cerberus and Core for an usable and accurate C semantics}%
 \label{sec:cerberus-core}
 
 \intro{Cerberus} is an empirically validated and executable semantics for
@@ -282,7 +286,7 @@ The following constructs are all related to evaluation order:
 \coreinline{neg()}, \coreinline{unseq()}, \coreinline{let weak}, % chktex 36
 \coreinline{let strong}, \coreinline{bound()}, \coreinline{nd()}, % chktex 36
 \coreinline{par()}. These were supported in the implementation but  % chktex 36
-stopped working due to a refactor of the resource inference scheme, and not
+stopped working due to a change in the resource inference scheme, and not
 enough of a priority to re-enable. I did not attempt to formalise their
 operational behaviour.\sidenote{The technique for doing is simple enough
 conceptually (using fractional-permissions), but capturing the allowable
@@ -376,7 +380,7 @@ attempting to relate failures in SMT queries back to what users wrote,
 particularly when those SMT are part of an inference procedure, rather checking
 C source assertions (\cref{sec:counter-ex}).
 
-\section{Refinement Types}
+\section{Decidable refinements for retrofitting and counter-examples}
 
 \kl{Core} already has a straightforward \kl{bidirectional} type system as a
 sanity check on the output of elaboration. It has not been used for a
@@ -435,25 +439,33 @@ rich history of the origins, naming and development of these
 ideas,~\sidecite{jhala2021refinement} and so I will focus only on the strands
 relevant to \kl{CN}.
 
-In particular, once we have rich constraints being tracked by the type system,
-we have a first-order logic with arithmetic and so skirt close to
+If our goal is to minimise annotations and not require proofs for obvious
+statements, then we need some sort of automation to dispatch proof
+obligations.\sidenote{Recall the examples shown in
+\cref{fig:call-incr,fig:call-incr-fail}, where \kl{CN} deduces
+\cinline[breaklines]{y <= MAXi32()} from the constraint \cinline[breaklines]{y
+<= 100i32}.} However, once we have rich constraints being tracked by the type
+system, we have a first-order logic with arithmetic and so skirt close to
 undecidability for the type system. There are type system for real-world
 programming languages (such as Hack or F$^*$) which are undecidable, and so
-could just never terminate on some code, but work fine in practice,
-so why does this point require any special consideration?
+could just never terminate on some code, but have automation which works fine
+in practice, so why does this point require any special consideration?
 
 Aside from the pleasing theoretical property of having a decidable type system,
 or having to tell users ``just increase the timeout'',  there are a couple of
-factors which lean us in this direction, namely to have \emph{fast} and
-\emph{predictable} performance when using SMT solvers.\sidenote{Using SMT
-    solvers is important to the goal minimising the annotations the user has to
-    write, as shown in \cref{fig:call-incr,fig:call-incr-fail}, where \kl{CN}
-    deduces \cinline[breaklines]{y <= MAXi32()} from the constraint
-\cinline[breaklines]{y <= 100i32}.} Recognising that whilst decidability can
-still technically mean exponential, or very often, NP-complete complexity for
-problems does not negate the empirical observation that in practice, decidable
-theories tend to be quite fast, and their speed (and solvability) much less
-susceptible to heuristics being triggered, hence it is an imperfect proxy.
+factors which lean us in this direction, namely to be able to use SMT solvers
+in a \emph{fast} and \emph{predictable} manner. Recognising that whilst
+decidability can still technically mean exponential, or very often, NP-complete
+complexity for problems does not negate the empirical observation that in
+practice, decidable theories tend to be quite fast, and their speed (and
+solvability) much less susceptible to heuristics being triggered. It is a proxy
+for performance, albeit an imperfect one.
+
+It also helps that the size of SMT problems generated by type checking
+\emph{tend} to be reasonably small, at least compared to the sorts of problems
+which SMT solvers are typically used for, because the amount of code humans
+write between annotations is limited by cognitive capacity (and hopefully,
+diligent code reviewers).
 
 \kl{CN} ensures decidability by following restrictions on quantifiers as set
 out by the liquid types~\sidecite{rondon2008liquid} approach. In practice, this
@@ -467,11 +479,77 @@ Aiming for decidability also has the added benefit of extracting a concrete
 constraint failures in terms of concrete values for \kl{Core} program variables
 (a subset of which correspond to C program variables).
 
-\section{Bidirectional type systems}
+\section{Bidirectionality for taming subtyping}\label{sec:bidir-subtyping}
 
-TODO
+Using a liquid typing discipline automates away the problem of tedious proof
+obligations with calls to an SMT solver, but introduces the new of \emph{when}
+during type checking is the right time to use it? This is because implications
+induces a subtyping relation in the type system, and so the question becomes:
+when is the correct time to use the subsumption rule, as shown in
+\cref{fig:subsumption}?
 
-\section{Linearity}
+\begin{marginfigure}
+  \begin{mathpar}
+      \inferrule{\Gamma{} \vdash{} e \mathrel{{:}} \{ x \mid{} \phi{} (x) \}  \\ \phi(x) \Rightarrow{} \phi' (x) }
+                {\Gamma{} \vdash{} e \mathrel{{:}} \{ x \mid{} \phi' (x) \}}
+  \end{mathpar}
+  \caption{Subsumption rule using for a system with subset types and logical
+      implication $\Rightarrow$ as the subtyping relation.}\label{fig:subsumption}
+\end{marginfigure}
+
+% TODO fix the spacing around the curly braces with \,
+
+Going back to the example in \cref{fig:dead-code}, let us imagine we are in a
+type system where the contexts $\Gamma$ are either $\cdot$ or $\Gamma, \{ x \mid
+\phi(x) \}$, where $\phi$ represents some constraint on $x$. In particular, we
+are not accumulating control flow constraints in the context, only
+in the variable's subset type. We would like to check that the function
+\mintinline{py}{gt_zero} satisfies its postcondition. $ \{ \mathsf{ret} \mid
+\mathsf{ret} > 0 \} $, i.e.\ it returns a value greater than 0 and does not
+raise an exception.
+
+Working forwards, we start off with a type for $\{ \mathsf{x} \mid \top \}$.
+Inside the function, we are checking both branches because we cannot statically
+rule one of them out. In the true case, we now \emph{refine} the type to $\{
+\mathsf{x} \mid \mathsf{x} \geq 5 \}$. Because we are not sure when to apply
+the subsumption rule, and we can apply it at any time, we apply it now, and
+have $\{ \mathsf{x} \mid \mathsf{x} > 0 \}$, because $\mathsf{x} \geq 5
+\Rightarrow \mathsf{x} > 0$. At this point, we cannot statically rule out the
+either branch of the condition, so we start checking the one with the
+exception, instead of skipping over it as dead code.
+
+Whilst quite contrived, it illustrates the point that we would like some sort
+of principled scheme to know when to use the subsumption rule, and with which
+constraints. We could avoid this by requiring users annotate their code at
+every step, but though this would be a predictable annotation scheme, it would
+be extremely burdensome; Using an SMT solver is meant to reduce the tedium of
+proving straightforward facts, not just trade it for the tedium of requiring a
+type annotation at each step.
+
+At the same time, while it would be great if we could infer all of them, this
+is often not necessary and counter-productive in practice because annotations
+on top-level functions (most commonly, types) serve as very useful
+documentation, which programmers are already used to writing.
+
+Another reason \kl{CN} is quite willing to accept per function annotations is
+that it allows checking a large code base to be parallelised, and obviate the
+need to do any complex and potentially slow inter-procedural analysis.
+Unfortunately, since loops are effectively function tail calls, and invariants
+are also difficult to infer, \kl{CN} requires annotation for them too.
+
+Still, pre- and postconditions on functions, and invariants on loops is crisp
+way to explain to programmers where annotations need to be placed. What we
+would like to avoid is annotations on each statement of a C program.
+
+More concretely, in the presence of constraints due to refinement types, this
+means we would like \emph{check} types at function calls, function returns,
+before and after loops from the top down, and \emph{synthesise} types
+everywhere else from the bottom up. This is precisely the sort of problem a
+bidirectional type system~\sidecite{dunfield2021bidir} can solve. Moreover, it
+gives a clear principle of when to use subsumption rule (call the SMT solver):
+at the boundary between synthesis and checking.
+
+\section{Linearity to manage (non-leaky) resources}
 
 Of course, if the aim is define a type system rich enough to prove the absence
 of \kl{UB}, we must acknowledge the fact that there are plenty of ways of
@@ -533,7 +611,7 @@ state and prove sound. It also makes it easy to specify and explain the \kl{CN}
 do.\sidenote{We have not embarked on any proofs about the properties of these
 inference algorithms.}
 
-\section{Inferring quantifiers}
+\section{Precise assertions for inferring resources and quantifiers without backtracking}
 
 Lurking not too far in the background of the decision to use linear separation
 logic and liquid types is a tension between the rich scheme of quantifiers
@@ -561,10 +639,10 @@ append from \cref{fig:append-annot,fig:list-pred}, reproduced in
         \mathrm{list} &(\mathsf{p}, l) \mathrel{{=}^\mathrm{def}} \\
                       &\mathsf{emp} \astRef{} (\mathsf{p} = \mathsf{NULL} \wedge{} l = []) \\
                       &\vee{} \exists{} \; {head}, \; {tl}, \mathsf{p\_tail}.\\
-                      &\qquad l = {head} {:}{:} {tl} \\
-                      &\qquad \astRef{} (\mathsf{p} \mapsto{} {head}) \\
+                      &\qquad (\mathsf{p} \mapsto{} {head}) \\
                       &\qquad \astRef{} (\mathsf{p} + 1 \mapsto{} \mathsf{p\_tail}) \\
-                      &\qquad \astRef{} \mathrm{list} (\mathsf{p\_tail}, {tl})
+                      &\qquad \astRef{} \mathrm{list} (\mathsf{p\_tail}, {tl}) \\
+                      &\qquad \astRef{} l = {head} {:}{:} {tl} \\
     \end{align*}
     \caption{Definition of a recursive list predicate in a simple separation
         logic.}\label{fig:list-pred-formal}
@@ -580,15 +658,20 @@ We see that in addition to the pointers $\mathsf{xs}$ and $\mathsf{ys}$, which
 can be thought of as a quantification over \intro{computational} variables, the
 specification for append also quantifies over \emph{logical} or ghost variables
 $l_1$ and $l_2$. Given that the ``computational terms'' are just code, the
-computational variables need not be inferred, since the user needs to
-provide them for the call to the function to be valid.
+computational variables need not be inferred, since the user needs to provide
+them for the call to the function to be valid.\sidenote{For the rest of this
+section, I am only going to talk about quantifiers for function calls, but the
+exact same principle applies for dealing with both computational and logical
+return values too. I will discuss quantifiers related to array reasoning in
+\cref{sec:it-array}.}
 
 However, it would be a shame if the user had to provide explicit instantiations
 for $l_1$ and $l_2$ at each call site, including the recursive call within the
-implementation of a \mintinline{py}{append}. The latter in particular would
-necessitate a way to bind the ghost values which were existentially quantified over in
-the $\mathrm{list}$ predicate of \cref{fig:list-pred-annot}, to names the user
-would have to choose.
+implementation of a \mintinline{py}{append}. If we want to stick to a liquid
+typing discipline, where every quantifier must be matched up to a program
+variable, need a way to bind the ghost values which were existentially
+quantified over in the $\mathrm{list}$ predicate of
+\cref{fig:list-pred-formal}, to names the user would have to choose.
 
 This seems even more of a tragedy because because before the recursive function
 call, we already know (a) $\mathrm{list}(\mathsf{xs}', l_1')$ and
@@ -600,7 +683,7 @@ for those quantifiers.
 To recap, when calling a function, we need some way of guessing some
 instantiation of quantifiers such that it satisfies the precondition. \emph{If}
 we are in a situation where there is only one sensible instantiation given the
-required and the available predicates, a simple inference scheme would be to
+required and the available assertions, a simple inference scheme would be to
 simply scan the context for predicates which match on constructor (i.e.\
 $\mathsf{emp}$ matches with $\mathsf{emp}$, $\_ \mapsto{} \_$ matches $\_
 \mapsto{} \_$, $\mathrm{list(\_, \_)}$ matches $\mathrm{list}(\_, \_)$) and
@@ -614,8 +697,8 @@ such an inference scheme would
     \item Note that the precondition requires $\mathrm{list}(\mathsf{xs}',
         l_1)$ and $\mathrm{list}(\mathsf{ys}', l_2)$.
     \item Check the context for a match with $\mathrm{list}(\mathsf{xs}',
-        \_)$.\sidenote{Checking whether two symbolic (\emph{\kl{computational}})
-            terms are equal can be automated with an SMT solver.}
+        \_)$.\sidenote{Checking whether two symbolic terms are equal can be
+        automated with an SMT solver.}
     \item Find $\mathrm{list}(\mathsf{xs}', l_1')$.
     \item Select $[l_1' / l_1]$ as its instantiation.
     \item Repeat similarly for $\mathsf{ys}$ and $l_2'$.
@@ -623,12 +706,12 @@ such an inference scheme would
 
 It is a cute idea, but it glosses over several details, such as
 \begin{itemize}
-    \item Are predicates where \kl{computational} arguments uniquely determine
-        \kl{logical} arguments, expressive enough for realistic code?
-    \item Are such predicates characterisable, and if so, how?
+    \item Are such assertions characterisable, and if so, how?
     \item Can such a scheme handle disjunction, $ P \vee{} Q$?
+    \item Are assertions where \kl{computational} arguments uniquely determine
+        \kl{logical} arguments, expressive enough for realistic code?
     \item What is the correct atomic predicate to look up in a context?
-    \item Can all predicates be decomposed into a context of such atomic
+    \item Can all assertions be decomposed into a context of such atomic
         predicates?
     \item Should it unfold recursive predicates, and if so, when?
 \end{itemize}
@@ -636,28 +719,62 @@ It is a cute idea, but it glosses over several details, such as
 I will tackle the first three questions here, and leave the latter three
 to be discussed in~\nameref{subsec:heap-types}.
 
-The first is an empirical question, but our experience using \kl{CN} so far
-suggests yes.~\sidecite{pulte2023cn,pulte2024tutorial} A somewhat hand-wavy
-intuition for why this is the case is that (a) all control flow has to be made
-as a result of computational state, rather than ghost state and (b) any
-invariants and associated ghost state a program may have must ultimately
-originate computationally to be manipulable by the program.
-
-\begin{itemize}
-    \item Add a note about string manipulation library, ghost parameters:
-        \url{https://github.com/rems-project/cerberus/issues/540}
-\end{itemize}
-
-For the second question, the answer is \emph{yes}: such predicates are
+For the first question, the answer is \emph{yes}: such assertions are
 characterisable as \intro{precise}.~\sidecite{reynolds2008intro}.
 
-\begin{definition}[Precise predicate]\label{def:precise}
+\subsection{Precise assertions}
+
+\begin{definition}[Precise assertions]\label{def:precise}
     \AP{} An assertion $Q$ is \intro{precise} iff, for all stores $s$, and heaps
     $h$, there is at most one $h' \subseteq{} h$ such that $s , h' \vDash{} Q$.
 
-    In other words, if a \kl{precise} predicate holds, then it does so in a
-    way that uniquely determine the shape of the heap.
+    In other words, if a \kl{precise} assertion holds on a subheap, then it
+    does so uniquely.
 \end{definition}
+
+This makes sense when you consider that in C, if you have a location, you can
+dereference it to get the value at that location, but if you have an arbitrary
+value, there is no way of answering `what locations contain this
+value?'\sidenote{I am talking about values, not variables, whose address can
+always be taken in C, because they are allocated as globals or on the stack.}
+without already having the pointers at hand, and the intuition generalises to
+the $\mathrm{list}(\_, \_)$ predicate too.
+
+In the formal definition, the store is what `fixes' the program (computational)
+variables, and so any assertion which does not use those variables as locations
+in the heap, on the left of a $\colorbox{yellow}{\_} \mapsto{} \_$, cannot be
+uniquely determined; it is the stuff on the left, the locations of subheaps,
+not values, which are guaranteed to be disjoint by the separating conjunction
+$\astRef{}$.
+
+\begin{itemize}
+    \item Not sure about the above two paragraphs. Is there a better intuition?
+    \item How does this relate to \emph{symbolic} heaps?
+    \item In a concrete setting, a precise assertion is defined with respect to
+        a bigger heap, in which, if the assertion holds, it does so for a
+        unique subheap. In a concrete setting, a $\exists v.\ \mathsf{p}
+        \mapsto{} v$ is a \emph{precise} assertion, but not an \emph{strictly
+        exact} one (would have to introduce definition for this).
+    \item Is it exact in a symbolic setting?
+    \item Or is the distinction more related to linear vs affine?
+    \item Is it the case, that in a linear setting, all pure assertions only
+        satisfy the empty heap, rather than any heap?
+    \item In a linear setting, does the definition of a precise assertion
+        coincide with a strictly exact assertion?
+\end{itemize}
+
+The guarantee that a subheap satisfying a precise assertion is unique is very
+useful because it means that if the inference scheme I sketched out above is
+used in a setting where all assertions are \kl{precise}, then any answer it
+finds is guaranteed to be unique, and there is no need to backtrack and explore
+other alternatives.
+
+This brings us nicely to the second question about disjunctions. As visible
+from \cref{fig:imprecise}, we see that arbitrary disjunctions pose a problem.
+Yet, from \cref{fig:precise}, we see that the list predicate, and even an
+version of it which is existentially quantified over its ghost list fits the
+definition of precise, despite including a disjunction in its definition
+(\cref{fig:list-pred-formal}).
 
 \begin{marginfigure}
 \begin{itemize}
@@ -667,7 +784,7 @@ characterisable as \intro{precise}.~\sidecite{reynolds2008intro}.
     \item $\mathrm{list}(\mathsf{xs}, l)$
     \item $\exists l.\ \mathrm{list}(\mathsf{xs}, l)$
 \end{itemize}
-\caption{Examples of \kl{precise} predicates.}\label{fig:precise}
+\caption{Examples of \kl{precise} assertions.}\label{fig:precise}
 \end{marginfigure}
 
 \begin{marginfigure}
@@ -678,69 +795,173 @@ characterisable as \intro{precise}.~\sidecite{reynolds2008intro}.
     \item $\exists \mathsf{x}.\ \mathsf{x} \mapsto{} 1$
     \item $\exists \mathsf{xs}.\ \mathrm{list}(\mathsf{xs}, l)$.
 \end{itemize}
-\caption{Examples of im\kl{precise} predicates.}\label{fig:imprecise}
+\caption{Examples of im\kl{precise} assertions.}\label{fig:imprecise}
 \end{marginfigure}
 
-This makes sense when you consider that in C, if you have a pointer you can
-dereference it to get the value it points to, but if you have a value, there is
-no way of answering `what pointers point to this value?', without already
-having the pointers at hand, and the intuition generalises to the
-$\mathrm{list}(\_, \_)$ predicate too. In the formal definition, the store is
-what `fixes' the program (computational) variables, and so any predicate which
-does not use those variables as a entry into the heap cannot be uniquely
-determined.
+This is because the two arms of the disjunction makes assertions assertions
+which are disjoint on \emph{both} the values the computational parameter
+$\mathsf{p}$ can take \emph{and} on the shape of the heap; one branch says
+$\mathsf{p} = \mathsf{NULL}$ and the heap will be $\mathsf{empty}$, whereas the
+other branch guarantees that (implicitly) $\mathsf{p} \noteq \mathsf{NULL}$ and
+that the heap will have \emph{at least two} heap cells. I will return to the
+discussion of disjunctions in precise predicates imminently; for now I want to
+note that the locations of those two cells are expressed entirely in terms of
+program variables.
+
+At this point, a keen reader may have noticed that while this may be true at
+the `top-level' of the predicate, the recursive call does use the existentially
+quantified ghost value $\mathsf{p\_tail}$, which is on the right of $\mathsf{p}
++ 1 \mapsto{} \mathsf{p\_tail}$. So why does this make it im\kl{precise}? It is
+because in any heaps which satisfies the non-empty branch of the list
+predicate, $\mathsf{p\_tail}$ is \emph{uniquely} determined by its relation as
+the value in the location adjacent to $\mathsf{p}$.\sidenote{A proof of this is
+left as an exercise to the reader.} This can be formalised with a \kl{mode}
+discipline for predicate arguments, which I shall discuss in
+\nameref{sec:monadic-syntax}.
+
+Finally, the third question is an empirical one, but our experience using
+\kl{CN} so far~\sidecite{pulte2023cn,pulte2024tutorial} suggests the answer is
+yes, it is sufficient for small to medium tutorial examples, all the way up to
+specifying the buddy-allocator used in pKVM\@.
 
 \begin{itemize}
-    \item How does this relate to \emph{symbolic} heaps?
+    \item Add a note about string manipulation library, ghost parameters:
+        \url{https://github.com/rems-project/cerberus/issues/540}
 \end{itemize}
 
-This is very useful because it means that if the inference scheme I sketched
-out above is used in a setting where all predicates are \kl{precise}, then any
-answer it finds is guaranteed to be unique, and there is no need to backtrack
-and explore other alternatives.
+\section{Monadic syntax to enforce precision}\label{sec:monadic-syntax}
 
-And this brings us nicely to the last question about disjunctions. As visible
-from \cref{fig:imprecise}, we see that arbitrary disjunctions pose a problem.
-Yet, from \cref{fig:precise}, we see that the list predicate, and even an
-version of it which is existentially quantified over its ghost list fits the
-definition of precise, despite including a disjunction in its definition
-(\cref{fig:list-pred-formal}).
+\intro[mode]{Modes} help us ensure that quantifiers preserve precision as
+follows. We start with separation logic predicates, and label their arguments
+as either $\mathsf{in}$puts or $\mathsf{out}$puts, as shown in
+\cref{fig:mode-pred}. In the scope of each quantifier, for each predicate, we
+check the modes of each parameter matches the mode of each argument.
+Computational arguments the user provides are considered inputs. If quantified
+variable is used in an input position, it must also be used elsewhere in an
+output position.
+
+\begin{marginfigure}
+    \centering
+    \begin{align*}
+        \_ \mapsto{} \_ \:&: \mathrm{Loc}^{\mathsf{in}} \times \mathrm{Value}^{\mathsf{out}} \rightarrow \mathrm{Prop} \\
+        \mathrm{list} \:&: \mathrm{Loc}^{\mathsf{in}} \times \mathrm{IntList}^{\mathsf{out}} \rightarrow \mathrm{Prop}
+    \end{align*}
+    \caption{Modes on separation logic predicates.}\label{fig:mode-pred}
+\end{marginfigure}
+
+So for example, the second disjunct of \cref{fig:list-pred-formal}, the
+quantified variable $\mathsf{p\_tail}$, occurs in $\mathrm{list}
+(\mathsf{p\_tail}, {tl})$ in the input position, but this fine because it also
+occurs in the output position in $\mathsf{p} + 1 \mapsto{} \mathsf{p\_tail}$.
+However, in the example from \cref{fig:imprecise}, $\exists \mathsf{xs}. \
+\mathrm{list}(\mathsf{xs},l)$ is badly moded because $\mathsf{xs}$ occurs in an
+input position, but nowhere else in an output.
+
+Ensuring that quantifiers preserve \kl[precise]{precision} in assertions by
+dividing up predicate arguments into input and output modes is
+not new,~\sidecite{somogyi1996execution,berdine2006smallfoot,nguyen2008runtime,maksimovic2021gillian}
+including for the purposes of reducing the burden of
+annotation.~\sidecite{jacobs2011verifast}
+
+What is new is the target audience, which is kernel hackers, rather than
+verification specialists. Programmers may not be used to thinking in terms of
+ghost state, and discussions with our users suggest that adding quantifiers and
+\kl{mode}s on top of that would be step too far.
+
+The elegant solution to both inscrutable mode rules, and the problem of
+disjunctions mentioned earlier, is to change the perspective on
+\cref{fig:mode-pred}.~\sidecite{krishnaswami2022monadic} A predicate
+$\mathrm{list} : \mathrm{Loc} \times \mathrm{IntList} \rightarrow
+\mathrm{Prop}$, considered set-theoretically is just $\mathcal{P} (\mathrm{Loc}
+\times \mathrm{IntList})$, which is isomorphic to $\mathrm{Loc} \rightarrow
+\mathcal{P} (\mathrm{IntList})$. Unlike the initial form, which gave ``equal
+weighting'' to input and outputs, this form makes the input role of
+$\mathrm{Loc}$ and the output role of $\mathrm{IntList}$ very natural.
+
+\begin{marginfigure}
+    \begin{align*}
+        &\llbracket \_ \rrbracket \::\: \mathcal{P}(\tau) \rightarrow (\tau \rightarrow \mathsf{Prop}) \\
+        &\llbracket \mathsf{return}\ t \rrbracket = \lambda a.\ t = a \\
+        &\llbracket \mathsf{Own(t)} \rrbracket = \lambda a.\ t \mapsto{} a \\
+        &\llbracket \mathsf{let\ x} = e; e' \rrbracket \\
+        &\qquad = \lambda a.\ \exists x.\ \llbracket e \rrbracket x \astRef{} \llbracket e' \rrbracket a \\
+        &\llbracket \mathsf{if}\ t\ \mathsf{then}\ e\ \mathsf{else}\ e' \rrbracket \\
+        &\qquad = \lambda a.\  t \wedge \llbracket e \rrbracket a \vee \neg\;t \wedge \llbracket e' \rrbracket a
+    \end{align*}
+    \caption{Monadic syntax for separation logic, along with a translation into the traditional presentations. Pure
+        terms are denoted by $t$, and monadic expression are denoted with $e$.}\label{fig:monad-sl}
+\end{marginfigure}
+
+Not only does this notational transformation turn \emph{mode correctness} into
+\emph{variable scoping} with the $\mathsf{let\ x} = e; e'$ construct, it also
+enforces the disjointness of computational values and the shape of the heap
+mentioned earlier with the $\mathsf{if}\ t\ \mathsf{then}\ e\ \mathsf{else}\
+e'$ construct. Not only can all logical quantifiers now be \emph{inferred}
+without backtracking, branching assertions can be checked without backtracking
+too: check $e$ if you can can prove $t$ and check $e'$ if you can prove
+$\neg\;t$.
+
+\subsection{\kl[iterated]{Iterated} separating conjunctions to handle arrays}\label{sec:it-array}
+
+C programmers use arrays a lot, particularly with computed index (i.e.\
+`random') access, rather than following a particular traversal pattern to get
+some element in the middle.
+
+Typically (such as in VeriFast) arrays are handled via recursive predicates,
+and if the order of traversal in C does not match the order of traversal in the
+predicate, or access is required to the middle of the array, then a user needs
+to use lemmas of some sort to massage the available assertions into a usable
+form.
+
+\kl{CN} implements \intro{iterated separating conjunctions}, inspired by
+\sidetextcite{muller2016automatic}, but with restrictions to ensure only
+quantifier-free SMT queries. Specifically,
+\begin{itemize}
+    \item Iterations must take the form
+        \cninline[breaklines]|each (<type> i; <guard>) { <pred>( array_shift(p i) ) }|, % chktex 36 chktex 37
+        where
+        \begin{itemize}
+            \item \cninline{i} is the iterating index being quantified over
+            \item \cninline{<guard>} is a boolean condition on \cninline{i}
+            \item \cninline{p} is a base pointer
+            \item \cninline{<pred>} is the name of a named predicate
+            \item \cninline{array_shift} is the specification language syntax
+                for C's \cinline{p + i}.
+        \end{itemize}
+    \item Indices which are intended to move in or out of an iterated separating
+        conjunction must be declared so explicitly with a \cninline{extract <idx>;}
+        statement.
+\end{itemize}
+
+This enables a few convenient features:
+\begin{itemize}
+    \item Iterated separating conjunctions can be tested for equality by
+        looking only at the name of the predicate being iterated over, symbolic
+        equality of the base pointer, and symbolic equivalence of the guard
+        conditions.
+    \item Predicates can be moved out of and into iterated separating conjunctions
+        automatically.
+    \item Iterated separating conjunctions can be split along an arbitrary
+        guard automatically similarly, except `subtraction' is done as follows:
+        for guard \cninline{A = 0i32 <= i && i < 10i32} and guard
+        \cninline[breaklines]{B = A && mod(i, 2i32) == 0i32}, % chktex 36
+        the subtraction is simply \cninline{A && !B}. Note that the split % chktex 26
+        does not have to be contiguous.
+\end{itemize}
+
+\kl{CN} does not however, support automatically \emph{merging} arrays, because
+the constraints required to express the \emph{merged values} are outside the
+decidable fragment for the SMT theory of arrays.\sidenote{So \kl{CN} could, but
+does not, support merging for uninitialised arrays.} Relatedly, \kl{CN} did
+support the decidable array property fragment,~\sidecite{bradley2006whats}, but
+it was not expressive enough for verifying pKVM's \kl{buddy allocator} and so
+it was removed. \kl{CN} also supported a scheme for inferring indices (instead
+of requiring the movable ones to be declared up front), but this was removed
+during a change to the inference scheme.
+
+\section{Alternatives and related work}
 
 \begin{itemize}
-    \item Explain that disjunction partitions the heap and computational
-        values along the same lines.
+    \item Do I want to talk about this here?
 \end{itemize}
-
-\subsection{Quantifiers and friendly syntax}\label{sec:friendly-syntax}
-
-Separation logic types, syntax and restrictions for it.
-
-Explicit witness to having permissions, which are linearly typed (just ingredients).
-
-\section{Alternatives and Related Work}
-
-\chapter{Kernel CN:\ A Bidirectional, Separation Logic Refinement Type System for Core}%
-\label{chap:kernel-cn}
-
-This will be a lot of pages.
-Explain \intro{bidirectional} (for quantifiers), linear resources, constraints.
-Explain enough rules \textemdash{} typing, operations, especially the weird heaps.
-And of course, type safety statement and its proof.
-
-\subsection{Heap types}\label{subsec:heap-types}
-
-\subsection{Resource Terms, Quantifier Inference}\label{subsec:resq-inf}
-
-Linear terms in a refinement type system.
-
-(Dep ML, L3, F star, Jhala, ATS)
-
-Different and unusual compared to Iris style \textemdash{} separation proofs outside the program.
-
-Proof term in one sense, but also factors out operations for resource manipulation.
-
-\subsection{Heaps}
-
-
-\subsection{Type Safety}
 
