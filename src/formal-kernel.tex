@@ -1,13 +1,15 @@
 \chapter{Kernel CN:\ Grammar}%
 \label{chap:kernel-grammar}
 
+\margintoc%
+
 \kl{CN} and \kl{Kernel} CN have different grammars. This is because \kl{CN} is
-intended to be used by C programmers, whereas \kl{Kernel} CN is more for type
-theorists, and also to be more convenient to work with as a formalism. The
+intended to be used by C programmers, whereas \kl{Kernel} CN is for type
+theorists, thus more convenient to understand and work with as a formalism. The
 primary differences are (a) \kl{CN} is implemented over (a version of)
-\kl{Core}, whereas the \kl{kernel} is defined over a let-normalised version of
-\kl{Core} (b) \kl{CN}'s grammar of types is close to the surface syntax and so
-each construct serves many purposes whereas the \kl{kernel}'s grammar of types
+\kl{Core}, whereas the \kl{kernel} is defined over a let-normalised
+\kl{ResCore} (b) \kl{CN}'s grammar of types is close to the surface syntax and
+so each construct serves many purposes whereas the \kl{kernel}'s grammar of types
 is more traditional and each construct only serves one purpose.
 
 In this chapter I will present the relevant parts of \kl{CN}'s syntax of
@@ -27,7 +29,7 @@ relevant terms, with a particular focus on explicit resource terms.
 A file for \kl{CN} consists of series of top-level declarations of annotated C
 functions, (separation logic) predicate definitions, (purely logical) function
 definitions, and datatype declarations.\sidenote{Does the kernel formalism
-support datatypes?} 
+support datatypes?}
 
 Function definitions for C introduce the identifiers for the arguments into the
 scope of the pre- and postconditions, preceded by \cninline{requires} and
@@ -105,28 +107,29 @@ and postconditions and function/return types, but this does not affect
 expressiveness because these can be embedded into the resource types. Note that
 in the formalisation, the branching is not restricted to the top-level in
 predicate definitions, but can occur directly in function types, and can be
-arbitrarily nested.
+arbitrarily nested. This makes defining predicates to represent tagged unions
+more succinct, and allows for opening predicates in more cases.
 
-Predicates ${pred}$ and quantified predicates ${qpred}$ are simple
-${pred\_term}$ and ${qpred\_term}$ with output arguments, as seen
-in~\cref{fig:kernel-qpred}. I will explain why I factored out ${pred\_term}$
-and ${qpred\_term}$ later. For now, I will draw attention to the fact that
+
+Predicates ${pred}$ and iterated predicates ${qpred}$ are simple ${pred\_term}$
+and ${qpred\_term}$ with output arguments, as seen in~\cref{fig:kernel-qpred}.
+I will explain why I factored out ${pred\_term}$ and ${qpred\_term}$ in
+\nameref{subsec:res-terms}. For now, I will draw attention to the fact that
 where there is a distinction between \cninline{Owned} and \cninline{Block} in
 the surface syntax, the formalisation tracks whether or not a points-to has
 been initialised in a symbolic \emph{record} field ${.init}$, whose type
 mirrors the structure of the C type, i.e.\ with leaves which are booleans, and
 branches which are records or arrays. This allows for more fine-grained control
 over reading and writing \emph{partially} (and completely) uninitialised reads
-of structs/unions,\sidenote{\url{https://www.cl.cam.ac.uk/~pes20/cerberus/notes98-2018-04-21-uninit-v4.html\#reads-of-partially-uninitialised-structsunions-as-a-whole} % chktex 8
-Though honestly I could just get rid of this because it would be simpler.} as
-allowed by the C standard.
+of structs/unions,\sidenote{\url{https://www.cl.cam.ac.uk/~pes20/cerberus/notes98-2018-04-21-uninit-v4.html\#reads-of-partially-uninitialised-structsunions-as-a-whole}% chktex 8
+Though honestly I could just get rid of this because it would be simpler.} as allowed by the C standard.
 
 \begin{marginfigure}
     \centering
     \includegraphics{figures/kernel-pred-name}
     \includegraphics{figures/kernel-qpred-term}
     \includegraphics{figures/kernel-qpred}
-    \caption{\kl{Kernel CN} predicate and quantified predicate terms (without
+    \caption{\kl{Kernel CN} predicate and iterated predicate terms (without
         output arguments) and types (with output arguments). The formalisation
         is set up with some syntactic sugar (marked with $\mathsf{S}$) to make
         the meanings of these constructs more intuitive.}\label{fig:kernel-qpred}
@@ -178,8 +181,7 @@ ifs directly in the precondition, unlike the surface syntax which allows ifs to 
 only at the top-level of a predicate (\cref{sec:restriction-branching}).
 
 The monadic binding \cninline{take id = ..} is always translated into a logical % chktex 26
-quantification over the output argument of the (quantified)\sidenote{Should
-really consider renaming these to `iterated predicates'.} predicates. Because
+quantification over the output argument of the (iterated) predicates. Because
 all the predicate definitions are guaranteed to be precise, all the logical
 quantifications can be inferred when required.
 
@@ -195,7 +197,7 @@ contexts, inside a pre- or postcondition where a return is not allowed, and in
 a predicate definition where a return is allowed, the desugaring is
 parameterised over whether or not a return is expected. If one is not, then the
 resource is simply an $\mathsf{emp}$, otherwise it is an equality constraint,
-as shown in \cref{fig:monad-sl}. Outputs of (quantified) predicates are always
+as shown in \cref{fig:monad-sl}. Outputs of (iterated) predicates are always
 assumed to be of the shape of a record for uniformity, which I will justify
 later. Abbreviation are also substituted in,\sidenote{As in note~\ref{sn:abbrev}.}
 Because pure (SMT) terms are syntactically stratified out of
@@ -208,7 +210,7 @@ destination-passing style \sidecite{shaikhha2017destination} transformation to
 translate the semantics early-returns into precise separation logic
 assertions. Lastly, as before, the monadic binding \cninline{take id = ..} is % chktex 26
 always translated into a logical quantification over the output argument of the
-(quantified) predicate.
+(iterated) predicate.
 
 \begin{figure*}[tp]
     \includegraphics{figures/predicate-to-kernel-1}
@@ -216,7 +218,7 @@ always translated into a logical quantification over the output argument of the
     \caption{\kl{CN} to \kl{Kernel CN} user-defined predicate desugaring.}\label{fig:pred-to-kernel}
 \end{figure*}
 
-\section{Let-normal Core}
+\section{ResCore}
 
 Not only is the formalisation defined over a desugar representation of types
 from the surface \kl{CN} syntax, it is also defined over the let-normal form of
@@ -237,9 +239,11 @@ This dramatically simplifies presenting and working with the type system, becaus
         checking rule, since control flow is required to not reach that point
         (\cref:fig:core-ub-typing).
     \item \textbf{Control flow}. Here too, we would also very much like to use
-        a checking rule, since this would alleviate the need to construct
-        \emph{join}-points in types (or require users to place annotations
-        after all \cinline{if}-statements).
+        a checking rule, since this would sidestep the need to synthesise
+        least-upper bound types for join-points after all \kl{Core}
+        \coreinline{if}-expressions (or require annotations on them), at the
+        cost of accepting a combinatorial explosion in typing all subsequent
+        expressions.
     \item \textbf{Lets}. In typing these, we would also very much like to use a
         \emph{synthesis} rule for the bound expression, since that removes the
         need for an annotation to be placed on the binder there.
@@ -248,33 +252,40 @@ This dramatically simplifies presenting and working with the type system, becaus
         resources types they will synthesise.
 \end{itemize}
 
-Initial versions of \kl{CN} did a full A-normalisation of Core, but this resulted
-in far logical variables being created (one for each intermediate sub-expression)
-and these were very difficult to relate back to the source program in concrete
-counter-examples produced by the SMT solver.\sidenote{Location information was not
-tracked properly either so this was doomed.} Hence, this was
-removed.\sidenote{\href{https://github.com/rems-project/cerberus/commit/21808139bda2ee320756c71eb22dbd57d0986f97}{Commit 21808139.}}.
+Initial implementations of \kl{CN} did a full A-normalisation of Core, but this resulted
+in far too many logical variables being created (one for each intermediate
+sub-expression) and these were very difficult to relate back to the source
+program in concrete counter-examples produced by the SMT
+solver.\sidenote{Location information was not tracked properly either so this
+was doomed.} Hence, this was
+removed.\sidenote{\href{https://github.com/rems-project/cerberus/commit/21808139bda2ee320756c71eb22dbd57d0986f97}{Commit
+21808139.}}\label{sn:rm-anorm}
+
 The way that \kl{CN} currently manages the flow of information is by explicitly
 passing around continuations; when it comes across any expression which is
 treated as a top-level one in \kl{let-normal Core}, it simply does the appropriate
-checks and then \emph{drops} the continuation.\sidenote{\href{https://github.com/rems-project/cerberus/commit/350fefc675626dcc69c7adc9edea30ff9687b752}{Commit 350fefc6.}}
+checks and then \emph{drops} the continuation.\sidenote{\href{https://github.com/rems-project/cerberus/commit/350fefc675626dcc69c7adc9edea30ff9687b752}{Commit 350fefc6.}}\label{sn:use-conts}
 This makes the code more fragile but saves the need for maintaining another large
 syntax tree which needs pretty-printers, debug printers, source location
 mappings and so on.
 
 Since it would require more complex fractional permissions, I left out
-let-normalising \coreinline{unseq()}, \coreinline{let weak} and other % chktex 36
-constructs related to C's loose evaluation order. However, this also means
-the formalisation glosses over the fact that those constructs can contain each
-other in a semantically meaningful way, such that flattening out that nesting
-seems impossible. The solution would be to require type-annotations on any
-situation which requires top-level expressions to be nested inside one another.
-Indeed, as we shall see in \nameref{chap:kernel-soundness}, annotations on
-nested top-level expressions are required anyway for proving type preservation
-for function calls to pure Core functions, effectful Core procedures, and
-elaborated C functions. And as I demonstrate in \nameref{chap:kernel-alternative},
-it seems very difficult to avoid some sort of normalisation somewhere in
-the type system in the presence of early returns in sub-expressions.
+let-normalising the constructs related to C's loose evaluation order.\sidenote{%
+\coreinline{neg()}, \coreinline{unseq()}, \coreinline{let weak}, % chktex 36
+\coreinline{let strong}, \coreinline{bound()}, \coreinline{nd()}, % chktex 36
+\coreinline{par()}.} However, this also means the formalisation glosses % chktex 36
+over the fact that those constructs can contain each other in a semantically
+meaningful way, such that flattening out that nesting seems impossible. The
+solution would be to require type annotations on any situation which requires
+top-level expressions to be nested inside one another.
+
+Indeed, as I shall show in \nameref{chap:kernel-soundness}, annotations on
+nested top-level expressions are required, though only for proving type
+preservation for function calls to pure Core functions, effectful Core
+procedures, and elaborated C functions. And as I will demonstrate in
+\nameref{chap:kernel-alternative}, it seems very difficult to avoid some sort
+of normalisation (and associated control flow explosion) somewhere in the type
+system in the presence of join-points and early returns in sub-expressions.
 
 For now, I will confine my discussion of the let-normal grammar to top-level
 expressions (full details for both nested and top-level expressions are
@@ -290,7 +301,7 @@ to the top.
 \begin{marginfigure}
     \includegraphics{figures/kernel-tpval}
     \includegraphics{figures/kernel-tpexpr}
-    \caption{Top-level pure values and expressions in let-normal Core.}\label{fig:kernel-tp}
+    \caption{Top-level pure values and expressions in ResCore.}\label{fig:kernel-tp}
 \end{marginfigure}
 
 Top-level effectful values are the same as top-level pure values.
@@ -305,8 +316,7 @@ terms to pack or unpack predicates (I will explain explicit resource terms in
 \begin{marginfigure}
     \includegraphics{figures/kernel-is-expr-1}
     \includegraphics{figures/kernel-is-expr-2}
-    \caption{\kl{Indeterminately} sequenced expressions in let-normal
-        Core.}\label{fig:kernel-is-expr}
+    \caption{\kl{Indeterminately} sequenced expressions in ResCore.}\label{fig:kernel-is-expr}
 \end{marginfigure}
 
 
@@ -317,101 +327,135 @@ that the bound expression in a \coreinline{let}, the scrutinee of a
 arguments to \coreinline{run} are contain pure expressions
 (\cref{fig:effectful-core-grammar}).
 
-However, this are mutually defined with \kl{indeterminately} sequenced
+However, these are mutually defined with \kl{indeterminately} sequenced
 top-level expressions (\coreinline{let weak} and \coreinline{let strong}), for
-which as I mentioned before, I do not have accurate support. This is mutual
-recursion is achieved the $\mathit{texpr}$ production.
+which as I mentioned before, I do not have accurate support. The mutual
+recursion is achieved via the $\mathit{texpr}$ production.
 
 \begin{marginfigure}
     \includegraphics{figures/kernel-seq-texpr}
     \includegraphics{figures/kernel-texpr}
-    \caption{Top-level expressions in let-normal Core.}\label{fig:kernel-texpr}
+    \caption{Top-level expressions in ResCore.}\label{fig:kernel-texpr}
 \end{marginfigure}
 
-\subsection{Resource terms}\label{subsec:res-terms}
+\section{Resource terms}\label{subsec:res-terms}
 
-\subsection{Heap types}\label{subsec:heap-types}
+One of the key initial motivations for formalising (and ultimately
+implementing) a smaller kernel for \kl{CN} was to have a stronger safety net
+underneath its resource inference algorithm, both at the time and for all
+future inference algorithms. The hope was that this would allow us to iterate
+quickly and boldly on the algorithms, with much less worry about introducing
+unsoundness.
 
-\subsection{Resource Terms, Quantifier Inference}\label{subsec:resq-inf}
+This did not materialise because \kl{CN} moved away from A-normalising
+\kl{Core}, adopted a continuation-passing style, and changed its approach to
+resource inference.\sidenote{See notes~\ref{sn:rm-anorm},~\ref{sn:use-conts}
+and~\ref{sn:new-inf}} Another large hurdle was that it would have required
+significant engineering effort to refactor the internal \intro[AST]{abstract
+syntax trees} (ASTs).
 
-Explain \intro{bidirectional} (for quantifiers), linear resources, constraints.
-Explicit witness to having permissions, which are linearly typed (just ingredients).
-Explain enough rules \textemdash{} typing, operations, especially the weird heaps.
-And of course, type safety statement and its proof.
-Linear terms in a refinement type system.
+Yet, the effort was still fruitful since it brought extra clarity to questions
+around the implementation (\nameref{chap:inform-impl}) and inspired ideas on
+how to feasibly and gradually transition the most subtle and complex parts of
+\kl{CN} (either now, or in the future) to a stronger foundations to a
+proof-assistant (\nameref{sec:trans-res-lemmas}).
 
-(Dep ML, L3, F star, Jhala, ATS)
+The key concept which makes this possible is to include explicit (linearly
+typed) terms for both resources \emph{and operations on them} in the grammar of
+\kl{ResCore}.\sidenote{Hence the name.} Though this is not a new
+concept,~\sidecite{xi1999dependent,cui2005ats,ahmed2007l3} its application in a
+separation logic settings appears to be so, because these sorts of
+manipulations are usually done manually in an interactive proof-assistant and
+recorded as tactics in a proof script \emph{external} to the program being
+verified. In {kernel CN}, these \intro{resource terms} serve many purposes:
+\begin{itemize}
+    \item \textbf{Resource annotation.} They act as resource type annotations
+        on constructs which require them.
+    \item \textbf{Primitives.} They clarify the smallest units of
+        resources and operations on them.
+    \item \textbf{Bookkeeping.} They act as a log of the sequence of operations
+        required to (soundly) manipulate the resource context from one symbolic
+        state to another.
+\end{itemize}
 
-Different and unusual compared to Iris style \textemdash{} separation proofs outside the program.
+Of course, as with logical (ghost) terms, resource terms must be added with
+care to the language to ensure erasure; they must not affect the control flow,
+the values computed, or the memory events executed. This is easy to see by the
+fact that resource terms are only placed on the memory actions for reading,
+writing or destroying a heap location, and for memory operations involving
+pointers which require checks that pointers are live (\cref{fig:res-term-constructs}).
 
-Proof term in one sense, but also factors out operations for resource manipulation.
+\begin{marginfigure}
+    \centering
+    \includegraphics{figures/kernel-res-term-1}
+    \includegraphics{figures/kernel-res-term-2}
+    \includegraphics{figures/kernel-res-term-3}
+    \includegraphics{figures/kernel-res-term-4}
+    \caption{Constructs in \kl{ResCore} extended to accommodate
+    explicit resource terms.}\label{fig:res-term-constructs}
+\end{marginfigure}
 
-\subsection{Heaps}
+To be clear, \kl{CN} \emph{users} are still not required to explicitly provide
+any resource terms; they are used so that any algorithms for \emph{inferring}
+them can be rephrased naturally as algorithms for \emph{elaborating} a program
+\emph{without} resource annotations into one \emph{with} them.
 
+Another advantage of having explicit resource terms in the grammar of
+\kl{ResCore} is that this allows to make the heaps in the dynamic
+semantics more abstract, whilst allowing them to be transformed precisely
+according to the reduction rules of the resource terms. This additional
+modularity, whilst a bit confusing at this stage, will be seen to pay off later
+when discussing the proof of soundness for the CN-VIP memory object model
+(\cref{sec:cn-vip-soundness}).
 
-\subsection{Type Safety}
+\cref{fig:res-terms} shows the resource terms of \kl{ResCore}. There are
+\emph{several} side conditions for each of the operations the terms represent,
+which I will show in \nameref{sec:typing-res-terms}, but for now it suffices to
+explain the simple intuitions for all of them. Terms $\mathsf{emp}$ and
+$\mathsf{term}$ are introduction forms for the types $\mathsf{emp}$ and pure
+assertions $\mathit{term}$, and they have corresponding forms for eliminating
+them too. Variables are also resource terms and patterns, for any resource
+type. Terms $\mathit{pred\_term}$ and $\mathit{qpred\_term}$ introduce
+$\mathit{pred}$ and $\mathit{qpred}$ types respectively (the only difference
+between the two is that the latter also carry their output arguments). Angle
+brackets $\langle \_ , \_ \rangle$ and $\mathsf{pack}$ are introduction forms
+for the separating conjunction $\astRef{}$ and $\exists$ types respectively,
+and they have corresponding eliminators too.
 
-\chapter{Kernel CN:\ Typing rules}%
+The following terms are all operations on predicates. Types for
+user-defined predicates are introduced and eliminated by the $\mathsf{fold}$
+construct, so that definitions of predicates can hidden or exposed as required
+(necessary because we need and allow predicates to be recursive). The
+$\mathsf{implode}$ and $\mathsf{explode}$ constructs are for transforming from
+and to a $\mathsf{Owned}\langle \mathtt{struct} \mathit{tag} \rangle$ predicate
+(which, in kernel CN, represents both \cninline{Owned<ct>} and
+\cninline{Block<ct>} from the surface syntax); the first consumes ownership of
+a struct and produces ownership of its members, the second does the inverse.
+Analagously for $\mathsf{iterate}$ and $\mathsf{congeal}$, the former consumes
+ownership of a fixed-size array, and produces ownership to each of its members,
+whereas the latter does the inverse.
 
-\chapter{Kernel CN:\ Proof of soundness}%
-\label{chap:kernel-soundness}
+The remaining terms are all operations on iterated predicates. The $\mathsf{break}$
+operation indexes an iterated predicate to move ownership out of it, whereas
+the $\mathsf{glue}$ operation does the inverse. The $\mathsf{inj}$ operation
+introduces a singleton (non-empty) iterated predicate,\sidenote{I chose a
+singleton introduction form rather than an empty one to enforce the invariant
+that all iterated predicates in the typing context are guaranteed to be non-empty.
+I do not believe this makes a material difference to soundness, but it appeals
+to my aesthetics and should reduce redundant lookups in the resource context.}
+Lastly, the $\mathsf{chop}$ operation splits an iterated predicate along a given
+index guard $\mathit{iguard}$. As mentioned in \nameref{sec:monadic-syntax}, to
+preserve decidability by avoiding inferring quantified constraints, the type
+system does not support merging arrays.
 
-Weird heaps.
-
-\chapter{Informing implementation discussions}%
-
-In the early stages, \kl{CN} was implemented by Christopher Pulte and Thomas
-Sewell, based on sketches by Neel Krishnaswami. I started formalising
-\kl{Kernel CN} much later, and benefited by the clarity of having an
-implementations and implementers which and whom I could refer to in moments of
-confusion.
-
-However, this mode of development means that there were \emph{many} design
-decisions made in a rather conservative context, because the programming was
-always of a system which was being defined along the way, rather than a
-well-understood pre-existing one. Extensions to syntax and inference were
-always the minimum required for verifying the pKVM buddy allocator, lest
-performance and inference suffer greatly, rather than ones based on a strong
-formal and holistic consideration of the constructs and interactions at play.
-
-As such, there are several restrictions in the implementation, which with the
-benefit of hindsight and formalism, are completely unnecessary, but persist as
-technical debt. This chapter list a few of these, and explains how the
-formalisation brings much needed clarity to many questions around the
-implementation.
-
-\url{https://github.com/rems-project/cerberus/labels/language}
-\url{https://github.com/rems-project/cerberus/labels/resource\%20reasoning}
-
-\section{Supporting partially initialised reads of structs/unions}
-
-This is not asked for, and actually seems to add a non-trivial amount of noise
-and book-keeping to the formalisation. This suggests that the feature is not
-worth implementing in CN unless a strong use-case comes up.
-
-\section{Auto unfolding scheme for logical functions}
-\url{https://github.com/rems-project/cerberus/issues/483}
-
-\section{Higher-order resources}
-\url{https://github.com/rems-project/cerberus/issues/483}
-
-\section{Restrictions on branching}\label{sec:restriction-branching}
-\url{https://github.com/rems-project/cerberus/issues/483}
-\url{https://github.com/rems-project/cerberus/issues/266}
-
-\section{Removing the pointer first restriction on predicates}
-\url{https://github.com/rems-project/cerberus/issues/303}
-
-\section{Unifying the syntax of functions, predicates and specifications}
-\url{https://github.com/rems-project/cerberus/issues/304}
-
-
-\chapter{An alternative presentation}\label{chap:kernel-alternative}
-
-Perhaps a short chapter about MiniCN\@? This could demonstrate the strong
-advantages of defining a type system over a first-order functional language,
-rather than trying to do so directly over something C-like.
-
-It would also give some space to the interesting but yet-to-be-baked ideas
-from the Fuliminate paper.
+\begin{figure*}[tbp]
+    \centering
+    \begin{minipage}{\textwidth}
+        \includegraphics{figures/kernel-res-term-def}
+    \end{minipage}%
+    \begin{minipage}{0.4\textwidth}
+        \includegraphics{figures/kernel-res-pat}
+    \end{minipage}
+    \caption{Explicit resource terms in \kl{ResCore}.}\label{fig:res-terms}
+\end{figure*}
 
