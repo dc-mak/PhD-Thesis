@@ -155,7 +155,7 @@ Typing resource terms requires the addition of an extra \emph{linear} context
 $\mathcal{R}$ of resources. I will start with the synthesising judgements first,
 and move on to checking judgements after.
 
-\subsection{Synthesis for resource terms}
+\subsection{Synthesis for resource terms}\label{subsec:synth-res-term}
 
 As visible in \cref{fig:typing-res-term-synth}, unsurprisingly, $\mathsf{emp}$
 requires an empty context, and a variable use requires a singleton context.
@@ -177,7 +177,7 @@ does not have the information required to know which predicate it could belong
 to, especially because resources can and are moved between predicate. Hence,
 morally, $\mathsf{fold}$ should be checked, not synthesised. However, in a
 prior version of \kl{CN}, users were required to manually fold and unfold
-predicates, and the placement of that annotation was done in an
+predicates, and (by accident) that annotation was placed in an
 indeterminately-sequenced expression, which also includes things like memory
 actions. Memory actions are not well suited to be checked and are best
 synthesised, and so this forced the fold/unfold annotations, and the resource
@@ -216,7 +216,7 @@ a single base pointer.
         predicate operations.}\label{fig:typing-predops}
 \end{figure*}
 
-\subsection{Checking for resource terms}
+\subsection{Checking for resource terms}\label{subsec:checking-res-terms}
 
 Lastly for the resource terms, we come to the checking rules. Resource terms
 which represent constraints do not carry the constraint in them, and so need a
@@ -236,7 +236,7 @@ one depends on whether the condition or its negation can be proven. In the
 situation that neither is possible, I call the condition (and the resource)
 \intro{under-determined} (with respect to a constraint context). In this case,
 the system may attempt to synthesise a type for the term and check that the
-synthesised type is equal to the ordered disjunction. Only variables can
+synthesised type is equal to the ordered-disjunction. Only variables can
 synthesise an ordered-disjunction type, that too only if the condition is
 under-determined (otherwise simplification will reduce it to either branch).
 Separating conjunctions are also checked to allow for the case where an
@@ -426,16 +426,13 @@ synthesised by the rest of the return type for any pattern. And pattern
 matching for resources similarly synthesises combines contexts from both the
 resource type and pattern, and the rest of the return type and patterns.
 
-This brings us on to how resource patterns synthesise contexts. The judgement
-for this is $\mathcal{L}; \Phi \vdash \mathit{res\_pat}{:}\mathit{res}
-\rightsquigarrow \outpol{\mathcal{L}'; \Phi'; \mathcal{R}'}$, which means that
-given contexts,\sidenote{I abuse the notation slightly and omit the
-computational context $\mathcal{C}$ because it remains the same in all the
-rules.} a resource pattern and a type, synthesise logical, constraint and
-resource contexts.
-
-I am going to focus only on the rules for ordered-disjunctions and folds;
-the rest are as expected.
+This brings us on to how resource patterns synthesise contexts
+(\cref{fig:typing-resp-pat}). The judgement for this is $\mathcal{L}; \Phi
+\vdash \mathit{res\_pat}{:}\mathit{res} \rightsquigarrow \outpol{\mathcal{L}';
+\Phi'; \mathcal{R}'}$, which means that given contexts,\sidenote{I abuse the
+notation slightly and omit the computational context $\mathcal{C}$ because it
+remains the same in all the rules.} a resource pattern and a type, synthesise
+logical, constraint and resource contexts.
 
 \begin{figure*}[tp]
     \includegraphics{figures/kernel-res-pat-typing-1}
@@ -444,17 +441,439 @@ the rest are as expected.
         types.}\label{fig:typing-res-pat}
 \end{figure*}
 
-\section{Top-level effectful values and expressions}
+I am going to focus only on the rules for ordered-disjunctions and folds; the
+rest are as expected. For the former, similar to its checking rule, its
+condition or its negation must be proven, after which the corresponding branch
+against is destructed on the same pattern; dual to its introduction by any
+term, it can also be eliminated by any pattern. In the case of
+\kl{under-determined} conditions, only the wildcard or the variable pattern
+will match against the type. For the latter, the pattern only destructs when
+the type is a predicate type and the nested pattern destructs against the
+definition of that predicate (with the arguments substituted).
+
+\section{Effectful top-level expressions}
+
+With pattern matching in hand, I can explain the typing rules for effectful
+top-level expressions (\cref{fig:typing-seq-texpr}). For space, I will
+only talk about \coreinline{let} and \coreinline{run()} expressions, % chktex 36
+the remaining rules are as one would expect presented in the appendix.
+
+Top-level expressions are all checked, but the bound expression in the
+\coreinline{let} is synthesised, so that the type can be used as part of
+destructing the pattern it is bound against to synthesise extra contexts. Those
+contexts are then appended to the existing one to check the body of the
+\coreinline{let}. As for the \coreinline{run()} operator, the rule % chktex 36
+looks up the function type belonging to the label being run, and then checks
+that the spine satisfies that function type. Unlike the previous function call
+operators, control flow does not return from a \coreinline{run()} % chktex 36
+and so the type synthesised is expected to be false, and it checks against any
+type.\sidenote{Need to update the rule.}
+
+\begin{figure*}[tp]
+    \includegraphics{figures/kernel-seq-texpr-typing-1}
+    \begin{minipage}{0.7\textwidth}
+        \includegraphics{figures/kernel-seq-texpr-typing-2}
+    \end{minipage}
+    \begin{minipage}{0.7\textwidth}
+    \includegraphics{figures/kernel-seq-texpr-typing-3}
+    \end{minipage}
+    \caption{Select \kl{Kernel CN} typing rules for effectful top-level
+        expressions.}\label{fig:typing-seq-texpr}
+\end{figure*}
 
 \section{Elaboration}
 
+Part of the \kl{Kernel CN} system also includes a specification for an
+\emph{elaboration} system. At the time it was formalised, \kl{CN}
+required users to manually fold and unfold predicates\sidenote{I should change
+    the formalised grammar to use fold and unfold even though the terms CN used
+we pack and unpack.}, but inferred indices for iterated predicates
+automatically. Now, CN automatically folds and unfolds predicates but requires
+users to state which indices are allowed to be moved in and out of any iterated
+predicates in the context.\sidenote{See note~\ref{sn:inf-statics}.}
+Instantiations for logical quantifiers were and continue to be inferred.
+
+The goal of an elaboration pass over \kl{Kernel CN} is to take as an input a
+well-formed program in \kl{ResCore} which has no explicit resources terms and
+no instantiations for logical quantifiers on function calls, memory actions or
+pointer operations, and to return the same program with the missing pieces
+filled in, such that the above typing rules would pass if the program was
+successfully elaborated, and fail if there was no elaboration possible.
+
+I do not have a proof of these properties and so I cannot claim that the system
+I am about to present meets the above goals. However, it is still useful to
+present it, as it highlights some of the challenges in specifying such a system
+in the first place; it also clarifies a few points about \kl{CN}'s
+implementation (\cref{sec:restriction-branching}).
+
+I shall only present a small slice of the elaboration to highlight the key
+concepts, leaving the rest of the large system to the appendix. The main
+judgement for synthesising a resource term and an instantiation for a logical
+quantifier is $\Phi; \underline{\mathcal{R}} \vdash \mathtt{calc}\; y \;
+\mathtt{using} \mathit{res} \rightsquigarrow \mathtt{bind}\;
+\outpol{res\_bind}\; \mathtt{for} \outpol{res\_term} \; \mathtt{and} \;
+\outpol{oarg} \dashv \outpol{\underline{\mathcal{R}'}}$
+(\cref{fig:elab-res-oarg}). Given a constraint context, a resource context, an
+output parameter, and a resource type, synthesise a series of bindings for an
+output argument and resource term and which will result in the updated resource
+context.
+
+\begin{figure*}
+    \includegraphics{figures/kernel-elab-calc-1}
+    \includegraphics{figures/kernel-elab-calc-2}
+    \includegraphics{figures/kernel-elab-calc-3}
+    \caption{Select \kl{Kernel CN} rules for an elaboration pass which given
+        contexts and a resource type, infers proof terms and logical quantifier
+        instantiations satisfying those types.}\label{fig:elab-res-oarg}
+\end{figure*}
+
+\subsection{Normalised resources and contexts}
+
+One of the key restrictions I place to allow inference to be specified
+relatively simply is that of a \intro{normalised} resource context, signified
+with an underlined $\underline{\mathcal{R}}$. A normalised resource is either
+an (iterated) predicate, or an under-determined conditional resource. I call it
+normalised because (with the appropriate terms and pattern-matching), any
+resource context can be manipulated into such a normal form. This means it is
+simple to specify lookups in the context: if I need $b \astRef{} c$ but the
+context has $\{\; x : a \astRef b , y : c \astRef{} d \}$ then how should I
+proceed? Do I lookup $b$ and $c$ individually? Together? Swapped? How do I
+handle the case where one is a sub-resource of a resource in the context? I
+avoid these questions and simply require that other judgements which use
+resource lookup (all of them) simply preserve normality as an invariant. This
+requires constructing rebindings of existing terms (\cref{fig:res-bind-def}) to
+manipulate the context, carefully retaining `leftover' resources from a lookup.
+
+\begin{marginfigure}
+    \includegraphics{figures/kernel-res-bind-def}
+    \caption{\kl{Kernel CN} definition of resource bindings Note that these are
+        only required in the presence of explicit resource terms, and as such
+        are not necessary in \kl{CN}'s implementation.}\label{fig:res-bind-def}
+\end{marginfigure}
+
+\subsection{Synthesising resource terms and output arguments}
+
+The judgement for synthesising resource terms and output arguments relies on
+the fact that the more flexible \kl{kernel CN} types (\cref{fig:kernel-res})
+have come from a translation (\cref{fig:pred-to-kernel}) of the intentionally
+rigid surface syntax (\cref{sec:monadic-syntax}). Synthesising a term for
+$\mathsf{emp}$ is simple and does not change the context, and the synthesised
+output argument is just a dummy value.
+
+Synthesising an output argument from equality constraints\sidenote{Should
+update the rule to use a single one.} is just taking the right-hand-side of the
+equality. Synthesising a resource term and an output argument for a
+ordered-disjunction requires proving the condition or its negation, and then
+synthesising the appropriate branch. For under-determined conditions, as
+mentioned in~\nameref{subsec:checking-res-terms}, the term must be a variable
+from the resource context whose type matches syntactically, modulo SMT
+provability.
+
+By construction, every existential quantifies over the output argument of
+(iterated) predicates, and so synthesising a resource term and an output
+argument for the \emph{whole} requires synthesising the output argument of the
+(iterated) predicate. That it in turn, may require inferring an index to the
+resource from an iterated version, which is handled by a separate judgement.
+The inferred argument is substituted into the rest of the resource type to
+infer another resource term and the originally requested output argument. The
+synthesised resource term simply pairs and packs the aforementioned two, whilst
+the synthesised output argument is the \emph{second} one (the first one was for
+the existential).
+
+\subsection{Synthesising indices for iterated predicates}
+
+Inferring indexes was possible, and relatively straightforward, because of the
+requirement that every predicate had as its first input argument a pointer $p$,
+and that every iteration over index $i$ of such predicates had as its first
+argument $p +_\mathrm{ptr} i * \mathit{step}$ where $\mathit{step}$ is some
+constant integer. Given these, inferring an index (for either
+\coreinline{break}ing or \emph{glue}ing) reduced to $i = (p' - p) /
+\mathit{step}$ where $p'$ is the pointer in the first argument of the request
+predicate. This is made precise in \cref{fig:res-diff-break}.\sidenote{This
+allows for empty iterated remainder: change it?}  The judgement $\Phi \vdash
+\mathit{ident}{:}\underline{\mathit{res}} \mathbin{{-}?} \mathit{res\_req}
+\rightsquigarrow \outpol{res\_diff}$ says that given constraint context, a
+\kl{normalised} resource,\sidenote{Predicate (iterated) or an under-determined
+ordered-disjunction.} and a request for a predicate (iterated), synthesise the
+`difference' between the two. As shown in \cref{fig:res-diff-def}, the
+`difference' can be of four sorts: no difference, exact match, subset match,
+overlapping match and each requires slightly different handling (continue
+search, stop search, bind remainder and stop search, bind remainder and
+continue search respectively) from the lookup judgement (in appendix).
+
+\begin{marginfigure}
+    \includegraphics{figures/kernel-elab-res-diff-def}
+    \caption{\kl{Kernel CN} definition of a `resource difference'. The second
+        `and' needs to be changed to a `rem'.}\label{fig:res-diff-def}
+\end{marginfigure}
+
+\begin{figure*}[tp]
+    \includegraphics{figures/kernel-elab-diff-1}
+    \includegraphics{figures/kernel-elab-diff-2}
+    \caption{Select \kl{Kernel CN} elaboration rule for inferring indices and
+        synthesising predicate operations.}\label{fig:res-diff-break}
+\end{figure*}
+
+\subsection{Using elaboration judgements}
+
+It is important to note that the `calc' judgement synthesises a checking
+resource term, and so care must be taken for it to be used in a checking
+position. The main place this judgement is used however was for manually
+folding predicates (\cref{fig:elab-fold}), which by accident of \kl{CN}'s
+original implementation was in a synthesis position in the grammar rather than
+a checking one (hence the type annotation on folding resource
+terms,~\cref{subsec:synth-res-term}). The judgement is similar to a
+synthesising typing judgement, but in addition to synthesising a return type,
+it also synthesises a list of resource bindings to manipulate the context, and
+an elaborated expression containing the fold resource term with several type
+annotations to engineer into a synthesis form.
+
+\begin{figure*}[tp]
+    \includegraphics{figures/kernel-elab-fold-1}
+    \includegraphics{figures/kernel-elab-fold-2}
+    \caption{\kl{Kernel CN} elaboration rule for manually folding
+        predicates.}\label{fig:elab-fold}
+\end{figure*}
+
+All other placements of resource terms only require (iterated) predicates, such
+as memory actions like \coreinline{load} (\cref{fig:elab-action}) and spines
+(\cref{fig:elab-spine}) for calls to elaborated C functions and Core
+procedures. In these cases we see that the output argument is used only in
+return types\sidenote{The synthesised return types are used in turn to
+synthesise patterns to maintain the invariant that the resource context is
+always normalised.} but that the resource terms (and the resource bindings
+which precede it to manipulate the context into the right form for typing these
+terms) are the main things elaborated into the program.
+
+\begin{figure*}[tp]
+    \includegraphics{figures/kernel-elab-action-1}
+    \includegraphics{figures/kernel-elab-action-2}
+    \caption{Select \kl{Kernel CN} elaboration rule for memory
+        actions.}\label{fig:elab-action}
+\end{figure*}
+
+\begin{figure*}[tp]
+    \includegraphics{figures/kernel-elab-spine-1}
+    \includegraphics{figures/kernel-elab-spine-2}
+    \caption{\kl{Kernel CN} elaboration rule for instantiating a logical
+        quantifier when elaborating a function call spine.}\label{fig:elab-spine}
+\end{figure*}
 
 \chapter{Kernel CN:\ Proof of soundness}%
 \label{chap:kernel-soundness}
 
-\section{Heaps and their types}\label{sec:heap-types}
+To ensure that \kl{Kernel CN} had served as a useful formalisation for \kl{CN},
+I proved that it was sound. The whole proof is large and in the appendix; In
+this chapter, I will discuss the key definitions, lemmas and proof sketches. I
+will first define an operational semantics for \kl{ResCore}, and then do a
+straightforward, if not slightly tedious, syntactic proof of type
+safety.\sidenote{The continuation-like behaviour of the \coreinline{run()} % chktex 36
+and \coreinline{save()} operators make it more challenging to prove % chktex 36
+soundness in a denotational manner.} This suffices because \kl{ResCore} is a
+first-order language, and all functions and labels are annotated with the
+correct type,  despite the presence of linear types, which usually require
+logical relation methods.
+
+The proof is split up into three smaller proofs: a joint
+progress-and-type-preservation proof for resource term reduction, a progress
+theorem, and a type-preservation theorem.
+
+The definitions and lemmas of note in this proof are (a) the careful definition
+of substitution, and its accompanying substitution lemma (b) the novel
+structure of the heap, which is unusual in that is essentially just separation
+logic predicate (c) the interaction between the resource terms and heaps.
 
 \section{Substitution and contexts}\label{sec:sub-ctxts}
+
+The first three rules for typing substitutions (\cref{fig:soundness-sub}) are
+simple enough: the empty substitution represents the empty context, a
+computational or logical substitution requires the substituted value to be well
+typed, and same for the resource term. However, because resource terms and
+types can depend on the first two, scoping needs to be handled carefully,
+so resource types in a substitution may only mention variables
+either in the contexts on the left of the turnstile, or the computational
+and logical context in the substitution type. This makes it easier to decompose
+substitutions into valid parts, each of which can be applied sequentially but
+still produce a meaningful results (because of the dependent types,
+substitutions may be telescoping, so need not commute). Hence, the
+\textsc{Sub\_Chk\_Concat} rule checks not only the first half $\psi$ of the
+substitution against half the context, but checks the second half
+\emph{substituted} against second half of the context \emph{substituted}, to
+eliminate any mention of variables from $\mathcal{C}_1$ and $\mathcal{L}_1$ in
+$\mathcal{R}'_2$.
+
+\begin{figure*}[tp]
+    \includegraphics{figures/kernel-soundness-sub-1}
+    \includegraphics{figures/kernel-soundness-sub-2}
+    \caption{\kl{Kernel CN} substitution typing}\label{fig:soundness-sub}
+\end{figure*}
+
+In the appendix, I use this definition to prove lemmas such as substitution
+preserves SMT results and that substitutions can be split up (linearity means
+this property is not completely trivial). The key lemma is the substitution
+lemma stated below.
+
+\begin{lemma}[Substitution lemma]
+If $\mathcal{C}'    \mathcal{L}'  ;  \Phi  ;  \mathcal{R}'  \vdash  J$,
+then $ \forall \ \mathcal{C}, \mathcal{L}, \mathcal{R}, \sigma.\
+\left( \mathcal{C}    \mathcal{L}  ;  \sigma  (  \mathrm{ \Phi }  )  ;
+\mathcal{R}  \vdash  \sigma  \Leftarrow  (  \mathcal{C}'  ;  \mathcal{L}'  ;
+\mathcal{R}'  ) \right)  \Rightarrow \allowbreak
+\mathcal{C}    \mathcal{L}  ;  \sigma  (  \Phi  )  ;  \mathcal{R}  \vdash  \sigma ( J ) $.
+\end{lemma}
+
+It says if a judgement holds under some context, and the context is the type of
+a substitution in \emph{another} context, then the judgement is also holds in
+that other context substituted appropriately.
+
+Since $\Phi$\sidenote{I think this slightly off, $\mathcal{R}'$ is scoped the
+same too and should need substituting as well.} is scoped to $\mathcal{C}' ;
+\mathcal{L}'$, we must substitute over it as well as all the usual suspects on
+the right.
+
+Substitution of contexts is defined by substituting over each constraint in
+$\Phi$. As a result, $\sigma (\Phi_1, \Phi_2) = \sigma (\Phi_1) , \sigma (\Phi_2) $,
+and if $\sigma (\Phi) =  \Phi'_1 , \Phi'_2$ then $\exists \Phi_1,  \Phi_2 . \:
+\sigma (\Phi_1, \Phi_2)   = \sigma (\Phi_1), \sigma (\Phi_2)$.
+
+Proof sketch: induction over the typing judgements. There are four parts to
+this proof.
+\begin{itemize}
+\item \textbf{Variable rules.} Repeatedly invert the substitution typing
+    assumption until the variable used in the context appears, and then
+    use the equational properties of substitution and the assumptions
+    to prove the goal.
+\item \textsc{Expl\_Top\_Val\_Done}. $\mathtt{to\_fun}$ commutes with
+    substitution, but leaves terms unchanged, so induction proceeds
+    straightforwardly.
+\item \textbf{Context change rules.} Split up substitutions as required by the
+    restrictions on the resource context. If a rule uses the SMT judgement, use
+    the substitution preserves SMT results lemma.
+\item \textbf{Remaining rules}. Straightforward induction.
+\end{itemize}
+
+\section{Heaps and their types}\label{sec:heap-types}
+
+\begin{theorem}[Progress and type preservation for resource terms]
+For all closed resource terms ($[[ res\_term ]]$) which type check or
+synthesise ($[[ cdot ; cdot ; N ; nR |- res\_term <= res ]]$) and all well-typed
+heaps ($[[ N |- h <= nR ]]$) there exists a resource value ($[[ res\_val ]]$),
+context ($[[ nR' ]]$) and heap ($[[ h' ]]$), such that: the value is
+well-typed ($[[ cdot ; cdot ; N ; nR' |- res\_val <= res ]]$); the heap is
+well-typed ($[[ N |- h' <= nR' ]]$); for all frame-heaps ($[[ f ]]$), the
+resource term reduces to the resource value without affecting the frame-heap
+($[[ < h + f ; res\_term > ||v < h' + f ; res\_val > ]]$).
+\end{theorem}
+
+% The interesting case in the proof of this is folding a predicate; proving this
+% case requires a notion of \emph{footprint} of a resource value: the subheap
+% containing the resources referred to by the value.
+%
+% % \begin{wrapfigure}{r}{.6\textwidth}
+% % \vspace{-\baselineskip}
+% % \small
+% % \centering
+% % \cndrule{
+% %     \cnpremise{ [[ pred eq pred_term ( oarg ) ]] }%
+% %     \cnpremise{ [[ < h + h' ; res_pat = def > ~> < h'' ; subs > ]] }%
+% % }{%
+% %     [[ < h + { pred & def & h' } ; fold ( res_pat ) = pred_term > ~> < h'' ; subs > ]]
+% % }{}%
+% % \\[\baselineskip]
+% % \cndrule{
+% %     \cnpremise{ [[ pred eq pred_term ( oarg ) ]] }%
+% %     \cnpremise{ [[ < h ; res_term > ||v < h1 ; def > ]] }%
+% %     \cnpremise{ [[ footprint_of def in h1 ~> h2 REM h3 ]] }%
+% % }{%
+% %     [[ < h ; fold res_term : pred > ||v < h3 + { pred & def & h2 }  ; pred_term > ]]
+% % }{}%
+% % \vspace{-\baselineskip}
+% % \end{wrapfigure}
+%
+% Let a resource be called \emph{normalised} if it is either a $\mathit{pred}$,
+% ${qpred}$ or an under-determined conditional resource. Let a resource context
+% $\underline{\mathcal{R}}$ be called normalised if it contains only normalised
+% resources.  Even though the grammar of resources is richer, we can, in all the
+% proofs relating to well-typed closed resource terms, are assume the resource
+% context to be normalised. This is fine because of the following lemma: if a
+% well-typed resource term is closed, then the context in which it is well-typed
+% must normalised.
+%
+% Operational semantics for resource term happens to be defined using big-step
+% style; this makes its definition concise and modular, at the cost of making the
+% proof of soundness of resource term reduction more complicated since it requires
+% joint progress and type preservation.
+%
+% Heaps only contain normalised resources. Predicates in heaps are optionally
+% tagged with their ``definition'' $[[ def ]]$  (a resource value of the type of
+% the predicate body) and a sub-heap (of the resources used by the definition).
+% This is to support folding and unfolding predicates in the operational
+% semantics, and to capture the idea that predicate encapsulate their contents
+% until opened.
+%
+% The types of heaps are normalised contexts; the rules for these are
+% straightforward, except the fact a heap with a folded predicate requires there
+% exists a context for which the resource value $[[ def ]]$ and $[[ heap ]]$ is
+% well-typed. This becomes necessary for proving the progress of pattern-matching
+% for the whole of the annotated and let-normalised Core.
+
+\section{Soundness}
+
+\begin{theorem}[Progress for the annotated and let-normalised Core]
+%(uses progress and type preservation for resource terms).
+If a top-level expression ($[[ texpr ]]$) is well-typed
+($[[ cdot ; cdot ; N ; nR |- texpr <= ret ]]$) and all computational patterns
+in it are exhaustive, then either it is a value ($[[ tval ]]$), or it is
+unreachable, or for all heaps ($[[ h ]]$), if the heap is well-typed
+($[[ N |- h <= nR ]]$) then there exists another heap ($[[ h' ]]$) and expression
+($[[ texpr' ]]$) which is stepped to ($[[ < h ; texpr > --> < h' ; texpr' > ]]$)
+in the operational semantics.
+\end{theorem}
+Proof: Explain it.
+
+% The configuration for the operational
+% semantics is a pair of a heap and an annotated and let-normalised Core program.
+% The assumption that all computational patterns are exhaustive is justified
+% because they are generated by Cerberus. As one might expect, proving progress
+% requires well-typed patterns successfully produce substitutions. However, this
+% complicated by two things, the solution to which requires the introduction of a
+% relation on SMT terms and resource types, $[[ N |- res ~ res' ]]$ (to be read
+% ``under constraints $[[ N ]]$, $[[ res ]]$ is related to $[[ res' ]]$'').
+%
+% The first is that the constraint term generated when typing a computational
+% pattern (this is required to record, in the constraint context, which branch the
+% type system is assuming it is in) is not exactly equal to the values it can
+% match in the operational semantics (nor would we want it to be: the pattern
+% $[[ Cons ( x1 , x2 ) ]]$ should match the value
+% $[[ Cons ( pval1 , Cons ( pval21 , Nil base\_type ( ) ) ) ]]$). Hence, we
+% must weaken the notion of equality on types to $[[ ~ ]]$ relatedness, which
+% links the the two, so that during the proof can substitute the constraint term
+% $[[ x1 cons x2 ]]$ at the type-level, and maintain a link to the corresponding
+% value. The second is that the conditions of related conditional resource must
+% remain SMT-equivalent (with reference to a constraint context), so that
+% pattern-match typing and resource term typing are consistent.
+
+\begin{theorem}[Type preservation for the annotated and let-normalised Core]
+For all closed and well-typed top-level expressions
+($[[ cdot ; cdot ; N ; nR |- texpr <= ret ]]$),
+well typed heaps ($[[ N |- h <= nR ]]$),
+frame-heaps ($[[ f ]]$),
+new heaps ($[[ heap ]]$),
+and new top-level expressions ($[[ texpr' ]]$),
+which are connected by a step in the operational semantics
+($[[ < h + f ; texpr > -->  < heap ; texpr' > ]]$),
+if all top-level functions are annotated correctly,
+there exists a constraint context ($[[ N' ]]$),
+sub-heap ($[[ h' ]]$),
+and resource context ($[[ nR' ]]$),
+such that the constraint context is $[[ N ]]$ extended,
+the frame is unaffected ($[[ heap ]] = [[ h' + f ]]$),
+the sub-heap is well-typed ($[[ N' |- h' <= nR' ]]$),
+and the top-level expression too
+($[[ cdot ; cdot ; N' ; nR' |- texpr' <= ret ]]$).
+\end{theorem}
+Proof: fill this in.
+
 
 \chapter{Informing implementation discussions}\label{chap:inform-impl}
 
