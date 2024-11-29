@@ -527,22 +527,23 @@ context.
         instantiations satisfying those types.}\label{fig:elab-res-oarg}
 \end{figure*}
 
-\subsection{Normalised resources and contexts}
+\subsection{Normalised resource contexts}\label{sec:norm-ctxt-res}
 
 One of the key restrictions I place to allow inference to be specified
 relatively simply is that of a \intro{normalised} resource context, signified
-with an underlined $\underline{\mathcal{R}}$. A normalised resource is either
-an (iterated) predicate, or an under-determined conditional resource. I call it
-normalised because (with the appropriate terms and pattern-matching), any
-resource context can be manipulated into such a normal form. This means it is
-simple to specify lookups in the context: if I need $b \astRef{} c$ but the
-context has $\{\; x : a \astRef b , y : c \astRef{} d \}$ then how should I
-proceed? Do I lookup $b$ and $c$ individually? Together? Swapped? How do I
-handle the case where one is a sub-resource of a resource in the context? I
-avoid these questions and simply require that other judgements which use
-resource lookup (all of them) simply preserve normality as an invariant. This
-requires constructing rebindings of existing terms (\cref{fig:res-bind-def}) to
-manipulate the context, carefully retaining `leftover' resources from a lookup.
+with an underlined $\underline{\mathcal{R}}$, containing only normalised
+resources types. A normalised resource is either an (iterated) predicate, or an
+under-determined conditional resource. I call it normalised because (with the
+appropriate terms and pattern-matching), any resource context can be
+manipulated into such a normal form. This means it is simple to specify lookups
+in the context: if I need $b \astRef{} c$ but the context has $\{\; x : a
+\astRef b , y : c \astRef{} d \}$ then how should I proceed? Do I lookup $b$
+and $c$ individually? Together? Swapped? How do I handle the case where one is
+a sub-resource of a resource in the context? I avoid these questions and simply
+require that other judgements which use resource lookup (all of them) simply
+preserve normality as an invariant. This requires constructing rebindings of
+existing terms (\cref{fig:res-bind-def}) to manipulate the context, carefully
+retaining `leftover' resources from a lookup.
 
 \begin{marginfigure}
     \includegraphics{figures/kernel-res-bind-def}
@@ -580,7 +581,7 @@ synthesised resource term simply pairs and packs the aforementioned two, whilst
 the synthesised output argument is the \emph{second} one (the first one was for
 the existential).
 
-\subsection{Synthesising indices for iterated predicates}
+\subsection{Synthesising indices for iterated predicates}\label{subsec:synth-indices}
 
 Inferring indexes was possible, and relatively straightforward, because of the
 requirement that every predicate had as its first input argument a pointer $p$,
@@ -619,7 +620,7 @@ continue search respectively) from the lookup judgement (in appendix).
 It is important to note that the `calc' judgement synthesises a checking
 resource term, and so care must be taken for it to be used in a checking
 position. The main place this judgement is used however was for manually
-folding predicates (\cref{fig:elab-fold}), which by accident of \kl{CN}'s
+folding predicates (\cref{fig:kernel-elab-fold}), which by accident of \kl{CN}'s
 original implementation was in a synthesis position in the grammar rather than
 a checking one (hence the type annotation on folding resource
 terms,~\cref{subsec:synth-res-term}). The judgement is similar to a
@@ -632,7 +633,7 @@ annotations to engineer into a synthesis form.
     \includegraphics{figures/kernel-elab-fold-1}
     \includegraphics{figures/kernel-elab-fold-2}
     \caption{\kl{Kernel CN} elaboration rule for manually folding
-        predicates.}\label{fig:elab-fold}
+        predicates.}\label{fig:kernel-elab-fold}
 \end{figure*}
 
 All other placements of resource terms only require (iterated) predicates, such
@@ -720,24 +721,24 @@ then $ \forall \ \mathcal{C}, \mathcal{L}, \mathcal{R}, \sigma.\
 \mathcal{R}  \vdash  \sigma  \Leftarrow  (  \mathcal{C}'  ;  \mathcal{L}'  ;
 \mathcal{R}'  ) \right)  \Rightarrow \allowbreak
 \mathcal{C}    \mathcal{L}  ;  \sigma  (  \Phi  )  ;  \mathcal{R}  \vdash  \sigma ( J ) $.
-\end{lemma}
-
-It says if a judgement holds under some context, and the context is the type of
+\\[\baselineskip]
+If a judgement holds under some context, and the context is the type of
 a substitution in \emph{another} context, then the judgement is also holds in
 that other context substituted appropriately.
-
-Since $\Phi$\sidenote{I think this slightly off, $\mathcal{R}'$ is scoped the
-same too and should need substituting as well.} is scoped to $\mathcal{C}' ;
+\\[\baselineskip]
+Since $\Phi$ is scoped to $\mathcal{C}' ;
 \mathcal{L}'$, we must substitute over it as well as all the usual suspects on
-the right.
-
+the right.\sidenote{I think this slightly off, $\mathcal{R}'$ is scoped the
+same too and should need substituting as well.}
+\\[\baselineskip]
 Substitution of contexts is defined by substituting over each constraint in
 $\Phi$. As a result, $\sigma (\Phi_1, \Phi_2) = \sigma (\Phi_1) , \sigma (\Phi_2) $,
 and if $\sigma (\Phi) =  \Phi'_1 , \Phi'_2$ then $\exists \Phi_1,  \Phi_2 . \:
 \sigma (\Phi_1, \Phi_2)   = \sigma (\Phi_1), \sigma (\Phi_2)$.
+\end{lemma}
 
-Proof sketch: induction over the typing judgements. There are four parts to
-this proof.
+\paragraph{Proof sketch.} Full proof in the appendix. Induction over the typing
+judgements. There are four parts to this proof.
 \begin{itemize}
 \item \textbf{Variable rules.} Repeatedly invert the substitution typing
     assumption until the variable used in the context appears, and then
@@ -754,6 +755,78 @@ this proof.
 
 \section{Heaps and their types}\label{sec:heap-types}
 
+Heaps in the operational semantics are, slightly unusually, tree-shaped
+collections of predicates (\cref{fig:kernel-heap-def}). The leaves of the tree
+are the built-in ownership and allocation predicates; the branches of the heap
+are predicates tagged with their definition (a resource value of the type of
+the predicate body) and a sub-heap (of the resources used by the definition).
+
+\begin{marginfigure}
+    \includegraphics{figures/kernel-dynamics-heap-1}
+    \includegraphics{figures/kernel-dynamics-heap-2}
+    \includegraphics{figures/kernel-dynamics-heap-3}
+    \caption{\kl{ResCore} dynamics heap definition.}\label{fig:kernel-heap-def}
+\end{marginfigure}
+
+Resource \emph{values} are the subset of resource terms which cannot reduce
+further (\cref{fig:kernel-res-val-def}). This is to capture the idea that
+predicates encapsulate their contents until opened.
+
+\begin{marginfigure}
+    \includegraphics{figures/kernel-dynamics-res-val}
+    \caption{\kl{ResCore} resource \emph{values} (subset of terms).}\label{fig:kernel-res-val-def}
+\end{marginfigure}
+
+This means that, in the dynamic semantics, folding (and via pattern matching,
+unfolding) predicates \emph{affect the shape of the heap}
+(\cref{fig:kernel-fold-unfold}). In the unfold rule, the nested definition is
+used to destruct the rest of the pattern into a substitution, and the heap is
+extended with the sub-heap associated with those values.
+
+\begin{marginfigure}
+    \includegraphics{figures/kernel-dynamics-unfold}
+    \includegraphics{figures/kernel-dynamics-fold}
+    \caption{\kl{ResCore} dynamics for folding and unfolding
+        predicates.}\label{fig:kernel-fold-unfold}
+\end{marginfigure}
+
+In the fold rule, the inverse happens, which requires splitting a heap into the
+\emph{footprint} of some resource values, and the remainder
+(\cref{fig:kernel-footprint}). I define the footprint of a resource value as
+the sub-heap containing the (iterated) predicates referred to in said value.
+
+\begin{figure*}
+    \includegraphics{figures/kernel-dynamics-footprint-1}
+    \includegraphics{figures/kernel-dynamics-footprint-2}
+    \caption{\kl{ResCore} dynamics definition of a footprint of a resource
+        value in a heap.}\label{fig:kernel-footprint}
+\end{figure*}
+
+I defined both the pattern matching and the resource term reduction dynamic
+semantics in a big-step style; this makes the definition of both more concise,
+at the cost of intertwining the usually separate proofs of progress and type
+preservations for resource term reduction.
+
+The final definition required for the proof is that of the type of a heap. The
+type of a heap is a \kl{normalised resource} context
+(\cref{sec:norm-ctxt-res}); the rules for these are straightforward
+(\cref{fig:kernel-heap-typing}), except the fact a heap with a folded predicate
+requires there exists a context for which the resource value $[[ def ]]$ and
+$[[ heap ]]$ is well-typed. This becomes necessary for proving the progress of
+pattern-matching for the whole of the annotated and let-normalised Core.
+
+\begin{figure*}
+    \includegraphics{figures/kernel-heap-typing}
+    \caption{Select typing rules for heaps.}\label{fig:kernel-heap-typing}
+\end{figure*}
+
+As with elaboration, using normalised resource contexts does not restrict the
+generality of progress and type preservations theorems.This is because of the
+following lemma: if a well-typed resource term is closed, then the context in
+which it is well-typed must normalised (formal definition and proof in the
+appendix). We now have all the ingredients to state and sketch a proof for the
+progress and type preservation for resource terms.
+
 \begin{theorem}[Progress and type preservation for resource terms]
 For all closed resource terms ($[[ res\_term ]]$) which type check or
 synthesise ($[[ cdot ; cdot ; N ; nR |- res\_term <= res ]]$) and all well-typed
@@ -765,62 +838,40 @@ resource term reduces to the resource value without affecting the frame-heap
 ($[[ < h + f ; res\_term > ||v < h' + f ; res\_val > ]]$).
 \end{theorem}
 
-% The interesting case in the proof of this is folding a predicate; proving this
-% case requires a notion of \emph{footprint} of a resource value: the subheap
-% containing the resources referred to by the value.
-%
-% % \begin{wrapfigure}{r}{.6\textwidth}
-% % \vspace{-\baselineskip}
-% % \small
-% % \centering
-% % \cndrule{
-% %     \cnpremise{ [[ pred eq pred_term ( oarg ) ]] }%
-% %     \cnpremise{ [[ < h + h' ; res_pat = def > ~> < h'' ; subs > ]] }%
-% % }{%
-% %     [[ < h + { pred & def & h' } ; fold ( res_pat ) = pred_term > ~> < h'' ; subs > ]]
-% % }{}%
-% % \\[\baselineskip]
-% % \cndrule{
-% %     \cnpremise{ [[ pred eq pred_term ( oarg ) ]] }%
-% %     \cnpremise{ [[ < h ; res_term > ||v < h1 ; def > ]] }%
-% %     \cnpremise{ [[ footprint_of def in h1 ~> h2 REM h3 ]] }%
-% % }{%
-% %     [[ < h ; fold res_term : pred > ||v < h3 + { pred & def & h2 }  ; pred_term > ]]
-% % }{}%
-% % \vspace{-\baselineskip}
-% % \end{wrapfigure}
-%
-% Let a resource be called \emph{normalised} if it is either a $\mathit{pred}$,
-% ${qpred}$ or an under-determined conditional resource. Let a resource context
-% $\underline{\mathcal{R}}$ be called normalised if it contains only normalised
-% resources.  Even though the grammar of resources is richer, we can, in all the
-% proofs relating to well-typed closed resource terms, are assume the resource
-% context to be normalised. This is fine because of the following lemma: if a
-% well-typed resource term is closed, then the context in which it is well-typed
-% must normalised.
-%
-% Operational semantics for resource term happens to be defined using big-step
-% style; this makes its definition concise and modular, at the cost of making the
-% proof of soundness of resource term reduction more complicated since it requires
-% joint progress and type preservation.
-%
-% Heaps only contain normalised resources. Predicates in heaps are optionally
-% tagged with their ``definition'' $[[ def ]]$  (a resource value of the type of
-% the predicate body) and a sub-heap (of the resources used by the definition).
-% This is to support folding and unfolding predicates in the operational
-% semantics, and to capture the idea that predicate encapsulate their contents
-% until opened.
-%
-% The types of heaps are normalised contexts; the rules for these are
-% straightforward, except the fact a heap with a folded predicate requires there
-% exists a context for which the resource value $[[ def ]]$ and $[[ heap ]]$ is
-% well-typed. This becomes necessary for proving the progress of pattern-matching
-% for the whole of the annotated and let-normalised Core.
+\paragraph{Proof sketch.} Full proof in the appendix. Induction on the resource
+term typing assumption. The type dictates the value and context, the latter of
+which dictates the shape of the heap; all of this relies heavily on a few
+inversion lemmas. The existential is necessary later for proving well-typed
+values pattern pattern match successfully, where it is used as a witness when
+proving heap typing for folded predicates. The frame heap $f$ is necessary later
+for
 
 \section{Soundness}
 
+The configuration for the operational semantics is a pair of a heap and a
+ResCore program. As one might expect, proving progress requires well-typed
+patterns successfully produce substitutions. I assume that all computational
+patterns are exhaustive, because if they are not, this is a bug in Cerberus.
+Proving well-typed patterns successfully produce substitutions is complicated
+by two things, the solution to which requires the introduction of a relation on
+SMT terms and resource types, $[[ N |- res \~ res' ]]$ (to be read ``under
+constraints $[[ N ]]$, $[[ res ]]$ is related to $[[ res' ]]$'').
+
+The first is that the constraint term generated when typing a computational
+pattern (this is required to record, in the constraint context, which branch
+the type system is assuming it is in) is not exactly equal to the values it can
+match in the operational semantics (nor would we want it to be: the pattern $[[
+Cons ( x1 , x2 ) ]]$ should match the value $[[ Cons ( pval1 , Cons ( pval21 ,
+Nil base\_type ( ) ) ) ]]$). Hence, we must weaken the notion of equality on
+types to $[[ \~ ]]$ relatedness, which links the two, so that during the proof,
+we can substitute the constraint term $[[ x1 cons x2 ]]$ at the type-level, and
+maintain a link to the corresponding value.
+
+The second is that the conditions of related ordered-disjunctions must remain
+SMT-equivalent (with reference to a constraint context), so that pattern-match
+typing and resource term typing are consistent.
+
 \begin{theorem}[Progress for the annotated and let-normalised Core]
-%(uses progress and type preservation for resource terms).
 If a top-level expression ($[[ texpr ]]$) is well-typed
 ($[[ cdot ; cdot ; N ; nR |- texpr <= ret ]]$) and all computational patterns
 in it are exhaustive, then either it is a value ($[[ tval ]]$), or it is
@@ -829,29 +880,33 @@ unreachable, or for all heaps ($[[ h ]]$), if the heap is well-typed
 ($[[ texpr' ]]$) which is stepped to ($[[ < h ; texpr > --> < h' ; texpr' > ]]$)
 in the operational semantics.
 \end{theorem}
-Proof: Explain it.
+\paragraph{Proof sketch.} Induction over the typing assumption. Full proof in
+appendix.
 
-% The configuration for the operational
-% semantics is a pair of a heap and an annotated and let-normalised Core program.
-% The assumption that all computational patterns are exhaustive is justified
-% because they are generated by Cerberus. As one might expect, proving progress
-% requires well-typed patterns successfully produce substitutions. However, this
-% complicated by two things, the solution to which requires the introduction of a
-% relation on SMT terms and resource types, $[[ N |- res ~ res' ]]$ (to be read
-% ``under constraints $[[ N ]]$, $[[ res ]]$ is related to $[[ res' ]]$'').
-%
-% The first is that the constraint term generated when typing a computational
-% pattern (this is required to record, in the constraint context, which branch the
-% type system is assuming it is in) is not exactly equal to the values it can
-% match in the operational semantics (nor would we want it to be: the pattern
-% $[[ Cons ( x1 , x2 ) ]]$ should match the value
-% $[[ Cons ( pval1 , Cons ( pval21 , Nil base\_type ( ) ) ) ]]$). Hence, we
-% must weaken the notion of equality on types to $[[ ~ ]]$ relatedness, which
-% links the the two, so that during the proof can substitute the constraint term
-% $[[ x1 cons x2 ]]$ at the type-level, and maintain a link to the corresponding
-% value. The second is that the conditions of related conditional resource must
-% remain SMT-equivalent (with reference to a constraint context), so that
-% pattern-match typing and resource term typing are consistent.
+Moving on to type preservation, a few things are noteworthy about its proof.
+
+First is that a frame-heap has to be explicitly passed around.  Whilst this is
+inconvenient, it becomes necessary in the \textsc{Expl\_Top\_Seq\_LetT} case.
+
+Second is in the lemma~\nameref{subsec:wt_values_pat_match}.
+There are two substitutions at play here. As an example, let
+the value being matched be $[[ Cons ( Unit , Nil unit ( ) ) , ret\_terms ]]$ and
+the pattern be $[[ comp Cons ( x1 : unit , x2 : list unit ) , ret\_pat ]]$.
+For the return type $[[ sigma y : list unit . ret ]]$, the type-level
+substitution will be $[[ Cons ( x1 , x2 ) / y ( ret )]]$.  However, at the
+term-level, the substitution will be $[[ [ Unit / x1 , Nil unit ( ) / x2 ] ]]$.
+\emph{Bridging this difference is the main reason for the $[[ ~ ]]$ relation}
+(the other is the use of $[[ to\_fun ret ]]$).  \emph{The type-level substitution
+is open}, and only makes sense with respect to the variables introduced in the
+pattern-match.
+
+Lastly, we gather constraints throughout the proof, since these are accumulated
+by the typing rules, during pattern-matching, case and if. Given the constraint
+context is always well-formed
+% VIP related (w.r.t.~to the initial logical variable context $[[ L0 ]] = [[ allocv : id\_map ]]$), this means that after substituting in the
+allocation history, all the constraints involve no variables
+% VIP related (hence the substitutions in \textsc{Heap\_Ty} and \textsc{Alloc\_Ty})
+, and so will be trivially decidable.
 
 \begin{theorem}[Type preservation for the annotated and let-normalised Core]
 For all closed and well-typed top-level expressions
@@ -872,15 +927,16 @@ the sub-heap is well-typed ($[[ N' |- h' <= nR' ]]$),
 and the top-level expression too
 ($[[ cdot ; cdot ; N' ; nR' |- texpr' <= ret ]]$).
 \end{theorem}
-Proof: fill this in.
 
+\paragraph{Proof sketch.} Induction over the typing assumption. Full proof in
+appendix.
 
 \chapter{Informing implementation discussions}\label{chap:inform-impl}
 
 In the early stages, \kl{CN} was implemented by Christopher Pulte and Thomas
 Sewell, based on sketches by Neel Krishnaswami. I started formalising
 \kl{Kernel CN} much later, and benefited by the clarity of having an
-implementations and implementers which and whom I could refer to in moments of
+implementations and implementers to which and whom I could refer in moments of
 confusion.
 
 However, this mode of development means that there were \emph{many} design
@@ -892,8 +948,8 @@ performance and inference suffer greatly, rather than ones based on a strong
 formal and holistic consideration of the constructs and interactions at play.
 
 As such, there are several restrictions in the implementation, which with the
-benefit of hindsight and formalism, are completely unnecessary, but persist as
-technical debt. This chapter list a few of these, and explains how the
+benefit of hindsight and formalisation, are completely unnecessary, but persist
+as technical debt. This chapter list a few of these, and explains how the
 formalisation brings much needed clarity to many questions around the
 implementation.
 
@@ -902,28 +958,158 @@ implementation.
 
 \section{Supporting partially initialised reads of structs/unions}
 
-This is not asked for, and actually seems to add a non-trivial amount of noise
-and book-keeping to the formalisation. This suggests that the feature is not
-worth implementing in CN unless a strong use-case comes up.
+So far in working on verifying the buddy allocator, writing a tutorial and
+working with our industry partners, no code has needed to ability to read a
+partially (including completely) uninitialised struct/union, and any valid code
+which does this would have to simply ignore that result. The \kl{UB} only comes
+when one tries to read an uninitialised primitive type member of the
+struct/union from that earlier read.
 
-\section{Auto unfolding scheme for logical functions}
+Because we can decompose ownership of a struct into its fields, and track the
+initialised status of those individually (perhaps verbosely for large structs),
+it does not seems like we lose much in expressiveness in forbidding this. The
+only valid code that would be additionally rejected if this was forbidden in
+the type system would be a reads a partially initialised struct followed by a
+call to a function which reads only the initialised fields. And in such
+instances, it seems likely that the code could be refactored to only pass the
+initialised fields, or a pointer with the appropriate precondition to only read
+the initialised fields.
+
+Although we wish to verify C code as is, because programmers need to change the
+``code'' to write annotations anyway, such small, rare and easy to explain
+refactors are a worthwhile trade-off if it makes the design and implementation
+of \kl{CN} simpler. The book-keeping for tracking initialised status in
+symbolic terms, rather than in a flag the name of a predicate, adds a
+non-trivial amount of noise to formalisation and would do the same in the
+implementation.
+
+And when we think about the potential origins of allowing such behaviour.
+Perhaps such an allowance simplifies data-flow analysis inside a compiler, so
+that it may safely ignore the values resulting from a load of partially
+uninitialised loads of a of struct, so long as none of the fields are accessed.
+It seems hard to think of a case for this allowance motivate by performance or
+programmer ergonomics, and so the experience from formalising this suggests
+that the current implementation of \kl{CN}, which does not allow loads from
+partially (including completely) uninitialised structs, can and will remain
+expressive enough for all of its use cases.
+
+\section{Auto unfolding scheme for logical functions}\label{sec:auto-unfold-functions}
+
 \url{https://github.com/rems-project/cerberus/issues/483}
+
+One the strange parts of working with \kl{CN} is the predicate definitions are
+automatically unfolded but not logical functions, even though both may be
+recursive. As such there is separate and cumbersome annotation to manually
+unfold a function.
+
+The way the implementation determines whether or not to unfold a predicate is
+to always unfold it if there is no top-level if, or to check if the condition
+or its negation can be proven before unfolding the corresponding branch.
+
+However, with the benefit of the formalisation, we can see that those are
+actually two orthogonal questions, which happen to be tied together because of
+historical reasons. In the formalisation (\cref{fig:typing-res-pat}), including
+the elaboration rules (\cref{fig:kernel-elab-fold}),  we can see that (un)folding % chktex 36
+predicates does not require calling the SMT solver, but determining which
+branch of an ordered-disjunction to check does.
+
+So not only does this suggest loosening the restrictions on branching in
+predicate definitions (\cref{sec:restriction-branching}), it also suggests that
+the general approach of ``unfold until you reach a condition for which neither
+it nor its negation can be proven'' would work for logical functions too.
+
+It is important to note that with automatic constraint-based unfolding, it is
+possible for users to write constraints (including via control flow) which make
+\kl{CN} diverge, and it is not clear at this stage checks on the definitions
+of predicates would prevent this particular failure
+mode.\sidenote{\url{https://github.com/rems-project/cerberus/issues/451}}
 
 \section{Higher-order resources}
-\url{https://github.com/rems-project/cerberus/issues/483}
+\url{https://github.com/rems-project/cerberus/issues/363}
+
+If we want \kl{CN} to be used in real-world settings, it must support
+concurrency. We can use the formalisation to reflect on what changes
+would be needed to support this
+
+First, fractional permissions would be useful to enable sharing. After that,
+the issue becomes what level of support would be useful and worth implementing
+based on the size of the change.
+
+For example, hard-coding support for locks as an extra kind of resource would
+be relatively straightforward (adding more terms and operations to the
+grammar), but adding support for higher-order resources in general, so that
+locks can be defined rather than an built-in feature, would be substantial
+change to the resource type definitions and rules.
 
 \section{Restrictions on branching}\label{sec:restriction-branching}
 \url{https://github.com/rems-project/cerberus/issues/483}
 \url{https://github.com/rems-project/cerberus/issues/266}
 
+As mentioned in~\nameref{sec:auto-unfold-functions}, the formalisation
+separates out two features (unfolding definitions, and selecting a branch of an
+ordered-disjunction) which are tied together in the implementation. One of
+the other places this shows up is in the restriction on the definition of
+predicates that they must either have no ordered-disjunctions, or they
+must have only one, placed first at the top-level.
+
+With the formalisation, not only can I meaningfully state that a more general
+scheme for resources which supports nested ordered-disjunctions in any place in
+a predicate definition, I can also shed light on how to change the
+implementation to allow for this.
+
+This is because I can argue that the surface syntactic restriction and the
+internal representation of predicate definition are actually two
+\emph{orthogonal} issues. The key insight here is that this feature does not
+add any extra expressive power, it simply unbundles to features which are
+orthogonal in the formalisation. Indeed, users can work around the restriction
+by manually defining an extra auxiliary predicate each time they wish to use an
+ordered-disjunction any where which is not first and at the top-level, it is just
+clunky.
+
+This orthogonality extends to implementing fixes for this issue too
+\textemdash{} I can sketch out two ways of lifting this restriction in the
+implementation and offer those options, with their own trade-offs, to other
+developers and users to decide which, if any, is preferable.
+
 \section{Removing the pointer first restriction on predicates}\label{sec:rm-ptr-first}
 \url{https://github.com/rems-project/cerberus/issues/303}
 
+Another awkward restriction in working with \kl{CN} is that the first argument
+to a predicate must always be a pointer. This is usually fine because it would
+be strange to speak of ownership without a pointer, but the pointer is derived
+from elsewhere (a fixed base pointer, but a given index), or sometimes the
+pointer is in a record and that is the easiest thing to pass in.
+
+With the formalisation, we can estimate the impact of removing this restriction
+and see that the main thing we would lose is not in terms of typing fewer
+programs, but in terms of synthesising indices for manipulating iterated
+predicates (\cref{subsec:synth-indices}). Given that \kl{CN} has already moved
+away from inferring those,\sidenote{See note~\ref{sn:new-inf-statics}} we can
+conclude that removing this restriction will not diminish the automation or the
+expressive power of \kl{CN}.\sidenote{It will not increase expressiveness
+either, because users currently can and do just use a dummy parameter.}
+
 \section{Unifying the syntax of functions, predicates and specifications}
+
 \url{https://github.com/rems-project/cerberus/issues/304}
 
+Syntax is part of the user-interface of \kl{CN}, and as such it is subject to
+strong constraints, strong scrutiny and strong opinions.
+
+Currently, logical (ghost) functions and predicates. This is with good reason,
+the pure parts are shipped off to an SMT solver, but the heap parts are the
+domain of the resource reasoning. However, \kl{CN} also enforces this
+distinction syntactically, which is a perfectly valid choice, but it trades-off
+concision and occasional confusion when those worlds need to mix, for clarity
+in separating when the two do not.\sidenote{\url{https://github.com/rems-project/cerberus/issues/288}}
+
+Another equally valid choice would be to unify the two syntaxes and find some
+other way of enforcing the necessary distinction between the two worlds.
+Monads!
 
 \chapter{An alternative presentation}\label{chap:kernel-alternative}
+
+Maybe a short pointer to section 5 and 6 in the CN paper?
 
 Perhaps a short chapter about MiniCN\@? This could demonstrate the strong
 advantages of defining a type system over a first-order functional language,
