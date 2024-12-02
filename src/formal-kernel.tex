@@ -113,7 +113,7 @@ more succinct, and allows for opening predicates in more cases.
 Predicates ${pred}$ and iterated predicates ${qpred}$ are simple ${pred\_term}$
 and ${qpred\_term}$ with output arguments, as seen in~\cref{fig:kernel-qpred}.
 I will explain why I factored out ${pred\_term}$ and ${qpred\_term}$ in
-\nameref{subsec:res-terms}. For now, I will draw attention to the fact that
+\nameref{sec:res-terms}. For now, I will draw attention to the fact that
 where there is a distinction between \cninline{Owned} and \cninline{Block} in
 the surface syntax, the formalisation tracks whether or not a points-to has
 been initialised in a symbolic \emph{record} field ${.init}$, whose type
@@ -311,7 +311,7 @@ expression include only C function calls and Core procedure calls.
 As shown in \cref{fig:kernel-is-expr}, \kl{indeterminately} sequenced
 expressions include annotated top-level values, memory operations, and explicit
 terms to pack or unpack predicates (I will explain explicit resource terms in
-\cref{subsec:res-terms}).
+\cref{sec:res-terms}).
 
 \begin{marginfigure}
     \includegraphics{figures/kernel-is-expr-1}
@@ -338,7 +338,7 @@ recursion is achieved via the $\mathit{texpr}$ production.
     \caption{Top-level expressions in ResCore.}\label{fig:kernel-texpr}
 \end{marginfigure}
 
-\section{Resource terms}\label{subsec:res-terms}
+\section{Resource terms}\label{sec:res-terms}
 
 One of the key initial motivations for formalising (and ultimately
 implementing) a smaller kernel for \kl{CN} was to have a stronger safety net
@@ -362,7 +362,7 @@ proof-assistant (\nameref{sec:trans-res-lemmas}).
 
 The key concept which makes this possible is to include explicit (linearly
 typed) terms for both resources \emph{and operations on them} in the grammar of
-\kl{ResCore}.\sidenote{Hence the name.} Though this is not a new
+\kl{ResCore}. Though this is not a new
 concept,~\sidecite{xi1999dependent,cui2005ats,ahmed2007l3} its application in a
 separation logic settings appears to be so, because these sorts of
 manipulations are usually done manually in an interactive proof-assistant and
@@ -401,12 +401,12 @@ them can be rephrased naturally as algorithms for \emph{elaborating} a program
 \emph{without} resource annotations into one \emph{with} them.
 
 Another advantage of having explicit resource terms in the grammar of
-\kl{ResCore} is that this allows to make the heaps in the dynamic
-semantics more abstract, whilst allowing them to be transformed precisely
-according to the reduction rules of the resource terms. This additional
-modularity, whilst a bit confusing at this stage, will be seen to pay off later
-when discussing the proof of soundness for the CN-VIP memory object model
-(\cref{sec:cn-vip-soundness}).
+\kl{ResCore} is that this lets the heaps in the dynamic semantics be
+represented more abstractly, whilst still precisely controlling their
+transformations according to the reduction rules of the resource terms. This
+additional modularity, whilst a bit confusing at this stage, will be seen to
+pay off later when discussing the proof of soundness for the CN-VIP memory
+object model (\cref{sec:cn-vip-soundness}).
 
 \cref{fig:res-terms} shows the resource terms of \kl{ResCore}. There are
 \emph{several} side conditions for each of the operations the terms represent,
@@ -443,15 +443,18 @@ $\mathsf{break}$ operation indexes an iterated predicate to move ownership out
 of it, whereas the $\mathsf{glue}$ operation does the inverse. The
 $\mathsf{inj}$ operation introduces a singleton (non-empty) iterated
 predicate,\sidenote{I chose a singleton introduction form rather than an empty
-one to enforce the invariant that all iterated predicates in the typing
-context are guaranteed to be non-empty. I do not believe this makes a
-material difference to soundness, but it appeals to my aesthetics and
-reduces redundant lookups in the resource context, and avoids the need of
-inventing default values for empty arrays in the SMT problem.} Lastly, the
-$\mathsf{chop}$ operation splits an iterated predicate along a given index
-guard $\mathit{iguard}$. As mentioned in \nameref{sec:monadic-syntax}, to
-preserve decidability by avoiding inferring quantified constraints, the type
-system does not support merging arrays.
+    one to enforce the invariant that all iterated predicates in the typing
+    context are guaranteed to be non-empty. I do not believe this makes a
+    material difference to soundness, but it reduces redundant lookups in the
+    resource context, and avoids the need of inventing default values for empty
+    arrays in the SMT problem. However, due to the mismatch between finite
+    arrays in C, and total maps in SMT theories, the difference does seem to
+    affect usability in the implementation
+(\href{https://github.com/rems-project/cerberus/issues/729}{issue \#729}).}
+Lastly, the $\mathsf{chop}$ operation splits an iterated predicate along a
+given index guard $\mathit{iguard}$. As mentioned in
+\nameref{sec:monadic-syntax}, to preserve decidability by avoiding inferring
+quantified constraints, the type system does not support merging arrays.
 
 \begin{figure*}[tbp]
     \centering
