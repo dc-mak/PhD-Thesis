@@ -92,7 +92,7 @@ within the formalised and implemented type systems.
         examples.
 \end{itemize}
 
-\chapter{Memory Object Models, explained}\label{chap:mem-model-explained}
+\chapter{Memory object models, explained}\label{chap:mem-model-explained}
 
 \margintoc%
 
@@ -120,7 +120,7 @@ Despite the fact that there is no data flowing between \cinline{k} and
 \cinline{i}, the mere fact that the address of \cinline{j} was taken (and
 ``exposed'' via its assignment to an integer \cinline{k}) is enough to make the
 compiler wary that the pointer \cinline{p} could alias \cinline{j} and thus
-disable constant propagation..\sidenote{This example does have \kl{UB} though
+disable constant propagation.\sidenote{This example does have \kl{UB} though
 because of (demonic) allocation address non-determinism.}
 
 \begin{marginfigure}
@@ -129,30 +129,34 @@ because of (demonic) allocation address non-determinism.}
     \caption{Example pointer\_from\_integer\_1ie.c.}\label{fig:mem-model-ptr-from-int}
 \end{marginfigure}
 
-The rules justifying this are set out in the \kl{PNVI-ae-udi} memory model,
+\clearpage%
+\section{PNVI-ae-udi}
+
+The rules justifying the above are set out in the \kl{PNVI-ae-udi} memory model,
 upon which VIP is defined. Though the name is clunky and not euphonious, it is
 descriptive as each part defines a particular choice to focus on.
 
-\subsection{PNVI\@: provenance not tracked via integers}
+\subsection{Provenance not tracked via integers}
 
 For the purposes of defining the dynamic semantics of the memory object model,
 each pointer can be thought of as an \emph{pair} of an address $a$ and an
-allocation ID $@i$. The address is simply what programmers might be familiar
-with as `the pointer', which, unlike the allocation ID, can may inspected or
+provenance $\pi$. The address is simply what programmers might be familiar
+with as `the pointer', which, unlike the provenance, may be inspected or
 manipulated directly from the C program at runtime. From the perspective of
-separation logic verification, the allocation ID can be thought of the ghost
+separation logic verification, the provenance can be thought of the ghost
 part of a pointer, but it does play an integral part of the model of memory I
 will outline next.
 
-The allocation ID is allocated fresh globally\sidenote{PNVI-ae-udi does not
-support concurrency.} for every new allocation, and thus guaranteed to be
-unique. An \intro{allocation history} $\mathit{A}$ is a partial map indexed by
-allocation IDs, which tracks the size of allocations, base address and whether
-or not they are live. The pointer resulting from successfully creating a fresh
-allocation is a pair of base address and the allocation ID\@. When an
-allocation is destroyed, the entry is not removed, but merely updated to record
-the allocation as dead. The allocation history includes other information too,
-which I will ignore because it is not relevant to the key concepts.
+Allocation IDs (non-$@\mathsf{empty}$ provenances) are allocated fresh
+globally\sidenote{PNVI-ae-udi does not support concurrency.} for every new
+allocation, and thus guaranteed to be unique. An \intro{allocation history}
+$\mathit{A}$ is a partial map indexed by allocation IDs, which tracks the size
+of allocations, base address and whether or not they are live. The pointer
+resulting from successfully creating a fresh allocation is a pair of base
+address and the allocation ID\@. When an allocation is destroyed, the entry is
+not removed, but merely updated to record the allocation as dead. The
+allocation history includes other information too, which I will ignore because
+it is not relevant to the key concepts.
 
 The \kl{allocation history} merely tracks information about the allocation as a
 whole, to track values of what resides in those allocations, \kl{PNVI-ae-udi}
@@ -161,10 +165,10 @@ from addresses to bytes, but triples of a (potentially empty) provenance and a
 concrete 8-bit byte or $\mathsf{unspec}$ value for uninitialised or padding
 bytes.\sidenote{There is an additional component, an optional \intro{pointer
     index} (an integer $j$ or $\mathsf{none}$) which stores which part of a
-    pointer a byte came from. This is only relevant if either (a) pointer
-    values can be stored unaligned (b) pointer types have different sizes or
-    (c) provenance is tracked via integers (PVI) and bytes of those pointers
-have been overwritten.}\label{sn:ignore-ptr-index}
+    pointer a byte came from. This is only relevant if either (a) pointer are
+    not uniform, i.e.\ different pointers types can have different sizes or (b)
+    provenance is tracked via integers (PVI) and bytes of those pointers have
+    been overwritten.}\label{sn:ignore-ptr-index}
 
 Reading from and writing to memory is done via the \coreinline{load} and
 \coreinline{store} actions, at a specific C type, and these actions handle
@@ -392,9 +396,10 @@ tracked in the (linear) resource context, not the (intuitionistic) constraint
 context.
 
 So the choice is between: use annotations to thread pointer disambiguation in
-pre- and postcondtions, or use the \cinline{copy_alloc_id} annotation to force
-eager disambiguation and sidestep the associated implementation complexity.
-I chose the latter.
+pre- and postconditions, or or change the code to pass in a pointer with the
+correct provenance to use with \cinline{copy_alloc_id}, forcing eager
+disambiguation and sidestepping the associated implementation complexity. I
+chose the latter.
 
 \subsection{Exposure tracking}
 
@@ -408,10 +413,327 @@ casts can happen (a) in the presence of intervening operations on the integer
 value and (b) more importantly, \emph{without} a pointer to the specific
 allocation we care about being available at runtime.
 
-Are there any idioms which require these two constraints though? And what would
-be the associated implementation cost?
+That being said, it is difficult to think of any idioms which require both of
+these constraints to be true. One example is XOR linked-lists, where each node
+stores the bitwise exclusive-or of the address of its previous and next
+pointers, allowing a list to be traversed in forwards and reverse direction,
+whilst saving the space for an additional pointer per node, and ``opinions
+differ as to whether that idiom matters for modern
+code''\sidecite{gustedt2021provenance}.
 
-Don't forget to mention the byte-level provenance and memcpy!
+Unlike provenance disambiguation, exposure is an intuitionistic fact:
+forgetting an exposure it would lead to fewer valid programs, but not
+unsoundness. But still, this means that to be useful the trade-off here is
+similar: use annotations to thread allocation exposure in pre- and
+postconditions, or (if possible) change the code to pass in a pointer with the
+correct provenance to use with \cinline{copy_alloc_id}. \kl{VIP} rules
+already require tracking allocation liveness linearly, and so in principle,
+adding exposure to that is not a very big change.
+
+That being said, it is not clear to me how much this exposure tracking reflects
+the analysis inside compilers, especially across functions. Address exposure
+seems to be a syntactic over-approximation to pointer capture and escape
+analyses.\sidenote{\url{https://jonasdevlieghere.com/post/escape-analysis-capture-tracking-in-llvm/}}
+It seems unlikely to me that to me that if a call to a function exposed an
+allocation, but did so without leaking any information about the exposed
+address to the caller, that analyses in the caller would add that allocation to
+the list of potential aliases resulting from an integer-to-pointer cast.
+
+So whilst tracking allocation address exposure would be a reasonable choice,
+especially given an important implementation advantage (which I will discuss
+next), and would likely be sound with respect to \kl{PNVI-ae-udi}, I ultimately
+decided that (a) it is not clear it is worth the additional complexity and (b)
+it can be added later straightforwardly if the need arose.
+
+\subsection{Provenance in integers and bytes}
+
+It is a little ironic that after eschewing provenance via integers (\kl{PVI}),
+that \kl{VIP} reinstates them albeit in a very limited form (i.e.\ not preserve
+via integer operations to retain a simple theory of integers for optimisation).
+
+From the view of a formalisation, an extra constructor or optional field on
+each integer values does not make too much of a difference, since all the rules
+handle this uniformly and sensibly. But, as I hinted at earlier, this comes
+with a disadvantage for implementations above SMT solvers which, at first
+glance, looks like it could be sidestepped by tracking exposure instead.
+
+The concern with enriching the SMT representation of integers (currently
+represented with plain bit vectors) is that it may lead to a slow down of
+\emph{all} integer related problems handled by the SMT solver. This presents us
+with four options.
+\begin{itemize}
+    \item \textbf{Drop support for round-trip casts.} Use only
+        \cinline{copy_alloc_id} instead, at the cost of being able
+        to verify fewer programs.
+    \item \textbf{Add an extra constructor (or optional field) to the SMT
+        representation of all integer types.} Support all \kl{VIP} verifiable
+        programs, at the cost of the cost of complicating specification of
+        and slowing verification for code which did not use this feature.
+    \item \textbf{Restrict the ability to perform round-trip casts to new C
+        types.} Require some modification to \kl{VIP} programs, but
+        make any specification complication or performance penalty opt-in. This
+        makes the user-visible memory object model more complex.\sidenote{For
+            example, users opt-in with a
+            \cinline[breaklines]{typedef uintptr_t rt_uintptr [[roundtrip]];}
+            so the C program treats them identically, but \kl{CN} enforces a
+            subtyping relation, so \cninline{Owned<uintptr_t> <:
+            Owned<rt_uintptr>}.}\label{sn:optin-typedef-subtype}
+    \item \textbf{Associate the provenance to \emph{a location} rather than a
+        value, and track it in the resource system.} Such a resource would need
+        to be duplicated, moved and destroyed in sync with the \emph{value} it
+        is meant to be tracking via all memory actions.
+    \item \textbf{Track allocation address exposure.} So that the provenance
+        of a cast pointer can be recovered from ambient exposed allocations
+        rather than the value itself.
+\end{itemize}
+
+If round-trip casts were the only issue related to provenance in integers, then
+the situation would be relatively simple to handle. However, two of the
+features of \kl{VIP} and \kl{PNVI-ae-udi} which does not get discussed very
+much, but are quite important, is pointer bytes and
+\cinline{memcpy}/\cinline{memcmp}.
+
+In C, it is possible to take convert any pointer to an (\cinline{unsigned})
+\cinline{char*} value and manipulate its byte representation. For example,
+given a particular platform\sidenote{Endianness is an implementation-defined
+property.} programmers can store information in the lower or upper bits of
+pointers\sidenote{By exploiting platform pointer alignment and addressable
+memory constraints respectively.} by writing to bytes of a pointer directly
+\emph{without reading them first and thus exposing (parts of) their allocation
+address}. So long as at least one byte remains of the original pointer, the
+provenance is preserved.
+
+A byte-level view of pointers also supports type-punning pointers via union
+fields, since the representation bytes could be written at the pointer type,
+and reinterpreted at another.
+
+Relatedly, programmers can also \cinline{memcpy} pointers and use the copied
+pointers in the destination \emph{with the provenance carried over}, or
+\cinline{memcmp} pointers, though the semantics of this is to ignore
+provenances and compare addresses only. A further complication arises from the
+fact that if a programmer writes their own version of \cinline{memcpy}, then
+that must also preserve provenance, and that calls to such code may validly be
+replaced by a call to the library \cinline{memcpy} as a compiler
+optimisation.\sidenote{\cinline{memcpy} does not expose allocations, but a
+    user-defined one will, so justifying this optimisation is still an open
+    question~\cite{gustedt2021provenance}. Additionally, the value of padding
+    bits are unspecified (§6.2.6.2\#3).}
+
+In both \kl{VIP} and \kl{PNVI-ae-udi}, all these use-cases are supported by
+having the abstract bytes in the abstract memory $M$ store not just the
+byte value (or \coreinline{unspecified}) but also a provenance. Pointer bytes
+can be individually overwritten, but so long as one is untouched, the original
+provenance can be recovered. Unions with a pointer field can be supported
+similarly. Library \cinline{memcpy} simply copies over the abstract bytes to a
+new location, and user-defined ones.
+
+This leads to even more options.
+\begin{itemize}
+    \item \textbf{Drop support for byte-level provenance.} This would prevent
+        manipulating pointer bytes, pointer type-punning in unions and
+        user-defined \cinline{memcpy} from retaining provenance. It would
+        also complicate the resource management required to have
+        \cinline{memcpy} support copying provenances.\sidenote{Ideally,
+            \cinline{memcpy} has a simple specification dealing with iterated
+            ownerships of bytes, and leave handling structured values and
+            resources (and the accompanying polymorphism) to other parts of the
+            type system.}
+    \item \textbf{Add an extra constructor (or optional field) to the SMT
+        representation of characters}. Support all aforementioned idioms, at
+        the cost of complicating specifications of and slowing verification for
+        code which did not use this feature.
+    \item \textbf{Restrict the ability to have provenance in bytes to a new C
+        type.} Require some modification to \kl{VIP} programs, but make any
+        performance penalty opt-in. This makes the user-visible memory object
+        model more complex.\sidenote{See note~\ref{sn:optin-typedef-subtype}
+        for a potential outline.}
+    \item \textbf{Associate the provenance to \emph{a location} rather than a
+        value, and track it in the resource system.} Such a resource would need
+        to be duplicated, moved and destroyed in sync with the \emph{value} it
+        is meant to be tracking via all memory actions.
+\end{itemize}
+
+There is another possibility, which we could entertain if we also allowed
+exposure tracking:
+\begin{itemize}
+    \item \textbf{Prevent byte-level provenance features, \emph{unless} the
+        allocation has already been exposed.} If the type system did
+        track exposure, then the provenance could be recovered from ambient
+        exposed allocations rather than from the bytes themselves.
+\end{itemize}
+
+The options for supporting round-trip casts are very similar to the options for
+supporting byte-level provenance, even though on the surface, both features are
+in principle, there to support very different low-level C idioms. This confluence
+happens because:
+\begin{itemize}
+    \item In \kl{VIP} (unlike in \kl{PNVI-ae-udi}), round-trip casts are made
+        possible by byte-level provenance (to preserve the $\mathit{Loc}$
+        constructor through loads and stores).
+    \item Both idioms seem to reflect a \emph{more general round-trip} property
+        of casting (part of) a pointer to another representation and back.
+    \item Both \cinline{char} and \cinline{uintptr_t} are \emph{integer} types in
+        C, just of different widths. So it might be strange to a programmer if
+        one supported round-trips but another did not.\sidenote{Fun fact: if
+            its address is small enough, it is perfectly valid to cast a whole
+            pointer into an \cinline{unsigned short} or \cinline{unsigned char}.}
+\end{itemize}
+
+In the face of these options, I first implemented \kl{VIP} \emph{without}
+support for provenance in integers and bytes (in any form). This was
+informative because it showed that the lack of provenance in bytes was much
+more restrictive (on the \kl{VIP}/\kl{PNVI-ae-udi}) tests cases than the lack
+of provenance in integers.
+
+Considering this, and the options outlined above, I chose to restrict the
+ability the features (supporting round-trip casts, and having provenance in
+bytes) to different, new C types. Aside from making any complexity and
+performance penalties opt-in, it also follows the convention set out in C++17
+with the introduction \mintinline{cpp}{std::byte}, which is specifically
+intended to be used to access byte representation of objects. For simplicity, I
+chose to defer any implementation of subtyping resources automatically until
+later.
+
+\subsection{Non-deterministic pointer equality}
+
+The official presentation of the \kl{VIP} memory model uses a strict variant of
+the pointer-equality memory operation, which only looks at the addresses to
+determine whether two pointers are considered equal.
+
+Disappointingly, things are not quite so simple in actual C
+(\cref{fig:nd-ptr-eq}). Because of provenance analysis, the compiler can
+\emph{sometimes, but not always} detect when two pointers either side of an
+equality test must have different provenances, and so optimise the result to be
+false.
+
+\begin{marginfigure}
+    \cfile[breaklines]{code/provenance_equality_global_yx.c}
+    \caption{An example C program which prints identical addresses but
+        in some cases, a false result for pointer equality.}\label{fig:nd-ptr-eq}
+\end{marginfigure}
+
+Therefore, when the pointers either side of an \cinline{==} have equal
+addresses but distinct provenances are distinct, the result will be
+non-deterministic true or false (\cref{fig:nd-ptr-eq}).
+
+\begin{figure*}
+    \includegraphics{figures/mem-model-pnvi-nd-ptr-eq}
+    \caption{The \kl{PNVI-ae-udi} rule for pointer equality. When addresses
+        are equal but provenances are distinct (captured by the fourth case),
+        the result of \cinline{==} operator will be non-deterministically either
+        true or false.}\label{fig:nd-ptr-eq}
+\end{figure*}
+
+This introduces a small syntactic inconsistency between the specification
+language and C:\ in \kl{CN}'s specification language, \cninline{==} means
+equality of pointers (address and provenance), but in C, \cinline{==} has
+this strange non-deterministic behaviour. I sidestepped this issue by issuing a
+warning whenever users write \cninline{==} in their specifications, pointing
+them towards more informative (but verbose) named functions such as
+\cninline{ptr_eq}, \cninline{addr_eq}, and \cninline{is_null}.
+
+Unfortunately, adapting \kl{VIP} to handle the non-deterministic
+pointer-equality rule is not clear. The issue can be seen with checking
+$(@\mathsf{empty}, a) == (@\mathsf{empty}, a)$ for some concrete address $a$.
+In \kl{VIP}, this will result in \emph{true}, because of the third case for
+equal provenances. However, the relation given in the proof of soundness says
+that any provenance $\pi$ in \kl{PNVI-ae-udi} may be related ($\pi \approx_w
+@\mathsf{empty}$) to an empty one in \kl{VIP} (since \kl{VIP} has more \kl{UB}
+than \kl{PNVI-ae-udi}). We can then choose distinct provenances, and then see
+that the pointer-equality operation would end up in the non-deterministic case.
+An example is shown in \cref{fig:vip-non-det-ptr-eq-problem}.
+Since we can use this result to affect control flow and future memory action
+and operation traces in a program, the relation between the result values and
+subsequent states needs to be rethought.
+
+\begin{marginfigure}
+    \cfile[breaklines]{code/vip-non-det-ptr-eq-problem.c}
+    \caption{Example code which exhibits non-deterministic behaviour under
+        \kl{PNVI-ae-udi}, but deterministic behaviour under
+        \kl{VIP}.}\label{fig:vip-non-det-ptr-eq-problem}
+\end{marginfigure}
+
+\subsection{Allocation history}
+
+The allocation history in \kl{VIP} and \kl{PNVI-ae-udi} is mostly append-only
+(new allocation are added, but old allocations are never removed) with the
+exception that when an allocation is \coreinline{kill}ed, a boolean flag in its
+entry (which is marked true when it is created) is set to false.
+
+An allocation being live is important for some pointer operations, such as
+relational ones, which require the operand pointers to be in bounds of the same
+live allocation for the operation to not have \kl{UB}. However, for other
+operations (such as member shifting), it must still satisfy a bounds check, but
+whether or not an allocation is live is irrelevant. There is no operation which
+requires knowing that an allocation is dead.
+
+So bounds checks do not require live allocation, some operations require
+live allocations but do not change that, and \coreinline{kill} requires
+a live allocation but changes this.
+
+As such, in \kl{CN}, I chose to represent the bounds check information as
+\emph{constraints}, whereas I chose to represent liveness itself as an
+\emph{allocation token} \cninline{Alloc}. Though it does take a pointer as an
+argument, unlike \cninline{Block}, \cninline{Owned} and user-defined
+predicates, the lookup in the resource context looks only at the allocation ID
+(the non-empty provenance), not the address of the pointer. Similar to pointer
+disjointness facts based on \coreinline{Owned} and \coreinline{Block}, multiple
+allocation tokens in the resource context imply that the allocation IDs
+associated with them are disjoint.
+
+\subsection{SMT representations}
+
+One of the tricky aspects of adapting the memory object models to \kl{CN} is
+that the models are defined over \emph{concrete} values and executions, whereas
+\kl{CN} is fundamentally computing over \emph{symbolic} values.
+
+Of course, I could force the symbolic values to be concrete, but the advantage
+of using symbolic values (for example, for addresses) is that this gives us
+(demonic) allocation address non-determinism for free (whilst cheerfully
+sacrificing the ability to say anything about the layout of local or global
+variables, without the use of lemmas).
+
+If not addresses, should provenances be concrete? The main thing that the
+memory object model does with provenances is check whether they are equal,
+unequal (for non-deterministic pointer equality) and use the
+non-$@\mathsf{empty}$ ones (allocation IDs) as keys to look up in the
+allocation history.
+
+The $@\mathsf{empty}$ provenance must be represented with a special
+constructor, because casting from any integer to a pointer in \kl{VIP} must
+result in \emph{the same} empty provenance. Using an \emph{unconstrained}
+variable would not work because in the pointer equality rule you need to be
+able to test whether two provenances \emph{are distinct} (for the
+non-deterministic case), but in every other case you need to be able to test
+whether two provenances \emph{are equal}. If I did not support
+non-deterministic pointer equality, then I could use a (single, global)
+unconstrained variable.
+
+And also unspecified values in padding bytes!
+Representation of null pointer \cninline{ptr_eq(x, NULL) || !addr_eq(x, NULL)}. % chktex 26 chktex 36
+
+Total functions, partial operations (array/member shift).
+
+\subsection{Summary}
+
+\begin{itemize}
+    \item \textbf{All pointers on a platform are the same size.} This
+        allows me to drop the pointer index component of the abstract bytes
+        from the abstract memory (see note~\ref{sn:ignore-ptr-index}).
+    \item \textbf{All provenances must be disambiguated immediately.} This
+        requires using \cinline{copy_alloc_id}, but saves tracking
+        disambiguation in the resource system (and sidesteps wondering what
+        adjacent addresses look like in a symbolic evaluation setting).
+    \item \textbf{Allocation address exposure is not tracked.} This prevents
+        verifying code like XOR-lists, and complicates support for round-trip
+        casts and limits options for byte-level provenance. If needed,
+        implementing such tracking should be a straightforward extension in the
+        future.
+    \item \textbf{Initially, no support for provenances in integers or bytes
+        (or a resource polymorphic \cinline{memcpy}).}
+        This prevents a substantial amount of the \kl{VIP}/\kl{PNVI-ae-udi}
+        test-suite from passing without additional annotations.
+\end{itemize}
 
 \begin{figure}[h]
     \centering
