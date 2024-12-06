@@ -229,7 +229,7 @@ is checking, and is straightforward since the instantiation is part of the
 term, so it can be substituted into the type, which in turn can check the
 $\mathit{res\_term}$ it carries.
 
-As I mentioned earlier (\cref{subsec:res-terms}), \emph{any} resource term can
+As I mentioned earlier (\cref{sec:res-terms}), \emph{any} resource term can
 introduce an ordered-disjunction, and so any resource term can be checked by
 it. Furthermore, at most \emph{one} of the branches may be checked, and which
 one depends on whether the condition or its negation can be proven. In the
@@ -258,7 +258,7 @@ structurally equal, modulo SMT provability (\cref{fig:typing-res-term-check}).
         terms.}\label{fig:typing-res-term-switch}
 \end{marginfigure}
 
-\section{Memory actions and pointer operations}
+\section{Memory actions and pointer operations}\label{sec:kernel-mem-action-ops}
 
 As with resource terms, memory actions require all the contexts (computational,
 logical, constraint and resource). The judgement $\mathcal{C} ; \mathcal{L} ;
@@ -390,16 +390,16 @@ $\mathcal{C}; \mathcal{L}; \Phi \vdash \mathit{ret\_pat} {:} \mathit{ret}
 which says that given the contexts, a return pattern and a return type,
 synthesise computational, logical, constraint and resource contexts.
 
-Pattern matching for return types is complicated by the fact that they are
-dependent on computational and logical (ghost) variables, and complicated
-further by the fact that the computational values have their own patterns
-(\cref{fig:typing-tpval-tpexpr}).
+Pattern matching for return types (\cref{fig:typing-ret-pat}) is complicated by
+the fact that they are dependent on computational and logical (ghost)
+variables, and complicated further by the fact that the computational values
+have their own patterns (\cref{fig:typing-tpval-tpexpr}).
 
 \begin{figure*}[tp]
     \includegraphics{figures/kernel-ret-pat-typing-1}
     \includegraphics{figures/kernel-ret-pat-typing-2}
     \caption{\kl{Kernel CN} typing rules for pattern matching at return
-        types.}\label{fig:typing-res-pat}
+        types.}\label{fig:typing-ret-pat}
 \end{figure*}
 
 If both the head of the type and pattern are computational, the
@@ -427,7 +427,7 @@ matching for resources similarly synthesises combines contexts from both the
 resource type and pattern, and the rest of the return type and patterns.
 
 This brings us on to how resource patterns synthesise contexts
-(\cref{fig:typing-resp-pat}). The judgement for this is $\mathcal{L}; \Phi
+(\cref{fig:typing-res-pat}). The judgement for this is $\mathcal{L}; \Phi
 \vdash \mathit{res\_pat}{:}\mathit{res} \rightsquigarrow \outpol{\mathcal{L}';
 \Phi'; \mathcal{R}'}$, which means that given contexts,\sidenote{I abuse the
 notation slightly and omit the computational context $\mathcal{C}$ because it
@@ -481,7 +481,7 @@ type.\sidenote{Need to update the rule.}
         expressions.}\label{fig:typing-seq-texpr}
 \end{figure*}
 
-\section{Elaboration}
+\section{Elaboration}\label{sec:elaboration}
 
 Part of the \kl{Kernel CN} system also includes a specification for an
 \emph{elaboration} system. At the time it was formalised, \kl{CN}
@@ -490,7 +490,7 @@ required users to manually fold and unfold predicates\sidenote{I should change
 we pack and unpack.}, but inferred indices for iterated predicates
 automatically. Now, CN automatically folds and unfolds predicates but requires
 users to state which indices are allowed to be moved in and out of any iterated
-predicates in the context.\sidenote{See note~\ref{sn:inf-statics}.}
+predicates in the context.\sidenote{See note~\ref{sn:new-inf-statics}.}
 Instantiations for logical quantifiers were and continue to be inferred.
 
 The goal of an elaboration pass over \kl{Kernel CN} is to take as an input a
@@ -737,8 +737,9 @@ and if $\sigma (\Phi) =  \Phi'_1 , \Phi'_2$ then $\exists \Phi_1,  \Phi_2 . \:
 \sigma (\Phi_1, \Phi_2)   = \sigma (\Phi_1), \sigma (\Phi_2)$.
 \end{lemma}
 
-\paragraph{Proof sketch.} Full proof in the appendix. Induction over the typing
-judgements. There are four parts to this proof.
+\begin{proof}
+Full proof in the appendix. Induction over the typing judgements. There are
+four parts to this proof.
 \begin{itemize}
 \item \textbf{Variable rules.} Repeatedly invert the substitution typing
     assumption until the variable used in the context appears, and then
@@ -752,6 +753,7 @@ judgements. There are four parts to this proof.
     the substitution preserves SMT results lemma.
 \item \textbf{Remaining rules}. Straightforward induction.
 \end{itemize}
+\end{proof}
 
 \section{Heaps and their types}\label{sec:heap-types}
 
@@ -838,13 +840,15 @@ resource term reduces to the resource value without affecting the frame-heap
 ($[[ < h + f ; res\_term > ||v < h' + f ; res\_val > ]]$).
 \end{theorem}
 
-\paragraph{Proof sketch.} Full proof in the appendix. Induction on the resource
+\begin{proof}
+Full proof in the appendix. Induction on the resource
 term typing assumption. The type dictates the value and context, the latter of
 which dictates the shape of the heap; all of this relies heavily on a few
 inversion lemmas. The existential is necessary later for proving well-typed
 values pattern pattern match successfully, where it is used as a witness when
 proving heap typing for folded predicates. The frame heap $f$ is necessary later
 for proving type preservation for \coreinline{let}-expressions.
+\end{proof}
 
 \section{Soundness}
 
@@ -880,15 +884,17 @@ unreachable, or for all heaps ($[[ h ]]$), if the heap is well-typed
 ($[[ texpr' ]]$) which is stepped to ($[[ < h ; texpr > --> < h' ; texpr' > ]]$)
 in the operational semantics.
 \end{theorem}
-\paragraph{Proof sketch.} Induction over the typing assumption. Full proof in
-appendix.
+
+\begin{proof}
+Induction over the typing assumption. Full proof in appendix.
+\end{proof}
 
 Moving on to type preservation, a few things are noteworthy about its proof.
 
 First is that a frame-heap has to be explicitly passed around.  Whilst this is
 inconvenient, it becomes necessary in the \textsc{Expl\_Top\_Seq\_LetT} case.
 
-Second is in the lemma~\nameref{subsec:wt_values_pat_match}.
+Second is in the lemma ``Well-typed values pattern match successfully''.%\nameref{subsec:wt_values_pat_match}.
 There are two substitutions at play here. As an example, let
 the value being matched be $[[ Cons ( Unit , Nil unit ( ) ) , ret\_terms ]]$ and
 the pattern be $[[ comp Cons ( x1 : unit , x2 : list unit ) , ret\_pat ]]$.
@@ -928,5 +934,6 @@ and the top-level expression too
 ($[[ cdot ; cdot ; N' ; nR' |- texpr' <= ret ]]$).
 \end{theorem}
 
-\paragraph{Proof sketch.} Induction over the typing assumption. Full proof in
-appendix.
+\begin{proof}
+Induction over the typing assumption. Full proof in appendix.
+\end{proof}

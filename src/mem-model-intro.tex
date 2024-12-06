@@ -605,7 +605,7 @@ the pointer-equality memory operation, which only looks at the addresses to
 determine whether two pointers are considered equal.
 
 Disappointingly, things are not quite so simple in actual C
-(\cref{fig:nd-ptr-eq}). Because of provenance analysis, the compiler can
+(\cref{fig:nd-ptr-eq-example}). Because of provenance analysis, the compiler can
 \emph{sometimes, but not always} detect when two pointers either side of an
 equality test must have different provenances, and so optimise the result to be
 false.
@@ -613,7 +613,7 @@ false.
 \begin{marginfigure}
     \cfile[breaklines]{code/provenance_equality_global_yx.c}
     \caption{An example C program which prints identical addresses but
-        in some cases, a false result for pointer equality.}\label{fig:nd-ptr-eq}
+        in some cases, a false result for pointer equality.}\label{fig:nd-ptr-eq-example}
 \end{marginfigure}
 
 Therefore, when the pointers either side of an \cinline{==} have equal
@@ -686,7 +686,7 @@ This presents us with the classic ``pick two of three'' situation:
         pointer equality, meaning no non-determinism.
 \end{itemize}
 
-\subsection{Allocation history}
+\subsection{Allocation history}\label{subsec:alloc-history}
 
 The allocation history in \kl{VIP} and \kl{PNVI-ae-udi} is mostly append-only
 (new allocation are added, but old allocations are never removed) with the
@@ -706,13 +706,33 @@ a live allocation but changes this.
 
 As such, in \kl{CN}, I chose to represent the bounds check information as
 \emph{constraints}, whereas I chose to represent liveness itself as an
-\emph{allocation token} \cninline{Alloc}. Though it does take a pointer as an
-argument, unlike \cninline{Block}, \cninline{Owned} and user-defined
-predicates, the lookup in the resource context looks only at the allocation ID
-(the non-empty provenance), not the address of the pointer. Similar to pointer
-disjointness facts based on \coreinline{Owned} and \coreinline{Block}, multiple
-allocation tokens in the resource context imply that the allocation IDs
-associated with them are disjoint.
+\emph{allocation token} \cninline{Alloc}.
+
+For the former, the type system and programmers need a way to refer to the
+allocation history. It can be thought of as an implicit logical parameter
+passed into and out of every function, and so I model it with an initially
+unconstrained SMT variable. As \kl{CN} type-checks a \kl{ResCore} program, it
+will learn constraints (either from creating new allocations, or from
+postconditions of called functions, or derive them from allocation tokens in
+the resource context) on the allocation history.
+
+For the latter, though \cninline{Alloc} does take a pointer as an argument,
+unlike \cninline{Block}, \cninline{Owned} and user-defined predicates, the
+lookup in the resource context looks only at the allocation ID (the non-empty
+provenance), not the address of the pointer.\sidenote{I need to update the
+typing rules to reflect this.}
+
+Unlike pointer disjointness facts based on \coreinline{Owned} and
+\coreinline{Block}, I do not derive allocation or ID disjointness facts from
+multiple allocation tokens, since there has been no visible need for it
+yet.\sidenote{The only rule which needs to know whether to provenances are
+\emph{not} equal is the non-deterministic case in the pointer equality rule,
+and a relatively simple, if not slightly confusing annotation,
+\cninline[breaklines]{ptr_eq(p,q) || !addr_eq(p,q)} can rule that% chktex 26 chktex 36
+out.}\label{sn:ptr-eq-annotation} Dead allocations may perfectly well overlap
+with live ones, though their allocation IDs will still be distinct, so tracking
+all forms of disjointness accurately would add significant complexity for
+little benefit.
 
 \subsection{SMT representations}
 
@@ -748,24 +768,21 @@ proceed in each of the three situations.
     \item \textbf{Drop $@\mathsf{empty}$ provenances.} This requires
         no representation of this construct.
     \item \textbf{Drop totality for pointer equality.}
-        Construct would best be represented with to a distinct
-        value/constructor. The value needs to be visible to programmers,
-        so that can be forbidden in a precondition before using pointer
-        equality. A single/global unconstrained variable could also work, but
-        would be fragile: it might accidentally get constrained to another
-        provenance by the programmer, when this would in fact be inconsistent.
+        A single/global unconstrained variable, with explicit constraints that
+        non-empty provenances are not equal to it, would work.
     \item \textbf{Drop non-determinism for pointer equality.}
-        A single/global unconstrained variable would work. With this option,
-        all rules are monotonic with respect to $@\mathsf{empty}$ provenances,
-        i.e.\ any rule which uses an empty provenance will end up failing its
-        bounds checks and thus signalling \kl{UB}.
+        A single/global unconstrained variable would work. However, since with
+        this option, all rules are monotonic with respect to $@\mathsf{empty}$
+        provenances, i.e.\ any rule which uses an empty provenance will end up
+        failing its bounds checks and thus signalling \kl{UB}, there is no need
+        to add non-empty provenance constraints to the context.
 \end{itemize}
 
 \paragraph{Non-empty provenances (allocation IDs).}%
 As for non-$@\mathsf{empty}$ provenances (allocation IDs), it is simpler to
 leave them symbolic rather than try assign concrete values to them: two pointer
 arguments to a function can validly have the same or different provenances, and
-so it is best to leave the user to write constraints about the (dis)equality of % chktex 36
+so it is best to leave the user to write constraints about the (in)equality of % chktex 36
 relevant provenances.
 
 \paragraph{Omitting function pointers.}%
@@ -792,20 +809,24 @@ the only information that the true branch of a pointer equality test gives the
 programmer is that the addresses are equal; it says nothing about the
 provenances. Conversely, with non-deterministic pointer equality, the false
 branch does \emph{not} guarantee that the addresses are distinct: they could be
-equal but have distinct provenances. To allow themselves to deduce \cinline{p}
-equals \cinline{q} from testing \cinline{p == q}, a programmer needs the
-constraint that \cninline{ptr_eq(p, q) || !addr_eq(p,  q)}.% chktex 26 chktex 36
+equal but have distinct provenances.
 
-This constraint excludes the counter-intuitive (and non-deterministic) case
-of the provenances being distinct but the addresses equal.\sidenote{Stated
-    another way, it can be seen as a promise that neither of the pointers are
-    one-past pointers, nor out-of-bounds as the result of a permissive
-    array/member shift, nor have an empty provenance as a result of a cast from
-an integer.}
-Whilst \kl{CN} aims to minimise obvious annotations, this one seems difficult
-to avoid due the inherited complexity of pointer equality tests. However,
-whilst programmers do check two pointers for equality often, they check
-whether or not pointers are \cinline{NULL} far more. If \cinline{NULL} is
+As I mentioned in \nameref{subsec:alloc-history}, to deduce \cinline{p} equals
+\cinline{q} from testing \cinline{p == q}, a programmer needs the slightly
+confusing annotation that \cninline{ptr_eq(p,q) || !addr_eq(p,q)}.% chktex 26 chktex 36
+This constraint excludes the counter-intuitive (and non-deterministic) case of
+the provenances being distinct but the addresses equal.\sidenote{Stated another
+way, it can be seen as a promise that neither of the pointers are one-past
+pointers, nor out-of-bounds as the result of a permissive array/member shift,
+nor have an empty provenance as a result of a cast from an integer. A
+sufficient (but not necessary) condition for this is that both pointers are
+strictly within bounds of their allocations.} Whilst \kl{CN} aims to minimise
+obvious annotations, this one seems difficult to avoid due the
+inherited complexity of pointer equality tests, and the complexity with
+tracking allocation and ID disjointness in the type system.
+
+However, whilst programmers do check two pointers for equality often, they
+check whether or not pointers are \cinline{NULL} far more. If \cinline{NULL} is
 represented by $(@\mathsf{empty}, 0)$, then (in the presence of permissive
 array/member offsets, since the other cases cannot apply) such checks would
 need constraints too. A distinct \coreinline{null} constructor removes the need
@@ -906,6 +927,9 @@ standard idiom of using an unconstrained variable as a default value.
     \item \textbf{Allocation liveness (and disjointness) tracked in
         resources.} This leverages the existing resource context set up
         to manage allocations correctly and check if pointers are live.
+    \item \textbf{Allocation and ID disjointness is not inferred.} Tracking
+        this accurately would be complicated, and the benefit (of reducing
+        annotations required for testing pointer equality) would be limited.
     \item \textbf{Use extra constructors for \cinline{NULL} and
         \coreinline{unspec}, and variables everywhere else.} This means using
         variables for addresses and allocation IDs and unconstrained ones as
