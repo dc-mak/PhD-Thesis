@@ -1,9 +1,9 @@
-In the \cref{sec:c-lang}, I discussed how competing forces of inherited
+In \cref{sec:c-lang}, I discussed how competing forces of inherited
 portability requirements, proximity to hardware, and the desire for more
 aggressive optimisations led to complex and subtle technical resolution by
 stakeholders in the \kl{ISO} standard of C. I also mentioned that its nature as
 a prose document, with natural language ambiguities and omissions, as well as
-divergence C as used \kl{de facto}, mean that its semantics are unreasonable
+divergence from C as used \kl{de facto}, mean that its semantics are unreasonable
 for a human to adhere to, and challenging to build into tools directly,
 without making some sort of simplifying assumptions.
 
@@ -63,7 +63,7 @@ happen to know Haskell (or Rust).
 
 With this many constraints and design decisions, it is easy to doubtful of the
 elegance and feasibility of this approach, let alone consider proving such a
-type system sound. As I will show in \nameref{chap:kernel-typing}, whilst the setup
+type system sound. As I will show in \nameref{chap:kernel-statics}, whilst the setup
 might be novel, multi-faceted and large, the definitions are relatively
 straightforward, and the proof of soundness can be done syntactically. Both the
 definitions and the proof are modular with respect to the heap, so that
@@ -344,7 +344,8 @@ implementation-defined details and the elaboration of the
     \item The translation is \intro{compositional}. Each function, block,
         statement and expression is elaborated in isolation, based only
         on its parts, and follows the structure of the original C program.
-    \item Each variable function argument and local gets its own storage via the
+    \item Each variable (function argument and local and global) is uniformly
+        handled as living on the heap and gets its own storage via the
         \coreinline{create} function. Reads, writes, and de-allocations are
         represented with \coreinline{load}, \coreinline{store},
         \coreinline{kill} respectively.
@@ -602,7 +603,7 @@ dereferenced again. If we require the programmer to handle these permissions
 explicitly in the annotations, such a discipline would quickly violate the goal
 to minimise obvious annotations. This means that in addition to automation for
 proving constraints, by using SMT solvers, we need to have some scheme to
-\intro[resouce inference]{infer resources} (see \cref{subsec:resq-inf}) to
+\intro[resouce inference]{infer resources} (see \cref{sec:elaboration}) to
 reduce the burden of annotations.
 
 I should note that, for the purposes of the formalisation of \kl{Kernel CN}, I
@@ -627,7 +628,7 @@ terms for (by inferring resources), we would also, as far as possible, like to
 infer how quantifiers are instantiated, based on what the user wrote.\sidenote{
 Note that this is not at all related to \emph{inferring specifications}, which
 is large and challenging problem in it own right.} This is a tall order,
-because the problem is not decidable in general.\sidecite{cite?}
+because the problem is not decidable in general.\sidenote{Cite?}
 
 Yet, we can still proceed and make the problem clearer by using a concrete
 example. Let us recall the separation logic proof sketch of linked integer list
@@ -718,14 +719,14 @@ It is a cute idea, but it glosses over several details, such as
 \end{itemize}
 
 I will tackle the first three questions here, and leave the latter three
-to be discussed in~\nameref{subsec:heap-types}.
+to be discussed in~\nameref{sec:heap-types}.
 
 For the first question, the answer is \emph{yes}: such assertions are
 characterisable as \intro{precise}.~\sidecite{reynolds2008intro}.
 
-\subsection{Precise assertions}
+\subsection{Precise assertions}\label{subsec:precise-assertion}
 
-\begin{definition}[Precise assertions]\label{def:precise}
+\begin{definition}[Precise assertions]
     \AP{} An assertion $Q$ is \intro{precise} iff, for all stores $s$, and heaps
     $h$, there is at most one $h' \subseteq{} h$ such that $s , h' \vDash{} Q$.
 

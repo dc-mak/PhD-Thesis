@@ -169,12 +169,13 @@ is shown in \cref{fig:ptr-from-int}, with the difference that instead of the
 address being cast to a pointer in the calling function \emph{before} the local
 variable is in scope one, it is cast to a pointer \emph{after} and its address
 has been variable is \intro{exposed}: cast to an integer (but otherwise
-unused). Though we can clearly see that there is no dataflow beteween
+unused). Though we can clearly see that there is no dataflow between
 \cinline{k} and \cinline{i}, in general, the compiler cannot rule it out, so it
 conservatively disables constant propagation to the call to \cinline{printf}
-later.
+later.\sidenote{This example does have \kl{UB} though because of (demonic)
+allocation address non-determinism.}
 
-Stakeholders have attempted to resovle such questions by the formation of and
+Stakeholders have attempted to resolve such questions by the formation of and
 continual updates to the \kl{ISO} standard of C,\cite{isoC1990} however, the
 resolutions can be complex and subtle. This is because of the different
 preferences for performance, control and language simplicity, amongst
@@ -248,7 +249,7 @@ sequentially) so long as they refer to separate program variables.
 
 \begin{marginfigure}
   \begin{mathpar}
-      \inferrule{\vdash{} \{P\} \; C \; \{Q\}  \\ \mod{(C)} \cup{} \mathit{FV} (R)}
+      \inferrule{\vdash{} \{P\} \; C \; \{Q\}  \\ \mod{(C)} \cap{} \mathit{FV} (R)} = \emptyset{}
                 {\vdash{} \{ P \wedge{} R \} \; C \; \{ Q \wedge{} R \}}
   \end{mathpar}
   \caption{The rule of constancy, where $\mathrm{FV}$ refers to the free
@@ -291,11 +292,11 @@ proofs about large and subtle systems.
 
 \begin{marginfigure}
   \begin{mathpar}
-      \inferrule{\vdash{} \{P\} \; C \; \{Q\}  \\ \mod{(C)} \cap{} \mathit{FV} (R)}
+      \inferrule{\vdash{} \{P\} \; C \; \{Q\}  \\ \mod{(C)} \cap{} \mathit{FV} (R)} = \emptyset{}
                 {\vdash{} \{ P \ast{} R \} \; C \; \{ Q \ast{} R \}}
   \end{mathpar}
   \caption{The frame rule. We still need to be careful about non-intereference
-      about program variables on the stack, so we retain $\mod{(C)} \cup{}
+      about program variables on the stack, so we retain $\mod{(C)} \cap{}
       \mathrm{FV}(R) = \emptyset{}$, but locations on the heap are ensured
       disjoint by the definition of $\astRef$. The name comes from the
       \emph{frame problem} in artificial intelligence, where using first-order
@@ -468,8 +469,8 @@ This is demonstrated in \cref{fig:call-incr} and \cref{fig:call-incr-fail}. In
 the first, we see that from the constraint \cinline{y <=
 100i32},\sidenote{Integer literals are currently written with a type
 annotation, similar to Rust.} \kl{CN} deduces that \cinline[breaklines]{y <=
-MAXi32()}\sidenote{As I shall discuss in \cref{sec:bidir-subtyping,
-chap:kernel-typing}, this is a \kl{subtyping} relation, and integrating it smoothly
+MAXi32()}\sidenote{As I shall discuss in \cref{sec:bidir-subtyping,%
+chap:kernel-statics}, this is a \kl{subtyping} relation, and integrating it smoothly
 relies on \kl{bidirectional} type-checking.} and permits the call to
 \cinline{increment}. Conversely, for the second, \cinline{INT_MAX} does not
 meet that constraint, and so \kl{CN} raises an error.
