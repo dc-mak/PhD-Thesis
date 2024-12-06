@@ -445,7 +445,7 @@ next), and would likely be sound with respect to \kl{PNVI-ae-udi}, I ultimately
 decided that (a) it is not clear it is worth the additional complexity and (b)
 it can be added later straightforwardly if the need arose.
 
-\subsection{Provenance in integers and bytes}
+\subsection{Provenance in integers and bytes}\label{subsec:prov-int-bytes}
 
 It is a little ironic that after eschewing provenance via integers (\kl{PVI}),
 that \kl{VIP} reinstates them albeit in a very limited form (i.e.\ not preserve
@@ -482,9 +482,13 @@ with four options.
         value, and track it in the resource system.} Such a resource would need
         to be duplicated, moved and destroyed in sync with the \emph{value} it
         is meant to be tracking via all memory actions.
-    \item \textbf{Track allocation address exposure.} So that the provenance
-        of a cast pointer can be recovered from ambient exposed allocations
-        rather than the value itself.
+\end{itemize}
+
+There is another possibility, which we could entertain if we also allowed
+exposure tracking:
+\begin{itemize}
+    \item \textbf{Recover provenance from ambient exposed allocations.} This
+        would obviate the need to put allocation IDs in integer values at all.
 \end{itemize}
 
 If round-trip casts were the only issue related to provenance in integers, then
@@ -614,7 +618,10 @@ false.
 
 Therefore, when the pointers either side of an \cinline{==} have equal
 addresses but distinct provenances are distinct, the result will be
-non-deterministic true or false (\cref{fig:nd-ptr-eq}).
+non-deterministic true or false (\cref{fig:nd-ptr-eq}). In practice, this will
+only happen if either or both of the pointers are one-past, out-of-bounds as
+the result of permissive array/member shift, or have an $@\mathsf{empty}$
+provenance as the result of a cast from an integer.
 
 \begin{figure*}
     \includegraphics{figures/mem-model-pnvi-nd-ptr-eq}
@@ -633,8 +640,8 @@ them towards more informative (but verbose) named functions such as
 \cninline{ptr_eq}, \cninline{addr_eq}, and \cninline{is_null}.
 
 Unfortunately, adapting \kl{VIP} to handle the non-deterministic
-pointer-equality rule is not clear. The issue can be seen with checking
-$(@\mathsf{empty}, a) == (@\mathsf{empty}, a)$ for some concrete address $a$.
+pointer-equality rule is not straightforward. The issue can be seen with checking
+$(@\mathsf{empty}, a)$ $==$ $(@\mathsf{empty}, a)$ for some concrete address $a$.
 In \kl{VIP}, this will result in \emph{true}, because of the third case for
 equal provenances. However, the relation given in the proof of soundness says
 that any provenance $\pi$ in \kl{PNVI-ae-udi} may be related ($\pi \approx_w
@@ -652,6 +659,32 @@ subsequent states needs to be rethought.
         \kl{PNVI-ae-udi}, but deterministic behaviour under
         \kl{VIP}.}\label{fig:vip-non-det-ptr-eq-problem}
 \end{marginfigure}
+
+The key insight is that the statement ``$@\mathsf{empty}$ provenances lead to
+strictly more \kl{UB} than other provenances'', \emph{does not hold} in the
+presence of the totally-defined, non-deterministic pointer-equality rule,
+expressed in the proof by the relation $\pi \approx_w @\mathsf{empty}$. In
+domain theoretic terms, if $@\mathsf{empty} \sqsubseteq \pi$ is supposed to
+reflect the information ordering, the issue is that the pointer equality rule
+is not monotonic with respect to this.
+
+This presents us with the classic ``pick two of three'' situation:
+\begin{itemize}
+    \item \textbf{Drop $@\mathsf{empty}$ provenances.} This adds more \kl{UB}
+        to CN's memory model, but it forbids the counter-example in
+        \cref{fig:vip-non-det-ptr-eq-problem} and other soundness
+        issues.\sidenote{Proof pending. Would have to redo above PNVI-ae-udi.}
+        In practice, the change is small, primarily just forbidding the integer
+        to pointer cast which is not a direct round-trip, requiring the
+        programmer to use \cinline{copy_alloc_id} instead.
+    \item \textbf{Drop totality for pointer equality.} An alternative approach
+        would be to make the pointer equality test \kl{UB} if either argument
+        has the $@\mathsf{empty}$ provenance. This would mean accepting a
+        different interpretation/information ordering for empty provenances.
+    \item \textbf{Drop non-determinism for pointer equality.} The existing
+        \kl{VIP} system is sound with respect to \kl{PNVI-ae-udi} with strict
+        pointer equality, meaning no non-determinism.
+\end{itemize}
 
 \subsection{Allocation history}
 
@@ -687,32 +720,162 @@ One of the tricky aspects of adapting the memory object models to \kl{CN} is
 that the models are defined over \emph{concrete} values and executions, whereas
 \kl{CN} is fundamentally computing over \emph{symbolic} values.
 
-Of course, I could force the symbolic values to be concrete, but the advantage
-of using symbolic values (for example, for addresses) is that this gives us
+Another is that adding extra variables (for default values in an infinite
+domain) to an SMT problem is cheap (both to implement and to query) but can
+affect usability, or worse, soundness if done incorrectly. Using algebraic
+datatypes and adding an extra constructor takes more time, and may slow down
+queries, but is necessary when those extra constructors need to be inspected.
+
+\paragraph{Addresses.}%
+The advantage of using symbolic values for addresses, is that this gives us
 (demonic) allocation address non-determinism for free (whilst cheerfully
 sacrificing the ability to say anything about the layout of local or global
 variables, without the use of lemmas).
 
-If not addresses, should provenances be concrete? The main thing that the
-memory object model does with provenances is check whether they are equal,
-unequal (for non-deterministic pointer equality) and use the
-non-$@\mathsf{empty}$ ones (allocation IDs) as keys to look up in the
-allocation history.
+\paragraph{Provenances.}%
+Should provenances be concrete? This depends on how they are used \textemdash{}
+for querying whether two are equal; for querying whether two are distinct (only
+for non-deterministic pointer equality); for the non-$@\mathsf{empty}$ ones
+(allocation IDs), used as keys to get the associated base address and size from
+the allocation history.
 
-The $@\mathsf{empty}$ provenance must be represented with a special
-constructor, because casting from any integer to a pointer in \kl{VIP} must
-result in \emph{the same} empty provenance. Using an \emph{unconstrained}
-variable would not work because in the pointer equality rule you need to be
-able to test whether two provenances \emph{are distinct} (for the
-non-deterministic case), but in every other case you need to be able to test
-whether two provenances \emph{are equal}. If I did not support
-non-deterministic pointer equality, then I could use a (single, global)
-unconstrained variable.
+\paragraph{Empty provenance.}%
+Empty provenances are intrinsically tied to pointer equality, since the rule
+as given in \kl{PNVI-ae-udi} is not monotonic with respect to the implicit assumption
+that $@\mathsf{empty} \sqsubseteq \pi$. Still, we can entertain how one might
+proceed in each of the three situations.
+\begin{itemize}
+    \item \textbf{Drop $@\mathsf{empty}$ provenances.} This requires
+        no representation of this construct.
+    \item \textbf{Drop totality for pointer equality.}
+        Construct would best be represented with to a distinct
+        value/constructor. The value needs to be visible to programmers,
+        so that can be forbidden in a precondition before using pointer
+        equality. A single/global unconstrained variable could also work, but
+        would be fragile: it might accidentally get constrained to another
+        provenance by the programmer, when this would in fact be inconsistent.
+    \item \textbf{Drop non-determinism for pointer equality.}
+        A single/global unconstrained variable would work. With this option,
+        all rules are monotonic with respect to $@\mathsf{empty}$ provenances,
+        i.e.\ any rule which uses an empty provenance will end up failing its
+        bounds checks and thus signalling \kl{UB}.
+\end{itemize}
 
-And also unspecified values in padding bytes!
-Representation of null pointer \cninline{ptr_eq(x, NULL) || !addr_eq(x, NULL)}. % chktex 26 chktex 36
+\paragraph{Non-empty provenances (allocation IDs).}%
+As for non-$@\mathsf{empty}$ provenances (allocation IDs), it is simpler to
+leave them symbolic rather than try assign concrete values to them: two pointer
+arguments to a function can validly have the same or different provenances, and
+so it is best to leave the user to write constraints about the (dis)equality of % chktex 36
+relevant provenances.
 
-Total functions, partial operations (array/member shift).
+\paragraph{Omitting function pointers.}%
+With the representation of provenance and addresses fixed, the representation
+of pointers I chose was guided by that given in \kl{VIP} and \kl{PNVI-ae-udi}:
+a special constructor for the \cinline{NULL} pointer, or a pair of a
+provenance and address. I omit support for function pointers
+because (a) \kl{CN} does not calling functions via pointers (b) it would need
+care to integrate in a way so as to not be cumbersome. For example,in defining
+predicates which take pointer arguments, almost all the time a pointer will be
+intended to be either \cinline{NULL} or pointing an object, so it would be sensible to
+have a default which opts out of the function pointer case.\sidenote{A refinement
+type system for the CN specification language?}
+
+\paragraph{\cinline{NULL} pointer.}%
+Though I do not know why \cinline{NULL} is not represented as
+$(@\mathsf{empty}, 0)$ in the memory model,\sidenote{My conjecture is that it
+    was a historical accident where PVI was developed first and in that model,
+    $(@\mathsf{empty}, 0)$ represented an integer value, so a separate value
+was used to represent \cinline{NULL} pointers.} I did observe a
+small but useful reason to have it as a separate constructor during
+implementation. With pointer equality in C (non-deterministic or otherwise),
+the only information that the true branch of a pointer equality test gives the
+programmer is that the addresses are equal; it says nothing about the
+provenances. Conversely, with non-deterministic pointer equality, the false
+branch does \emph{not} guarantee that the addresses are distinct: they could be
+equal but have distinct provenances. To allow themselves to deduce \cinline{p}
+equals \cinline{q} from testing \cinline{p == q}, a programmer needs the
+constraint that \cninline{ptr_eq(p, q) || !addr_eq(p,  q)}.% chktex 26 chktex 36
+
+This constraint excludes the counter-intuitive (and non-deterministic) case
+of the provenances being distinct but the addresses equal.\sidenote{Stated
+    another way, it can be seen as a promise that neither of the pointers are
+    one-past pointers, nor out-of-bounds as the result of a permissive
+    array/member shift, nor have an empty provenance as a result of a cast from
+an integer.}
+Whilst \kl{CN} aims to minimise obvious annotations, this one seems difficult
+to avoid due the inherited complexity of pointer equality tests. However,
+whilst programmers do check two pointers for equality often, they check
+whether or not pointers are \cinline{NULL} far more. If \cinline{NULL} is
+represented by $(@\mathsf{empty}, 0)$, then (in the presence of permissive
+array/member offsets, since the other cases cannot apply) such checks would
+need constraints too. A distinct \coreinline{null} constructor removes the need
+for adding such constraints before every null-check.
+
+\paragraph{Uninitalised memory and padding bytes.}%
+To convert ownership of a struct into ownership of its representation bytes,
+one needs to take into account the initialisation status of the struct and its
+fields, and its padding bytes. Whilst I track the former with a structured SMT
+value $.\mathit{init}$ in the formalisation, in \kl{CN}, the distinction is
+more coarse with \cninline{Block} for uninitialised ownership (write-only) and
+\cninline{Owned} for initialised (read and write).\sidenote{See
+\nameref{sec:partial-init-structs} for a discussion.} The resulting ownership
+needs to permit reading from bytes which are safe to read from (and constrain
+them appropriately), but forbid or handle carefully bytes from uninitialised
+fields or padding bytes. Ideally, it does so uniformly, so that the ownership
+can be passed to \cinline{memcpy} or similar functions in one piece.
+
+This raises thorny questions about the semantics of reads from uninitialised
+memory and padding bytes; thorny because the \kl{ISO} standard is not clear and
+there is no consensus de facto practice. Completely banning reads from them is
+not ideal because we would like to permit byte-by-byte copying if possible. At
+the same time, the rest of the \kl{CN} presently forbids reads from
+uninitialised memory,\sidenote{Which is fair in a verification context.} and it
+would be inconsistent to subvert this design choice via accessing byte
+representations.
+
+\kl{Cerberus} opts for an defined semantics for reads of uninitialised objects,
+involving a notion of \intro{unspecified values}\sidenote{From 4.6.2 in
+    \textcite{memarian2022cerberus}: \textit{``\ldots an abstract unspecified
+        value which is propagated by arithmetic in a strict way, with the
+        exception that operations that can have undefined behaviour are
+        daemonic \ldots the unsigned addition operator over integer types has
+        no undefined behaviour \ldots applying an unspecified value as right
+operand of the division operator has undefined behaviour \ldots When the
+controlling expression of a statement evaluates to an unspecified value, the
+control-flow will non-deterministically behave''.}} which maps quite well to
+the notion of unconstrained variables in SMT solvers. However, it is too
+permissive with respect to the current \cninline{Block}/\cninline{Owned}
+scheme, so just mapping \cninline{Block} values to unconstrained
+\cninline{Owned} bytes of the same type would not work. Doing so would also,
+when converting ownership of the bytes back into structured values, lose the
+distinction between which parts were \cninline{Block}s and which
+\cninline{Owned}s.
+
+\paragraph{Memory bytes.}%
+As I mentioned before, the issue of pointer bytes meant that I chose to have a
+new C type for manipulating the byte-level representation of C objects. Not
+only does this need to handle provenance in bytes
+(\cref{subsec:prov-int-bytes}), but also uninitialised and padding bytes as
+mentioned above. As a result, I chose to represent the \intro{memory bytes} as
+a datatype with two constructors: one for $\mathsf{unspec}$, one for a pair of
+a 8-bit vector and an optional allocation ID (for writing and recovering
+pointer provenance). The representation of \cninline{Block}s and padding bytes
+are mapped to \cninline{unspec} values, the representation of \cninline{Owned}
+values I map to their appropriate byte (depending on
+index)\sidenote{\kl{Cerberus} does not currently support switching on
+endianness, so I match its default big-endianness, which is also suitable for
+verifying \kl{pKVM} on Arm}, and an allocation ID if it is part of a pointer.
+
+\paragraph{Permissive array and member offsets}%
+In \kl{VIP} and \kl{PNVI-ae-udi}, array and member offsets are only defined on
+pointers with a provenance and permissive member shifts on a \cinline{NULL}
+pointer result in pointers with an $@\mathsf{empty}$ provenance, and the
+\cinline{offsetof} value in the address. However, when encoding these
+operations in SMT problems, such offsetting needs to be total, defined on all
+values, with the understanding that the type system should only symbolically
+evaluate offsets on a pointer it can prove has a provenance. With an empty
+provenance, the encoding is obvious, but in its absence, I fall back to the
+standard idiom of using an unconstrained variable as a default value.
 
 \subsection{Summary}
 
@@ -733,6 +896,20 @@ Total functions, partial operations (array/member shift).
         (or a resource polymorphic \cinline{memcpy}).}
         This prevents a substantial amount of the \kl{VIP}/\kl{PNVI-ae-udi}
         test-suite from passing without additional annotations.
+    \item \textbf{Later, support provenance in integers and bytes via new C
+        types.} This makes their associated complexity and any performance
+        penalties opt-in.
+    \item \textbf{$@\mathsf{empty}$ provenances eliminated.} This enables
+        soundly supporting total and non-deterministic pointer equality.
+    \item \textbf{Allocation history tracked in constraints.} This makes
+        bounds checks easy to state and check.
+    \item \textbf{Allocation liveness (and disjointness) tracked in
+        resources.} This leverages the existing resource context set up
+        to manage allocations correctly and check if pointers are live.
+    \item \textbf{Use extra constructors for \cinline{NULL} and
+        \coreinline{unspec}, and variables everywhere else.} This means use
+        variables for addresses and allocation IDs and unconstrained ones as
+        default values in morally partial operations.
 \end{itemize}
 
 \begin{figure}[h]
