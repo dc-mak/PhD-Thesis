@@ -107,7 +107,23 @@ in the type so as to not consume/destroy it.
 A rule that is present in the code, but missing in other formats for
 \kl{PNVI-ae-udi} is that for casting pointers to dead allocations to integers,
 which is permitted so long as the address can fit within the target integer
-type.
+type. Since \kl{VIP} does not track exposure, the live and the dead
+pointer cases collapse into the same case. On top of this, as I mentioned in
+\cref{subsec:prov-int-bytes}, I chose to support the limited provenance in
+integers required via a new C type, to make the any additional complexity and
+performance cost as opt-in, and to avoid changing all the base types for
+integers of various sizes (bit vectors) to a datatype with two constructors.
+Because of these two simplifications, the cast is therefore just an identity,
+on the SMT term and its base type.\sidenote{TODO add this rule} The rules for
+casting an integer to a pointer is \kl{UB} if it is not in the \cinline{NULL}
+or round-trip case, and is an identity in the latter.\sidenote{TODO add
+this rule} And the rule for \cinline{copy_alloc_id} performs a bounds check on
+the integer using the allocation ID supplied by the pointer, and combines the
+two into a new pointer.\cinline{TODO add this rule too}
+
+The new C types need to be handled with care to implement the subtyping
+required for a smoother experience.\sidenote{TODO figure out the subtyping
+for base types and resources\ldots}
 
 \section{\cinline{memcpy} and \cinline{memcmp}}
 
@@ -140,10 +156,9 @@ vice versa.
 
 \section{Soundness}\label{sec:cn-vip-soundness}
 
-There are few steps involved to updating the formalisation to go from a concrete
-memory model to a \kl{VIP} based one.
+There are few steps involved to updating the formalisation to use a \kl{VIP}
+based memory object model from its current concrete one.
 \begin{enumerate}
-    \item Extend the abstract state to include a allocation history as well as a heap.
     \item Extend the configuration of the dynamic semantics to be a step
         relation between abstract \emph{states} and expression, rather than
         just \emph{heaps} and expressions.
@@ -182,7 +197,7 @@ as part of its configuration, rather than threaded through the
 side.\sidenote{TODO fix premise 7 of the create dynamic rules.} Note that
 because I split the intuitionistic part of the allocation history from the
 linear part, it does not get updated to record a dead allocation in the
-rule for \coreinline{kill} (\cref{fig:mem-mode-dyn-create-kill}).
+rule for \coreinline{kill} (\cref{fig:mem-model-dyn-create-kill}).
 
 \begin{figure*}
     \includegraphics{figures/mem-model-dyn-create}
@@ -212,11 +227,53 @@ add/fix this}
         evidence from the supplied resource term and the heap.}\label{fig:mem-model-dyn-ptr-relop}
 \end{figure*}
 
-\begin{itemize}
-    \item Talk about casting integer to pointer.
-    \item Talk about casting pointer to integet.
-    \item Talk about copy\_alloc\_id rule.
-\end{itemize}
+Lastly, there are the rules about pointer to integer casts, integer to pointer
+casts and the \cinline{copy_alloc_id} primitive. The latter two check that that
+resulting pointer is in the bounds of a live allocation; they are also agnostic
+as to whether it is ownership or an \cninline{Alloc} token which is provided as
+evidence.\sidenote{TODO this too\ldots}
+
+\subsection{State typing}
+
+Because the abstract state now includes an append-only allocation history, the
+typing rules for heaps (\cref{sec:heap-types}) needs to be generalised to
+include it. The main judgement involved in this is $\mathit{alloc} \Leftarrow
+\Phi$, which says that the allocation history $\mathit{alloc}$ is consistent
+with constraint context $\Phi$. \cref{fig:alloc-typing} shows that it does so
+by checking if each constraint, with the allocation history substituted for the
+$\mathit{alloc}_\mathrm{var}$, holds (under the empty context).
+
+\begin{marginfigure}
+    \includegraphics{figures/alloc-typing}
+    \caption{Definition of a well-constrained allocation history \textemdash{}
+        $\mathit{alloc}$ is consistent with each constraint in context
+        $\Phi$.}\label{fig:alloc-typing}
+\end{marginfigure}
+
+The heap typing rule generalises similarly (\cref{fig:heap2-typing}). It
+substitutes the allocation history for $\mathit{alloc}_\mathrm{var}$, and then
+types the heap exactly as before.
+
+\begin{marginfigure}
+    \includegraphics{figures/heap2-typing}
+    \caption{Definition of heap typing in the presence of a allocation history:
+        substitute the history into the heap and the type (\kl{normalised}
+        resource context) and type as before.}\label{fig:heap2-typing}
+\end{marginfigure}
+
+\subsection{Updating the soundness proof}
+
+Recall that I defined resource term reduction and pattern matching in the
+dynamic semantics in a big-step style (\cref{sec:heap-types}). Whilst this
+intertwines the proofs for progress and type preservation, its advantage of
+modularity pays off now. The new constructs such as \cinline{memcpy},
+\cinline{memcmp}\cinline{copy_alloc_id}, and the conversions to and from memory
+bytes, are just additional cases in the proof, the rest are merely updates. The
+updates are small because the additional the additional constraints on the
+allocation history are easy to link across the static and dynamic semantics by
+the definition of allocation history typing. The bounds and liveness checks are
+similarly easy to link across the static and dynamic semantics by the
+definition of heap typing.
 
 \section{Implementation}
 
