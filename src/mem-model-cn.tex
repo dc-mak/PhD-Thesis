@@ -266,25 +266,253 @@ types the heap exactly as before.
 Recall that I defined resource term reduction and pattern matching in the
 dynamic semantics in a big-step style (\cref{sec:heap-types}). Whilst this
 intertwines the proofs for progress and type preservation, its advantage of
-modularity pays off now. The new constructs such as \cinline{memcpy},
-\cinline{memcmp}\cinline{copy_alloc_id}, and the conversions to and from memory
-bytes, are just additional cases in the proof, the rest are merely updates. The
-updates are small because the additional the additional constraints on the
-allocation history are easy to link across the static and dynamic semantics by
-the definition of allocation history typing. The bounds and liveness checks are
-similarly easy to link across the static and dynamic semantics by the
-definition of heap typing.
+modularity pays off now. The new constructs such as non-deterministic pointer
+equality, \coreinline{allocate_region}, \coreinline{kill_dynamic},
+\cinline{memcpy}, \cinline{memcmp}\cinline{copy_alloc_id}, and the conversions
+to and from memory bytes, are just additional cases in the proof, the rest are
+merely updates. The updates are small because the additional the additional
+constraints on the allocation history are easy to link across the static and
+dynamic semantics by the definition of allocation history typing. The bounds
+and liveness checks are similarly easy to link across the static and dynamic
+semantics by the definition of heap typing. The updated theorem statements are
+as below: the main differences are the use of the updated abstract state typing
+judgements, and the use of the $\mathcal{L}_0 = {\; \mathit{alloc}_\mathrm{var}
+\;}$ environment, instead of the empty one, for logical variables. Updated
+proofs are in the appendix.
 
-\section{Implementation}
+\begin{theorem}[CN-VIP:\ progress and type preservation for resource terms]
+For all resource terms ($[[ res\_term ]]$) closed which type check or synthesise
+($[[ cdot ; L0 ; N ; nR |- res\_term <= res ]]$), and well-typed states
+($[[ alloct ; h <= N ; nR ]]$), there exists a resource value ($[[ res\_val ]]$),
+context ($[[ nR' ]]$) and heap ($[[ h' ]]$), such that: the value is well-typed
+($[[ cdot ; L0 ; N ; nR' |- res\_val <= res ]]$); the heap is well-typed
+($[[ alloct |- h' <= nR' ]]$), and for all frame-heaps ($[[ f ]]$), the resource term
+reduces to the resource value without affecting the frame-heap
+($[[ alloct | < h + f ; res\_term > ||v < h' + f ; res\_val > ]]$).
+\end{theorem}
 
-Performance graph
+\begin{theorem}[Progress for the annotated and let-normalised Core]
+If a top-level expression ($[[ texpr ]]$) is well-typed
+($[[ cdot ; L0 ; N ; nR |- texpr <= ret ]]$) and all computational patterns
+in it are exhaustive, then either it is a value ($[[ tval ]]$), or it is
+unreachable, or for all well-typed states ($[[ s <= N ; nR ]]$)
+then there exists another state ($[[ s' ]]$) and expression ($[[ texpr' ]]$)
+which is stepped to ($[[ < s ; texpr > --> < s' ; texpr' > ]]$)
+in the operational semantics.
+\end{theorem}
+
+\begin{theorem}[Type preservation for the annotated and let-normalised Core]
+For all closed and well-typed top-level expressions
+($[[ cdot ; L0 ; N ; nR |- texpr <= ret ]]$),
+well typed states ($[[ alloct ; h <= N ; nR ]]$),
+frame-heaps ($[[ f ]]$),
+new states ($[[ alloct' ; h' ]]$),
+and new top-level expressions ($[[ texpr' ]]$),
+which are connected by a step in the operational semantics
+($[[ < alloct ; h + f ; texpr > -->  < alloct' ; heap ; texpr' > ]]$),
+if all top-level functions are annotated correctly,
+there exists a constraint context ($[[ N' ]]$),
+sub-heap ($[[ h' ]]$),
+and resource context ($[[ nR' ]]$),
+such that the constraint context is extended
+($[[ cdot ; L0 ; N ; cdot \sqsubseteq cdot ; L0 ; N' ; cdot ]]$),
+the frame is unaffected ($[[ heap ]] = [[ h' + f ]]$),
+the sub-state is well-typed ($[[ alloct' ; h' <= N' ; nR' ]]$),
+and the top-level expression too
+($[[ cdot ; L0 ; N' ; nR' |- texpr' <= ret ]]$).
+\end{theorem}
+
+\chapter{Implementation of CN-VIP}
+
+\margintoc{}
+
+In addition to designing, formalising, and proving it sound, I also implemented
+CN-VIP\@. This was a substantial project which I worked on for about seven
+months, from August to October of 2023, and May, June, Septemeber and October
+of 2024.\sidenote{See
+    \href{https://github.com/search?q=repo\%3Arems-project\%2Fcerberus+author\%3Adc-mak\&type=commits\&s=committer-date\&o=asc}{my commits}
+    to the \kl{Cerberus} repository. In the intervening months, I
+    worked on a failed update to the buddy allocator of pKVM to work with
+    bitvectors (\cref{chap:buddy}), engineering for accurate source location
+    information (\cref{sec:error-msgs}), and MiniCN (\cref{chap:kernel-alternative}).}
+
+What made it more challenging was that it had to be developed and integrated
+piecemeal alongside other active \kl{CN} development.
+
+The first step was adding in the various pieces of infrastructure in a non-functional way.
+\begin{itemize}
+    \item A logical variable for allocation history.
+    \item A resource predicate for the \cninline{Alloc} token and using them in
+        \coreinline{create} and in \coreinline{kill}.
+    \item Additional constructs like \cinline{copy_alloc_id}.
+    \item A datatype for the SMT representation of pointers, instead of integers.
+    \item A flag to ensure changes to the pointer representation could be toggled on or off.
+    \item Deprecating integer to pointer casts in the specification language.
+    \item Adding array and member shifting operators.
+\end{itemize}
+
+Given all this, the next steps were about implementing support for bounds and
+liveness checks, which was relatively straightforward.
+\begin{itemize}
+    \item Adapt and categorise the PNVI/VIP test suite to CN VIP\@.
+    \item Support for non-deterministic pointer equality.
+    \item Add a pointer liveness check.
+    \item Add bounds checks, sometimes dependent on pointer liveness.
+    \item Add basic support for \cinline{memcpy} (no provenance or
+        \coreinline{unspec} values).
+\end{itemize}
+
+At this stage of development, I switched on CN-VIP by default, but retained the
+ability to switch it off behind a flag. Fortunately, this happened just after
+benchmarking on the CN tests was added, so we have a measurement of the impact
+of the transition, shown in \cref{fig:vip-performance-hit}.
 
 \begin{figure}[h]
     \centering
     \includegraphics[width=\textwidth]{../misc/vip-performance-hit.png}
+    \caption{Sharp increase in execution time when enabling VIP, courtesy of
+        \url{https://rems-project.github.io/cerberus/dev/bench/}.}\label{fig:vip-performance-hit}
 \end{figure}
 
-\url{https://rems-project.githb.io/cerberus/dev/bench/}
+Aside from performance, at this stage, it also became clear that not supporting
+provenance in bytes was unworkable \textemdash{} 19 out of 44 tests required
+additional \cinline{copy_alloc_id} annotation to work as intended. Lack of
+support for round-trip was also an issue, this affected 2 tests.
+
+\begin{itemize}
+    \item Support memory bytes.
+    \item Support \cinline{memcpy}, \cinline{malloc} and \cinline{free}.
+    \item Support comparable bytes for \cinline{memcmp}.
+    \item Support round-trip casts.
+\end{itemize}
+
+\section{Definition of allocation history}
+
+An allocation history is a map from allocation IDs (non-empty provenances) to a
+record of a base address and a size.
+
+This is reflected in the definition of the \mintinline{ocaml}{Alloc.History}
+module, below. Symbols are unique identifiers used to resolved names
+immediately after parsing, whereas identifiers are wrappers around strings for
+things like names of record fields. I omit the definition of the helper function
+\mintinline{ocaml}{make_value} for space. Because I separate the intuitionistic
+and linear facts about the allocation history, this is all that is required to
+declare it.
+
+\ocamlfile{code/alloc_history.ml}
+
+This is brought into the `empty' typing context, so that it is always in scope
+for checking any function, which simply adds the symbol, its type, and some
+location information (a built-in variable). Notably, there are no constraints
+on it at the beginning.
+
+\ocamlfile{code/empty_context.ml}
+
+\section{Definition of \cninline{Alloc} token}
+
+A definition of a predicate is a record of a location, a symbol for the first
+pointer argument, a list of any other input arguments, a type for the output
+argument, and an optional list of clauses (the body, potentially guarded by a
+series of top-level ifs). The clauses represent the contents of the predicate,
+if it can be unfolded (\cninline{Owned} and \cninline{Block} are built-in and
+so cannot be unfolded).
+
+\ocamlfile{code/definition_predicate.ml}
+
+Using this, an \cninline{Alloc} token is defined simply as a predicate which
+takes only the special pointer argument, no other input arguments, outputs the
+record of base address and size, and has no clauses, i.e.\ cannot be unfolded.
+
+\ocamlfile{code/definition_alloc.ml}
+
+This is registered in an environment of definitions and declarations, in the
+\ocamlinline{Global} module. Unlike the previous environment, this one does not
+change during the course of type checking, but is populated on a per-file
+basis. The symbol for \cninline{Alloc} tokens is mapped to the definition
+mentioned earlier.
+
+\ocamlfile{code/global_alloc.ml}
+
+The Cerberus front-end supports an extension point, so that the
+\cninline{Alloc} token, the \cninline{allocs} logical variables, and other
+built-in symbols can be resolved correctly.
+
+\section{Using \cninline{Alloc} in \coreinline{create} and \coreinline{kill}}
+
+These constructs are introduced either by the user, or by a \coreinline{create}
+action. Whilst in the formalisation the rules for memory actions are very
+clearly synthesising, in the implementation they are more mixed, where terms
+are synthesised, but base types are checked, and the contexts are changed along
+the way.
+
+The \coreinline{create} action takes as its arguments a pure expression for expressing
+the alignment new allocation \ocamlinline{pe}, a C type \ocamlinline{act} and some
+source location information \ocamlinline{prefix}. The latter is used only to generate
+a helpful name for the logical variable representing the returned pointer.
+
+First the base types are checked to line up, and then the alignment expression.
+The continuation for checking the alignment expression names the result as
+\ocamlinline{arg}, which is used to create the alignment value
+\ocamlinline{align_v}. The return value \ocamlinline{ret} is defined, and a
+fresh symbol is created \ocamlinline{ret_s} and added to a (unified) variable
+context using \ocamlinline{add_a}. The function \ocamlinline{add_c} add the
+constraint that the return value \ocamlinline{ret} is aligned to
+\ocamlinline{align_v} to the constraint context. Similarly, \ocamlinline{add_r}
+adds the uninitialised ownership resource to the resource context.
+
+\ocamlfile[lastline=18]{code/check_create.ml}
+
+After that, the VIP related code begins. To express bounds constraints on the
+new allocation, a constraint that the value keyed by the pointer (actually its
+provenance) in the allocation history will equal a record of the return address
+and C type size. Note that this constraint is added under a flag
+\ocamlinline{use_vip} (the `!' in OCaml is for reading a (mutable) reference,
+not for negation). The allocation token is added immediately afterwards. The
+typing context logs this action for error reporting, and then passes the
+resulting value to an explicit continuation \ocamlinline{k}.
+
+\ocamlfile[firstline=19]{code/check_create.ml}
+
+\section{SMT representation of pointers}
+
+Allocation IDs (non-empty provenances) have their SMT representation
+switchable. If VIP is enabled, the representation is just an integer, otherwise
+it is the empty tuple.
+
+\ocamlfile[lastline=4]{code/solver_pointer.ml}
+
+Pointers build on this switchable representation, so do not need a switch
+themselves. Their SMT representation is a datatype named
+\ocamlinline{"pointer"}, which is not polymorphic \ocamlinline{[]}, with two % chktex 18
+constructors \ocamlinline{NULL} (which takes no arguments) and
+\ocamlinline{AiA} for `allocation ID and address' which takes two arguments,
+\ocamlinline{"alloc_id"} of type \ocamlinline{CN_Alloc_Id.t ()} and % chktex 18
+\ocamlinline{"addr"} of type bit vector (of a width determined by the memory % chktex 18
+interface).
+
+\ocamlfile[firstline=20]{code/solver_pointer.ml}
+
+\section{Array and member shifting}
+
+\section{Adding \cinline{copy_alloc_id}}
+
+\section{Adapting the PNVI/VIP test suite for CN}
+
+\section{Non-deterministic pointer equality}
+
+\section{Checking whether a pointer is live}
+
+\section{Adding bounds checks on pointers}
+
+\section{Basic support for \cinline{memcpy}}
+
+\section{Insufficiency of not tracking provenance in bytes or integers}
+
+\section{Memory bytes and their use in \coreinline{memcpy}, \coreinline{malloc} and \coreinline{free}}
+
+\section{Comparable bytes in \coreinline{memcmp}}
+
+\section{Integer with/out provenance union type for round-trip casts}
 
 \section{Translating resource lemmas}\label{sec:trans-res-lemmas}
 
