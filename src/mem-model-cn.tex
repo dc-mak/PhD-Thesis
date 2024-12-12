@@ -20,7 +20,7 @@ reproduced \cref{fig:typing-mem-action} in \cref{fig:cnvip-mem-action}.
 
 In \textsc{Expl\_Is\_Action\_Create}, creating an allocation produces new
 constraints on its base address and size. These are tracked via constraints on a
-logical variable $\mathit{alloc}_\mathrm{var}$, a map from allocation IDs to
+logical variable $\mathit{alloc}_\mathrm{var}$, a map from \kl{allocation ID}s to
 pairs of a base address and size. This can simply be interpreted as an implicit
 logical argument and return value for each function call.\sidenote{Need to
 check the typing rules to ensure enforce this idea consistently.} Creating an
@@ -97,10 +97,10 @@ Pointer operations such as taking the difference between two pointers or
 relational comparison between two pointers, require both pointers to be in
 bounds of the same live allocation. Hence the rule in\sidenote{TODO fix the
 rule, which is very wrong in many ways} \cref{fig:cnvip-mem-action} ask
-asks the solver to prove (a) the allocation IDs are equal (b) that the
+asks the solver to prove (a) the \kl{allocation ID}s are equal (b) that the
 pointer are within bounds of the allocation (c) to check there exists a
 live allocation with that ID\@. The evidence of a live allocation can be
-either ownership with the same allocation ID, or an \cninline{Alloc} token,
+either ownership with the same \kl{allocation ID}, or an \cninline{Alloc} token,
 and the rule is agnostic as to which, just that this evidence is returned
 in the type so as to not consume/destroy it.
 
@@ -118,7 +118,7 @@ on the SMT term and its base type.\sidenote{TODO add this rule} The rules for
 casting an integer to a pointer is \kl{UB} if it is not in the \cinline{NULL}
 or round-trip case, and is an identity in the latter.\sidenote{TODO add
 this rule} And the rule for \cinline{copy_alloc_id} performs a bounds check on
-the integer using the allocation ID supplied by the pointer, and combines the
+the integer using the \kl{allocation ID} supplied by the pointer, and combines the
 two into a new pointer.\cinline{TODO add this rule too}
 
 The new C types need to be handled with care to implement the subtyping
@@ -388,7 +388,7 @@ support for round-trip was also an issue, this affected 2 tests.
 
 \section{Definition of allocation history}
 
-An allocation history is a map from allocation IDs (non-empty provenances) to a
+An allocation history is a map from \kl{allocation ID}s (non-empty provenances) to a
 record of a base address and a size.
 
 This is reflected in the definition of the \mintinline{ocaml}{Alloc.History}
@@ -485,7 +485,7 @@ Pointers build on this switchable representation, so do not need a switch
 themselves. Their SMT representation is a datatype named
 \ocamlinline{"pointer"}, which is not polymorphic \ocamlinline{[]}, with two % chktex 18
 constructors \ocamlinline{NULL} (which takes no arguments) and
-\ocamlinline{AiA} for `allocation ID and address' which takes two arguments,
+\ocamlinline{AiA} for `\kl{allocation ID} and address' which takes two arguments,
 \ocamlinline{"alloc_id"} of type \ocamlinline{CN_Alloc_Id.t ()} and % chktex 18
 \ocamlinline{"addr"} of type bit vector (of a width determined by the memory % chktex 18
 interface).
@@ -494,15 +494,200 @@ interface).
 
 \section{Array and member shifting}
 
+I will only show the code for member shifting; the code for array shifting is
+very similar.
+
+Bounds check constraints are as expect \textemdash{} a lookup in the
+allocation history followed by constraints that the address of the pointer
+(assumed to have an \kl{allocation ID}) must be between the base and base plus
+size.
+
+\ocamlfile[lastline=8]{code/check_member_shift.ml}
+
+Having created the constraints, the check for the bound and liveness are gated
+by the flag to enable VIP or not. First, it checks the allocation is live.
+Next, if the SMT solver can prove the bounds check statically, based on the
+available constraints, it will quietly succeed, if not, it will raise an error
+saying the allocation for \ocamlinline{term}, is out of bounds
+(\ocamlinline{constr} could not be proven), resulting in the \kl{UB} specified
+by \ocamlinline{ub}, with \ocamlinline{model} as the counter-example.
+
+\ocamlfile[firstline=10,lastline=24]{code/check_member_shift.ml}
+
+The member shift constructor takes as its arguments a \ocamlinline{pe}
+representing the struct address to shift, the struct type \ocamlinline{tag},
+and the field \ocamlinline{member}. After the base types are checks, and
+\ocamlinline{pe} has been type checked and symbolically evaluated to
+\ocamlinline{vt} (value term), first it is checked to have an \kl{allocation ID}
+(not be \cinline{NULL}), then, (assuming strict pointer arithmetic), checked to
+be in bounds of a live allocation.\sidenote{As explained in the comment in the
+code, this check is technically redundant because the elaboration guarantees
+that every use of \coreinline{member_shift} is preceded by a call to
+\coreinline{PtrValidForDeref}, which checks that the pointer is live and
+strictly within bounds (not one past). However, since relying on this is a bit
+fragile, I implement the checks anyway.}
+
+\ocamlfile[firstline=26]{code/check_member_shift.ml}
+
 \section{Adding \cinline{copy_alloc_id}}
+
+Checking \cinline{copy_alloc_id} has a similar pattern. It checks the base
+types, checks and symbolically evaluates the two arguments. After it does so,
+it checks the pointer is not \cinline{NULL}, and then checks the resulting
+pointer is in bounds of a live allocation.
+
+\ocamlfile{code/check_copy_alloc_id.ml}
 
 \section{Adapting the PNVI/VIP test suite for CN}
 
+I had to adapt the PNVI/VIP test suite to run with CN in a few ways. First,
+because \kl{CN} does not (yet) support \cinline{printf}, I replaced the print
+statement with assertions about the expected values at that point in the
+program.
+
+Secondly, some of the tests were intended to trigger the non-deterministic
+pointer equality. It is not possible to write an assertion that a value
+is \emph{not} constrained, and so for that, I used macros
+(\cinline{NON_DET_TRUE} and \cinline{NON_DET_FALSE}) as a switch. I show the
+example from \cref{fig:nd-ptr-eq-example}, adapted to test CN VIP, below.
+
+\cfile[fontsize=\footnotesize,breaklines]{code/provenance_equality_global_yx.nondet.c}
+
+In addition to checking a variable is \emph{not} constrained, I also needed to
+check that some tests fail without \cinline{copy_alloc_id} annotations, and
+pass with them. An example of this below, is using exclusive-or to manipulate
+and reconstruct and valid pointer address via an integer. Under VIP, the only
+way to recover its provenance is to use \cinline{copy_alloc_id}, so the test
+must be run both ways to ensure it errors and succeeds appropriately.
+
+\cfile[fontsize=\footnotesize,breaklines]{code/pointer_offset_xor_auto.annot.c}
+
+Finally there are tests which should just pass with no annotations, which I
+omit for space.
+
 \section{Non-deterministic pointer equality}
+
+I implement pointer equality and pointer inequality using the same function and
+a flags for when the differences arise. In particular, after the base types are
+checked, the continuation is re-bound to take the negation of the value at the
+end in the negated case.
+
+\ocamlfile[lastline=5]{code/check_ptreq.ml}
+
+After the two operands are checked and symbolically evaluated to
+\ocamlinline{arg1} and \ocamlinline{arg2}, I define a helper function to create,
+constrain and return a variable.
+
+\ocamlfile[firstline=6,lastline=13]{code/check_ptreq.ml}
+
+I then define the circumstances under which the result is ambiguous: when both
+pointers have \kl{allocation ID}s, differing provenances but equal addresses.
+
+\ocamlfile[firstline=14,lastline=27]{code/check_ptreq.ml}
+
+If the solver cannot statically rule out the ambiguous case, a warning is
+issued to the user.
+
+\ocamlfile[firstline=28,lastline=41]{code/check_ptreq.ml}
+
+The true case, when both pointers are equal, is easy to define as a constraint.
+
+\ocamlfile[firstline=42,lastline=44]{code/check_ptreq.ml}
+
+The false case, is defined by negation \textemdash{} neither the both-equal
+case, nor the ambiguous case.
+
+\ocamlfile[firstline=45,lastline=49]{code/check_ptreq.ml}
+
+Unlike other rules, the result in this case is not a value, a boolean variable
+which is constrained to be true in the both-equal case, and to be false in the
+neither-equal-nor-ambiguous case. I do not need to state the contrapositive
+implications since SMT solvers assume a classical logic. The ambiguous case
+leaves the result under-determined by omission, and the result is passed to the
+continuation.
+
+\ocamlfile[firstline=50]{code/check_ptreq.ml}
 
 \section{Checking whether a pointer is live}
 
-\section{Adding bounds checks on pointers}
+A check for a live allocation can end in finding a live resource, not finding
+one because the resource context has no ownership or allocation tokens, and not
+finding one because there was no match (thus resulting in a counter-example).
+
+\ocamlfile[lastline=8]{code/inference_liveness.ml}
+
+Given a resource, an accumulator \ocamlinline{found}, and a candidate pointer
+with an \kl{allocation ID} \ocamlinline{res_ptr}, if an answer has already been
+found, then skip past this resource, otherwise check if the solver can
+statically prove the searched pointer \ocamlinline{ptr} and it have the same
+\kl{allocation ID}\@. If that is the case, then signal a resource has been found,
+otherwise save the counter-example from the failed proof attempt.
+
+\ocamlfile[firstline=9,lastline=22]{code/inference_liveness.ml}
+
+Given a resource, and an accumulator \ocamlinline{found}, if the resource is
+ownership or an allocation token, then check use the pointer from that resource
+as a candidate for checking whether it and the search pointer have equal
+\kl{allocation ID}s.
+
+\ocamlfile[firstline=23,lastline=36]{code/inference_liveness.ml}
+
+This function is folded over the entire resource context, and missing live
+allocations are signalled as errors, with or without the most recent
+counter-example.
+
+\ocamlfile[firstline=37]{code/inference_liveness.ml}
+
+\section{Deriving disjointness and bounds constraints on pointers}
+
+One unexpectedly inconvenient aspect of pointers which are partly concrete is
+that disjointness facts are expressed over intervals rather than points. This
+means that the `distinct' operator provided by some SMT solvers is not
+useful.
+
+This means that such facts must be derived from the resource context. For
+example, for a single ownership in the context, we may deduce that (a) it has
+an \kl{allocation ID} (is not \cinline{NULL}), that the range of addresses it
+owns does not wrap-around (the base is less than its upper bound), and that, if
+\kl{VIP} is enabled, there exists an allocation which contains it.
+
+\ocamlfile[lastline=15]{code/resource_derived_lc.ml}
+
+Similarly, if \kl{VIP} is enabled and an \cninline{Alloc} token is in the
+resource context, we may deduce the intuitionistic constraints associated with
+it: the output argument of that resource is the same as the lookup in the
+\cninline{allocs} allocation history keyed by the allocation ID of its pointer,
+and that the allocation does not wrap-around. Other constraints, including iterated
+constraints, do not have any constraints derived from them \textemdash{} this is
+likely to need to
+change.\sidenote{\url{https://github.com/rems-project/cerberus/issues/541}
+    shows that users would like to have disjointness information inferred from
+    iterated ownership.}
+
+\ocamlfile[firstline=16,lastline=23]{code/resource_derived_lc.ml}
+
+Constraints may also be derived from pairs of resources in the context, such as
+the fact that simultaneous ownership implies the range of owned addresses are
+disjoint.\sidenote{This is one of the few places in \kl{CN} that disjunctions
+constraints are added to the context.}
+
+\ocamlfile[firstline=25,lastline=35]{code/resource_derived_lc.ml}
+
+Deriving constraints is necessary for soundness but incurs a non-trivial
+performance penalty. Hence, there is a flag for disabling it (experimental).
+Care must also be taken to not re-derive the same facts, since this also seems
+to result in a performance hit to the SMT
+solver.\sidenote{\url{https://github.com/rems-project/cerberus/pull/436}}
+
+\ocamlfile[firstline=37]{code/resource_derived_lc.ml}
+
+The facts are derived every time a new resources is added to the context.
+They are added to the constraint context because they need to persist,
+even if the resource is consumed (for example, consuming ownership
+of two pointers does not change the fact that they were and still
+are unequal).
+
+\ocamlfile{code/typing_add_r_internal.ml}
 
 \section{Basic support for \cinline{memcpy}}
 
