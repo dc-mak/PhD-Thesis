@@ -639,25 +639,46 @@ them towards more informative (but verbose) named functions such as
 \cninline{ptr_eq}, \cninline{addr_eq}, and \cninline{is_null}.
 
 Unfortunately, adapting \kl{VIP} to handle the non-deterministic
-pointer-equality rule is not straightforward. The issue can be seen with checking
-$(@\mathsf{empty}, a)$ $==$ $(@\mathsf{empty}, a)$ for some concrete address $a$.
-In \kl{VIP}, this will result in \emph{true}, because of the third case for
-equal provenances. However, the relation given in the proof of soundness says
-that any provenance $\pi$ in \kl{PNVI-ae-udi} may be related ($\pi \approx_w
-@\mathsf{empty}$) to an empty one in \kl{VIP} (since \kl{VIP} has more \kl{UB}
-than \kl{PNVI-ae-udi}). We can then choose distinct provenances, and then see
-that the pointer-equality operation would end up in the non-deterministic case.
-An example is shown in \cref{fig:vip-non-det-ptr-eq-problem}.
-Since we can use this result to affect control flow and future memory action
-and operation traces in a program, the relation between the result values and
-subsequent states needs to be rethought.
+pointer-equality rule is not straightforward. As it is defined in the paper and
+appendix, they assume strict (address-only) pointer-equality rule for both
+\kl{VIP} and \kl{PNVI-ae-udi}. This means they sidestep the issue I present
+next.
+
+Let us imagine we simply replace the strict (address-only) pointer equality
+rule with the non-deterministic variant in both \kl{VIP} and \kl{PNVI-ae-udi}
+at the same time. One aspect of soundness is that if \kl{PNVI-ae-udi} and
+\kl{VIP} start in related states, then taking related steps will result in
+either \kl{UB} in \kl{VIP}, or will end in related states, with related (equal)
+return values. Now consider the example in \cref{fig:vip-non-det-ptr-eq-problem}.
 
 \begin{marginfigure}
     \cfile[breaklines]{code/vip-non-det-ptr-eq-problem.c}
     \caption{Example code which exhibits non-deterministic behaviour under
-        \kl{PNVI-ae-udi}, but deterministic behaviour under
-        \kl{VIP}.}\label{fig:vip-non-det-ptr-eq-problem}
+        \kl{PNVI-ae-udi} (with non-det.\ pointer equality), but is always false
+        under \kl{VIP} (with non-det.\ pointer equality).}\label{fig:vip-non-det-ptr-eq-problem}
 \end{marginfigure}
+
+\begin{itemize}
+    \item In such a variant of \kl{PNVI-ae-udi} both pointers are one-past, and
+        so have symbolic provenance, but the same address, and so the result is
+        non-deterministic.
+    \item In such a variant of \kl{VIP}, both pointers have $@\mathsf{empty}$
+        provenance, so the equality test must return false.
+    \item Both are valid steps, so in particular, the \kl{VIP} system does not demonstrate \kl{UB}.
+    \item However, the return values cannot be related. The potential `true'
+        branch for \kl{PNVI-ae-udi} could lead to \kl{UB} which would have
+        incorrectly been classed as impossible in \kl{VIP}.
+\end{itemize}
+
+Both steps start in related states; the relation given in the proof of
+soundness says that any provenance $\pi$ in \kl{PNVI-ae-udi} may be related
+($\pi \approx_w @\mathsf{empty}$) to an empty one in \kl{VIP}. But if two
+pointer both have $@\mathsf{empty}$ provenances in VIP, then we are free to
+choose pointers with distinct provenances in \kl{PNVI-ae-udi}, to force the
+pointer-equality operation to end up in the non-deterministic case. At this
+point, the result values are no longer related by equality, and cannot be,
+since the non-deterministic value can affect control flow and trigger \kl{UB}
+in the path not taken by the \kl{VIP} variant.
 
 The key insight is that the statement ``$@\mathsf{empty}$ provenances lead to
 strictly more \kl{UB} than other provenances'', \emph{does not hold} in the
@@ -682,7 +703,7 @@ This presents us with the classic ``pick two of three'' situation:
         different interpretation/information ordering for empty provenances.
     \item \textbf{Drop non-determinism for pointer equality.} The existing
         \kl{VIP} system is sound with respect to \kl{PNVI-ae-udi} with strict
-        pointer equality, meaning no non-determinism.
+        (address-only) pointer equality, meaning no non-determinism.
 \end{itemize}
 
 \subsection{Allocation history}\label{subsec:alloc-history}

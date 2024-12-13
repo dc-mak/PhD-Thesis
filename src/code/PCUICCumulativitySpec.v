@@ -1,18 +1,18 @@
 Inductive cumulSpec0 {cf : checker_flags} (Σ : global_env_ext) Γ (pb : conv_pb)
   : term -> term -> Type :=
 | cumul_Trans : forall t u v,
-  is_closed_context Γ -> is_open_term Γ u -> 
+  is_closed_context Γ -> is_open_term Γ u ->
   Σ ;;; Γ ⊢ t ≤s[pb] u ->
-  Σ ;;; Γ ⊢ u ≤s[pb] v ->    
-  Σ ;;; Γ ⊢ t ≤s[pb] v 
-| cumul_Sym : forall t u, 
+  Σ ;;; Γ ⊢ u ≤s[pb] v ->
+  Σ ;;; Γ ⊢ t ≤s[pb] v
+| cumul_Sym : forall t u,
   Σ ;;; Γ ⊢ t ≤s[Conv] u ->
-  Σ ;;; Γ ⊢ u ≤s[pb] t  
+  Σ ;;; Γ ⊢ u ≤s[pb] t
 | cumul_Refl : forall t,
   Σ ;;; Γ ⊢ t ≤s[pb] t
 
 (* Cumulativity rules *)
-| cumul_Ind : forall i u u' args args', 
+| cumul_Ind : forall i u u' args args',
   cumul_Ind_univ Σ pb i #|args| u u' ->
   All2 (fun t u => Σ ;;; Γ ⊢ t ≤s[Conv] u) args args' ->
   Σ ;;; Γ ⊢ mkApps (tInd i u) args ≤s[pb] mkApps (tInd i u') args'
@@ -29,10 +29,10 @@ Inductive cumulSpec0 {cf : checker_flags} (Σ : global_env_ext) Γ (pb : conv_pb
   Σ ;;; Γ ⊢ tConst c u ≤s[pb] tConst c u'
 
 (* congruence rules *)
-| cumul_Evar : forall e args args', 
+| cumul_Evar : forall e args args',
   All2 (fun t u => Σ ;;; Γ ⊢ t ≤s[Conv] u) args args' ->
   Σ ;;; Γ ⊢ tEvar e args ≤s[pb] tEvar e args'
-| cumul_App : forall t t' u u', 
+| cumul_App : forall t t' u u',
   Σ ;;; Γ ⊢ t ≤s[pb] t' ->
   Σ ;;; Γ ⊢ u ≤s[Conv] u' ->
   Σ ;;; Γ ⊢ tApp t u ≤s[pb] tApp t' u'
@@ -46,22 +46,22 @@ Inductive cumulSpec0 {cf : checker_flags} (Σ : global_env_ext) Γ (pb : conv_pb
   Σ ;;; Γ ⊢ a ≤s[Conv] a' ->
   Σ ;;; Γ ,, vass na a ⊢ b ≤s[pb] b' ->
   Σ ;;; Γ ⊢ tProd na a b ≤s[pb] tProd na' a' b'
-| cumul_LetIn : forall na na' t t' ty ty' u u', 
+| cumul_LetIn : forall na na' t t' ty ty' u u',
   eq_binder_annot na na' ->
   Σ ;;; Γ ⊢ t ≤s[Conv] t' ->
   Σ ;;; Γ ⊢ ty ≤s[Conv] ty' ->
   Σ ;;; Γ ,, vdef na t ty ⊢ u ≤s[pb] u' ->
   Σ ;;; Γ ⊢ tLetIn na t ty u ≤s[pb] tLetIn na' t' ty' u'
-| cumul_Case indn : forall p p' c c' brs brs', 
+| cumul_Case indn : forall p p' c c' brs brs',
   cumul_predicate (fun Γ t u => Σ ;;; Γ ⊢ t ≤s[Conv] u)
       Γ (compare_universe Conv Σ) p p' ->
   Σ ;;; Γ ⊢ c ≤s[Conv] c' ->
   All2 (fun br br' =>
-    eq_context_gen eq eq (bcontext br) (bcontext br') × 
+    eq_context_gen eq eq (bcontext br) (bcontext br') ×
     Σ ;;; Γ ,,, inst_case_branch_context p br ⊢ bbody br ≤s[Conv] bbody br'
   ) brs brs' ->
   Σ ;;; Γ ⊢ tCase indn p c brs ≤s[pb] tCase indn p' c' brs'
-| cumul_Proj : forall p c c', 
+| cumul_Proj : forall p c c',
   Σ ;;; Γ ⊢ c ≤s[Conv] c' ->
   Σ ;;; Γ ⊢ tProj p c ≤s[pb] tProj p c'
 | cumul_Fix : forall mfix mfix' idx,
@@ -86,7 +86,7 @@ Inductive cumulSpec0 {cf : checker_flags} (Σ : global_env_ext) Γ (pb : conv_pb
 (** Beta and iota red *)
 | cumul_beta : forall na t b a,
   Σ ;;; Γ ⊢ tApp (tLambda na t b) a ≤s[pb] b {0 := a}
-| cumul_iota : forall ci c u args p brs br, 
+| cumul_iota : forall ci c u args p brs br,
   nth_error brs c = Some br ->
   #|args| = (ci.(ci_npar) + context_assumptions br.(bcontext))%nat ->
   Σ ;;; Γ ⊢ tCase ci p (mkApps (tConstruct ci.(ci_ind) c u) args) brs  ≤s[pb]
@@ -112,7 +112,7 @@ Inductive cumulSpec0 {cf : checker_flags} (Σ : global_env_ext) Γ (pb : conv_pb
   Σ ;;; Γ ⊢ mkApps (tFix mfix idx) args ≤s[pb] mkApps fn args
 | cumul_cofix_case : forall ip p mfix idx args narg fn brs,
   unfold_cofix mfix idx = Some (narg, fn) ->
-  Σ ;;; Γ ⊢ tCase ip p (mkApps (tCoFix mfix idx) args) brs 
+  Σ ;;; Γ ⊢ tCase ip p (mkApps (tCoFix mfix idx) args) brs
      ≤s[pb] tCase ip p (mkApps fn args) brs
 | cumul_cofix_proj : forall p mfix idx args narg fn,
   unfold_cofix mfix idx = Some (narg, fn) ->
