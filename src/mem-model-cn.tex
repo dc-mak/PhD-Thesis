@@ -342,23 +342,22 @@ piecemeal alongside other active \kl{CN} development.
 The first step was adding in the various pieces of infrastructure in a non-functional way.
 \begin{itemize}
     \item A logical variable for allocation history.
-    \item A resource predicate for the \cninline{Alloc} token and using them in
-        \coreinline{create} and in \coreinline{kill}.
-    \item Additional constructs like \cinline{copy_alloc_id}.
-    \item A datatype for the SMT representation of pointers, instead of integers.
-    \item A flag to ensure changes to the pointer representation could be toggled on or off.
-    \item Deprecating integer to pointer casts in the specification language.
-    \item Adding array and member shifting operators.
+    \item A resource predicate for the \cninline{Alloc} token.
+    \item Updated rules for \coreinline{create} and \coreinline{kill}, using the \cninline{Alloc} token.
+    \item A datatype for the SMT representation of pointers.
+    \item A flag to toggle \kl{CN-VIP} features on and off.
+    \item Array and member shifting operators.
+    \item The \cinline{copy_alloc_id} operator.
 \end{itemize}
 
 Given all this, the next steps were about implementing support for bounds and
 liveness checks, which was relatively straightforward.
 \begin{itemize}
-    \item Adapt and categorise the PNVI/VIP test suite to CN VIP\@.
+    \item Adapt and categorise the \kl{PNVI}/\kl{VIP} test suite to \kl{CN-VIP}\@.
     \item Support for non-deterministic pointer equality.
     \item Add a pointer liveness check.
-    \item Add bounds checks, sometimes dependent on pointer liveness.
-    \item Add basic support for \cinline{memcpy} (no provenance or
+    \item Deriving bounds and disjointness constrains.
+    \item Basic support for \cinline{memcpy} (no provenance or
         \coreinline{unspec} values).
 \end{itemize}
 
@@ -375,9 +374,9 @@ of the transition, shown in \cref{fig:vip-performance-hit}.
 \end{figure}
 
 Aside from performance, at this stage, it also became clear that not supporting
-provenance in bytes was unworkable \textemdash{} 19 out of 44 tests required
+provenance in bytes was unworkable \textemdash{} 18 out of 44 tests required
 additional \cinline{copy_alloc_id} annotation to work as intended. Lack of
-support for round-trip was also an issue, this affected 2 tests.
+support for round-trip was also an issue, this affected an additional 2 tests.
 
 \begin{itemize}
     \item Support memory bytes.
@@ -529,7 +528,7 @@ fragile, I implement the checks anyway.}
 
 \ocamlfile[firstline=26]{code/check_member_shift.ml}
 
-\section{Adding \cinline{copy_alloc_id}}
+\section{Adding copy\_alloc\_id}
 
 Checking \cinline{copy_alloc_id} has a similar pattern. It checks the base
 types, checks and symbolically evaluates the two arguments. After it does so,
@@ -691,13 +690,159 @@ are unequal).
 
 \section{Basic support for \cinline{memcpy}}
 
+To understand the importance the impact and importance of having provenance in
+bytes, I initially specified \cinline{memcpy} as a simple copy of iterated
+ownership of characters. I derived the initial version of the specification
+from verifying a user-defined version of \cinline{memcpy}, which just copied an
+array character by character. The specification ends with a quantified constraint,
+saying the arrays are equal over the given range. This is because the SMT arrays
+are total/not finite, and stating a constraint which says the arrays are equal
+would spuriously fail with a counter-example index outside of the intended range.
+
+\cfile[fontsize=\footnotesize,breaklines,firstline=9,lastline=23]{code/pointer_copy_user_dataflow_direct_bytewise.c}
+
+To use this in the intended way, one has to use a lemma that the terms are
+equal at all indices. The proof of the lemma in Rocq would rely on the fact
+that the terms are defined with respect to iterated resouces which cover the
+same finite range.
+
+\cfile[fontsize=\footnotesize,breaklines]{code/cn_lemmas_byte_arrays_equal.h}
+
+However, when typing a built-in, I can simply combine the two so that users do
+not need to use lemmas after calling \cinline{memcpy}.
+
+Though there is nothing in principle which forces the specification of
+\cinline{memcpy} to be one that is expressible in the surface syntax (for
+example, the specification simply skipped over the byte representation and
+copied resources in a polymorphic way), there are practical limitations.
+
+The issue stems from the fact that calls to \cinline{memcpy} are
+replaced with calls to a proxy \kl{Core} procedure during \kl{Cerberus}'
+elaboration. The proxy procedure wraps up a call to the memory interface
+operation for coreinline{memcpy}. During type checking, \kl{CN} only
+sees the call to the proxy, and not the memory operation. There is no
+convenient way to inline the body of the procedure, so the next best
+option is to give it a type like every other function and built-in
+procedure.
+
 \section{Insufficiency of not tracking provenance in bytes or integers}
 
-\section{Memory bytes and their use in \coreinline{memcpy}, \coreinline{malloc} and \coreinline{free}}
+The lack of provenance in bytes presents a major limitation to expressiveness
+of the memory object model. Consider the below call to the
+\cinline{user_memcpy} specified before (the same issue arises with the built-in
+\cinline{memcpy}, sans the application of the \cinline{byte_arrays_equal}
+lemma).
+
+\cfile[fontsize=\footnotesize,breaklines,firstline=48]{code/pointer_copy_user_dataflow_direct_bytewise.c}
+
+The issue is that upon converting ownership of pointers \cinline{&p} and
+\cinline{&q} into bytes, the type system loses the provenance they carry. And
+hence, when those bytes are converted back into pointers, they have an
+$@\mathsf{empty}$ provenance.
+
+A temporary work-around for this is to simply \cinline{copy_alloc_id} the
+provenance back, but this just happens to work because the original pointer is
+in scope. If it was not, then the example could not be rescued. And as it
+happens, the lack of provenances in bytes affects 18 out of 44 tests, and a
+lack of provenance in integers affects another 2.
+
+
+\section{Memory bytes and their use in \coreinline{memcpy}, \coreinline{malloc}
+and \coreinline{free}}
 
 \section{Comparable bytes in \coreinline{memcmp}}
 
 \section{Integer with/out provenance union type for round-trip casts}
+
+\chapter{Epilogue on CN-VIP}
+
+Having finished my discussion on the formalisation and implementation of
+\kl{CN-VIP}, I will now discuss the aftermath of transitioning the \kl{CN} test
+and tutorial code to using it. I will finish with a discussion on how future
+work could use the principles uncovered by my work to place the \kl{CN} memory
+model on more foundational and trustworthy footing.
+
+\section{Updating existing code}
+
+As I was developing \kl{CN-VIP}, I was testing it under a flag, adding new
+tests and updating existing ones. Generally, \kl{CN-VIP} is more strict than
+the previous model, and so it was easy to update tests in a
+backwards-compatible manner. Where VIP added new expressiveness, I added new
+tests, separate from the existing regression suite. Importantly, the new ones
+included a mix of positive and negative tests.
+
+This makes it more difficult to quantify the impact of \kl{CN-VIP} on existing
+code. However, unlike the regression suite, I left the \kl{CN tutorial}
+examples until implementation was stable, and out of fear that I would have to
+spend weeks updating more than two hundred small tests to handle the stricter
+rules.
+
+Thankfully, my fears turned out to be unnecessary, as
+\href{https://github.com/rems-project/cn-tutorial/commit/9ee153e74d1b0fbdcb2802f2186d211ab6b2343b}{commit
+9ee153e7}, `Add support for VIP', demonstrates. Out of roughly 185 small,
+``working'' test cases, only 7 had to be updated.\sidenote{A limitation of the
+    testing framework for the tutorial, and at the time, the \kl{CN} regression
+    suite, is that it only checks returns codes, not the whole output. So there
+    was no automated way of checking whether an already failing tests starts
+failing for a different reason. I eventually fixed this
+\href{https://github.com/rems-project/cerberus/pull/703}{(cerberus/\#703)} by
+capturing all output and automatically diffing it.} Four of them were
+related to casting integers to pointers, of which one was a round-trip which
+was not supported initially. All of them were updated using
+\cinline{copy_alloc_id}.
+
+\inputminted[fontsize=\footnotesize,breaklines,firstline=10,lastline=68]{diff}{code/add_support_for_vip.patch}
+
+\subsection{Catching \kl{UB}, as intended}
+
+The other three were all related to \emph{decrementing} a pointer out of
+bounds, and technically \kl{UB}, and so assuming the intent was to test pointer
+decrementing rather then catching \kl{UB}, I adjusted the code to either not
+decrement or increase the range of the allocations involved.
+
+\inputminted[fontsize=\footnotesize,breaklines,firstline=69,lastline=107]{diff}{code/add_support_for_vip.patch}
+
+\subsection{Non-deterministic pointer equality}
+
+The other set of examples were the approximately 81 C files (114 including
+headers) used in the \kl{CN tutorial}. Of these, 7 were intentionally broken in
+non-\kl{VIP} ways for pedagogical reasons, which I manually checked was
+preserved after the transition. Another 4 were intentionally without
+annotations, of which 3 started to fail verification earlier because of
+\kl{VIP} related reasons (member shifting on a pointer not guaranteed to be
+non-\cinline{NULL}). Of the remaining 70 C files (103 including headers), only
+2 predicate definitions (in headers) and 2 lemmas needed updating. The latter
+followed from the former because the lemmas simply inlined the definitions of
+the predicates.
+
+\inputminted[fontsize=\footnotesize,breaklines,firstline=108]{diff}{code/add_support_for_vip.patch}
+
+As one can see, all the updates were related to excluding the non-deterministic
+case in pointer equality in a queue example.\sidenote{A detailed walk-through
+is available online:
+\url{https://rems-project.github.io/cn-tutorial/getting-started/case-studies/imperative-queues/}.}
+Specifically, because the implementation for the pop operation, and the C proof
+of an induction lemma to verify the push operation, both used C's pointer
+equality, the predicates for that datatype needed an additional constraint that
+address equality implied pointer equality for the relevant pointers. This is
+enough to assuage \kl{CN-VIP} that the non-deterministic pointer equality case
+is impossible. The constraint is sensible and the example still usable because
+the pointers refer to a node in a queue; thus, they need to be valid for
+dereferencing (not one-past), hence ruling out the possibility that they could
+have equal addresses and differing provenances.
+
+\section{Performance}
+
+of the transition, shown in \cref{fig:vip-performance-hit2}.
+
+\begin{figure}[h]
+    \centering
+    \includegraphics[width=\textwidth]{../misc/vip-performance-hit.png}
+    \caption{Sharp increase in execution time when enabling VIP, courtesy of
+        \url{https://rems-project.github.io/cerberus/dev/bench/}.}\label{fig:vip-performance-hit2}
+\end{figure}
+
+\section{Resource induction proofs within C}
 
 \section{Translating resource lemmas}\label{sec:trans-res-lemmas}
 
