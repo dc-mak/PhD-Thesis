@@ -8,6 +8,12 @@ recapitulate them with more detail, drawing special attention to parts about
 liveness and bounds checks I skimmed past before. For convenience, I have
 reproduced \cref{fig:typing-mem-action} in \cref{fig:cnvip-mem-action}.
 
+\begin{itemize}
+    \item What will reading this chapter conclude in?
+    \item Typing rules,
+    \item Prove soundness of typing rules with respect to VIP
+\end{itemize}
+
 \section{Memory actions}
 
 \begin{figure*}[tp]
@@ -166,10 +172,9 @@ based memory object model from its current concrete one.
         allocation history.
     \item Update the proof of soundness for resource term reduction and pattern
         matching, with the new rules.
-    \item Define an interpretation of heaps in ResCore, to heaps in the CN-VIP
+    \item Interpret and prove sound ResCore abstract state and transitions into
+        the same for \kl{PNVI-ae-udi}, perhaps via an intermediate concrete
         memory model.
-    \item Prove that the ResCore model of heaps is sound with respect to
-        \kl{PNVI-ae-udi}, perhaps via an intermediate concrete memory model.
 \end{enumerate}
 
 \subsection{Extending the dynamic semantics}
@@ -321,6 +326,8 @@ the sub-state is well-typed ($[[ alloct' ; h' <= N' ; nR' ]]$),
 and the top-level expression too
 ($[[ cdot ; L0 ; N' ; nR' |- texpr' <= ret ]]$).
 \end{theorem}
+
+\section{Linking \kl{ResCore} to \kl{PNVI-ae-udi}}\label{sec:linking}
 
 \chapter{Implementation of CN-VIP}
 
@@ -567,7 +574,7 @@ omit for space.
 \section{Non-deterministic pointer equality}
 
 I implement pointer equality and pointer inequality using the same function and
-a flags for when the differences arise. In particular, after the base types are
+a flag for when the differences arise. In particular, after the base types are
 checked, the continuation is re-bound to take the negation of the value at the
 end in the negated case.
 
@@ -644,7 +651,7 @@ that disjointness facts are expressed over intervals rather than points. This
 means that the `distinct' operator provided by some SMT solvers is not
 useful.
 
-This means that such facts must be derived from the resource context. For
+Instead, such facts must be derived from the resource context. For
 example, for a single ownership in the context, we may deduce that (a) it has
 an \kl{allocation ID} (is not \cinline{NULL}), that the range of addresses it
 owns does not wrap-around (the base is less than its upper bound), and that, if
@@ -706,7 +713,13 @@ equal at all indices. The proof of the lemma in Rocq would rely on the fact
 that the terms are defined with respect to iterated resouces which cover the
 same finite range.
 
+\begin{figure}[h]
 \cfile[fontsize=\footnotesize,breaklines]{code/cn_lemmas_byte_arrays_equal.h}
+\caption{\kl{CN} lemma that two ``byte'' (\cinline{unsigned char}) arrays
+    are equal if they have the same elements over a finite range. This needs
+    to be a lemma because of the mismatch between the intended finite nature
+    of arrays and the total nature of the ones use by SMT solver.}\label{fig:byte-array-eq-lemma}
+\end{figure}
 
 However, when typing a built-in, I can simply combine the two so that users do
 not need to use lemmas after calling \cinline{memcpy}.
@@ -761,6 +774,61 @@ Having finished my discussion on the formalisation and implementation of
 and tutorial code to using it. I will finish with a discussion on how future
 work could use the principles uncovered by my work to place the \kl{CN} memory
 model on more foundational and trustworthy footing.
+
+\section{Performance}
+
+\kl{CN-VIP} causes a significant hit to performance. The benchmarks below show
+a 2\textendash{}3x slowdown, though this is imperfect because some tests are intended to
+fail in early stages such as parsing, desugaring or well-formedness checks.
+
+\begin{figure}[h]
+    \centering
+    \includegraphics[width=\textwidth]{../misc/vip-performance-hit.png}
+    \caption{Sharp increase in execution time when enabling VIP, courtesy of
+        \url{https://rems-project.github.io/cerberus/dev/bench/}.}\label{fig:vip-performance-hit2}
+\end{figure}
+
+It is more fruitful to look at the tests individually, and see which ones show
+a demonstrable slowdown when \kl{VIP} was enabled.
+
+\begin{itemize}
+    \item block\_type.c (CVC5, 4x)
+    \item implies2.error.c (CVC5, 2x)
+    \item extract\_verbose.c (CVC5, 5x)
+    \item builtin\_ctz.c (CVC5, <2x)
+    \item disj\_nonnull.c (both, <2x)
+    \item gnu\_types\_compatible.c (CVC, <2x)
+    \item tree16/as\_partial\_map/tree16.c (both, 3/4x)
+    \item tree16/as\_mutual\_map/tree16.c (both, 3x)
+    \item fun\_ptr\_extern.c (CVC5, 4x)
+    \item increments.c (both, 10x)
+    \item has\_alloc\_id\_shift.c (both, <2x)
+    \item int\_to\_ptr.c (both, <2x)
+    \item has\_alloc\_id\_ptr\_neq.c (both, <2x)
+    \item fun\_ptr\_three\_opts.c (Z3 <2x, CVC5 4x)
+    \item has\_alloc\_id\_ptr\_eq.error.c (CVC5 2x)
+    \item ptr\_diff2.error.c (both <2x)
+    \item ptr\_relop.error.c (both 2/3x)
+    \item ptr\_diff.errro.c (Z3 <2x, CVC5 3x)
+    \item bitwise\_compl.c (CVC5 2x)
+    \item alloc\_token.c (both <2x)
+    \item implies\_precedence.c (CVC5 2x)
+    \item division\_casting.c (Z3 <2x, CVC5 2x)
+    \item reverse.c (Z3 6x, CVC5 5x)
+    \item mask\_ptr.c (Z3 <2x, CVC5 3x)
+    \item and\_or\_precedence.error.c (CVC5 <2x)
+    \item get\_from\_arr.c (Z3 2x, CVC5 3x)
+    \item enum\_and\_and.c (both 2x)
+    \item simplify\_array\_shift.c (CVC5 5x, Z3 7x)
+\end{itemize}
+
+There are three potential reasons for this.
+\begin{enumerate}
+    \item Pointer bounds checks.
+    \item Pointer liveness checks.
+    \item Deriving constraints.
+\end{enumerate}
+
 
 \section{Updating existing code}
 
@@ -831,70 +899,231 @@ the pointers refer to a node in a queue; thus, they need to be valid for
 dereferencing (not one-past), hence ruling out the possibility that they could
 have equal addresses and differing provenances.
 
-\section{Performance}
+\section{Lemma proofs within C}
 
-of the transition, shown in \cref{fig:vip-performance-hit2}.
+As visible above, the queue example requires the use of lemmas to prove the
+appropriate facts for popping and pushing. I did not write the implementation
+for these examples, but I did verify them completely, including proofs of
+lemmas using C as a tactic language.
 
-\begin{figure}[h]
-    \centering
-    \includegraphics[width=\textwidth]{../misc/vip-performance-hit.png}
-    \caption{Sharp increase in execution time when enabling VIP, courtesy of
-        \url{https://rems-project.github.io/cerberus/dev/bench/}.}\label{fig:vip-performance-hit2}
-\end{figure}
+The experience was humbling because I found it quite difficult; it took a few
+days work. This was mostly due to my lack of prior experience with separation
+logic proofs about basic data-structures such as linked list, and resulting
+lack of intuition, however some of this did come down to deciphering often
+inscrutable counter-examples. If the target audience of \kl{CN} is competent
+programmers with little to no experience in verification, then the bar for
+usability and pedagogy needs to be accordingly high. A verification expert
+will find the tool rough around the edges but useful, but a novice will find
+it frustrating and miss the value of verification.
 
-\section{Resource induction proofs within C}
+Let \cinline{snoc} be the function which adds an element (by induction) to the
+back of a list. Because of its recursive definition, the SMT solver will not be
+able to prove facts about it. The lemma for popping below states that the head
+and the tail of a \cinline{snoc}'d list to which an is simply the head of the
+original list, and the \cinline{snoc} of the original tail. A limitation of the
+syntax \textemdash{} the inability to have an assertion about a resource in the
+middle of a function, and bind its output \textemdash{} means that we are
+forced to mention resources to get a handle on the logical values of their
+output.
 
-\section{Translating resource lemmas}\label{sec:trans-res-lemmas}
+\cfile[fontsize=\footnotesize,breaklines]{code/queue_pop_lemma.h}
 
-Is there a reason, in the discussion about Cassia's PhD, we thought all of
-Cerberus needed to be shoved into Iris instead of just a trace of memory model
-(and eventually, concurrency) events?
+The lemma for pushing however (seen in the diff above), is more interesting,
+because it requires induction on a user-defined recursive resource predicate,
+rather than a \kl{logical} (\kl{ghost}) data-structure. It says that if you
+have ownership of a list segment from pointers \cinline{front} to \cinline{p},
+and ownership of node \cinline{struct queue_cell} at \cinline{p}, then you can
+reinterpret that as a ownership of a larger queue from \cinline{front} to
+\cinline{p->next}, and interpret the \kl{logical} queue it represents as a
+\cinline{snoc} of the original queue and the payload \cinline{p->first}.
 
-irisification (cf
-\url{https://people.mpi-sws.org/~dreyer/papers/iris-ground-up/paper.pdf}).  Either
-just the resource algebra or (as DM suggests) also the abstract language of
-memory model interface events: which one let one formalise the primitive
-resource-context manipulations that CN does (conceivably extractably).
+The lemma proved here includes an extra parameter and constraint on line 10 as
+a sanity check at the call site. It also includes ownership of the last node on
+line 11, which turns out to be necessary to prove the constraint on line 14.
 
-I think a sufficient halfway point would be the language of traces memory
-events i.e.\ memory model as the dynamics. Resource algebra would be CN's view
-of resources. Resource lemmas are then just statements saying that one resource
-represents exactly the same heap as another resource (skips). Changes to the
-resource algebra because of memory events (which we could introduce unsoundness
-in CN) would be proved sound in Iris.
+\cfile[fontsize=\footnotesize,breaklines,firstline=3,lastline=29]{code/queue_push_induction.c}
 
-As a bonus, we could even formalise and prove sounds the inference procedures
-CN uses (and with some engineering to handle SMT, even extract from Rocq).
+The proof itself is simply a recursive C function, which follows the structure
+of the \cinline{QueueAux} predicate (\cref{fig:queue-aux-def}). In particular,
+it can be seen as traversing the queue until the base case and adding the extra
+\cinline[breaklines]{struct queue_cell}.
 
-The inference I'm talking about is resource context manipulations: checking if
-we can pack or unpack predicates, if an owned is in the context, shifting
-indices in and out of iterated predicates, exploding and imploding structs.
-These operations don't require core structure.
+\begin{marginfigure}
+    \cfile[fontsize=\footnotesize,breaklines]{code/queue_aux.h}
+    \caption{\cninline{QueueAux} predicate which states ownership of a linked
+    list of \cinline{queue_cell}s from \cninline{front} inclusive to
+    \cninline{back} exclusive. The ownership for \cinline{back} is
+    not included because that needs to be claimed earlier for constant time
+    updates.}\label{fig:queue-aux-def}
+\end{marginfigure}
 
-Even if full extraction of the inference algo is not feasible (it would
-involves standard data structures + SMT FFI), having a defined set of resource
-manipulation primitives proved sound and extracting those (just standard data
-structure manipulations), or even just proving the primitives sound and using a
-similar interface would increase confidence.
+To be clear: \emph{this C lemma or proof is not intended to be executed at
+runtime}. Indeed that would defeat the point of a queue with a pointer to the
+back for constant time pushing. Instead, it demonstrates that there is a class
+of resource lemmas that are provable without appeal to the underlying memory
+model.
 
-If ones reads the above in reverse, it even provides a gradual migration path
-which doesn't commit us to any next step and allows us to see how far
-extraction can take us.
+\section{Lemma proofs in a prover}\label{sec:lemma-prover}
 
-If the inference algs or the primitives are formalised, then we can iterate on
-cleverer  inference schemes with a strong safety net
+There are however, lemmas which need to be proved outside of even the fragment
+expressible by C programs. Some of these work-around limitations of using the
+decidable fragment of SMT theories, such as the mismatch between the intended
+finite arrays represented by resources, and the total maps used in decidable
+SMT theories (\cref{fig:byte-array-eq-lemma}). Using that, it would be possible
+to build support for on merging array values. Non-SMT related examples have not
+come up quite yet, but it is difficult to rule them out and say they will never
+come up.
 
-I think it will become more valuable as soon as we start having fancier things
-like higher-order resources, locks, fractional permissions. At that point,
-checking the steps/moves that any inference algorithm could take would get
-closer to essential.
+\kl{CN} already has a mechanism, implemented by Thomas Sewell, for exporting
+lemmas about pure facts to Rocq, this was used extensively with earlier version
+with integers instead of bitvectors, to reason about the bit manipulations done
+by the \kl{buddy allocator} in \kl{pKVM} (\cref{chap:buddy}). It supports
+exporting pure facts involving datatypes too.
 
-Even if an arbitrary inference algorithm is not stable, the steps available and
-the shape of the resources should be more so, and that is worth at least
-creating a clean abstraction for (and then pen-paper soundness, and then
-mechanised soundness).
+It does not however, supporting exporting and proving lemmas involving
+resources, which are currently just trusted by \kl{CN}. Because of \kl{CN}'s
+aim (\cref{sec:cn-goals}) to behave like a decidable type system rather than a
+program logic, there will always be limits to the number of features that we
+would like to build in to the type checker, and the degree of automation which
+is pragmatic.
 
-Noted and agreed that anything mechanised takes longer than one wants/expects
-and that extraction is a pain. But this gives us a concrete use-case,
-reasonable sequence of experiments and a clear idea of the benefits and costs.
+At the same time, we would like the logic used for proving lemmas to be sound,
+so that we have assurance that users cannot use it subvert the rules enforced
+by the OCaml implementation. An obvious candidate for this is the
+Iris\sidecite{jung2018iris} framework in Rocq, which allows users to define a
+separation logic and inherit many powerful proof rules based on that. However,
+the fundamental way that Iris works means that it requires an operational
+semantics over which to prove the basic primitives sounds, using which other
+predicates and rules and defined.
 
+However, the idea of putting all of \kl{Core} and its dynamic semantics inside
+Rocq, would be a substantial reduplication of work (it is already
+implemented in \kl{Cerberus}) and difficult (in particular the rules for
+handling weak evaluation order). This makes it a high-effort, high-risk and at
+best medium-reward endeavour. It seems as if supporting resource terms in
+lemmas pulls on a thread which drags with it all of \kl{Cerberus}, making the
+feature desirable but difficult to implement. Is there an alternative?
+
+One approach that we discussed would be to make up a subset of the language
+which has enough features we care about to make the project feasible, without
+losing too much fidelity to \kl{Core}. It is not clear to me exactly how this
+would work, or integrate into the current project. Another approach would be to
+do a pen-and-paper proof of soundness and build our own logic, but as \kl{CN}
+is extended with more features such as concurrency and fractional permissions,
+this would simply reduplicate the work of the \emph{Iris} project instead of
+\kl{Cerberus}.
+
+This impasse can be broken with a few observations:
+\begin{itemize}
+    \item Currently, resources and contexts are defined/interpreted only with
+        respect to a chosen memory object model.
+    \item A lemma is a purely ghost state operation, and so would entail
+        proving that the \emph{interpretation} of the sub-heap it consumes is
+        the same as the \emph{interpretation} sub-heap it produces.
+\end{itemize}
+
+With this, a lemma is sound if the interpretations of its pre- and
+postconditions are equal. The interpretations are defined to be exactly as in
+\nameref{sec:linking}.
+
+\section{Better foundations for CN}\label{sec:better-foundations}
+
+Whilst this resolution to the problems of supporting lemmas soundly is
+pleasing, it does raise an uncomfortable question: if \kl{CN} \emph{users}
+should be prevented from introducing unsoundness via lemmas, should \kl{CN}
+\emph{implementers} also be treated similarly?
+
+As before, putting all of \kl{Core} and its dynamic semantics inside Rocq is
+out of the question. Besides, that is not where most critical bugs are likely
+to occur \textemdash{} most of Core is a relatively simple first order
+language, and the SMT solvers we use are well tested pieces of software. Hence
+while it is certainly possible the symbolic evaluation of sub-expressions and
+the constraint solving could be incorrect, it is not the most subtle and
+therefore error-prone parts of the system; that would be manipulating the
+resource context.
+
+Yet, the ways in which \kl{CN} interacts with the resource context are very
+well defined, at least in principle, even if it is not delineated as such in
+the implementation.
+\begin{itemize}
+    \item At the start of a function, adding resources from the precondition to
+        the context.
+    \item At the end of a function, looking up and removing resources required
+        by the postcondition in the context (and ensuring no extra ones remain).
+    \item Before a function call, looking up and removing resources required
+        by the precondition of the callee.
+    \item After a function call, adding resources from the postcondition to the
+        context.
+    \item After a \coreinline{create*}, adding resources to the context.
+    \item After a \coreinline{kill*}, removing resources from the context.
+    \item Before a \coreinline{kill*}, \coreinline{load}, \coreinline{store}
+        and many pointer operations, looking up resources in the context.
+    \item After a \coreinline{store}, updating the resource context.
+    \item During any lookup, change the syntactic structure of resources via
+        folding and unfolding predicates, decomposing and rebuilding pairs,
+        structs, fixed size arrays and byte representations, and indexing and
+        splitting iterated predicates.
+\end{itemize}
+
+This should be very familiar because \emph{these events are precisely the
+places where \kl{ResCore} requires resource term annotations: memory actions,
+memory operations, pattern matching, function calls and return values.}
+Furthermore, the possible changes on the syntactic structure of resources that
+could occur during a lookup are \emph{precisely the ones described by the
+grammar of resource terms} (\cref{sec:res-terms}), indeed that was what they
+were designed for.
+
+We still need a feasible route to shift some of the trust out of the \kl{CN}
+implementation: let-normalising Core and extending the AST with explicit
+resource terms would be an impractically large refactor. A more realistic and
+gradual approach would be to instrument the \kl{CN} implementation as it
+currently stands, but to record a tree of traces of each of the events
+described above. Each event would correspond to a transition between pairs of
+\kl{CN-VIP} abstract states, upon which an Iris logic could be defined and
+proved sound. The logic could then be used to construct separation logic proofs
+for each path through the tree of events. The traces would need to record any
+logical facts proved using the solver, since those would turn into assumptions
+or proof obligations in Rocq.
+
+At this point, the boundary of trust has been shifted away from the
+pen-and-paper proofs discussed in this thesis, and towards trust in how well
+the OCaml implementation implements the theory. The next step would be to
+refactor the implementation that it becomes impossible to manipulate the
+resource context without it being recorded in a trace, so that the
+instrumentation does not need to be updated every time the inference algorithm
+changes. The primitives would stay the same, just encapsulated at a
+higher-level, so for example an implementer could not just add or remove
+resources at arbitrary points during type checking, but only for the specific
+events given.
+
+Once all the operations are encapsulated, we could replace the implementation
+with one defined in and extracted from Rocq. It would be an implementation of a
+data-structure call a resource context, with each operation on it corresponding
+to an event. The implementation of those event in terms of how they
+syntactically manipulate linear separation logic types/assertions would be
+proved correct with respect to a mechanised definition of the \kl{CN-VIP}
+memory model.
+
+At this stage, \kl{CN} implementers could experiment with different inference
+schemes with a strong safety net to make difficult any unsoundness. The
+mechanisation could be taken one step further and inference algorithms
+themselves could be mechanised, with proofs that they have desirable properties
+such as always ending in either a successful proof or a counter-example.
+Accomplishing this would require some non-trivial engineering to connect the
+proof-assistant to the SMT solver, used heavily by the inference algorithms.
+
+At the point that even inference is mechanised, the remaining bases of trust
+would be (a) the SMT solver (b) the accuracy of the traces. The former could be
+checked  by asking for certificates of proofs from the solver.\sidenote{Thus
+avoid the need to reimplement an SMT solver inside a proof assistant, even
+if it is only for decidable theories.} The latter would require \kl{Core} and
+its dynamic semantics, prioritising challenging aspects such as the loose
+evaluation order.
+
+Of course, mechanising any substantial system is a significant undertaking, and
+although extraction of verified code sounds nice, it may not be technically
+practical. Still, if possible, the latter is where I see most of the value
+coming from; a parallel implementation of and proof would also work but that
+carries a risk of the two drifting apart over time. I also expect mechanisation
+to be increasingly values as more expressive features are added such as support
+for concurrency, higher-order resources, fractional permissions.

@@ -716,3 +716,55 @@ My contributions in this part include:
         with reference to the their technical origin and if they exist,
         solutions.
 \end{itemize}
+
+\chapter{Extended example of queues in CN}
+
+In this chapter, I wil\ldots
+
+\section{CN Syntax}%
+
+\begin{figure*}[tp]
+    \centering
+    \includegraphics{figures/cn-grammar-1}
+    \includegraphics{figures/cn-grammar-2}
+    \includegraphics{figures/cn-grammar-3}
+    \caption{Grammar of CN.}\label{fig:cn-grammar}
+\end{figure*}
+
+A file for \kl{CN} consists of series of top-level declarations of annotated C
+functions, (separation logic) predicate definitions, (purely logical) function
+definitions, and datatype declarations.\sidenote{Does the kernel formalism
+support datatypes?}
+
+Function definitions for C introduce the identifiers for the arguments into the
+scope of the pre- and postconditions, preceded by \cninline{requires} and
+\cninline{ensures} respectively. Pre- and postconditions are a list of
+`${conditions}$', each followed by a semi-colon.
+\begin{itemize}
+    \item \cninline{take id = resource} is a \kl{monadic} bind, which binds
+        the \emph{output} arguments of the resource to the identifier \cninline{id},
+        which doubles up as an assertion about the heap.
+    \item \cninline{constraint} is a boolean-valued expression, which acts as a
+        pure assertion.
+    \item \cninline{let id = t} is simply an abbreviation for the expression
+        \cninline{t} bound to \cninline{id}; it has no effect on the context.
+\end{itemize}
+
+\kl{CN} constraints (pure assertions) are either simple terms, or quantified
+constraints.\sidenote{These must be manually instantiated by the user.}
+
+\kl{CN} \kl{resource}s are simply a predicate \cninline{p(t1, .., tn)} % chktex 26 chktex 12 chktex 36
+or an iterated predicate of the form
+\cninline[breaklines]|each (<type> i; <guard>) { <pred>( array_shift(p i) ) }|. % chktex 36 chktex 37
+Predicate names \cninline{p} are either
+\cninline{Owned<ct>}/\cninline{Block<ct>}, representing ownership of an
+initialised (read and write)/uninitialised location (a points-to $\mapsto{}$)
+indexed by a C type, or \cninline{Alloc} representing an allocation, or a
+user-defined one.
+
+Similar to C syntax, \kl{CN} \kl{predicate} definitions first specify return
+type, then a name, and a \intro{base type} annotated list of arguments. Their
+definition consists of either a top-level \cninline{f} with a list of ${specs}$
+in each branch, or a just the list of ${specs}$ at the top-level. ${specs}$ are
+the ${conditions}$ followed by a return expression.
+

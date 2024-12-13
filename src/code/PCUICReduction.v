@@ -1,6 +1,6 @@
 Inductive red1 (Σ : global_env) (Γ : context) : term -> term -> Type :=
 (** Reductions *)
-| red_beta na t b a : 
+| red_beta na t b a :
   Σ ;;; Γ |- tApp (tLambda na t b) a ~> b {0 := a}
 
 | red_zeta na b t b' :

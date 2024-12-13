@@ -7,6 +7,6 @@ int decr_broken(int y)
 // [2/2]: decr_broken -- fail
 // code/decrement_broken.c:6:10: error: Undefined behaviour
 // { return increment(y)-1; }
-//          ~~~~~~~~~~~~^~ 
+//          ~~~~~~~~~~~~^~
 // an exceptional condition occurs during  ... (§6.5#5)
 // State file: ...
