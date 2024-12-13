@@ -1,0 +1,166 @@
+commit 9ee153e74d1b0fbdcb2802f2186d211ab6b2343b
+Author: Dhruv Makwana <dc_mak@outlook.com>
+Date:   Mon Sep 30 18:09:31 2024 +0100
+
+    Add support for VIP
+
+    This commit is a backwards compatible change to some tests to enable VIP
+    by default in CN in an upcoming commit.
+
+diff --git working/cast_1.c working/cast_1.c
+index b2b785d..25877d8 100644
+--- working/cast_1.c
++++ working/cast_1.c
+@@ -1,4 +1,6 @@
+ // Cast a pointer to an int, and back
++// In regular VIP, this does not require a copy_alloc_id but as implemented
++// currently in CN, it does.
+
+ #include <stdint.h> // For uintptr_t, intptr_t
+
+@@ -12,7 +14,7 @@ int cast_1()
+   uintptr_t ptr_as_int = (uintptr_t) ptr_original;
+
+   // Cast back to pointer
+-  int *ptr_restored = (int *)ptr_as_int;
++  int *ptr_restored = __cerbvar_copy_alloc_id(ptr_as_int, &x);
+
+   // Dereference the pointer
+   int ret = *ptr_restored;
+diff --git working/cast_2.c working/cast_2.c
+index 82af441..e2b548f 100644
+--- working/cast_2.c
++++ working/cast_2.c
+@@ -18,7 +18,7 @@ int cast_2()
+   if (ptr_as_int < ptr_as_int_copy) // Check for overflow
+   {
+     ptr_as_int_copy = ptr_as_int_copy - 1;
+-    int *ptr_restored = (int *)ptr_as_int_copy;
++    int *ptr_restored = __cerbvar_copy_alloc_id(ptr_as_int_copy, &x);
+
+     int ret = *ptr_restored;
+
+diff --git working/cast_3.c working/cast_3.c
+index f9ef0cb..0915042 100644
+--- working/cast_3.c
++++ working/cast_3.c
+@@ -19,7 +19,7 @@ int cast_3()
+   if (ptr_as_int < ptr_as_int_copy) // Check for overflow
+   {
+     ptr_as_int_copy = ptr_as_int_copy - OFFSET;
+-    int *ptr_restored = (int *)ptr_as_int_copy;
++    int *ptr_restored = __cerbvar_copy_alloc_id(ptr_as_int_copy, &x);
+
+     int ret = *ptr_restored;
+
+diff --git working/cast_4.c working/cast_4.c
+index d66d9b0..5510b6c 100644
+--- working/cast_4.c
++++ working/cast_4.c
+@@ -19,7 +19,7 @@ int cast_4(int *ptr_original)
+   if (ptr_as_int < ptr_as_int_copy) // Check for overflow
+   {
+     ptr_as_int_copy = ptr_as_int_copy - OFFSET;
+-    int *ptr_restored = (int *)ptr_as_int_copy;
++    int *ptr_restored = __cerbvar_copy_alloc_id(ptr_as_int_copy, ptr_original);
+
+     int ret = *ptr_restored;
+
+diff --git working/00032.c working/00032.c
+index 61fe917..1867ba7 100644
+--- working/00032.c
++++ working/00032.c
+@@ -20,7 +20,7 @@ main()
+ 	p = &arr[1];
+ 	if(*(p--) != 3)
+ 		return 1;
+-	if(*(p--) != 2)
++	if(*p != 2)
+ 		return 2;
+
+ 	p = &arr[0];
+diff --git working/pointer_dec1.c working/pointer_dec1.c
+index a5d208d..33e87ba 100644
+--- working/pointer_dec1.c
++++ working/pointer_dec1.c
+@@ -1,5 +1,5 @@
+-int a;
++int a[2];
+ void b() {
+-  int *c = &a;
++  int *c = &a[1];
+   c -= 1;
+ }
+diff --git working/pointer_dec2.c working/pointer_dec2.c
+index 542a210..058880f 100644
+--- working/pointer_dec2.c
++++ working/pointer_dec2.c
+@@ -1,7 +1,7 @@
+ // Derived from src/example-archive/c-testsuite/broken/error-proof/00032.err1.c
+
+-int a;
++int a[2];
+ void b() {
+-  int *c = &a;
++  int *c = &a[1];
+   --c;
+ }
+diff --git queue_cn_types_2.h queue_cn_types_2.h
+index d8e724f..440a2cb 100644
+--- queue_cn_types_2.h
++++ queue_cn_types_2.h
+@@ -5,6 +5,7 @@ predicate (datatype seq) IntQueueFB (pointer front, pointer back) {
+   } else {
+     take B = Owned<struct int_queueCell>(back);
+     assert (is_null(B.next));
++    assert (ptr_eq(front, back) || !addr_eq(front, back));
+     take L = IntQueueAux (front, back);
+     return snoc(L, B.first);
+   }
+diff --git queue_cn_types_3.h queue_cn_types_3.h
+index 99f22eb..83deddf 100644
+--- queue_cn_types_3.h
++++ queue_cn_types_3.h
+@@ -4,7 +4,8 @@ predicate (datatype seq) IntQueueAux (pointer f, pointer b) {
+     return Seq_Nil{};
+   } else {
+     take F = Owned<struct int_queueCell>(f);
+     assert (!is_null(F.next));
++    assert (ptr_eq(F.next, b) || !addr_eq(F.next, b));
+     take B = IntQueueAux(F.next, b);
+     return Seq_Cons{head: F.first, tail: B};
+   }
+diff --git queue_push_induction.c queue_push_induction.c
+index 9d0f897..dc1b012 100644
+--- queue_push_induction.c
++++ queue_push_induction.c
+@@ -5,11 +5,13 @@ void push_induction(struct int_queueCell* front
+         , struct int_queueCell* last)
+ /*@
+   requires
++      ptr_eq(front, second_last) || !addr_eq(front, second_last);
+       take Q = IntQueueAux(front, second_last);
+       take Second_last = Owned(second_last);
+       ptr_eq(Second_last.next, last);
+       take Last = Owned(last);
+   ensures
++      ptr_eq(front, last) || !addr_eq(front, last);
+       take NewQ = IntQueueAux(front, last);
+       take Last2 = Owned(last);
+       NewQ == snoc(Q, Second_last.first);
+diff --git queue_push_lemma.h queue_push_lemma.h
+index d3052dc..a93abe5 100644
+--- queue_push_lemma.h
++++ queue_push_lemma.h
+@@ -1,9 +1,11 @@
+ /*@
+ lemma push_lemma (pointer front, pointer p)
+   requires
++      ptr_eq(front, p) || !addr_eq(front, p);
+       take Q = IntQueueAux(front, p);
+       take P = Owned<struct int_queueCell>(p);
+   ensures
++      ptr_eq(front, P.next) || !addr_eq(front, P.next);
+       take NewQ = IntQueueAux(front, P.next);
+       NewQ == snoc(Q, P.first);
+ @*/
