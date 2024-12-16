@@ -1,22 +1,147 @@
-Overview of engineering part.
+So far I have discussed the formalisation of \kl{CN}, the formalistaion and
+implementation of its memory model, \kl{CN-VIP}. In both those sections,
+guiding design choices and implementation decisions at each stage was the need
+to strike a balance of expressiveness, performance and ergonomics,
+fundamentally motivated by designing a \emph{capable} verification tool. Not
+only that, at several stages, the theory was able to inform or clarify
+implementation related issues, such as the complexity of adding new features,
+lifting existing restrictions, or substantially improving performance.
 
-\chapter{Tree-carving: Taming C Projects}\label{chap:tree-carver}
+In this part, I will take a step back and focus more on what it takes to build
+a \emph{usable} verification tool. Though not as theoretically intruiging or
+elegant as some of the material in the previous chapter, this is where just as
+much, if not more, of the difficulty lies in achieving \kl{CN}'s goal of being
+maintainable by kernel hackers (\cref{sec:cn-goals}).
 
-\begin{definition}[\intro{Observational refinement}]\label{def:obsref}
-  A term $\Gamma \vdash t \ty A$ \kl{observationally refines} a term
-  $\Gamma \vdash u \ty A$, noted $\intro* t \obsRef u$, if for all boolean-valued observation context
-  $\mathcal{C} \ty (\Gamma \vdash A) \Rightarrow (\vdash \Bool)$ closing over all
-  free variables, if $\mathcal{C}[u] \red \err[\Bool]$ or diverges,
-  then either $\mathcal{C}[t] \red \err[\Bool]$ or $\mathcal{C}[t]$ diverges.
-\end{definition}
+It start with the source repository for any mature C project, such ask
+\kl{pKVM}. It intentionally lives in the Linux kernel, indeed in many respects
+this is an advantage. It is an unignorable reminder that C in the real word
+however does not come neatly packaged up into isolated files of ISO grammar
+conforming translations units. Aside from the myriad extensions that it relies
+on, as well as non-ISO conforming C features, the inclusion chain of one file a
+few hundred lines long can stretch \emph{eleven} directories up and total
+around 65,000 lines of C after preprocessing. Mature industrial projects like
+GCC and Clang have spent years optimising their front-ends to deal with this
+complexity at speed, which creates a large gap between it, and robust,
+empirically validated, but ultimately academic tools such as \kl{Cerberus}.
+
+Thankfully, there is an alternative to simply adding features to the
+\kl{Cerberus} frontend until it can handle a substantial number of GCC and
+Clang fragments. In our experience, the set of features used by a particular
+directory of files, such as the \kl{pKVM} project are relatively small, and can
+be manually extracted by copying files, commenting out unused features, and
+flattening directory hierarchies. Whilst this is possible, it is tedious, slow,
+error prone and extremely time consuming, taking days to perform by hand,
+making it very difficult to update once code is updated. Doing so trades-off
+implementation and intellectual effort for grunt work and drudgery, which is a
+step in the right direction, albeit no more practicable.
+
+Faced with this, and the awareness of tools such as clang-format, which can
+format complex projects of C++ code, including macros, and other Clang based
+tools for linting and refactoring, I developed a tool which could automate the
+aforemention drudgery. Analagous to tree-shaking for JIT-compiled interpreted
+languages, I call the method \intro{tree-carving}, which given a root file in a
+repository, extracts out the files in the transitive dependency of that root,
+and comments out anything not used.\sidenote{Such a strategy works for most
+sensibly formatted code with each top-level declaration on its own line. For
+code which does not fit this, input validation will reject the program rather
+than produce erroneous output.} It comments out code to preserve line numbers,
+and works with macros too. Since \kl{CN} specifications are comments too, and
+could get lost inside other comments, I also wrote a comment simplifier to undo
+such nested comments.
+
+Even with reasonable input, the challenges continue. One of the early
+challenges \kl{CN} faced was that of allocation for function arguments. Though
+intuitively, a programmer might model allocations for parameters as being
+created by the \emph{callee}, early versions of \kl{CN} relied on
+\kl{Cerberus}' elaboration allocating storage for function arguments at the
+\emph{caller}, per callsite. This significantly degraded the experience of
+writing specifications and proofs because the programmer had to specify that
+functions did not mutate arguments at the callsite. Kayvan Memarinan fixed this
+by creating a parallel mode of elaboration to support the more intuitive model.
+
+Influenced by \kl{Cerberus}'s decision to model C integers as unbounded with
+constraints, \kl{CN} originally adopted a similar design, and used to verify
+the \kl{pKVM}'s buddy allocator, as mentioned in \sidetextcite{pulte2023cn}.
+However, this soon became cumbersome due to the use for frequent bit
+manipualation idioms in \kl{pKVM}'s page table walker, because expressing these
+idioms on integers then required the frequent use of lemmas to handle the
+(undecidable) non-linear arithmetic. This prompted an overhaul of \kl{CN} to
+work with bit vectors as its fundamental integer type.
+
+My contributions to this thread began as I attempted to update the buddy
+allocator to handle a very early version of \kl{VIP}, which coincided with the
+move to bitvectors, \emph{and} a change in the inference scheme. Alongside
+this, this was my first serious use of \kl{CN} and separation logic, and I did
+not have the benefit of the helpful \kl{CN tutorial} to serve as less steep
+cliff to ascend. To top it all off, the underlying code of the buddy allocator
+had been updated, unbeknownst to anyone at the time (we did not have
+performance benchmarking) \kl{CN} became dramatically slower, and at the time
+had no ability to track source location information across the majority of its
+pipeline. Whilst the attempt seems foolish and doomed from the start, it
+clarified a few things we needed to improve upon.
+\begin{itemize}
+    \item Source location information.
+    \item Regression testing.
+    \item Peformance benchmarking.
+    \item Switchable major transitions.
+    \item A tutorial and worked examples.
+    \item Upating proofs one aspect at a time.
+\end{itemize}
+
+As result of this failed attempt, I came to appreciate all the above. I ended
+up spending about one month plumbing through source location information
+through out the core datatype in \kl{CN}, as well as fixing the lexer and
+parser to be more robust and have extensible error messages.
+
+I also identified a particularly difficult challenge which any verification
+tool based on an internal representation needs to deal with is relating errors
+back to the source code user wrote. This is particularly evident with SMT
+counter-examples which are not minimal, consistent, nor easy to translate back
+to the source. Aside from this, even in the absence of \kl{VIP} related
+performance issues, \kl{CN} is still about an order of magnitude slower than we
+would like it to be, though the causes of this are not clear, the plan of being
+able to rely on performant SMT solvers with decidable queries has not paid off
+quite as well as we would have liked.
+
+\chapter{Tree-carving: Taming C Respositories}\label{chap:tree-carver}
+
+\margintoc{}
+
+In this chapter, I will explain why we need a tree-carver for C repositories,
+by referring to the mounting challenges we were facing scaling \kl{Cerberus} to
+handle large repositories. After that, I will explain the features of C which
+make this a particularly challenging endeavour, mostly centred on macros and
+the C preprocessor. I will also explain why it is very desirable to \emph{not}
+input preprocessed C code into verification tools such as \kl{CN} (constants,
+and column information). Lastly, I will show how, extending prior work
+significantly, I built a Clang-based tool which meets almost all the
+requirements we sought, enough to not be the primary bottleneck to verifying
+code in large projects anymore. Laslty, I will explain the limitations of the
+current approach (struct fields, cross-translation-unit carving), and ways this
+may be remedied in the future.
 
 \chapter{pKVM Buddy Allocator update}\label{chap:buddy}
 
 \chapter{User experience}
 
-\section{Syntax, syntax, syntax}
+\section{Calling conventions and specifications}
 
-\section{How calling conventions affect specifications}
+\section{Accurate source location}
+
+Preprocessor column info!
+
+\section{Rich regression testing}
+
+\section{Peformance benchmarking}
+
+\section{Switchable major transitions}
+
+\section{Examples and overfitting}
+
+\section{Updating proofs}
+
+\section{Syntax, syntax, syntax}
 
 \section{Counter examples}\label{sec:counter-ex}
 
@@ -31,4 +156,6 @@ Overview of engineering part.
 \begin{itemize}
     \item Translate standards jargon into C programmer friendly words.
 \end{itemize}
+
+\section{Partnering with industry}
 

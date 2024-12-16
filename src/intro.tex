@@ -717,9 +717,27 @@ My contributions in this part include:
         solutions.
 \end{itemize}
 
-\chapter{Extended example of queues in CN}
+\chapter{Example: queues in CN}
 
-In this chapter, I wil\ldots
+\margintoc{}
+
+In this chapter, I will first present the syntax of \kl{CN}, and discuss its
+main features. After that, I will  present an extended example of a verified
+implementation of a queue (first-in, first-out) of integers in CN\@. The data
+structure is simple linked list, each node carrying an integer value and a
+pointer to the next node, or \cinline{NULL}. This list is wrapped up in a
+\cinline{struct} with pointers to the front and back for constant time pushing
+to the back of the queue, and popping from the front of the queue. The
+operations are proved to not only be memory safe, but also functionally correct
+via a user-defined datatype and predicate.
+
+I owe the idea, C implementation and intial proof structure to Benjamin Pierce;
+the final proofs and lemmas involved are my work. As presented, the queue has a
+few limitations, reflecting the earlier version of \kl{CN} against which it was
+verified. Namely, \cinline{malloc} and \cinline{free} were not supported
+directly, so were added as trusted functions. And the syntax for predicates did
+not allow for non-top-level-ifs, and so it defines a new predicate each time
+any branching is required.
 
 \section{CN Syntax}%
 
@@ -766,5 +784,172 @@ Similar to C syntax, \kl{CN} \kl{predicate} definitions first specify return
 type, then a name, and a \intro{base type} annotated list of arguments. Their
 definition consists of either a top-level \cninline{f} with a list of ${specs}$
 in each branch, or a just the list of ${specs}$ at the top-level. ${specs}$ are
-the ${conditions}$ followed by a return expression.
+the ${conditions}$ followed by a return expression.\sidenote{\url{https://github.com/rems-project/cerberus/issues/266}}.
 
+\section{Queue definitions}
+
+First, we have some \kl{CN} definitions of datatypes and logical (ghost)
+functions. The first declaration declares \cninline{List} to be a recursive
+datatype with two constructors, \cninline|Nil{}| and \cninline|Cons {head,
+tail}|. The arguments to constructors are named, not positional.
+
+The next declarations are functions for computing the head and tail of a list,
+and adding an element to the end of the list. All are defined with
+pattern-matching, and the last one is marked with \cninline{[rec]} so to allow
+it to be recursive. The first two definitions can and will be unfolded, but the
+last one requires manual annotation from the user. All functions must be total,
+so the \cninline{hd} function returns \cninline{0i32} in the empty list case.
+
+\cfile[fontsize=\footnotesize,breaklines,lastline=26]{code/queue_headers.h}
+
+Next, we have the definitions for the C structs used to represent the queue.
+The first struct contains a pointer to the front and the back of a linked list
+of \cinline{struct queue_cell} nodes, with payload \cinline{int first} and
+pointer to next node \cinline{struct queue_cell *next}.
+
+\cfile[fontsize=\footnotesize,breaklines,firstline=28,lastline=36]{code/queue_headers.h}
+
+Base on this, we define some predicates relating the shape of the heap, and
+invariants we expect to hold on the data-structure at all times, to the logical
+value represented in memory. The first is the top-level predicate
+\cninline{QueuePtr_At(p)} for a pointer \cninline{p}, with output % chktex 36
+argument \cninline{datatype List}. It takes ownership of a \cinline{struct
+queue} at that pointer, and binds the logical value at that location in memory
+to \cninline{Q}. It then asserts the key invariant that either both front and
+back pointers are \cninline{NULL} or both are non-\cninline{NULL}. It then
+binds the output of the predicate \cninline{QueueFB} to \cninline{L}, and
+returns that as its own output, the mathematical representation of the (integer
+list) value in memory.
+
+\cfile[fontsize=\footnotesize,breaklines,firstline=38,lastline=46]{code/queue_headers.h}
+
+The predicate \cninline{QueueFB} takes two pointers as its argument, a front
+and back, and returns a list of integers too. If the front is \cninline{NULL},
+then the list returned in empty. If not, it claims ownership of the back, binds
+the value of that cell to \cninline{B} and asserts the \cninline{B.next}
+pointer is \cninline{NULL} (the last cell). It also adds a constraint about
+front and back pointers which may be ignored for now. At this stage, it too
+binds the output of another predicate to a list \cninline{L}, but the value it
+returns is the \cninline{snoc} of that list, with the last integer
+\cninline{B.first}.
+
+\cfile[fontsize=\footnotesize,breaklines,firstline=48,lastline=60]{code/queue_headers.h}
+
+The predicate \cninline{QueueAux} is recursive. It takes two pointers and
+returns a list of integers too. The intuition for this predicate is that it
+represents ownership of a segment of a list from \cninline{front} inclusive to
+\cninline{back} exclusive. The \cninline{back} being exclusive is important
+because the ownership for that was already claimed in \cninline{QueueFB}. The
+base case of this predicate is when the two pointers are equal, in which case
+the returned list is empty. In the inductive case, it claims ownership of a
+\cninline{struct queue_cell} at \cninline{f}, binds the value at that location
+to \cninline{F} and then asserts that \cninline{F.next} is not \cinline{NULL}.
+It then recurses with that value, and the same back pointer, and binds the
+resulting list to \cninline{B}. The result returned is a list with head
+\cinline{F.first} and tail \cinline{B}.
+
+\cfile[fontsize=\footnotesize,breaklines,firstline=62,lastline=74]{code/queue_headers.h}
+
+Lastly there are some work-around functions to support dynamic allocation and
+freeing for the two struct definitions. They allocations are modeled as always
+succeeding to keep the example simple.
+
+\cfile[fontsize=\footnotesize,breaklines,firstline=76,lastline=98]{code/queue_headers.h}
+
+\section{Queue implementation}
+
+Let us start with the function which creates an empty queue according to the
+invariants described above. Its specification has no precondition, only a
+postcondition, which specifies not only that the return value represents a
+queue according to the layout described by \cninline{QueuePtr_At}, but also
+that the logical (ghost) value it outputs is the empty list \cninline|Nil{}|.
+
+In the C code, it allocates memory for a new \cinline{struct queue}, sets the
+front and back pointers to \cinline{NULL}, and returns a pointer to the new
+allocation.
+
+\cfile[fontsize=\footnotesize,breaklines]{code/queue_empty.c}
+
+The specification for popping from a queue has as its preconditon a queue at
+pointer \cinline{q} such that the logical (ghost) value \cninline{Q} it
+represents is not \cinline|Nil{}|, and as its postcondition similarly a queue
+at pointer \cinline{q}, with the difference that the value afterwards
+\cninline{Q_post} is the tail of \cninline{Q}, the value before, and the
+\cninline{return} value is an integer which was at the head of \cninline{Q}.
+
+In \kl{CN}, a pointer may only be dereferenced if the relevant ownership is in
+the context. And in this case, the ownership is behind a guard based on whether
+\cninline{q->front} is \cinline{NULL} or not. To unpack the resource and the
+return value from underneath the guard, \kl{CN} needs to be able to prove
+statically that it is in one of the branches. Hence, the user has to provide a
+manual \cninline{split_case} to bifurcate type checking along two branches. The
+true branch reveals a contradiction between the return value \cinline|Nil{}|
+and the precondition \cninline|Q != Nil{}|, thus terminating type % chktex 26
+checking along this (ghost) control flow path early. However, the false branch
+contains the ownership of \cinline{q} required to read \cinline{q->front}.
+
+Next, control flow bifurcates again, but this time in the C program. If the
+front and back pointers are equal, then that signals we are in the singleton
+queue case, which must be handled separately to the non-singleton case. In both
+cases, the head value must be read and then head \cinline{struct queue_cell}
+freed.
+
+In the singleton case, both queue front and back pointers must be set to
+\cninline{NULL} to maintain the invariant in \cninline{QueuePtr_At}. So far,
+this is enough to establish the resource predicate, but not the constraint that
+\cninline{Q}, which is equal to \cninline[breaklines]|Cons {head:x, tail:
+Nil{}}| is equal to \cninline|snoc(Nil{}, x)|. The reason for this % chktex 36
+is that \cninline{snoc} is a recursive function, and thus must be unfolded
+manually by the user.
+
+\cfile[fontsize=\footnotesize,breaklines,firstline=15]{code/queue_pop.c}
+
+In the non-singleton case, we need to apply a similar lemma, one which
+says \cninline{snoc} commutes iwth \cninline{cons}. Because \kl{CN} can
+only express logical (ghost) values which are derived from computational
+variables, it must invoke resources to be able to state this otherwise
+simple pure fact. The lemma required to make the proof pass is shown below;
+the resources are identical, only the pure constraints in the postcondition
+are necessary.
+
+\cfile[fontsize=\footnotesize,breaklines,lastline=13]{code/queue_pop.c}
+
+The case for pushing onto a queue is more interesting, because of the resource
+reasoning required for it. The queue stores a pointer to the back of the list
+for constant time pushing, but this same pointer can be accessed by traversing
+the list, meaning there are (in principle) two aliases to the same pointer.
+
+Upon entry to the function, it allocates a new cell and stores the new values.
+It then conditionally branches on whether or not the queue is empty or not, by
+checking the back pointer. As a result of the invariant on queues, in both
+cases we learn that the front pointer is correspondingly (not) \cninline{NULL}.
+In the true branch, both front and back pointers are set to the newly allocated
+cell. This is enough to establish the singleton case of the queue predicates.
+
+In the false branch, it adds the cell to the back of the list, and then updates
+the queue's back pointer to point to it. The reason it is able to do so is that
+ownership of the back of the list is taken by \cninline{QueueFB}, rather than
+at the end of a recursive chain of \cninline{QueueAux}. But now there are
+two such \cninline{Owned<struct queue_cell>} and like the famous Highlander,
+there can only be one. So the old cell must be moved, not in the C code, but
+in the resource predicate, to the end of the \cninline{QueueAux} recursion
+chain.
+
+\cfile[fontsize=\footnotesize,breaklines,firstline=13]{code/queue_push.c}
+
+It is precisely this fact which \cninline{push_lemma} represents: if one has
+ownership of a segment of a list from  \cninline{front} to \cninline{p}
+(exclusive), and ownership of a cell at \cninline{p}, then that is the same as
+ownership of a longer segment from \cninline{front} to \cninline{p->next}
+(exclusive). Furthermore, the value of this longer segment, is the
+\cninline{snoc} of the first two values.
+
+\cfile[fontsize=\footnotesize,breaklines,firstline=13]{code/queue_push.c}
+
+\section{Proofs of lemmas}
+
+\kl{CN} current does not support export and proofs of lemmas which mention
+resources, even if those resources are there just to help state a pure fact.
+Support for this is planned (\cref{sec:lemma-prover}). However, as it turns
+out, for some lemmas, such as the ones shown here, it is possible to give a
+proof in terms of a C function (\cref{sec:lemma-proof-c}).
