@@ -247,6 +247,55 @@ used with much smaller files, and so using it to parse, analyse and ignore the
 relevant parts of a C program is not feasible either (on top of the
 preprocessing issues mentioned earlier).
 
+\section{Demonstration}
+
+Below is a small input-output example which illustrates some of the features
+of the tree carver.
+
+First, a header file containing struct definitions (with some comments, as well
+as attributes). It also includes a block comments of different kinds, as well
+as a line comment.
+
+\cfile[fontsize=\footnotesize,breaklines]{code/input_struct_fields.h}
+
+The header is included by a simple C file. Note that the main function uses a
+macro, which must be retained in the output. It also uses comments, which must
+remain unaffected. It uses the \cinline{enum e1} and \cinline{struct s6} only
+indirectly, via function \cinline{f}. Furthermore, \cinline{struct s6} is used
+after its (forward) declaration, but before it is defined \textemdash{} the
+actual definition is used separately.  Only \cinline{s1_field} of
+\cinline{struct s1} is used, not \cinline{char UNUSED}. Additionally, the
+\cinline{enum e5} is referred to only via the use of the constant
+\cinline{THREE} in the type of the parameter to \cinline{g}.
+
+\cfile[fontsize=\footnotesize,breaklines]{code/input_struct_fields.c}
+
+Assume there is a simple `compile\_commands.json' file with the following
+contents.
+
+\begin{minted}[fontsize=\footnotesize]{json}
+[
+  {
+      "directory": "/path/to/project",
+      "command": "clang -c struct_fields.c",
+      "file": "struct_fields.c"
+  }
+]
+\end{minted}
+
+Running the tree carver would result in a path to a directory being printed.
+Inside the directory, we would see the that all comments are preserved,
+as well as the file and directory structure, but unused lines are prefixed with
+\cinline{//-}.
+
+\cfile[fontsize=\footnotesize,breaklines]{code/output_struct_fields.h}
+
+Similarly in the C file, we see that the comments are correctly unaffected, but
+the macros, the \cinline{#include}, the functions and the used types are left
+uncommented, whereas the unused \cinline{typedef struct s6 s6} is commented out.
+
+\cfile[fontsize=\footnotesize,breaklines]{code/output_struct_fields.c}
+
 \section{Implementation}
 
 As I mentioned earlier, the existence of tools such as clang-format, which
@@ -516,9 +565,468 @@ the binary included or not. It may also complicate any attempts to link the
 code with other code that uses the same struct definitions but different
 fields.
 
-\chapter{pKVM Buddy Allocator update}\label{chap:buddy}
+\chapter{pKVM Buddy Allocator updates}\label{chap:buddy}
+
+The \kl{pKVM} hypervisor is intended to provide isolation between virtual
+machines, protecting both the guest from the host and vice versa. It is also
+intended to support creating and destroying virtual machines dynamically, and
+so one of its key features it needs to implement is memory management. It
+implements a buddy allocator~\sidecite{knowlton1965fast} to manage the pages it
+allocates. The example is discussed in \sidetextcite{pulte2023cn}, so I will
+focus only on my experience in updating the code.
+
+\section{Updating to intrusive free lists}
+
+The major code change is easy to describe. The buddy allocator maintains a
+doubly-linked list of free pages (per order). Initially, the pointers for these
+were stored externally to the free pages, but an update to the code changed it
+so that the pointers were stored intrusively, on the free pages themselves.
+
+I found updating the proof for this to be challenging, mostly due to \kl{CN}'s
+error reporting, which I will explain later, but also partly due to a lack
+of experience and resulting intuition around the code and its predicates.
+With significant help, I was able to make worthwhile progress on it.
+
+The \kl{pKVM} buddy allocator is a challenging piece of code to understand and
+verify. It shifts between physical and virtual addresses frequently, and I
+found this difficult to follow. At the time, the original proof did not have or
+use helper functions, so tracking the complex arithmetic and different `types'
+(metadata, index into metadata, physical address, virtual address),
+was confusing. Ownership of the pages was initially indexed by its physical
+address; ownership of the metadata is indexed by a value computed from a page's
+address.
+
+On top of this, ownership for the pages is sparse, based on conditions
+expressed in the metadata, hence, ownership of both are needed to perform any
+operations such as coalescing two buddy pages of the same order, adding or
+removing a page. In addition to the addresses computable from an index, the
+free pages are also aliased via a per-order doubly-linked free list. This is
+where freed pages are added, and from whence allocated pages are removed.
+
+Aside from the mechanics of moving fields and ownership from one part of the
+code to another, the update also highlighted some unhelpful assumption made in
+the initial verification, which meant going back, fixing the issue, and then
+redoing the efforts thus far. Although some aspects of the implementation could
+be encapsulated in helper functions, and working from leaf functions up was
+helpful in making worthwhile progress, eventually I hit the limits of my
+cognitive capabilities and of \kl{CN}'s abstractions and error reporting.
+
+\subsection{Carving and integrated the upstream code}
+I did the update before I had a functioning tree carver, and so I had to
+manually carve out and integrate the upstream changes into the pre-existing
+buddy allocator proof. This was slow and tedious. It was also occasionally
+error-prone, because although clang and Cerberus were helpful to sanity check
+the new cutdown version, they would not complain if annotations were missing.
+
+At the time, we did not support top-level \kl{CN} definitions in comments, and
+so all the definitions (which were scattered inline, not factored out into a
+separate header) made using clang difficult, since they had to be manually
+commented out, and then uncommented later to use \kl{CN}.
+
+In total, carving out and grafting the updated code took around 3 weeks.
+
+\subsection{Deleting old fields}
+I started by commenting out all the instances where struct fields had been
+removed (forward/backward pointers deleted from the metadata array). I
+was able to do this and verify one of the functions, `hyp\_put\_page'
+in approximately 1 week.
+
+This change was straightforward to propagate in specifications because CN
+reliably showed errors where non-existent fields were accessed. It was less
+clear, as someone new to the code and its invariants, what the required
+adjustments to the invariants needed to be. Surprsingly, I could leave this
+until later \textemdash{} the changes were close to dependency leaf nodes, and
+the original design \& use of the resource and logical predicate definitions
+(on the non-leaf functions) did a good job of encapsulating their details.
+
+\subsection{Adding new fields}
+
+After propagating the removed fields, my progress slowed significantly. The
+next steps required understanding the code and \kl{CN} far more deeply, namely
+understanding \textemdash{} and then writing the correct predicates for
+\textemdash{} free pages with intrusive doubly-linked list pointers. Thomas
+Sewell, who worked on the initial proof, wrote the first draft of the new
+predicate to describe such pages. This took him about a day; the new predicate
+had new output values (for the previous and next pointers), and propagating
+this took me about 2 weeks. I also consulted with the Christopher Pulte, who
+also worked on the inital proof, who advised on further refinements, which took
+another 2 weeks to propagate.
+
+% This change removed the use of the
+% `vmemmap\_b\_wf` logical function, and constraining the indices for which
+% `AllocatorPage` predicates were iterated over (for `.refcount == 0` and
+% `.order != hyp\_no\_order()`). Propogating this change took about 2 weeks.
+
+\subsection{Physical to virtual address}
+
+During the update, an issue around resource management which was previously
+obscured became clearer: the code was using virtual addresses to read the
+intrusive list pointers, and thus implicitly claiming ownership of the pages
+via the \emph{virtual} rather than physical addresses.
+
+Unfortunately, the original verification claimed ownership for the pages via
+the physical addresses. This was fine in the orignal proof and code, because
+the pages were never read from; but it is impossible to convince \kl{CN} that
+loading a struct from a virtual address whilst it has ownership of the
+distantly related physical one, since that would collapse the distinction and
+transformations between them.
+
+The remedy to this was to go back and update the original proof to consistently
+use ownership via virtual addresses, in anticipation of the forthcoming
+changes. Fixing and then propogating these changes, alongside cosmetic changes,
+in the rebase took one month.
+
+\subsection{Helper functions}
+
+After the rebase, I verified two new helper functions. The first of these takes
+a pointer to a free page's metadata, converts it into the virtual address for
+the free page itself, and then deletes the page from the doubly-linked free
+list it is in. The second is similar, but adds the page to a specified
+double-linked free list.
+
+These were verbose, but not too challenging \textemdash{} the standard list
+functions they wrapped up were already verified in the previous proof, so it
+was a matter of plumbing through enough invariants to support computing the
+virtual address (and associated ownership) from a page metadata pointer.
+
+For verification, it was useful to add an extra wrapper around each these
+helper functions, which expressed the addition/removal in higher-level
+invariants used by the main functions. To express those invariants, the
+verification helpers needed an extra logical parameter, but since
+\kl{CN} does not currently support those (when not derived from program
+variables), the parameter was reified into the C code (but ignored in the
+body).
+
+\subsection{Indexing and signed bit vector division}
+
+The main predicate of the buddy allocator claims a contiguous iterated
+ownership of page metadata, and \emph{spare} iterated ownership of the pages
+themselves, specifically the free pages (determined by the metadata).
+
+As I mentioned before, the code assumes that it can dereference the contents of
+pages via their \emph{virtual} addresses. So this gives two seemingly equally
+valid choices on how to \emph{index} the iteration that iteration. It could
+either be indexed according to the same scheme as the metadata, or it could be
+indexed by a \emph{virtual index}. The latter is more natural to write, since
+the base virtual index is always 0, and the base virtual address is always 0,
+and was the initial choice for expressing this.
+
+However, this quickly became unwieldy as logical expressions using the
+\emph{outputs} of these differently indexed arrays need to convert between the
+two consistently and correctly. Not only was this not the case, lurking beneath
+the conversion was a division of a signed bit vector in Z3, which
+folklore\sidenote{I thank Thomas Sewell for alerting me to this.} suggests is
+ill-advised. Hence, the penultimate step to verifying the code was
+standardising these indices and avoiding the possibility of signed bit vector
+division, which took about 1 week.
+
+\begin{figure}[tp]
+\includegraphics{figures/buddy-negative-div.png}
+\caption{Negative divisions causing potential issues.}\label{fig:buddy-negative-div}
+\end{figure}
+
+\subsection{Stuck in complexity}
+
+After I had finished verifying the leaf and the intermediate functions, I
+became stuck because of the sheer complexity and unfamiliarity of the top-level
+predicate, as well as usability issues I will cover soon.\sidenote{I had also
+started work on the tree carver, which was much more tractable/appealing.}
+
+Thomas Sewell took over and completed the updated proofs at this stage. The key
+insight to enable this was the realisation that the main invariant needed to
+variants such that zero, one or two pages could be removed from it, but
+otherwise still hold, so that the ownership of a page and its buddy could be
+removed, coalesced, and returned in a way that preserved the original structure
+of the code, which took at most 2 weeks.
+
+\section{Comments on the process}
+
+\paragraph{Tree carving is indispensible.} Manually carving and grafting the
+code took a significant amount of time (3 weeks), once again demonstrating the
+need and usefulness of the tree carver as an integral part of any usable C
+verification tool.
+
+\paragraph{Functions should be checked in dependency order.} From the get go,
+the default order in which \kl{CN} checked its functions was unhelpful.
+Ideally, one would like it to start with leaf functions and then work its way
+up, but instead the user must figure out and maintain the dependency structure
+in their head when planning the proof effort, and manually select the functions
+to verify one at a time.
+
+\kl{Function-like macros represent real abstractions.} The buddy allocator code
+uses function-like macros heavily to convert between a pointer to metadata, an
+index into metadata, a physical address and a virtual address. Ideally there
+would be some way of automatically converting such macros into logical (ghost)
+functions, but this is difficult because macros can and do refer to global
+variables. Instead of converting macros to logical functions, it may be more
+fruitful to simply expand their use in specifications, but macros are not
+expanded in comments, where \kl{CN}'s annotations live.\sidenote{This is close
+to essential for maintaining compatibility with existing C tool chains.}
+\kl{CN} does have an experimental feature for lifting a C function into a
+logical one, with the idea being that writing a C function around a macro call
+is an option sometimes. All this being said, even if by hand, the benefit of
+defining logical equivalents of function-like macros is worthwhile for the
+readability, reliability and maintainability it brings.
+
+\kl{Constant-like macros also represent real abstractions.} Magic constants
+were prevalent in the original proof, which I removed. Part of this was just
+human inconsistency, part of this was two syntactic limitations of an earlier
+version of \kl{CN}. The first was that in that in top-level definitions, one
+could write \cninline{sizeof<struct hyp_page>}, but not in the specifications.
+The second was that step-sizes in iterated predicates must be integer literals
+(rather than \cninline{sizeof<>} expressions). This was exacerbated by the fact
+that the size of \cinline{struct hyp_page} shrank between the versions from 32
+to 4, and the size of its \cinline{.order} field shrank from \cinline{u32} to
+\cinline{u8}. Correspondingly, the constant \cinline{HYP_NO_ORDER} shrank from
+\cinline{UINT_MAX} (4294967295) to 255. All of these required several tedious
+updates to the code when a well-placed abstraction would have served well.
+
+\kl{Helper functions should allow inlining.} Requiring specifications for all
+top-level functions is useful in theory, but actually increases the cost of
+using them when verifying code. Allowing functions to be verified by inlining
+at call site, rather than by specification, would alleviate this, although of
+course, this would be open to abuse too.
+
+\kl{Explicit ghost parameters and argument are necessary.} Changing the C code
+by adding unused parameters to support proof would not be acceptable in almost
+all large, real-world code bases. Reifying ghost parameters complicates
+specifications in tangible ways too: Adding a page to the free list requires
+converting a metadata pointer into a virtual address, and doing so requires
+appropriate range constraints. Without ghost parameters and arguments, the only
+way to get the values for those constraints is to pass in ownership of a struct
+containing them. However, the same struct also contains ownership of the
+per-order free list array, which contains the \emph{other} parameter of the
+function. Using that parameter requires ownership, and so if one is not
+careful, naively adding an extra parameter can lead to a claiming ownership of
+the same location twice.\sidenote{See
+    \href{https://github.com/rems-project/cn-pKVM-buddy-allocator-case-study/commit/3363734d706a90a4674c44fa36dd0babcf93b084}{commit
+3363734}.} Spotting this error requires some deep familiarity with \kl{CN}.
+Hence, all of this would be avoidable if ghost arguments could be
+passed directly.
+
+%      \_\_hyp\_attach\_page`). Not being able to pass around logical/ghost values
+%      also requires judicious use of `unchanged`, which whilst obvious in
+%      retrospect, requires some experience to understand and spot that values
+%      that shouldn't be changing, are doing so in the counter-example model.
+%   3. CN's presentation of counter-example models is unhelpful. Though an
+%      update to wrap up outputs of a callsite in a record did make things more
+%      understandable (modulo longer names), the output of failing index terms
+%      (and subterms, thanks to another update) was not very helpful. Three
+%      things were particularly annoying (a) subterms were annotated on their own
+%      lines, not in the context of the terms they were a part of (b) index terms
+%      were not pretty-printed with helpful indentations (c) index terms were not
+%      pretty-printed according to what the user wrote in the source language.
+%      Points (a) and (b) were fixed (DM) and helped a little, though (c) would
+%      have been most helpful (some progress on the implementation of this, such
+%      as retaining the top-level let-structure, was made).
+%
+%
+% With the `page\_*\_list` functions verified, the next major thing was fixing
+% indexing into `AllocatorPage` arrays. Basically, `V[i]` corresponds to
+% `AP[i+off\_i]` as setup in the `Hyp\_pool` predicate, but elsewhere (in
+% `vmemmap\_l\_wf`, and all function specifications) it was incorrectly assumed to
+% correspond to `AP[i]`.  `node\_to\_page` was also verified (this was incidental -
+% the aforementioned indexing change broke the placeholder spec for some reason,
+% which maybe in retrospect should have been investigated). The worrying thing
+% about this change was that it's not at all obvious what prompted it - just lots
+% of staring and suddenly realising it's not right. This took about 1 week.
+%
+% Finishing up the update made use of some strategies which might be reusable.
+%
+% The new functions page\_add\_to\_list and page\_remove\_from\_list turn out to be
+% convenient points to separate some of the list-structure reasoning from the
+% loops (attach\_page/extract\_page) they live in. The update adds a redundant
+% indirection to these, e.g. a new page\_add\_list\_to\_pool function which just
+% calls page\_add\_to\_list, but specialises its specification to one relevant to
+% the scenario. This new simple straight-line function can be verified with less
+% moving parts in context.
+%
+% One trick that was discovered is to add requirements to a function failing to
+% verify which assert that, for instance, the physical/virtual offset is 0 and
+% the pool is limited to a tiny range of small memory addresses. This makes the
+% mental calculations needed to interpret counterexamples much easier.
+%
+% Some list functions were given more general specifications, in particular, the
+% remove functions now support "removal" from a self-cyclic list, which amounts
+% to a no-op.
+%
+% CN feedback:
+%
+% This would be a pretty good use-case for a gadget that allows you to "hold" the
+% counterexample and query it with a diagnostic script. It would be easy to
+% imagine a diagnostic for vmemmap\_l\_wf which "drew" the loops to make it obvious
+% what was wrong in a counterexample.
+%
+% Any situation where memory is "split" into logical operations gets confusing.
+% For instance, in the return contracts of the list functions, which have
+% input/ouput values "Owned(next) if next != prev", *next doesn't mean what you
+% might think, with the C *next being (next == prev ? *prev : *next) in CN.
+%
+% \section{VIP/Bit vector updates}
+%
+% \begin{itemize}
+%     \item bit vectors
+%     \item inference change
+%     \item VIP
+%     \item novice use of CN and separation logic
+%     \item Complicated code
+%     \item Code also changed
+%     \item CN became slower
+%     \item no location information
+% \end{itemize}
+%
+% Recap: So, first the issue I ran into was an overflow turning into a negative
+% integer on the LHS of a $<<$. I adjusted CN's ptrdiff\_t to be more permissive (to
+% be reviewed), and then the error changed.
+%
+% Now: let $phys = p\_i * page\_size()$ in the spec was overflowing, and in the spec
+% phys was constrained. Before, with arbitrary integers, this constrained p\_i
+% derived from the function argument p with perfect fidelity, but now it didn't.
+% The fix was to make the spec about p\_i by dividing both sides of inequalities
+% by page\_size() (I could phrase it in terms of p directly, but it makes the spec
+% more verbose)
+%
+% I guess there's two things that might help here (1) writing pre-conditions on
+% an expression as close to the arguments to the function as possible (2) a
+% multiplication with an overflow side condition.
+%
+% also there's an assumption in page\_add\_to\_list that 0i64 <=
+% hyp\_physvirt\_offset. should I spend anytime trying to get rid of this? since I
+% think we can't assume it's generally true (it is a signed type for starters,
+% and we discussed this before) so I just deleted it and it seems to continue
+% working
+%
+% \section{VIP and Buddy}
+% \# Incorporating the VIP memory model into CN
+%
+% We have updated the memory model of CN to more closely match de facto C, and
+% correspondingly updated the verification of the pKVM buddy allocator
+% (`d3e\_cn\_vip\_example.tar.gz`). It can also also be found
+% in our [GitHub
+% repository](https://github.com/rems-project/CN-pKVM-buddy-allocator-case-study)
+% (branch `vip`). For running CN on it (after installing Cerberus and CN, see
+% above) run `cn --vip page\_alloc.c`.
+%
+% \#\# Details
+%
+% One of the ways C compilers try to optimise programs is by alias analysis of
+% code involving pointers (e.g. to deduce two pointers do not refer to the same
+% object). Such analysis is built upon the assumption that pointers are constructed
+% only in "reasonable" ways (otherwise being undefined behaviour; for further
+% details, see chapter 8, [Memarian, K. (2022). The Cerberus C
+% semantics](https://doi.org/10.17863/CAM.96843)). Taking into account the
+% origin of a pointer gives rise to the concept of \_provenance\_.
+%
+% If provenance is taken into account, then certain optimisations
+% by compilers are valid. If it is not, then these optimisations are
+% invalid. Whether provenance is taken into account, and \_how\_, are some of the
+% many choices involved in designing a \_memory object model\_ for a programming language.
+% This model acts as a contract between compilers and programmers: programmers
+% promise to write programs within the rules of the model, and in return,
+% compilers will optimise code by assuming those rules hold in all code. A memory
+% model which ignores provenance is called "concrete".
+%
+% CN's prior implementation assumed a concrete memory model, where pointers were
+% just a different name for integers. This was because it was not critical to
+% the buddy allocator (for which the main focus was complex invariants about the
+% computation of pointers). It was also because the particular memory model
+% preferred by WG14 standards committee (PNVI-ae-udi) was designed to accurately
+% capture the behaviour of existing programs (without modification) and compiler
+% assumptions - work 'out of the box' so to speak.
+%
+% However, when we are verifying code with annotations, we can relax the
+% requirement for programs to be modeled accurately out of the box.  In
+% particular, if we require integer-to-pointer casts to be annotated (as
+% detailed in the paper [\_VIP: Verifying Real-World C Idioms with Integer-Pointer
+% Casts\_ by Lepigre et. al, 2022](https://doi.org/10.1145/3498681)), we can
+% simplify the implementation for us, and error messages, explanations and
+% suggestions given to users.
+%
+% In CN, we require integer-to-pointer casts to be annotated (inherited from VIP)
+% and model pointers as pairs of pairs of a provenance `@i` and an address `a`
+% (inherited from PNVI-ae-udi). Using this, CN's memory model defines the
+% "reasonable" means by which programmers can create and use pointers (and avoid
+% undefined behaviour). Broadly speaking, the rules serve two related purposes:
+% (a) ensuring pointer operations correctly preserve or annotate into the program
+% the provenance information (b) ensuring that `(@i, a)` provenance-address pairs
+% are always sensible, by checking whether `a` falls within the bounds associated
+% with `@i`.
+%
+% Whilst VIP formed the basis of CN's memory model, integrating it into the
+% existing design and implementation was not obvious nor straightforward. To
+% understand the complexities involved (before committing substantial resources
+% to updating CN and the buddy allocator verification), we first worked out the
+% design theoretically, by updating the pre-existing formalisation of CN's rules
+% (for a annotated programs with little type-inference). We then proved that
+% those updates made the design compatible with VIP.
+%
+% After this, we proceeded to implement the memory model in CN and update the
+% buddy allocator in two stages, corresponding to the aforementioned two related
+% purposes provided by the VIP rules. The first stage, ensuring pointer
+% operations correctly preserve or annotate into the program the provenance
+% information, is complete in CN and works with a modified version of the buddy
+% allocator code. The memory-model-related modifications are straightforward to
+% explain, concerning only integer-to-pointer casts:
+%
+% 1. `u64 \_\_hyp\_vmemmap` was changed to `struct hyp\_page *\_\_hyp\_vmemmap`, thus
+%    giving it a provenance. This enabled us to enforce the invariant that all
+%    `struct hyp\_page` pointers originate from the virtual memory map array.
+% 2. 5 instances of `hyp\_page\_to\_virt(p)` were changed to
+%    `CN\_COPY\_ALLOC\_ID(hyp\_page\_to\_virt(p), cn\_virt\_ptr)`. Allocation IDs are
+%    simply the VIP name for provenances, and the C function `CN\_COPY\_ALLOC\_ID`
+%    is coaxing existing C compilers into producing a pointer with address
+%    `hyp\_page\_to\_virt(p)` but with provenance the same as `cn\_virt\_ptr`${}^1$.
+%    `cn\_virt\_ptr` is a simply a global pointer with the single provenance which
+%    all pages donated by Linux should have (from pKVM's point of view). We need
+%    this because the `hyp\_page\_to\_virt` macro computes an integer address (no
+%    provenance), and so needs to be assigned the appropriate provenance.
+%
+% % [^1]: It is defined as `void *CN\_COPY\_ALLOC\_ID(uintptr\_t i, void *p){
+% %   (uintptr\_t) p; return (void*) i; }`, which, for technical reasons, achieves
+% %   the desired effect.
+%
+% The changes to CN are part of Cerberus, in `d3c\_cn\_pgtable\_tool.tar.gz` in
+% `cerberus/backend/cn` (also available on the [Cerberus GitHub
+% repository](https://github.com/rems-project/cerberus)).
+%
+% The changes the buddy allocator code are in
+% (`d3e\_cn\_vip\_example.tar.gz`), and can also also be found
+% in our [GitHub repository](https://github.com/rems-project/CN-pKVM-buddy-allocator-case-study)
+% (branch `vip`). It can be verified (after installing Cerberus and CN, see
+% above) by running `cn --vip page\_alloc.c`.
+%
+% The second stage, ensuring that `(@i, a)` provenance-address pairs are always
+% sensible, by checking whether `a` falls within the bounds associated with `@i`,
+% is underway in CN, and should only require minor changes to the buddy allocator
+% specification.
+%
+% Because the two primary CN developers and users (Christopher Pulte and Thomas
+% Sewell) were working on bitvector support and page-table verification, these
+% changes were undertaken in parallel by someone new to the CN and buddy
+% allocator code bases (Dhruv Makwana, who formerly only worked the formalisation
+% and c-tree-carver).
+%
+% The experience showed that it is possible to ramp-up on both projects
+% relatively independently. This indicates that CN retains the potential to be
+% usable by non-academic programmers. The biggest roadblock was understanding the
+% complex invariants maintained by the buddy allocator, which suggests the
+% complexity is mostly inherent, rather than exacerbated greatly by CN.
+%
+% The VIP in CN work highlighted some strengths and some weaknesses. The speed of
+% CN, whilst not reaching the pace required for IDE-integration, was never a
+% bottleneck. The SMT-solver counter-examples were sometimes useful in diagnosing
+% and preventing value-assignments that should be impossible. At other times, the
+% counter-examples were unwieldy and difficult to relate to particular CN
+% checking steps, with descriptive variable names being the only clue to
+% diagnosing the problem. We identified a bug where an error message was showing
+% an unhelpfully broad error location. We could also improve error reporting by
+% better storing/tracing the state of the typechecker, so we can replay it
+% line-by-line on the code being verified, like a debugger.
+%
 
 \chapter{User experience}
+
+\section{Comparison with other tools early allocator}
 
 \section{Calling conventions and specifications}
 
