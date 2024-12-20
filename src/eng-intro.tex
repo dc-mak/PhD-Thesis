@@ -684,10 +684,11 @@ the free page itself, and then deletes the page from the doubly-linked free
 list it is in. The second is similar, but adds the page to a specified
 double-linked free list.
 
-These were verbose, but not too challenging \textemdash{} the standard list
-functions they wrapped up were already verified in the previous proof, so it
-was a matter of plumbing through enough invariants to support computing the
-virtual address (and associated ownership) from a page metadata pointer.
+Their specifications were verbose, but not too challenging \textemdash{} the
+standard list functions they wrapped up were already verified in the previous
+proof, so it was a matter of plumbing through enough invariants to support
+computing the virtual address (and associated ownership) from a page metadata
+pointer.
 
 For verification, it was useful to add an extra wrapper around each these
 helper functions, which expressed the addition/removal in higher-level
@@ -739,7 +740,11 @@ otherwise still hold, so that the ownership of a page and its buddy could be
 removed, coalesced, and returned in a way that preserved the original structure
 of the code, which took at most 2 weeks.
 
-\section{Comments on the process}
+\section{Key takeaways}
+
+% Some list functions were given more general specifications, in particular, the
+% remove functions now support "removal" from a self-cyclic list, which amounts
+% to a no-op. d0a4c2a15557038948f4678d29e0d529d33caa00
 
 \paragraph{Tree carving is indispensible.} Manually carving and grafting the
 code took a significant amount of time (3 weeks), once again demonstrating the
@@ -753,7 +758,7 @@ up, but instead the user must figure out and maintain the dependency structure
 in their head when planning the proof effort, and manually select the functions
 to verify one at a time.
 
-\kl{Function-like macros represent real abstractions.} The buddy allocator code
+\paragraph{Function-like macros represent real abstractions.} The buddy allocator code
 uses function-like macros heavily to convert between a pointer to metadata, an
 index into metadata, a physical address and a virtual address. Ideally there
 would be some way of automatically converting such macros into logical (ghost)
@@ -768,113 +773,124 @@ is an option sometimes. All this being said, even if by hand, the benefit of
 defining logical equivalents of function-like macros is worthwhile for the
 readability, reliability and maintainability it brings.
 
-\kl{Constant-like macros also represent real abstractions.} Magic constants
-were prevalent in the original proof, which I removed. Part of this was just
-human inconsistency, part of this was two syntactic limitations of an earlier
-version of \kl{CN}. The first was that in that in top-level definitions, one
-could write \cninline{sizeof<struct hyp_page>}, but not in the specifications.
-The second was that step-sizes in iterated predicates must be integer literals
-(rather than \cninline{sizeof<>} expressions). This was exacerbated by the fact
-that the size of \cinline{struct hyp_page} shrank between the versions from 32
-to 4, and the size of its \cinline{.order} field shrank from \cinline{u32} to
-\cinline{u8}. Correspondingly, the constant \cinline{HYP_NO_ORDER} shrank from
-\cinline{UINT_MAX} (4294967295) to 255. All of these required several tedious
-updates to the code when a well-placed abstraction would have served well.
+\paragraph{Constant-like macros also represent real abstractions.} I spent a
+bit of time removing magic constants prevalent in the original proof. Part of
+this was just human inconsistency, part of this was two syntactic limitations
+of an earlier version of \kl{CN}. The first was that in that in top-level
+definitions, one could write \cninline{sizeof<struct hyp_page>}, but not in the
+specifications. The second was that step sizes in iterated predicates must be
+integer literals (rather than \cninline{sizeof<>} expressions). This was
+exacerbated by the fact that the size of \cinline{struct hyp_page} shrank
+between the versions from 32 to 4, and the size of its \cinline{.order} field
+shrank from \cinline{u32} to \cinline{u8}. Correspondingly, the constant
+\cinline{HYP_NO_ORDER} shrank from \cinline{UINT_MAX} (4294967295) to 255. All
+of these required several tedious updates to the code when a well-placed
+abstraction would have served well.
 
-\kl{Helper functions should allow inlining.} Requiring specifications for all
-top-level functions is useful in theory, but actually increases the cost of
-using them when verifying code. Allowing functions to be verified by inlining
-at call site, rather than by specification, would alleviate this, although of
-course, this would be open to abuse too.
+\paragraph{Support multiple specifications/wrapper functions in annotations.}
+Adding wrapper functions is useful to break down the problem of relating
+complex global invariants down to more local ones required for manipulating
+fundamental data-structures. Whilst this was a useful verification strategy, to
+upstream such code would require the verification-only C functions to be
+removed, and replaced with annotation-only mechanisms.
 
-\kl{Explicit ghost parameters and argument are necessary.} Changing the C code
-by adding unused parameters to support proof would not be acceptable in almost
-all large, real-world code bases. Reifying ghost parameters complicates
+\paragraph{But also, allow wrapper functions to be inlined.} Requiring
+specifications for all top-level functions is useful in theory, but actually
+increases the cost of using them when verifying code. Allowing functions to be
+verified by inlining at call site, rather than by specification, would
+alleviate this, although of course, this would be open to abuse too.
+
+\paragraph{Explicit ghost parameters and argument are necessary.} Changing the
+C code by adding unused parameters to support proof would not be acceptable in
+almost all large, real-world code bases. Reifying ghost parameters complicates
 specifications in tangible ways too: Adding a page to the free list requires
 converting a metadata pointer into a virtual address, and doing so requires
 appropriate range constraints. Without ghost parameters and arguments, the only
 way to get the values for those constraints is to pass in ownership of a struct
-containing them. However, the same struct also contains ownership of the
-per-order free list array, which contains the \emph{other} parameter of the
-function. Using that parameter requires ownership, and so if one is not
-careful, naively adding an extra parameter can lead to a claiming ownership of
-the same location twice.\sidenote{See
-    \href{https://github.com/rems-project/cn-pKVM-buddy-allocator-case-study/commit/3363734d706a90a4674c44fa36dd0babcf93b084}{commit
+containing them (and then constrain that the value has not changed, which is
+easy to forget and painful to debug). However, the same struct also contains
+ownership of the per-order free list array, which contains the \emph{other}
+parameter of the function. Using that parameter requires ownership, and so if
+one is not careful, naively adding an extra parameter can lead to a claiming
+ownership of the same location twice.\sidenote{See
+\href{https://github.com/rems-project/cn-pKVM-buddy-allocator-case-study/commit/3363734d706a90a4674c44fa36dd0babcf93b084}{commit
 3363734}.} Spotting this error requires some deep familiarity with \kl{CN}.
-Hence, all of this would be avoidable if ghost arguments could be
-passed directly.
+Hence, all of this would be avoidable if ghost arguments could be passed
+directly.
 
-%      \_\_hyp\_attach\_page`). Not being able to pass around logical/ghost values
-%      also requires judicious use of `unchanged`, which whilst obvious in
-%      retrospect, requires some experience to understand and spot that values
-%      that shouldn't be changing, are doing so in the counter-example model.
-%   3. CN's presentation of counter-example models is unhelpful. Though an
-%      update to wrap up outputs of a callsite in a record did make things more
-%      understandable (modulo longer names), the output of failing index terms
-%      (and subterms, thanks to another update) was not very helpful. Three
-%      things were particularly annoying (a) subterms were annotated on their own
-%      lines, not in the context of the terms they were a part of (b) index terms
-%      were not pretty-printed with helpful indentations (c) index terms were not
-%      pretty-printed according to what the user wrote in the source language.
-%      Points (a) and (b) were fixed (DM) and helped a little, though (c) would
-%      have been most helpful (some progress on the implementation of this, such
-%      as retaining the top-level let-structure, was made).
-%
-%
-% With the `page\_*\_list` functions verified, the next major thing was fixing
-% indexing into `AllocatorPage` arrays. Basically, `V[i]` corresponds to
-% `AP[i+off\_i]` as setup in the `Hyp\_pool` predicate, but elsewhere (in
-% `vmemmap\_l\_wf`, and all function specifications) it was incorrectly assumed to
-% correspond to `AP[i]`.  `node\_to\_page` was also verified (this was incidental -
-% the aforementioned indexing change broke the placeholder spec for some reason,
-% which maybe in retrospect should have been investigated). The worrying thing
-% about this change was that it's not at all obvious what prompted it - just lots
-% of staring and suddenly realising it's not right. This took about 1 week.
-%
-% Finishing up the update made use of some strategies which might be reusable.
-%
-% The new functions page\_add\_to\_list and page\_remove\_from\_list turn out to be
-% convenient points to separate some of the list-structure reasoning from the
-% loops (attach\_page/extract\_page) they live in. The update adds a redundant
-% indirection to these, e.g. a new page\_add\_list\_to\_pool function which just
-% calls page\_add\_to\_list, but specialises its specification to one relevant to
-% the scenario. This new simple straight-line function can be verified with less
-% moving parts in context.
-%
-% One trick that was discovered is to add requirements to a function failing to
-% verify which assert that, for instance, the physical/virtual offset is 0 and
-% the pool is limited to a tiny range of small memory addresses. This makes the
-% mental calculations needed to interpret counterexamples much easier.
-%
-% Some list functions were given more general specifications, in particular, the
-% remove functions now support "removal" from a self-cyclic list, which amounts
-% to a no-op.
-%
-% CN feedback:
-%
-% This would be a pretty good use-case for a gadget that allows you to "hold" the
-% counterexample and query it with a diagnostic script. It would be easy to
-% imagine a diagnostic for vmemmap\_l\_wf which "drew" the loops to make it obvious
-% what was wrong in a counterexample.
-%
+\paragraph{Globals should be implicitly in scope and read-only.} Forgetting the
+`\cninline|{_} unchanged|' annotation in a specification leads to spurious
+errors between calls to functions which use `\cninline{accesses _}' on the same
+globals in their specifications.
+
+\paragraph{Aliasing, and conditionally aliasing variables need to be presented
+clearly.} For example, the list manipulation functions take arguments which may
+alias each other, and the ownership in both cases is quite different.
+Understanding which case one is in, and how the two different aliases relate
+can get confusing.
 % Any situation where memory is "split" into logical operations gets confusing.
 % For instance, in the return contracts of the list functions, which have
 % input/ouput values "Owned(next) if next != prev", *next doesn't mean what you
 % might think, with the C *next being (next == prev ? *prev : *next) in CN.
-%
-% \section{VIP/Bit vector updates}
-%
-% \begin{itemize}
-%     \item bit vectors
-%     \item inference change
-%     \item VIP
-%     \item novice use of CN and separation logic
-%     \item Complicated code
-%     \item Code also changed
-%     \item CN became slower
-%     \item no location information
-% \end{itemize}
-%
+
+\paragraph{Accurate source location information is paramount, especially in the
+presence of elaboration and auto-generated variables.} Though \kl{Cerberus}'
+elaboration is compositional, this does not mean the accurate and helpful error
+messages come for free. For example, it is very helpful to relate source
+location of generated variables to that of the expressions they are
+binding.\sidenote{\href{https://github.com/rems-project/cerberus/issues/270}{Cerberus
+\#270}.} Aside from that, in earlier versions of \kl{CN}, the main datatype
+for representing SMT terms did not carry source location information. Which
+made it very difficult to track down which part of a pre- or postcondition was
+failing, or which subterm in a large expression was not well-formed. This also
+fed into making counter-examples much less useful.
+
+\paragraph{Counter-examples should be related to what the user wrote.} CN's
+presentation of counter-example models was and remains unhelpful, though
+improvements to the naming scheme for automatically generated variables, and
+outputting sub-terms as well as top-level failed constraints, did blunt the
+impact slightly. Whilst I changed the debug printing of index terms in failed
+constraints to annotate sub-terms with their values, and indent them properly,
+the best solution would be to annotate the original source with the
+counter-example model values.
+
+\paragraph{Counter-examples should be minimal and consistent.} Another source
+of confusion is that counter-examples are neither minimal, nor consistent: all
+variables are assigned a value, values irrelevant to counter-example may not be
+consistent with the constraints, and it is not possible to query the solve to
+determine which variables are relevant, and which may be safely ignored.
+
+\paragraph{Counter-examples should be easy to understand.} Values in
+counter-examples can be quite large and thus difficult to parser and check
+mentally. A trick I learned from Thomas Sewell was to add requirements to a
+function failing to verify which assert that, for instance, the
+physical/virtual offset is 0 and the pool is limited to a tiny range of small
+memory addresses. Constraining values to be small reduces makes
+counter-examples more manageable, and this should be automated.
+
+\paragraph{Counter-examples should be interactive.} With small values, minimal
+models and good relatability to the source, it should be possible to make
+counter-examples interactive, such as stepping through the program, or tracing
+out the shape of the symbolic heap (ideally graphically) to make it much easier
+to visualise where a user's intuitions and assumption do not match the code's.
+
+\paragraph{Counter-example with iterated resources and quantified constraints
+need special care.} In particular, it it is tricky to debug
+inconsistent/incorrect indexing across different terms.
+
+\section{VIP/Bit vector updates}
+
+\begin{itemize}
+    \item bit vectors
+    \item inference change
+    \item VIP
+    \item novice use of CN and separation logic
+    \item Complicated code
+    \item Code also changed
+    \item CN became slower
+    \item no location information
+\end{itemize}
+
 % Recap: So, first the issue I ran into was an overflow turning into a negative
 % integer on the LHS of a $<<$. I adjusted CN's ptrdiff\_t to be more permissive (to
 % be reviewed), and then the error changed.
