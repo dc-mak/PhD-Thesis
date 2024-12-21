@@ -8,11 +8,10 @@ recapitulate them with more detail, drawing special attention to parts about
 liveness and bounds checks I skimmed past before. For convenience, I have
 reproduced \cref{fig:typing-mem-action} in \cref{fig:cnvip-mem-action}.
 
-\begin{itemize}
-    \item What will reading this chapter conclude in?
-    \item Typing rules,
-    \item Prove soundness of typing rules with respect to VIP
-\end{itemize}
+Specifically, I will discuss the updated typing rules for memory actions and
+pointer operations, and how I proved those typing rules sound with respect to
+an updated model of \kl{ResCore} heaps. Lastly, I will explain how I proved the
+\kl{ResCore} semantics as a sound abstraction above \kl{PNVI-ae-udi}.
 
 \section{Memory actions}
 
@@ -788,47 +787,91 @@ fail in early stages such as parsing, desugaring or well-formedness checks.
         \url{https://rems-project.github.io/cerberus/dev/bench/}.}\label{fig:vip-performance-hit2}
 \end{figure}
 
-It is more fruitful to look at the tests individually, and see which ones show
-a demonstrable slowdown when \kl{VIP} was enabled.
+% It is more fruitful to look at the tests individually, and see which ones
+% show a demonstrable slowdown when \kl{VIP} was enabled.
+%
+% \begin{itemize}
+%     \item block\_type.c (CVC5, 4x)
+%     \item implies2.error.c (CVC5, 2x)
+%     \item extract\_verbose.c (CVC5, 5x)
+%     \item builtin\_ctz.c (CVC5, <2x)
+%     \item disj\_nonnull.c (both, <2x)
+%     \item gnu\_types\_compatible.c (CVC, <2x)
+%     \item tree16/as\_partial\_map/tree16.c (both, 3/4x)
+%     \item tree16/as\_mutual\_map/tree16.c (both, 3x)
+%     \item fun\_ptr\_extern.c (CVC5, 4x)
+%     \item increments.c (both, 10x)
+%     \item has\_alloc\_id\_shift.c (both, <2x)
+%     \item int\_to\_ptr.c (both, <2x)
+%     \item has\_alloc\_id\_ptr\_neq.c (both, <2x)
+%     \item fun\_ptr\_three\_opts.c (Z3 <2x, CVC5 4x)
+%     \item has\_alloc\_id\_ptr\_eq.error.c (CVC5 2x)
+%     \item ptr\_diff2.error.c (both <2x)
+%     \item ptr\_relop.error.c (both 2/3x)
+%     \item ptr\_diff.errro.c (Z3 <2x, CVC5 3x)
+%     \item bitwise\_compl.c (CVC5 2x)
+%     \item alloc\_token.c (both <2x)
+%     \item implies\_precedence.c (CVC5 2x)
+%     \item division\_casting.c (Z3 <2x, CVC5 2x)
+%     \item reverse.c (Z3 6x, CVC5 5x)
+%     \item mask\_ptr.c (Z3 <2x, CVC5 3x)
+%     \item and\_or\_precedence.error.c (CVC5 <2x)
+%     \item get\_from\_arr.c (Z3 2x, CVC5 3x)
+%     \item enum\_and\_and.c (both 2x)
+%     \item simplify\_array\_shift.c (CVC5 5x, Z3 7x)
+% \end{itemize}
 
-\begin{itemize}
-    \item block\_type.c (CVC5, 4x)
-    \item implies2.error.c (CVC5, 2x)
-    \item extract\_verbose.c (CVC5, 5x)
-    \item builtin\_ctz.c (CVC5, <2x)
-    \item disj\_nonnull.c (both, <2x)
-    \item gnu\_types\_compatible.c (CVC, <2x)
-    \item tree16/as\_partial\_map/tree16.c (both, 3/4x)
-    \item tree16/as\_mutual\_map/tree16.c (both, 3x)
-    \item fun\_ptr\_extern.c (CVC5, 4x)
-    \item increments.c (both, 10x)
-    \item has\_alloc\_id\_shift.c (both, <2x)
-    \item int\_to\_ptr.c (both, <2x)
-    \item has\_alloc\_id\_ptr\_neq.c (both, <2x)
-    \item fun\_ptr\_three\_opts.c (Z3 <2x, CVC5 4x)
-    \item has\_alloc\_id\_ptr\_eq.error.c (CVC5 2x)
-    \item ptr\_diff2.error.c (both <2x)
-    \item ptr\_relop.error.c (both 2/3x)
-    \item ptr\_diff.errro.c (Z3 <2x, CVC5 3x)
-    \item bitwise\_compl.c (CVC5 2x)
-    \item alloc\_token.c (both <2x)
-    \item implies\_precedence.c (CVC5 2x)
-    \item division\_casting.c (Z3 <2x, CVC5 2x)
-    \item reverse.c (Z3 6x, CVC5 5x)
-    \item mask\_ptr.c (Z3 <2x, CVC5 3x)
-    \item and\_or\_precedence.error.c (CVC5 <2x)
-    \item get\_from\_arr.c (Z3 2x, CVC5 3x)
-    \item enum\_and\_and.c (both 2x)
-    \item simplify\_array\_shift.c (CVC5 5x, Z3 7x)
-\end{itemize}
+% There are three potential reasons for this.
+% \begin{enumerate}
+%     \item Pointer bounds checks.
+%     \item Pointer liveness checks.
+%     \item Deriving constraints.
+% \end{enumerate}
 
-There are three potential reasons for this.
-\begin{enumerate}
-    \item Pointer bounds checks.
-    \item Pointer liveness checks.
-    \item Deriving constraints.
-\end{enumerate}
+There are two main components to \kl{CN-VIP}: the pointer liveness checks, and
+the bounds checks. Disabling the liveness checks is simple and gives sensible
+timing information: tests which passed before will continue to do so; tests
+which failed because pointers could not be proved live are small ones which do
+not test anything afterwards. Disabling liveness has barely any impact on the
+total time taken (a slight increase, because of previously failing tests now
+passing) and so what remains is the bounds checks.
 
+The bounds checks are easy to disable, but this does not lead to a fair
+comparison: of course we expect the version which checks less and unsoundly to
+go faster. Furthermore, any slow down for bounds checks will be some mixture of
+the effect of derived constraints, and the complexity of the check itself.
+
+The above two facts combined\sidenote{And a few hours of experimentation}
+suggest a possible remedy::if any bounds checks can be replaced with checks in
+the resource context, then it may offer a substantial speed-up. Since ownership
+of a pointer is sufficient (but not necessary) to deduce bounds checks, we can
+replace some of those with checking the resource context for ownership.
+
+In particular, for member and array shifts, this is a good strategy, because
+often the shifting is done just before loading, for which ownership needs to be
+present regardless. The ownership check can be done first, and if it fails, the
+code will fall back to the slower, full.
+
+The net result of this is a substantial speed-up of CN-VIP overall: a 3x
+slowdown is now less than 50\% slowdown, which although not ideal, is a
+worthwhile improvement. Although the \kl{VIP} increase complexity and slows
+things down considerably, it did also provide a helpful equivalence which I
+exploited to improve execution time.
+
+However this does raise the questions: why is a linear lookup in the resource
+context faster than proving a pure SMT constraint? One possibility is that most
+equalities tested in resource lookup can be resolved syntactically without
+appeal to the solver. This may just be an empirical fact about most C programs,
+and although not very theoretically elegant, still useful. Another possibility
+is that the encoding of the allocation history bounds constraints is
+sub-optimal. TODO discuss with CVC5 folks.
+
+It is possible to optimise further, for example, the \kl{Core} elaboration
+performs a \coreinline{PtrValidForDeref} check before every
+\coreinline{member_shift}, and so the checks on the \coreinline{member_shift}
+itself are technically redundant. Though perhaps a bit fragile, such facts
+could be exploited (maybe behind a switch) to improve performance of
+\kl{CN-VIP} even more.
 
 \section{Updating existing code}
 
@@ -899,7 +942,7 @@ the pointers refer to a node in a queue; thus, they need to be valid for
 dereferencing (not one-past), hence ruling out the possibility that they could
 have equal addresses and differing provenances.
 
-\section{Lemma proofs within C}
+\section{Lemma proofs within C}\label{sec:lemma-proof-c}
 
 As visible above, the queue example requires the use of lemmas to prove the
 appropriate facts for popping and pushing. I did not write the implementation
