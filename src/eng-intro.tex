@@ -565,7 +565,9 @@ the binary included or not. It may also complicate any attempts to link the
 code with other code that uses the same struct definitions but different
 fields.
 
-\chapter{pKVM Buddy Allocator updates}\label{chap:buddy}
+\chapter{Proof maintenance for pKVM buddy allocator}\label{chap:buddy}
+
+\margintoc{}
 
 The \kl{pKVM} hypervisor is intended to provide isolation between virtual
 machines, protecting both the guest from the host and vice versa. It is also
@@ -575,7 +577,7 @@ implements a buddy allocator~\sidecite{knowlton1965fast} to manage the pages it
 allocates. The example is discussed in \sidetextcite{pulte2023cn}, so I will
 focus only on my experience in updating the code.
 
-\section{Updating to intrusive free lists}
+\section{Successful update to intrusive free lists}
 
 The major code change is easy to describe. The buddy allocator maintains a
 doubly-linked list of free pages (per order). Initially, the pointers for these
@@ -715,9 +717,10 @@ and was the initial choice for expressing this.
 However, this quickly became unwieldy as logical expressions using the
 \emph{outputs} of these differently indexed arrays need to convert between the
 two consistently and correctly. Not only was this not the case, lurking beneath
-the conversion was a division of a signed bit vector in Z3, which
-folklore\sidenote{I thank Thomas Sewell for alerting me to this.} suggests is
-ill-advised. Hence, the penultimate step to verifying the code was
+the conversion was a division of a signed bit vector in Z3, which folklore
+suggests is ill-advised for performance.\sidenote{I thank Thomas Sewell for
+alerting me to this; though in this instance, it is not clear this was the
+bottleneck.} Hence, the penultimate step to verifying the code was
 standardising these indices and avoiding the possibility of signed bit vector
 division, which took about 1 week.
 
@@ -740,13 +743,62 @@ otherwise still hold, so that the ownership of a page and its buddy could be
 removed, coalesced, and returned in a way that preserved the original structure
 of the code, which took at most 2 weeks.
 
+\section{Successful update to experimental VIP}
+
+Towards the end of the update to support the intrusive free lists, I started
+working up updating the buddy allocator proof to an early version of the
+\kl{VIP} implementation. In this early version, pointers were augmented with an
+allocation ID, and the typing rules were updated to handle this. I had
+implemented a flag for turning \kl{VIP} behaviour on and off, and also
+non-deterministic pointer equality; I had yet to implement a separate
+\cinline{NULL} constructor in the SMT representation of pointers, or pointer
+liveness and bounds checks.
+
+The modifications I made concerned only integer-to-pointer casts:
+\begin{itemize}
+    \item Changed all integer-to-pointer casts in the specifications to use,
+        array or member shifting, or \cinline{copy_alloc_id}.
+    \item Changed the pointer to the base of the metadata array from an integer
+        to a pointer.
+        %\cinline{u64 __hyp_vmemmap} to \cinline{struct hyp_page *__hyp_vmemmap}.
+        In the absence of support for round-trip casts, this small change gave
+        the frequently used pointer a valid allocation ID\@.
+    \item Changed 5 instances of a \emph{computed} integer to pointer cast to
+        to use \cinline{copy_alloc_id}. I added a new global pointer to
+        to indicate which allocation the new pointers should all belong to.
+\end{itemize}
+
+Given the pervasiveness of computed pointers in the code and specifications,
+the changes were extensive but straightforward. The updated proof was backwards
+compatible: it passed both with and without the early \kl{VIP} rules enabled.
+
+\section{Failed update to support bit vectors}
+
+The \kl{VIP} update was intentionally small and early, so that I could iterate
+on it frequently and incrementally, whilst keeping the hero example of \kl{CN}
+functional at each step.
+
+This did not pan out due to a substantial change to \kl{CN}: switching the
+representation of integers from mathematical integers to fixed-width bit
+vectors. In short, the change made verifying the buddy allocator at at least
+50x slower, and, remarkably, this went unnoticed for a long time. The reasons
+for this will become clear in the following takeaways.
+
 \section{Key takeaways}
 
 % Some list functions were given more general specifications, in particular, the
 % remove functions now support "removal" from a self-cyclic list, which amounts
 % to a no-op. d0a4c2a15557038948f4678d29e0d529d33caa00
 
-\paragraph{Tree carving is indispensible.} Manually carving and grafting the
+\subsection{Features}
+
+\paragraph{Tutorials are indispensable.} The buddy allocator verification is
+complex, and learning it without building up intuition for separation logic and
+how to operate \kl{CN} made the process unnecessarily difficult. This has been
+remedied with the introduction of the \kl{CN
+tutorial}.\sidecite{pulte2024tutorial}
+
+\paragraph{Tree carving is indispensable.} Manually carving and grafting the
 code took a significant amount of time (3 weeks), once again demonstrating the
 need and usefulness of the tree carver as an integral part of any usable C
 verification tool.
@@ -787,12 +839,12 @@ shrank from \cinline{u32} to \cinline{u8}. Correspondingly, the constant
 of these required several tedious updates to the code when a well-placed
 abstraction would have served well.
 
-\paragraph{Support multiple specifications/wrapper functions in annotations.}
-Adding wrapper functions is useful to break down the problem of relating
-complex global invariants down to more local ones required for manipulating
-fundamental data-structures. Whilst this was a useful verification strategy, to
-upstream such code would require the verification-only C functions to be
-removed, and replaced with annotation-only mechanisms.
+\paragraph{Multiple specifications/wrapper functions in annotations are
+necessary.} Adding wrapper functions is useful to break down the problem of
+relating complex global invariants down to more local ones required for
+manipulating fundamental data-structures. Whilst this was a useful verification
+strategy, to upstream such code would require the verification-only C functions
+to be removed, and replaced with annotation-only mechanisms.
 
 \paragraph{But also, allow wrapper functions to be inlined.} Requiring
 specifications for all top-level functions is useful in theory, but actually
@@ -823,15 +875,36 @@ directly.
 errors between calls to functions which use `\cninline{accesses _}' on the same
 globals in their specifications.
 
-\paragraph{Aliasing, and conditionally aliasing variables need to be presented
-clearly.} For example, the list manipulation functions take arguments which may
-alias each other, and the ownership in both cases is quite different.
-Understanding which case one is in, and how the two different aliases relate
-can get confusing.
-% Any situation where memory is "split" into logical operations gets confusing.
-% For instance, in the return contracts of the list functions, which have
-% input/ouput values "Owned(next) if next != prev", *next doesn't mean what you
-% might think, with the C *next being (next == prev ? *prev : *next) in CN.
+\paragraph{Syntax needs to support `overriding' invariants.} The main invariant
+on the allocation pool of the hypervisor is sometimes broken at one or two
+indexes, and there is no simple way to express this in the current syntax. This
+not only causes duplication of top-level predicates, but it also causes many
+conditions to be inlined into annotations, such as loop invariants, making them
+less readable and less understandable.
+
+\subsection{Proof maintenance and repair}
+
+\paragraph{Substantial changes should be opt-in/gated underneath a flag.}
+\kl{CN}'s transition to bit vectors was to support reasoning about \kl{pKVM}'s
+page table code, which used bit manipulation extensively, without resorting to
+lemmas frequently. However, the change was compulsory, rather than optional,
+and it left updating the buddy allocator high and dry, rather than turned on
+after understanding the specification and performance overhead.
+
+\paragraph{Syntax changes should be opt-in/gated underneath a flag.} The update
+to bit vectors changed the syntax of integer types too, and this was tedious to
+update manually. Either refactoring tools for specifications need to be
+developed to assist with this, or changes need to be brought in less abruptly.
+
+\paragraph{Constraints on bit vectors should exclude overflow.} With integers,
+it is possible to constraint $a$ by constraining $a \times{} 4096$, with bit
+vectors, it is not. Thus, by default, specifications on bit vectors parameters
+(including addresses of pointers) need to be phrased in terms of the original
+variables rather than on subsequent expressions which could overflow. This also
+hints a relatively simple scheme for translating specifications on integers
+into bit vectors.\sidenote{Refinement types for refinement types.}
+
+\subsection{Error messages}
 
 \paragraph{Accurate source location information is paramount, especially in the
 presence of elaboration and auto-generated variables.} Though \kl{Cerberus}'
@@ -844,6 +917,16 @@ for representing SMT terms did not carry source location information. Which
 made it very difficult to track down which part of a pre- or postcondition was
 failing, or which subterm in a large expression was not well-formed. This also
 fed into making counter-examples much less useful.
+
+\paragraph{Aliasing, and conditionally aliasing variables need to be presented
+clearly.} For example, the list manipulation functions take arguments which may
+alias each other, and the ownership in both cases is quite different.
+Understanding which case one is in, and how the two different aliases relate
+can get confusing.
+% Any situation where memory is "split" into logical operations gets confusing.
+% For instance, in the return contracts of the list functions, which have
+% input/ouput values "Owned(next) if next != prev", *next doesn't mean what you
+% might think, with the C *next being (next == prev ? *prev : *next) in CN.
 
 \paragraph{Counter-examples should be related to what the user wrote.} CN's
 presentation of counter-example models was and remains unhelpful, though
@@ -874,195 +957,161 @@ counter-examples interactive, such as stepping through the program, or tracing
 out the shape of the symbolic heap (ideally graphically) to make it much easier
 to visualise where a user's intuitions and assumption do not match the code's.
 
-\paragraph{Counter-example with iterated resources and quantified constraints
+\paragraph{Counter-examples with iterated resources and quantified constraints
 need special care.} In particular, it it is tricky to debug
 inconsistent/incorrect indexing across different terms.
 
-\section{VIP/Bit vector updates}
+\chapter{Usability for C verification tools: reality versus expectations}
 
-\begin{itemize}
-    \item bit vectors
-    \item inference change
-    \item VIP
-    \item novice use of CN and separation logic
-    \item Complicated code
-    \item Code also changed
-    \item CN became slower
-    \item no location information
-\end{itemize}
+\margintoc{}
 
-% Recap: So, first the issue I ran into was an overflow turning into a negative
-% integer on the LHS of a $<<$. I adjusted CN's ptrdiff\_t to be more permissive (to
-% be reviewed), and then the error changed.
-%
-% Now: let $phys = p\_i * page\_size()$ in the spec was overflowing, and in the spec
-% phys was constrained. Before, with arbitrary integers, this constrained p\_i
-% derived from the function argument p with perfect fidelity, but now it didn't.
-% The fix was to make the spec about p\_i by dividing both sides of inequalities
-% by page\_size() (I could phrase it in terms of p directly, but it makes the spec
-% more verbose)
-%
-% I guess there's two things that might help here (1) writing pre-conditions on
-% an expression as close to the arguments to the function as possible (2) a
-% multiplication with an overflow side condition.
-%
-% also there's an assumption in page\_add\_to\_list that 0i64 <=
-% hyp\_physvirt\_offset. should I spend anytime trying to get rid of this? since I
-% think we can't assume it's generally true (it is a signed type for starters,
-% and we discussed this before) so I just deleted it and it seems to continue
-% working
-%
-% \section{VIP and Buddy}
-% \# Incorporating the VIP memory model into CN
-%
-% We have updated the memory model of CN to more closely match de facto C, and
-% correspondingly updated the verification of the pKVM buddy allocator
-% (`d3e\_cn\_vip\_example.tar.gz`). It can also also be found
-% in our [GitHub
-% repository](https://github.com/rems-project/CN-pKVM-buddy-allocator-case-study)
-% (branch `vip`). For running CN on it (after installing Cerberus and CN, see
-% above) run `cn --vip page\_alloc.c`.
-%
-% \#\# Details
-%
-% One of the ways C compilers try to optimise programs is by alias analysis of
-% code involving pointers (e.g. to deduce two pointers do not refer to the same
-% object). Such analysis is built upon the assumption that pointers are constructed
-% only in "reasonable" ways (otherwise being undefined behaviour; for further
-% details, see chapter 8, [Memarian, K. (2022). The Cerberus C
-% semantics](https://doi.org/10.17863/CAM.96843)). Taking into account the
-% origin of a pointer gives rise to the concept of \_provenance\_.
-%
-% If provenance is taken into account, then certain optimisations
-% by compilers are valid. If it is not, then these optimisations are
-% invalid. Whether provenance is taken into account, and \_how\_, are some of the
-% many choices involved in designing a \_memory object model\_ for a programming language.
-% This model acts as a contract between compilers and programmers: programmers
-% promise to write programs within the rules of the model, and in return,
-% compilers will optimise code by assuming those rules hold in all code. A memory
-% model which ignores provenance is called "concrete".
-%
-% CN's prior implementation assumed a concrete memory model, where pointers were
-% just a different name for integers. This was because it was not critical to
-% the buddy allocator (for which the main focus was complex invariants about the
-% computation of pointers). It was also because the particular memory model
-% preferred by WG14 standards committee (PNVI-ae-udi) was designed to accurately
-% capture the behaviour of existing programs (without modification) and compiler
-% assumptions - work 'out of the box' so to speak.
-%
-% However, when we are verifying code with annotations, we can relax the
-% requirement for programs to be modeled accurately out of the box.  In
-% particular, if we require integer-to-pointer casts to be annotated (as
-% detailed in the paper [\_VIP: Verifying Real-World C Idioms with Integer-Pointer
-% Casts\_ by Lepigre et. al, 2022](https://doi.org/10.1145/3498681)), we can
-% simplify the implementation for us, and error messages, explanations and
-% suggestions given to users.
-%
-% In CN, we require integer-to-pointer casts to be annotated (inherited from VIP)
-% and model pointers as pairs of pairs of a provenance `@i` and an address `a`
-% (inherited from PNVI-ae-udi). Using this, CN's memory model defines the
-% "reasonable" means by which programmers can create and use pointers (and avoid
-% undefined behaviour). Broadly speaking, the rules serve two related purposes:
-% (a) ensuring pointer operations correctly preserve or annotate into the program
-% the provenance information (b) ensuring that `(@i, a)` provenance-address pairs
-% are always sensible, by checking whether `a` falls within the bounds associated
-% with `@i`.
-%
-% Whilst VIP formed the basis of CN's memory model, integrating it into the
-% existing design and implementation was not obvious nor straightforward. To
-% understand the complexities involved (before committing substantial resources
-% to updating CN and the buddy allocator verification), we first worked out the
-% design theoretically, by updating the pre-existing formalisation of CN's rules
-% (for a annotated programs with little type-inference). We then proved that
-% those updates made the design compatible with VIP.
-%
-% After this, we proceeded to implement the memory model in CN and update the
-% buddy allocator in two stages, corresponding to the aforementioned two related
-% purposes provided by the VIP rules. The first stage, ensuring pointer
-% operations correctly preserve or annotate into the program the provenance
-% information, is complete in CN and works with a modified version of the buddy
-% allocator code. The memory-model-related modifications are straightforward to
-% explain, concerning only integer-to-pointer casts:
-%
-% 1. `u64 \_\_hyp\_vmemmap` was changed to `struct hyp\_page *\_\_hyp\_vmemmap`, thus
-%    giving it a provenance. This enabled us to enforce the invariant that all
-%    `struct hyp\_page` pointers originate from the virtual memory map array.
-% 2. 5 instances of `hyp\_page\_to\_virt(p)` were changed to
-%    `CN\_COPY\_ALLOC\_ID(hyp\_page\_to\_virt(p), cn\_virt\_ptr)`. Allocation IDs are
-%    simply the VIP name for provenances, and the C function `CN\_COPY\_ALLOC\_ID`
-%    is coaxing existing C compilers into producing a pointer with address
-%    `hyp\_page\_to\_virt(p)` but with provenance the same as `cn\_virt\_ptr`${}^1$.
-%    `cn\_virt\_ptr` is a simply a global pointer with the single provenance which
-%    all pages donated by Linux should have (from pKVM's point of view). We need
-%    this because the `hyp\_page\_to\_virt` macro computes an integer address (no
-%    provenance), and so needs to be assigned the appropriate provenance.
-%
-% % [^1]: It is defined as `void *CN\_COPY\_ALLOC\_ID(uintptr\_t i, void *p){
-% %   (uintptr\_t) p; return (void*) i; }`, which, for technical reasons, achieves
-% %   the desired effect.
-%
-% The changes to CN are part of Cerberus, in `d3c\_cn\_pgtable\_tool.tar.gz` in
-% `cerberus/backend/cn` (also available on the [Cerberus GitHub
-% repository](https://github.com/rems-project/cerberus)).
-%
-% The changes the buddy allocator code are in
-% (`d3e\_cn\_vip\_example.tar.gz`), and can also also be found
-% in our [GitHub repository](https://github.com/rems-project/CN-pKVM-buddy-allocator-case-study)
-% (branch `vip`). It can be verified (after installing Cerberus and CN, see
-% above) by running `cn --vip page\_alloc.c`.
-%
-% The second stage, ensuring that `(@i, a)` provenance-address pairs are always
-% sensible, by checking whether `a` falls within the bounds associated with `@i`,
-% is underway in CN, and should only require minor changes to the buddy allocator
-% specification.
-%
-% Because the two primary CN developers and users (Christopher Pulte and Thomas
-% Sewell) were working on bitvector support and page-table verification, these
-% changes were undertaken in parallel by someone new to the CN and buddy
-% allocator code bases (Dhruv Makwana, who formerly only worked the formalisation
-% and c-tree-carver).
-%
-% The experience showed that it is possible to ramp-up on both projects
-% relatively independently. This indicates that CN retains the potential to be
-% usable by non-academic programmers. The biggest roadblock was understanding the
-% complex invariants maintained by the buddy allocator, which suggests the
-% complexity is mostly inherent, rather than exacerbated greatly by CN.
-%
-% The VIP in CN work highlighted some strengths and some weaknesses. The speed of
-% CN, whilst not reaching the pace required for IDE-integration, was never a
-% bottleneck. The SMT-solver counter-examples were sometimes useful in diagnosing
-% and preventing value-assignments that should be impossible. At other times, the
-% counter-examples were unwieldy and difficult to relate to particular CN
-% checking steps, with descriptive variable names being the only clue to
-% diagnosing the problem. We identified a bug where an error message was showing
-% an unhelpfully broad error location. We could also improve error reporting by
-% better storing/tracing the state of the typechecker, so we can replay it
-% line-by-line on the code being verified, like a debugger.
-%
+In this penultimate chapter, I will discuss the reality and expectations of how
+usable a verification tool for C \emph{can} be at this stage. I will start with
+my brief and informal comparison between \kl{CN} and similar tools, based on my
+experience of verifying \kl{pKVM}'s simpler \emph{early} allocator, in \kl{CN},
+\kl{VeriFast}~\sidecite{jacobs2011verifast} and
+\kl{Frama-C}.\sidecite{baudin2021dogged}\sidenote{\url{https://github.com/rems-project/CN-pKVM-early-allocator-case-study}}
+After that, I will discuss some feedback given by some industry partners on
+\kl{CN}. Lastly, based on my experience of having worked on programming
+language tooling both in industry and in academia, I will discuss what I
+believe are achievable standards of usability for \kl{CN}, with an emphasis on
+how new projects can avoid several pitfalls.
 
-\chapter{User experience}
+\section{Reality}
 
-\section{Comparison with other tools early allocator}
+\subsection{Early allocator in CN}
 
-\section{Calling conventions and specifications}
+\subsection{Early allocator in VeriFast}
 
-\section{Accurate source location}
+\subsection{Early allocator in Frama-C}
+
+\subsection{Industry feedback}
+
+Lorem ipsum dolor sit amet,\sidenote{Under review from industry, hence
+placeholder for formatting and word count.} consectetuer adipiscing elit.
+Aenean commodo ligula eget dolor. Aenean massa. Cum sociis natoque penatibus et
+magnis dis parturient montes, nascetur ridiculus mus. Donec quam felis,
+ultricies nec, pellentesque eu, pretium quis, sem. Nulla consequat massa quis
+enim. Donec pede justo, fringilla vel, aliquet nec, vulputate eget, arcu. In
+enim justo, rhoncus ut, imperdiet a, venenatis vitae, justo. Nullam dictum
+felis eu pede mollis pretium. Integer tincidunt. Cras dapibus. Vivamus
+elementum semper nisi. Aenean vulputate eleifend tellus.
+
+Aenean leo ligula, porttitor eu, consequat vitae, eleifend ac, enim. Aliquam
+lorem ante, dapibus in, viverra quis, feugiat a, tellus. Phasellus viverra
+nulla ut metus varius laoreet. Quisque rutrum. Aenean imperdiet. Etiam
+ultricies nisi vel augue. Curabitur ullamcorper ultricies nisi. Nam eget dui.
+Etiam rhoncus. Maecenas tempus, tellus eget condimentum rhoncus, sem quam
+semper libero, sit amet adipiscing sem neque sed ipsum. Nam quam nunc, blandit
+vel, luctus pulvinar, hendrerit id, lorem. Maecenas nec odio et ante tincidunt
+tempus.
+
+Donec vitae sapien ut libero venenatis faucibus. Nullam quis ante. Etiam sit
+amet orci eget eros faucibus tincidunt. Duis leo. Sed fringilla mauris sit amet
+nibh. Donec sodales sagittis magna. Sed consequat, leo eget bibendum sodales,
+augue velit cursus nunc, quis gravida magna mi a libero. Fusce vulputate
+eleifend sapien. Vestibulum purus quam, scelerisque ut, mollis sed, nonummy id,
+metus. Nullam accumsan lorem in dui. Cras ultricies mi eu turpis hendrerit
+fringilla.
+
+Vestibulum ante ipsum primis in faucibus orci luctus et ultrices posuere
+cubilia Curae; In ac dui quis mi consectetuer lacinia. Nam pretium turpis et
+arcu. Duis arcu tortor, suscipit eget, imperdiet nec, imperdiet iaculis, ipsum.
+Sed aliquam ultrices mauris. Integer ante arcu, accumsan a, consectetuer eget,
+posuere ut, mauris. Praesent adipiscing. Phasellus ullamcorper ipsum rutrum
+nunc. Nunc nonummy metus. Vestibulum volutpat pretium libero. Cras id dui.
+Aenean ut eros et nisl sagittis vestibulum. Nullam nulla eros, ultricies sit
+amet, nonummy id, imperdiet feugiat, pede. Sed lectus.
+
+Donec mollis hendrerit risus. Phasellus nec sem in justo pellentesque
+facilisis. Etiam imperdiet imperdiet orci. Nunc nec neque. Phasellus leo dolor,
+tempus non, auctor et, hendrerit quis, nisi. Curabitur ligula sapien, tincidunt
+non, euismod vitae, posuere imperdiet, leo. Maecenas malesuada. Praesent congue
+erat at massa. Sed cursus turpis vitae tortor. Donec posuere vulputate arcu.
+Phasellus accumsan cursus velit. Vestibulum ante ipsum primis in faucibus orci
+luctus et ultrices posuere cubilia Curae; Sed aliquam, nisi quis porttitor
+congue, elit erat euismod orci, ac placerat dolor lectus quis orci.
+
+Phasellus consectetuer vestibulum elit. Aenean tellus metus, bibendum sed,
+posuere ac, mattis non, nunc. Vestibulum fringilla pede sit amet augue. In
+turpis. Pellentesque posuere. Praesent turpis. Aenean posuere, tortor sed
+cursus feugiat, nunc augue blandit nunc, eu sollicitudin urna dolor sagittis
+lacus. Donec elit libero, sodales nec, volutpat a, suscipit non, turpis. Nullam
+sagittis. Suspendisse pulvinar, augue ac venenatis condimentum, sem libero
+volutpat nibh, nec pellentesque velit pede quis nunc.
+
+Vestibulum ante ipsum primis in faucibus orci luctus et ultrices posuere
+cubilia Curae; Fusce id purus. Ut varius tincidunt libero. Phasellus dolor.
+Maecenas vestibulum mollis diam. Pellentesque ut neque. Pellentesque habitant
+morbi tristique senectus et netus et malesuada fames ac turpis egestas. In dui
+magna, posuere eget, vestibulum et, tempor auctor, justo. In ac felis quis
+tortor malesuada pretium. Pellentesque auctor neque nec urna. Proin sapien
+ipsum, porta a, auctor quis, euismod ut, mi. Aenean viverra rhoncus pede.
+
+Pellentesque habitant morbi tristique senectus et netus et malesuada fames ac
+turpis egestas. Ut non enim eleifend felis pretium feugiat. Vivamus quis mi.
+Phasellus a est. Phasellus magna. In hac habitasse platea dictumst. Curabitur
+at lacus ac velit ornare lobortis. Curabitur a felis in nunc fringilla
+tristique. Morbi mattis ullamcorper velit. Phasellus gravida semper nisi.
+Nullam vel sem. Pellentesque libero tortor, tincidunt et, tincidunt eget,
+semper nec, quam. Sed hendrerit. Morbi ac felis. Nunc egestas, augue at
+pellentesque laoreet, felis eros vehicula leo, at malesuada velit leo quis
+pede.
+
+Donec interdum, metus et hendrerit aliquet, dolor diam sagittis ligula, eget
+egestas libero turpis vel mi. Nunc nulla. Fusce risus nisl, viverra et, tempor
+et, pretium in, sapien. Donec venenatis vulputate lorem. Morbi nec metus.
+Phasellus blandit leo ut odio. Maecenas ullamcorper, dui et placerat feugiat,
+eros pede varius nisi, condimentum viverra felis nunc et lorem. Sed magna
+purus, fermentum eu, tincidunt eu, varius ut, felis. In auctor lobortis lacus.
+Quisque libero metus, condimentum nec, tempor a, commodo mollis, magna.
+Vestibulum ullamcorper mauris at ligula. Fusce fermentum.
+
+Nullam cursus lacinia erat. Praesent blandit laoreet nibh. Fusce convallis
+metus id felis luctus adipiscing. Pellentesque egestas, neque sit amet
+convallis pulvinar, justo nulla eleifend augue, ac auctor orci leo non est.
+Quisque id mi. Ut tincidunt tincidunt erat. Etiam feugiat lorem non metus.
+Vestibulum dapibus nunc ac augue. Curabitur vestibulum aliquam leo. Praesent
+egestas neque eu enim. In hac habitasse platea dictumst. Fusce a quam. Etiam ut
+purus mattis mauris sodales aliquam. Curabitur nisi. Quisque malesuada placerat
+nisl. Nam ipsum risus, rutrum vitae, vestibulum eu, molestie vel, lacus.
+
+Sed augue ipsum, egestas nec, vestibulum et, malesuada adipiscing, dui.
+Vestibulum facilisis, purus nec pulvinar iaculis, ligula mi congue nunc, vitae
+euismod ligula urna in dolor. Mauris sollicitudin fermentum libero. Praesent
+nonummy mi in odio. Nunc interdum lacus sit amet orci. Vestibulum rutrum, mi
+nec elementum vehicula, eros quam gravida nisl, id fringilla neque ante vel mi.
+Morbi mollis tellus ac sapien. Phasellus volutpat, metus eget egestas mollis,
+lacus lacus blandit dui, id egestas quam mauris ut lacus. Fusce vel dui. Sed in
+libero ut nibh placerat accumsan. Proin faucibus arcu quis ante. In
+consectetuer turpis ut velit. Nulla sit amet est. Praesent metus tellus,
+elementum eu, semper a, adipiscing nec, purus. Cras risus ipsum, faucibus ut,
+ullamcorper id, varius ac, leo. Suspendisse feugiat. Suspendisse enim turpis,
+dictum sed, iaculis a, condimentum nec, nisi. Praesent nec nisl a purus blandit
+viverra. Praesent ac massa at ligula laoreet iaculis. Nulla neque dolor,
+sagittis eget, iaculis quis, molestie non, velit. Mauris turpis nunc, blandit
+
+\section{Expectations}
+
+\subsection{Calling conventions and specifications}
+
+\subsection{Accurate source location}
 
 Preprocessor column info!
 
-\section{Rich regression testing}
+\subsection{Rich regression testing}
 
-\section{Peformance benchmarking}
+\subsection{Performance benchmarking}
 
-\section{Switchable major transitions}
+\subsection{Proof maintenance}
 
-\section{Examples and overfitting}
+\subsection{Examples and over-fitting}
 
-\section{Updating proofs}
+\subsection{Updating proofs}
 
-\section{Syntax, syntax, syntax}
+\subsection{Syntax, syntax, syntax}
 
-\section{Counter examples}\label{sec:counter-ex}
+\subsection{Counter examples}\label{sec:counter-ex}
 
 \begin{itemize}
     \item Not minimal
@@ -1070,11 +1119,11 @@ Preprocessor column info!
     \item Not easy to relate to source
 \end{itemize}
 
-\section{The unreasonable effectiveness of good error messages}\label{sec:error-msgs}
+\subsection{The unreasonable effectiveness of good error messages}\label{sec:error-msgs}
 
 \begin{itemize}
     \item Translate standards jargon into C programmer friendly words.
+    \item Don't use debug output \textemdash{} force yourself to structure output.
+    \item Use exceptions with discipline.
 \end{itemize}
-
-\section{Partnering with industry}
 
