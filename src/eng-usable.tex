@@ -1,0 +1,449 @@
+\chapter{\kl{CN} Comparsion and Feedback}
+
+\margintoc{}
+
+In this chapter, I will discuss the reality and expectations of how usable a
+verification tool for C \emph{can} be at this stage. I will start with my brief
+and informal comparison between \kl{CN} and similar tools, based on my
+experience of verifying \kl{pKVM}'s simpler \emph{early} allocator, in \kl{CN},
+\kl{VeriFast}~\sidecite{jacobs2011verifast} and
+\kl{Frama-C}.\sidecite{baudin2021dogged}\sidenote{\url{https://github.com/rems-project/CN-pKVM-early-allocator-case-study}}
+I will also discuss a \kl{RefinedC} verification of the same, which was
+completed by the developers~\sidecite{sammler2021refinedc}. Part of this
+comparison was featured in~\sidetextcite{pulte2023cn}, including the annotation
+overhead and execution times.
+
+After that, I will discuss some feedback given by some industry partners on
+\kl{CN}. As an academic, these seem borderline unreasonable, especially when
+compared to the aforementioned state-of-the-art research tools, but as an
+ex-industry professional, it is much easier to concede. Given our goal of
+targeting kernel hackers, we as academics want industry adoption for these
+tools, in which case taking industry feedback seriously is crucial.
+
+\section{Comparison}
+
+The early allocator in \kl{pKVM} during intialisation, before switching over to
+the aforementioned buddy allocator. It is a simple allocator which just bumps a
+pointer, with no support for reclaiming memory. It features functions to
+initialise, get the number of pages allocated, and allocate new zeroed pages.
+
+\subsection{Early allocator in CN}
+
+The proof for the early allocator was not part of CI for \kl{CN}, and so is
+considerably out-of-date.\sidenote{TODO Update this, add to CI, check how much
+slower it is with bit vectors.} Nevertheless, I will show and discuss a sample
+of the code and specifications, because because I expect updated specifications
+to look recognisably similar.
+
+The first function is one to zero all the bytes in a page. This is implemented
+in assembly in \kl{pKVM}, but for the purposes of comparison, I implemented a
+version in C. The precondition specifies that the function expects an array of
+\cninline{Bytes}, (not to be confused with memory bytes from
+\cref{sec:mem-bytes-use}), which is defined as a wrapper around
+\cninline{Owned<char>}. The postcondition specifies the function returns an
+array of bytes with value zero, expressed this way to avoid the use of the byte
+array equality lemma mentioned in \cref{fig;byte-array-eq-lemma}.
+
+The loop invariant states that ownership moves from the former to the latter at
+the loop index. This version of \kl{CN} required manually folding and unfolding
+predicates, but inferred indices, and so the body of the loop features
+annotations to do the former.
+
+\cfile[fontsize=\footnotesize,breaklines,lastline=18]{code/cn_early_alloc.c}
+
+The second version is to allocate a zeroed page. It accesses two global
+variables, \cinline{cur} which marks the current pointer of the allocator, and
+\cinline{end} which marks the exclusive end of the allocator. It requires there
+is at least a page size difference between the two, and of ownership of the
+bytes from \cinline{cur} to \cinline{end}, defined in the \cninline{EarlyAlloc}
+predicate. It ensures that it retains ownership of the same predicate, but with
+new bounds \textemdash{} \cinline{cur} in the postcondition used to mean the
+its value at the \emph{end} of the function, using \cninline|{cur}@start| to
+refer to the value at the start of the function. And it ensures that the
+returned value is the base address of an array of bytes. The body of the
+function simply unfolds and folds the \cninline{EarlyAlloc} predicate,
+incrementing the pointer by the page size in between.
+
+\cfile[fontsize=\footnotesize,breaklines,firstline=20]{code/cn_early_alloc.c}
+
+\subsection{Early allocator in VeriFast}
+
+The verification of the early allocator in \kl{VeriFast} is similar to the
+\kl{CN} one. The main difference is that since \kl{VeriFast} does not support
+iterated separating conjunction, it may require lemmas to manipulate the
+inductive predicates involved instead. \kl{VeriFast} supports non-precise
+assertions (\cref{subsec:precise-assertion}) as well, but does not support
+ordinary disjunction for impure assertions for the same reason \kl{CN} does
+not: to avoid backtracking in symbolic
+execution.\sidenote{\url{https://verifast.github.io/verifast-docs/faq.html\#how-to-express-a-disjunction-p-or-q-in-an-assertion}}
+
+In this example, the \cninline{characters_zeroed} predicate is recursively
+defined; and is marked as precise. This allows \kl{VeriFast} to unfold
+(\cninline{open}) and fold (\cninline{close}) the predicate automatically. The
+loop invariant is expressed in Tuerk-style,\sidecite{tuerk2010local} but
+regular loop-invariants are supported too.
+
+\cfile[fontsize=\footnotesize,breaklines,lastline=13]{code/verifast_early_alloc.c}
+
+If \kl{VeriFast} does not support iterated separating conjunctions, then how
+does it support the indexing in this example without lemmas? The answer lies in
+a surprising difference between how \kl{VeriFast} handles the semantically
+equivalent subscripting \cinline{e1[e2]} and \cinline{*(e1 + e2)}.\sidenote{\url{https://github.com/verifast/verifast/issues/259}} % chktex 36
+
+\begin{quote}
+    \emph{Indeed, \kl{VeriFast} symbolically evaluates \cinline{*(start + i)} and % chktex 36
+    \cinline{start[i]} differently. \cinline{*(start + i)} is symbolically % chktex 36
+    evaluated just like any other dereference of a pointer to int, whereas
+    evaluation of \cinline{start[i]} first looks for an
+    \cninline{ints(start, ?n, ?vs)} chunk where \cninline{i <= n} and, if it % chktex 26 chktex 36
+    finds one, returns \cninline{nth(i, vs)}. This is convenient for ``random % chktex 36
+    access'' to ints-encoded arrays. If it does not find such a chunk, it falls
+    back to looking for an \cninline{integer(start + i, _)} chunk, but the % chktex 36
+    \cninline{start + i} computation is indeed not checked for overflow. This
+    seems sound because if the integer chunk exists, it implies that the
+    address is within the limits.}
+\end{quote}
+
+%This could end up being a useful heuristic.
+
+This particular example was also a good lesson in how phrasing assertions
+differently can lead to drastically different performance outcomes. Whilst the
+final version uses the \cninline{character} predicate (which is a points-to at
+character type), initially I used a more general \cninline{chars} predicate
+that generalised \cninline{character} relating a current and end pointer to a
+\emph{list} of characters. \cninline{create(count, item)} is a fix-point % chktex 36
+function that I defined, which creates a list of only \cninline{item} of length
+\cninline{count}.
+
+\cfile[fontsize=\footnotesize,breaklines,lastline=2]{code/verifast_alt_loop.c}
+
+\kl{VeriFast} generally has good support for automation, and the ability to
+state and prove lemmas (pure and resourceful) from within the system itself.
+For pure lemmas, \cninline{lemma_auto}, marks it as available for use by
+automation all the time, whereas \cinline{lemma_auto (expr)} automatically
+applies the lemma when a precise predicate \cninline{expr} is in the context.
+
+We need a lemma because the loop exit condition \cninline{i == 4096} means that
+\cninline{length(unzeroed) == 0} and so \cninline{unzeroed == nil == create(0,0)}, % chktex 36
+and this is too much for automation to deduce. Because of this, it was not clear
+to me where to place an annotation to manually instantiate the lemma. At the
+same time, I was not adept enough with triggers to figure out how to fire them
+exactly when needed. Marking it as an automatic lemma without a trigger worked,
+but it slowed down verification considerably: usable in batch mode, a not usable
+interactively. There is no fallback to external assistants.
+
+\cfile[fontsize=\footnotesize,breaklines,firstline=3]{code/verifast_alt_loop.c}
+
+Like \kl{CN}, \kl{VeriFast} also requires annotations to read (and write)
+global variables. The rest of the specification is very similar to the \kl{CN}
+one; the \cninline{earlyAlloc} predicate could be marked as precise, this would
+have removed the need for the unfolding and folding statements.
+
+\cfile[fontsize=\footnotesize,breaklines,firstline=15]{code/verifast_early_alloc.c}
+
+\kl{VeriFast} has a similar (but slightly smaller) annotation overhead to
+\kl{CN}\@. Though I did not use them, fractional permissions are also
+supported. As its names implies, it is indeed very fast, about 10 times faster
+than \kl{CN} in this case (50 milliseconds vs 500 milliseconds). It has a
+useful graphical user-interface which provides syntax highlighting for
+specifications, excellent visibility into the proof state, and highlights the
+annotation it cannot prove directly in the source code. Not only that, it
+supports replaying the steps of the proof leading up to that state.
+
+There are some aspect of \kl{VeriFast} which I do not understand, and cannot
+find any documentation or explanation for, namely its handling of structs.
+First off, it provides no in built predicates to do the equivalent of claiming
+ownership of a whole struct, so users have to write such predicates themselves,
+using auto-generated predicates for each members. With this one can write the
+following. The semicolon is to mark the predicate as precise, and to separate
+input arguments from output ones. Confusingly, it fails, with an error `no
+matching heap chunks s2\_x(..)'. % chktex 36
+
+\cfile[fontsize=\footnotesize,breaklines,lastline=15]{code/verifast_structs.c}
+
+However, changing the predicate definition to explicitly mention the fields in
+the \cinline{inner} struct allows it to pass.
+\cfile[fontsize=\footnotesize,breaklines,firstline=17,lastline=18]{code/verifast_structs.c}
+
+This strikes me as unusual because any changes to the representation of
+\cinline{struct s2} are no longer encapsulated fields of that type. In \kl{CN},
+the following is true (modulo padding),
+\cninline[breaklines]|s1_inner(p, inner) <=> s2_x(&p->inner, inner.x)|,% chktex 36
+\sidenote{`s1\_inner' and `s2\_x' are auto-generated predicates, expressing
+points-to facts for struct fields.} but in \kl{VeriFast} this does not seem
+to be the case.
+
+Furthermore, the specification itself is weak, because it does not connect the
+values in the inner struct to the outer struct of which it is a field. Yet,
+adjusting the specification to link the output value \cninline|?val| of the
+field to the output value of its member, causes the verification to fail again,
+this time saying that it cannot prove \cninline|in.x == 1|.
+
+\cfile[fontsize=\footnotesize,breaklines,firstline=19,lastline=20]{code/verifast_structs.c}
+
+To be clear: I know I am at fault, and specifying things incorrectly. I am
+quite confident such an example can be verified in \kl{VeriFast}. My point is
+to draw attention to the (a) unexpected properties of nested structs and (b)
+the difficulty of understanding any modes/dataflow implicit in the syntax. The
+issue with structs may be an intentional design choice to sidestep handling
+exploding and imploding structs, which does require extra inference and thus
+reduce performance.
+
+Stepping back, \kl{VeriFast} uses an ad-hoc semantics of C the developers
+believe to be sound. During this brief experiment, I noted a few missing
+features.
+\begin{itemize}
+    \item Struct literals/initialisers.
+    \item Implicit type promotions (e.g.\ from \cinline{long long} to
+        \cinline{unsigned long long}).
+    \item Function types in struct fields.
+    \item Taking the address of local variables.
+    \item Expressive/accurate pointer provenance (has basic support).
+    \item \kl{UB} or unspecified values for uninitialised reads.
+\end{itemize}
+
+\subsection{Early allocator in Frama-C and RefinedC}
+
+Whereas \kl{VeriFast} is most similar to \kl{CN}, \kl{Frama-C} and
+\kl{RefinedC} are one step removed. Both use undecidable logics, falling back
+to \kl{Rocq} for manual proof. For \kl{Frama-C}, the logic is a Hoare logic,
+not separation, whereas in \kl{RefinedC}, the logic is an \kl{Iris} instance.
+
+Frama-C has a smaller annotation overhead, though its lack of support for
+separation logic means the end guarantee is weaker than with the other tools.
+It works by translating C programs into CIL~\sidecite{necula2002cil}. Its Hoare
+logic verifier, WP, uses a custom semantics CIL, which is parametric in the
+memory model, allowing the user to select trade-off increased performance for
+pointer manipulation expressiveness. Its includes support for multiple
+specifications per function, ghost parameters, arguments and code, and runtime
+assertion checks, which amongst other things, can be used to error on
+uninitialised reads. \kl{Frama-C} was noticeably slower than \kl{CN} for the
+early allocator (3.5s).
+
+\kl{RefinedC} is implemented inside \kl{Rocq} atop \kl{Iris}, making its
+\kl[TCB]{trusted computing base} (TCB) the smallest out of all the tools
+mentioned so far. This trust is undercut by its custom ad hoc semantics for C
+based on the \emph{Caesium} kernel over which its typing and automation
+framework \emph{Lithium} operates. The rules are intended to be heuristic
+rather than decidable, with the main mode of operation inside a \kl{Rocq}
+session. Its annotation overhead is similar to \kl{CN}, but the performance is
+much slower (16.7s).
+
+\section{Industry feedback}
+
+Lorem ipsum dolor sit amet,\sidenote{Under review from industry, hence
+placeholder for formatting and word count.} consectetuer adipiscing elit.
+Aenean commodo ligula eget dolor. Aenean massa. Cum sociis natoque penatibus et
+magnis dis parturient montes, nascetur ridiculus mus. Donec quam felis,
+ultricies nec, pellentesque eu, pretium quis, sem. Nulla consequat massa quis
+enim. Donec pede justo, fringilla vel, aliquet nec, vulputate eget, arcu. In
+enim justo, rhoncus ut, imperdiet a, venenatis vitae, justo. Nullam dictum
+felis eu pede mollis pretium. Integer tincidunt. Cras dapibus. Vivamus
+elementum semper nisi. Aenean vulputate eleifend tellus.
+
+Aenean leo ligula, porttitor eu, consequat vitae, eleifend ac, enim. Aliquam
+lorem ante, dapibus in, viverra quis, feugiat a, tellus. Phasellus viverra
+nulla ut metus varius laoreet. Quisque rutrum. Aenean imperdiet. Etiam
+ultricies nisi vel augue. Curabitur ullamcorper ultricies nisi. Nam eget dui.
+Etiam rhoncus. Maecenas tempus, tellus eget condimentum rhoncus, sem quam
+semper libero, sit amet adipiscing sem neque sed ipsum. Nam quam nunc, blandit
+vel, luctus pulvinar, hendrerit id, lorem. Maecenas nec odio et ante tincidunt
+tempus.
+
+Donec vitae sapien ut libero venenatis faucibus. Nullam quis ante. Etiam sit
+amet orci eget eros faucibus tincidunt. Duis leo. Sed fringilla mauris sit amet
+nibh. Donec sodales sagittis magna. Sed consequat, leo eget bibendum sodales,
+augue velit cursus nunc, quis gravida magna mi a libero. Fusce vulputate
+eleifend sapien. Vestibulum purus quam, scelerisque ut, mollis sed, nonummy id,
+metus. Nullam accumsan lorem in dui. Cras ultricies mi eu turpis hendrerit
+fringilla.
+
+Vestibulum ante ipsum primis in faucibus orci luctus et ultrices posuere
+cubilia Curae; In ac dui quis mi consectetuer lacinia. Nam pretium turpis et
+arcu. Duis arcu tortor, suscipit eget, imperdiet nec, imperdiet iaculis, ipsum.
+Sed aliquam ultrices mauris. Integer ante arcu, accumsan a, consectetuer eget,
+posuere ut, mauris. Praesent adipiscing. Phasellus ullamcorper ipsum rutrum
+nunc. Nunc nonummy metus. Vestibulum volutpat pretium libero. Cras id dui.
+Aenean ut eros et nisl sagittis vestibulum. Nullam nulla eros, ultricies sit
+amet, nonummy id, imperdiet feugiat, pede. Sed lectus.
+
+Donec mollis hendrerit risus. Phasellus nec sem in justo pellentesque
+facilisis. Etiam imperdiet imperdiet orci. Nunc nec neque. Phasellus leo dolor,
+tempus non, auctor et, hendrerit quis, nisi. Curabitur ligula sapien, tincidunt
+non, euismod vitae, posuere imperdiet, leo. Maecenas malesuada. Praesent congue
+erat at massa. Sed cursus turpis vitae tortor. Donec posuere vulputate arcu.
+Phasellus accumsan cursus velit. Vestibulum ante ipsum primis in faucibus orci
+luctus et ultrices posuere cubilia Curae; Sed aliquam, nisi quis porttitor
+congue, elit erat euismod orci, ac placerat dolor lectus quis orci.
+
+Phasellus consectetuer vestibulum elit. Aenean tellus metus, bibendum sed,
+posuere ac, mattis non, nunc. Vestibulum fringilla pede sit amet augue. In
+turpis. Pellentesque posuere. Praesent turpis. Aenean posuere, tortor sed
+cursus feugiat, nunc augue blandit nunc, eu sollicitudin urna dolor sagittis
+lacus. Donec elit libero, sodales nec, volutpat a, suscipit non, turpis. Nullam
+sagittis. Suspendisse pulvinar, augue ac venenatis condimentum, sem libero
+volutpat nibh, nec pellentesque velit pede quis nunc.
+
+Vestibulum ante ipsum primis in faucibus orci luctus et ultrices posuere
+cubilia Curae; Fusce id purus. Ut varius tincidunt libero. Phasellus dolor.
+Maecenas vestibulum mollis diam. Pellentesque ut neque. Pellentesque habitant
+morbi tristique senectus et netus et malesuada fames ac turpis egestas. In dui
+magna, posuere eget, vestibulum et, tempor auctor, justo. In ac felis quis
+tortor malesuada pretium. Pellentesque auctor neque nec urna. Proin sapien
+ipsum, porta a, auctor quis, euismod ut, mi. Aenean viverra rhoncus pede.
+
+Pellentesque habitant morbi tristique senectus et netus et malesuada fames ac
+turpis egestas. Ut non enim eleifend felis pretium feugiat. Vivamus quis mi.
+Phasellus a est. Phasellus magna. In hac habitasse platea dictumst. Curabitur
+at lacus ac velit ornare lobortis. Curabitur a felis in nunc fringilla
+tristique. Morbi mattis ullamcorper velit. Phasellus gravida semper nisi.
+Nullam vel sem. Pellentesque libero tortor, tincidunt et, tincidunt eget,
+semper nec, quam. Sed hendrerit. Morbi ac felis. Nunc egestas, augue at
+pellentesque laoreet, felis eros vehicula leo, at malesuada velit leo quis
+pede.
+
+Donec interdum, metus et hendrerit aliquet, dolor diam sagittis ligula, eget
+egestas libero turpis vel mi. Nunc nulla. Fusce risus nisl, viverra et, tempor
+et, pretium in, sapien. Donec venenatis vulputate lorem. Morbi nec metus.
+Phasellus blandit leo ut odio. Maecenas ullamcorper, dui et placerat feugiat,
+eros pede varius nisi, condimentum viverra felis nunc et lorem. Sed magna
+purus, fermentum eu, tincidunt eu, varius ut, felis. In auctor lobortis lacus.
+Quisque libero metus, condimentum nec, tempor a, commodo mollis, magna.
+Vestibulum ullamcorper mauris at ligula. Fusce fermentum.
+
+Nullam cursus lacinia erat. Praesent blandit laoreet nibh. Fusce convallis
+metus id felis luctus adipiscing. Pellentesque egestas, neque sit amet
+convallis pulvinar, justo nulla eleifend augue, ac auctor orci leo non est.
+Quisque id mi. Ut tincidunt tincidunt erat. Etiam feugiat lorem non metus.
+Vestibulum dapibus nunc ac augue. Curabitur vestibulum aliquam leo. Praesent
+egestas neque eu enim. In hac habitasse platea dictumst. Fusce a quam. Etiam ut
+purus mattis mauris sodales aliquam. Curabitur nisi. Quisque malesuada placerat
+nisl. Nam ipsum risus, rutrum vitae, vestibulum eu, molestie vel, lacus.
+
+Sed augue ipsum, egestas nec, vestibulum et, malesuada adipiscing, dui.
+Vestibulum facilisis, purus nec pulvinar iaculis, ligula mi congue nunc, vitae
+euismod ligula urna in dolor. Mauris sollicitudin fermentum libero. Praesent
+nonummy mi in odio. Nunc interdum lacus sit amet orci. Vestibulum rutrum, mi
+nec elementum vehicula, eros quam gravida nisl, id fringilla neque ante vel mi.
+Morbi mollis tellus ac sapien. Phasellus volutpat, metus eget egestas mollis,/
+lacus lacus blandit dui, id egestas quam mauris ut lacus. Fusce vel dui. Sed in
+libero ut nibh placerat accumsan. Proin faucibus arcu quis ante. In
+consectetuer turpis ut velit. Nulla sit amet est. Praesent metus tellus,
+elementum eu, semper a, adipiscing nec, purus. Cras risus ipsum, faucibus ut,
+ullamcorper id, varius ac, leo. Suspendisse feugiat. Suspendisse enim turpis,
+dictum sed, iaculis a, condimentum nec, nisi. Praesent nec nisl a purus blandit
+viverra. Praesent ac massa at ligula laoreet iaculis. Nulla neque dolor,
+sagittis eget, iaculis quis, molestie non, velit. Mauris turpis nunc, blandit
+
+\section{Summary}
+
+Here, I summarise the many (incompatible, or at the very least, impractical)
+directions \kl{CN} could pursue based on the comparison with other tools
+and the industry feedback. I leave evaluating and synthesising these points
+to the next chapter.
+\begin{itemize}
+    \item Improve performance by 10x.
+    \item Trace type checking steps for replay.
+    \item Improve syntax concision and approachability.
+    \item Improve error messages.
+    \item Infer/suggest specifications.
+    \item Reduce the \kl{TCB}.
+    \item Support using \kl{CN} `out-of-the-box'.
+    \item Focus on industry-favoured use cases, such as mathematics,
+        input-validation, memory safety beyond current tools, and concurrency.
+\end{itemize}
+
+\chapter{Not-so-great expectations}
+
+In the last chapter, I compared \kl{CN} to some relevant tools in the
+space,\sidenote{A notable omission was VST, mostly due to lack of time and
+expertise for a fair comparison.} and I presented industry feedback on \kl{CN}.
+Based on my experience of having worked on programming language tooling both in
+industry and in academia, I will synthesise the two and lay out what I believe
+are achievable standards of usability for \kl{CN}, with an emphasis on how new
+projects can avoid several pitfalls.
+
+\section{Work backwards from examples}
+
+\kl{CN}'s guiding star during its development was the \kl{buddy allocator}.
+Whilst this was understandable, and indeed its unique selling point, this
+\emph{also} guided its design to a large degree. Features were only considered
+and implemented insofar as they got \kl{CN} closer to verifying the entire
+allocator.
+
+Whilst this produced a sucessful paper, this overfitted \kl{CN} to the example.
+More concretely, it meant that we had accrued significant technical and design
+debt, which became more obvious by the time it came to specifying and verifying
+more pedestrian examples, such as those now in the \kl{CN
+tutorial}.\sidecite{pulte2024tutorial}
+
+Many of the features mentioned in \cref{chap:inform-impl} might have been
+caught earlier. One example is the independent development of auto-unfolding
+for predicates, and recursive functions has resulted into similar constructs
+with differing unfolding
+behaviour.\sidenote{\href{https://github.com/rems-project/cerberus/issues/483}{Cerberus
+\#483}} Another is a confusing error message when the predicate and a function
+are mixed up; unifying the scopes at which point this error occurs would
+require a major refactor to symbol resolution during
+desugaring.\sidenote{\href{https://github.com/rems-project/cerberus/issues/288}{Cerberus
+\#288}}
+
+With only slight irony, my conjecture is \emph{test-driven development is
+exceptionally useful when implementing a verification tool}. This bore out in
+my personal experience in implementing \kl{VIP}: writing examples and
+informally but rigorously working through how they ought to be specified and
+helped enourmously in guiding my intutions and highlighting problems early on,
+and I conjecture a broader range of smaller examples escalating to the
+\kl{buddy allocator} might have done similar.
+
+\section{Design}
+
+Calling conventions and specifications
+
+Total Type Error Localization and Recovery with Holes
+Quiver: Guided Abductive Inference of Separation Logic
+Specifications in Coq
+
+\subsection{Syntax, syntax, syntax}
+
+\section{Software Engineering}
+
+\subsection{Rich regression testing}
+
+\subsection{Performance benchmarking}
+
+\section{Get source location right}
+
+Preprocessor column info!
+
+\section{Assume a broken, incomplete program}
+
+\section{Error, do not throw}
+
+\section{Elaborate with care}
+
+\section{Log, do not debug}
+
+\section{Gate large changes}
+
+\subsection{Proof maintenance}
+
+\section{Invest in error reports}
+
+% Sean Chen - The Anatomy of Error Messages in Rust — RustFest Global 2020 https://youtu.be/oMskswu1SxM?feature=shared
+% https://rustc-dev-guide.rust-lang.org/diagnostics.html
+
+\subsection{Counter examples}\label{sec:counter-ex}
+
+\begin{itemize}
+    \item Not minimal
+    \item Not consistent
+    \item Not easy to relate to source
+\end{itemize}
+
+\subsection{The unreasonable effectiveness of good error messages}\label{sec:error-msgs}
+
+\begin{itemize}
+    \item Translate standards jargon into C programmer friendly words.
+\end{itemize}
+
