@@ -356,7 +356,7 @@ to the next chapter.
 \chapter{Not-so-great expectations}
 
 In the last chapter, I compared \kl{CN} to some relevant tools in the
-space,\sidenote{A notable omission was VST, mostly due to lack of time and
+space,\sidenote{A notable omission was \kl{VST}, mostly due to lack of time and
 expertise for a fair comparison.} and I presented industry feedback on \kl{CN}.
 Based on my experience of having worked on programming language tooling both in
 industry and in academia, I will synthesise the two and lay out what I believe
@@ -365,68 +365,399 @@ projects can avoid several pitfalls.
 
 \section{Work backwards from examples}
 
-\kl{CN}'s guiding star during its development was the \kl{buddy allocator}.
-Whilst this was understandable, and indeed its unique selling point, this
-\emph{also} guided its design to a large degree. Features were only considered
-and implemented insofar as they got \kl{CN} closer to verifying the entire
-allocator.
+\kl{CN}'s guiding star during its development was the \kl{pKVM buddy
+allocator}. Whilst this was understandable, and indeed its unique selling
+point, this \emph{also} guided its design to a large degree. Features were only
+considered and implemented insofar as they got \kl{CN} closer to verifying the
+entire allocator.
 
-Whilst this produced a sucessful paper, this overfitted \kl{CN} to the example.
+Whilst this produced a successful paper, this over-fitted \kl{CN} to the example.
 More concretely, it meant that we had accrued significant technical and design
 debt, which became more obvious by the time it came to specifying and verifying
 more pedestrian examples, such as those now in the \kl{CN
-tutorial}.\sidecite{pulte2024tutorial}
+tutorial}.~\sidecite{pulte2024tutorial}
 
 Many of the features mentioned in \cref{chap:inform-impl} might have been
-caught earlier. One example is the independent development of auto-unfolding
-for predicates, and recursive functions has resulted into similar constructs
-with differing unfolding
-behaviour.\sidenote{\href{https://github.com/rems-project/cerberus/issues/483}{Cerberus
-\#483}} Another is a confusing error message when the predicate and a function
-are mixed up; unifying the scopes at which point this error occurs would
-require a major refactor to symbol resolution during
+incorporated earlier. An obvious candidate is unifying the syntax for
+functions, predicates and specifications: these features were built separately
+over time and as a result have ended up similar but
+incompatible.\sidenote{\href{https://github.com/rems-project/cerberus/issues/288}{Cerberus
+\#288}} For example, one of the many incompatibilities is the separate scopes
+for predicates and functions: this results in a confusing error message when
+the predicate and a function are mixed up. However, unifying the scopes at
+point would require a major refactor to symbol resolution during
 desugaring.\sidenote{\href{https://github.com/rems-project/cerberus/issues/288}{Cerberus
-\#288}}
+\#288}} Had we worked through enough examples and designs concretely, we might
+have noticed the emerging similarities and reworked the approach.
 
-With only slight irony, my conjecture is \emph{test-driven development is
+With only slight irony, my point is that \emph{test-driven development is
 exceptionally useful when implementing a verification tool}. This bore out in
 my personal experience in implementing \kl{VIP}: writing examples and
 informally but rigorously working through how they ought to be specified and
-helped enourmously in guiding my intutions and highlighting problems early on,
+helped enormously in guiding my intuitions and highlighting problems early on,
 and I conjecture a broader range of smaller examples escalating to the
 \kl{buddy allocator} might have done similar.
 
-\section{Design}
+\section{Design with a formalism}
 
-Calling conventions and specifications
+Whilst there are some changes that I think would have been difficult to
+pre-empt by more careful design at the start, for example, the change in
+inference
+scheme,\sidenote{\href{https://github.com/rems-project/cerberus/commit/7c2c0a364a4373e4eb109f32d01cc9584f51e81f}{Commit
+7c2c0a36.} This was motivated by reducing the annotation burden for folding
+and unfolding predicates, which turned out to be heavier than annotation
+saved by inferring indices.}, or the switch to the monadic syntax
+(\cref{sec:monadic-syntax}), there are few design decisions I conjecture would
+would have benefited from scrutiny prior to implementation.
 
-Total Type Error Localization and Recovery with Holes
-Quiver: Guided Abductive Inference of Separation Logic
-Specifications in Coq
+\subsection{Calling conventions affect syntax}
 
-\subsection{Syntax, syntax, syntax}
+By default, \kl{Cerberus} elaborates calls to C functions by allocating and
+initialising parameters \emph{at the call site} and then \emph{passing
+pointers} to the temporary objects to the callee. This leads to very verbose
+and awkward specifications, where functions had to (a) claim ownership of their
+parameters and (b) promise they did not modify them so that the objects at the
+call-site remained unaffected.
 
-\section{Software Engineering}
+This eventually became intolerable enough to realise that what needed to change
+was not the specifications but the
+elaboration.\sidenote{\href{https://github.com/rems-project/cerberus/commit/772173d6432c86b029fd1bb993b8dc83b80c96c0}{Cerberus
+772173d6}} Of course, this required changes to \kl{CN}
+too,\sidenote{\href{https://github.com/rems-project/cerberus/commit/186e4e42a75cad2222d441ce608fc1dc84cc7b98}{Cerberus
+186e4e42}} to handle the changed elaboration. Ultimately, this resulted in
+duplicated effort. Had we spent some time looking at small sample core
+programs, and testing out a formalism on it, we might have anticipated the
+issue sooner.
+
+
+\subsection{Error reporting}
+
+Most of the time, \emph{any} programming language tool will be fed an incorrect
+or incomplete program. The standard approach to dealing with this is to layer
+the program's stages such that only well-formed programs pass from one stage to
+the next. Within the context of \kl{CN}, the main stages are:
+\begin{itemize}
+    \item Parsing
+    \item Desugaring
+    \item Elaboration of C into \kl{Core}
+    % \item Translation of \kl{Core} to $\mu$\kl{Core}
+    \item Base type/well-formed specification checks
+    \item Per-function constraint and resource inference and checking.
+\end{itemize}
+
+Such a strategy is understandable, indeed it makes the system more robust
+because each phase assumes the invariants ensured by the previous, and
+establishes new ones. It makes the implementer's job easier, but as important
+as that is, it is quite likely the cumulative user time will dominate
+cumulative implementer time in the long run: code is written once, read many
+times, and used orders of magnitude more.
+
+The problem is that users (rightfully) expect to be able to get feedback on
+their program at multiple stages of development, and getting one error at a
+time slows down the edit-check cycle. Of course, multiple errors can also
+overwhelm the user, but it is easier to limit them once they are already
+supported, than it is to support them if they do not exist.
+
+In the ideal case, users should be able to execute a whole pipeline of stages
+even in the presence of errors from the first; it would be very impressive if
+\kl{CN} could do resource inference in the presence of parse errors
+\emph{within the function it was checking}, or even just in other parts of the
+program.
+
+This is likely unrealistic for \kl{CN}, because of the amount of re-engineering
+it would require in the \kl{Cerberus} front-end. A realistic goal for \kl{CN}
+is to raise the lower bar of recovery, by designing each step such that:
+\emph{it avoids stopping at the first error}. For example, up until relatively
+recently, \kl{CN} stopped at the first error in the first failing function,
+\emph{even though it was designed to support per-function checking}.
+
+It would be ironic, if, in advocating support for multiple errors, I insisted
+that the best way to achieve this was a full rewrite of everything starting
+from the parser. And so, below I conjecture a process which I believe can be
+applied in an incremental way to existing projects, which allows developers
+to reap the benefits of multiple errors in proportion to the amount of
+time they are willing to spend on it.
+\begin{itemize}
+    \item Pick the most important stage.
+    \item For every (or each important) sort, a \emph{hole}
+        construct.~\sidecite{omar2017hazelnut}
+    \item Update the rest of the stage to handle this hole.
+    \item If the subsequent stage supports holes, consider joining them up.
+\end{itemize}
+If, like in \kl{CN} proof mode, the last (semantic analysis) stage backwards is
+the most interesting and expensive one, this suggests working backwards through
+each stage.
+
+To be clear, I am not talking about \emph{incrementalising} the entire type
+checker, though support for holes could make this easier.
+
+What I am saying is that for every \kl{CN} annotation, there is the opportunity
+to support multiple errors through multiple stages. Take the example of failed
+the bit vector update for the buddy allocator (\cref{sec:buddy-failed-bv}). One
+of the major pain points of this update was (tediously) ensuring that
+\emph{every datatype, function, predicate, and pre/postcondition} was updated
+to switch from integer to bit vector types; without this, \kl{CN} would refuse
+to move on to checking any functions. As a result, I was forced to manually
+figure out the dependency structure, start at the leaves, and comment out
+everything else that was irrelevant. This also made it difficult to
+incrementally check my progress into a CI pipeline. Though gating the switch to
+integers behind a flag would have helped, I believe multiple error propagation
+would have been helpful too, \emph{especially when type checking is slow}.
+
+I conjecture inspiration from the below two papers will prove fruitful
+to investigating and guiding the theory and implementation of multiple
+errors for \kl{CN}.
+\begin{itemize}
+    \item \citetitle{zhao2024total}~\sidecite{zhao2024total}.
+        This paper defines a bidirectional gradual
+        type system for types and expressions (including holes), and a total
+        procedure to mark expressions with \emph{all possible} type errors. It
+        then adds constraint solving on top of the type holes, so that
+        inconsistent type constraints are localised \emph{exclusively to holes
+        and marked types and expressions}, by tracking the program origins of
+        unknown types. The relevance of this paper is its principled approach
+        to all of the above.
+    \item \citetitle{spies2024quiver}~\sidecite{spies2024quiver}.
+        This paper also uses a two way flow of
+        information familiar from bidirectional type checking, but describes it
+        using terms more standard in separation logic circles: \emph{abductive
+        deductive verification}. It symbolically evaluates a program using a
+        context of separation logic assertions, proving everything it can and
+        assuming everything it cannot. The specifications (`predicate
+        transformers') they infer are analogous to \kl{CN}'s function types.
+        The relevance of this paper is its similar domain to \kl{CN}.
+\end{itemize}
+Though designing such calculi in this way may seem like it increases the amount
+of work involved for reporting errors, in actuality, it simply makes
+implementation-related error reporting \emph{explicit in the formalism}.
+
+\subsection{Elaborate with care}
+
+Elaboration and large-scale program transformations such as A-normalisation can
+affect the accuracy of source locations. On top of this, if handled without
+care, generated variables can also end up not associated to any source location
+the user wrote, and can be difficult to interpret in a counter-example. \kl{CN}
+used to A-normalise, but does not any
+more,\sidenote{\href{https://github.com/rems-project/cerberus/commit/21808139bda2ee320756c71eb22dbd57d0986f97}{Commit
+21808139}.} because it was difficult to relate such variables to \kl{Core}
+expressions. The situation has improved a bit with more helpful auto-generated
+names and no A-normalising, but the solution is ad hoc, and the gap between
+\kl{Core} and C still remains.
+
+Whilst I have some ideas on how to improve the situation,\sidenote{Low-hanging
+fruit is to associate bound variables to the location of the sub-expression
+they are binding
+(\href{https://github.com/rems-project/cerberus/issues/270}{Cerberus
+\#270}).} a systematic treatment of source location information through
+elaboration would be helpful to understand what it would mean, and what is
+required for maximal source location accuracy.
+
+\section{Software engineering}
+
+\kl{CN} has been developed for around 4 years at the time of writing. It has
+had multiple contributors, some of whom have left the project now. As such,
+it benefits from good software engineering practices like any other project.
+There are many such things, so I will focus on the important ones.
 
 \subsection{Rich regression testing}
 
+For a long time, \kl{CN} did not have any regression testing and so features
+which were implemented, but accidentally broke later, went unnoticed.
+Another substantial benefit to regression testing is that it enables assists
+with fairly large-scale refactors. Regression testing is also very helpful when
+multiple people are working on overlapping parts of the project, so that
+changes which accidentally break other things are picked up \emph{before} being
+merged in to the main branch.
+
+Regression testing should not only capture the ability of the program to
+execute with or without errors, but also \emph{the output} in \emph{both} of
+those cases. If a test is intended to fail before a \kl{VIP}-related change,
+and it continues to fail after the change, it is often good to check that it is
+failing \emph{for the same reason} (we would not a division-by-zero test
+changing its behaviour after a change to the memory-object model).
+
+To assist with this, I wrote a small but increasingly sophisticated Python
+script\sidenote{\href{https://github.com/rems-project/cerberus/pull/703}{Cerberus
+\#703}.} to run a given program, in a particular configuration (consisting a
+name, a filter on file names, and arguments to the program) and capture and
+check the return codes and all the output, against a pre-existing file. If
+there is a difference, the program will raise an error, and also provide a diff
+the developer can apply \emph{across some or all of the affected files} if the
+change is expected.
+
 \subsection{Performance benchmarking}
 
-\section{Get source location right}
+A slow heavily-automated verification tool is basically an unusable
+verification tool, and the lack of good performance measurement makes it
+difficult to understand why \kl{CN} is slow and how to fix it.
 
-Preprocessor column info!
+Prior measurements were ad hoc but revealed that most of the time is spent in
+the solver, which we believe to still be the case. Whilst this is useful
+information, we need better granularity on the subject, to answer the following.
+\begin{itemize}
+    \item What is the distribution of times per call to the solver?
+    \item What part of \kl{CN} generates the slowest problems?
+\end{itemize}
 
-\section{Assume a broken, incomplete program}
+We have some performance benchmarking now, enough to demonstrate that enabling
+\kl{VIP} is slow and soundly reducing bounds checks\sidenote{By replacing them
+with liveness checks.} reduces execution time (\cref{sec:vip-ref}). However, we
+do not have good insight into explaining these observations. The measurements
+are very noisy and coarse \textemdash{} the script measures the total execution
+time for running each regression test once, when what we need are answers to
+the aforementioned questions.
 
-\section{Error, do not throw}
+As I mentioned before, performance remains the main reason that it is nigh-on
+impossible to update the \kl{pKVM buddy allocator} to verify after \kl{CN}'s
+bit vector update (\cref{sec:buddy-failed-bv}). \kl{CN} is still an order of
+magnitude slower than we would like or expect it to be, and so fixing this, and
+setting up infrastructure prevent backsliding, is a key priority.
 
-\section{Elaborate with care}
+\subsection{Get source location right}
 
-\section{Log, do not debug}
+Source location information is the fundamental building block of a useful error
+message, without which an error is close to useless. Unfortunately, early
+versions of \kl{CN} did not give this crucial data its due leading to an
+incredibly poor user experience. This is all the more disappointing because
+within the OCaml ecosystem, the \kl{Menhir} parser generator makes getting this
+sort of thing right a lot easier than one might initially
+expect.~\sidecite{pottier2016reachability}
 
-\section{Gate large changes}
+\paragraph{Keep lexer and parser simple.} Initially, support for \kl{CN}
+annotations in comments was implemented with reference to lots of global
+mutable state.\sidenote{A feature of ocamllex that seems to be
+under-appreciated is that each rule is an OCaml function and can be passed
+arbitrary parameters, thus avoid the need to use global mutable state.}
+This prevented code re-use, complicated the code and introduced subtle
+location bugs because of accidentally re-using shared mutable token
+buffers. I simplified the lexer and parser to avoid this, and in the
+process improved and unified the error-reporting for parsing C and
+\kl{CN}.\sidenote{\href{https://github.com/rems-project/cerberus/pull/252}{Cerberus
+\#252}.}
+
+\paragraph{Investigate strange source locations.} Strange source locations are
+bugs which deserve to be investigated, or at the very least, have their
+triggers documented. One such
+issue\sidenote{\href{https://github.com/rems-project/cerberus/issues/382}{Cerberus
+\#382}.} uncovered a subtle interaction between the `lexer hack' used to parse
+C11,~\sidecite{jourdan2017simple} and a token buffer feature offered by
+\kl{Menhir} for more helpful error messages. Again, the issue was mutable state
+which was accidentally shared across what should be separate, fresh instances
+of the lexer. The solution was to stage the creation of the lexer and its
+internal state, and make this explicit in its
+API.\sidenote{\href{https://github.com/rems-project/cerberus/commit/c970a43b7126560b229fb55c32ce22bfbc5d23f2}{Cerberus
+c970a43b}.}
+
+\paragraph{Write parser error messages if feasible.} Initially, a parse error
+in \kl{CN} would simply signal `unexpected token' and signal no other
+information, except a ballpark source location which was sometimes right. This
+was less than helpful for a number of reasons, most notably not telling the
+user what token \emph{was} expected. It is possible to \emph{generate} very
+inelegant, but informative parse error messages based on the error message
+format output by
+\kl{Menhir}.\sidenote{\url{https://gallium.inria.fr/~fpottier/menhir/manual.html\#sec\%3Amessages\%3Aformat}}
+
+I shall now explain how I did
+this.\sidenote{\href{https://github.com/rems-project/cerberus/commit/127758764cd6efdabaaaddb60eabf40575864117}{Cerberus
+12775876}.} The first line shows the sentence used to get to the error state.
+This is useful for \kl{Menhir}, but is not considered to be a good source of
+information for writing an error message. This is because the information in
+the comments shows the production which is being parsed, and at which point in
+it the error occurs. More than half of error states (629) have exactly one
+production, and in this case, I generate an error message as shown at the
+bottom of the excerpt.
+
+\begin{minted}[fontsize=\footnotesize,linenos,breaklines]{py}
+cn_statements: ASSERT WHILE
+##
+## Ends in an error in state: 1585.
+##
+## cn_statement -> ASSERT . LPAREN assert_expr RPAREN SEMICOLON [ .. ]
+##
+## The known suffix of the stack is as follows:
+## ASSERT
+##
+
+parsing "cn_statement": seen "ASSERT", expecting "LPAREN assert_expr RPAREN SEMICOLON"
+\end{minted}
+
+Of course, it is better to fill these and the remainder (593) manually, as I
+demonstrated for one
+case.\sidenote{\href{https://github.com/rems-project/cerberus/issues/245}{Cerberus
+\#245}.} Details of how best to do so are in the \kl{Menhir} manual, along with
+examples and links to how \kl{CompCert} uses it for its C parser (proof that
+the approach can be scaled). For the easy cases I did not auto-generate, I
+output an message which says that an error message is missing for the state
+(identified by a number), and that it can be added in the stated file. In any
+case, I set up \kl{Menhir} to show exactly where and between which tokens
+parsing failed, which is often enough for experienced users to fix the syntax.
+\kl{Menhir} also provides functionality to check and merge its auto-generated
+error messages with existing ones, so that the latter can be preserved despite
+changes in the grammar.
+
+\paragraph{Consider a custom pre-processor.} The bane of any academic C tooling
+seems to be the preprocessor. Whilst it faithfully preserves line numbers, and
+this tends to be good enough, it does not preserve column information, which in
+most cases, leads to inaccurate error messages on any code which is inside, or
+after a macro expansion.\sidenote{The macro call and expansion may have the
+same length if one is lucky.}
+
+We are caught between two unappealing choices: either present the error message
+in terms of the preprocessed code, thus retaining accuracy but sacrificing
+relevancy, or present the error message (with the wrong location) in terms of
+the original code, retaining relevancy but not accuracy. \kl{CN} currently does
+the latter, and given the fact that macros do often represent constants, or
+function-like abstractions~(\cref{subesc:takeaway-features}), we would also
+like to have them supported in \kl{CN} as well.
+
+There are no easy solutions to this,\sidenote{Even CompCert just calls a
+user-specified preprocessor.} but it appears to be a solvable problem. For
+example, there maybe ways to coax GCC or Clang to output debug tokens whilst
+preprocessing a file, which could be input to a custom lexer which takes the
+tokens \emph{and the source location information} output and connects it to the
+\kl{Cerberus} front-end. Or, one could write a Clang plugin, or use the Boost
+pre-processing library Wave to attempt a similar trick, with more control over
+the resulting format. In both cases, it looks like it should be possible to
+preserve comments too, but this will not allow running the preprocessor
+\emph{inside} \kl{CN} annotations.
+
+It may however, be feasible to implement a custom C preprocessor. What makes
+this feasible is the existence of a relatively straightforward pseudo-code
+algorithm by Dave Prosser, \emph{which formed the basis of the prose
+    specification of macro expansion in the C89/ANSI C
+standard}.~\sidecite{prosser1986complete} This algorithm is annotated and
+explained~\sidecite{spinellis2008complete} by the author of the CScout
+refactoring browser for C,~\sidetextcite{spinellis2010cscout} Diomodis
+Spinellis, who was struggling to implement a C preprocessor correctly for about
+five years, before finding a reference to an algorithm by Dave Prosser.
+Spinellis could not find the algorithm, so he emailed Prosser who
+obliged.\sidenote{\url{https://www.spinellis.gr/blog/20060626/}}
+
+Not only is there an algorithm, Spinellis' implementation is available
+online\sidenote{\url{https://github.com/dspinellis/cscout/blob/master/src/macro.cpp}}
+along with a suite of test
+cases\sidenote{\url{https://github.com/dspinellis/cscout/tree/master/src/test/cpp}}
+and expected
+outputs.\sidenote{\url{https://github.com/dspinellis/cscout/tree/master/src/test/out}}
+There is even expertise within the programming language research community on
+the algorithm, since it was recently discussed as being closely related to the
+strategy for checking termination for expanding type definitions in type
+expressions in OCaml.~\sidecite{chataing2024unboxed} This is not to say that it
+will be easy, but at this stage such an effort seems more likely to succeed
+than the tree-carver was when I embarked on implementing it.
+
+\subsection{Error, do not crash}
+
+\subsection{Log, do not debug}
+
+\subsection{Gate large changes}
 
 \subsection{Proof maintenance}
+
+\subsection{Miscellaneous}
+
+Good commit messages.
+Automatic code foramtting.
 
 \section{Invest in error reports}
 
