@@ -1,0 +1,780 @@
+\chapter{\kl{CN} Comparsion and Feedback}
+
+\margintoc{}
+
+In this chapter, I will discuss the reality and expectations of how usable a
+verification tool for C \emph{can} be at this stage. I will start with my brief
+and informal comparison between \kl{CN} and similar tools, based on my
+experience of verifying \kl{pKVM}'s simpler \emph{early} allocator, in \kl{CN},
+\kl{VeriFast}~\sidecite{jacobs2011verifast} and
+\kl{Frama-C}.\sidecite{baudin2021dogged}\sidenote{\url{https://github.com/rems-project/CN-pKVM-early-allocator-case-study}}
+I will also discuss a \kl{RefinedC} verification of the same, which was
+completed by the developers~\sidecite{sammler2021refinedc}. Part of this
+comparison was featured in~\sidetextcite{pulte2023cn}, including the annotation
+overhead and execution times.
+
+After that, I will discuss some feedback given by some industry partners on
+\kl{CN}. As an academic, these seem borderline unreasonable, especially when
+compared to the aforementioned state-of-the-art research tools, but as an
+ex-industry professional, it is much easier to concede. Given our goal of
+targeting kernel hackers, we as academics want industry adoption for these
+tools, in which case taking industry feedback seriously is crucial.
+
+\section{Comparison}
+
+The early allocator in \kl{pKVM} during intialisation, before switching over to
+the aforementioned buddy allocator. It is a simple allocator which just bumps a
+pointer, with no support for reclaiming memory. It features functions to
+initialise, get the number of pages allocated, and allocate new zeroed pages.
+
+\subsection{Early allocator in CN}
+
+The proof for the early allocator was not part of CI for \kl{CN}, and so is
+considerably out-of-date.\sidenote{TODO Update this, add to CI, check how much
+slower it is with bit vectors.} Nevertheless, I will show and discuss a sample
+of the code and specifications, because because I expect updated specifications
+to look recognisably similar.
+
+The first function is one to zero all the bytes in a page. This is implemented
+in assembly in \kl{pKVM}, but for the purposes of comparison, I implemented a
+version in C. The precondition specifies that the function expects an array of
+\cninline{Bytes}, (not to be confused with memory bytes from
+\cref{sec:mem-bytes-use}), which is defined as a wrapper around
+\cninline{Owned<char>}. The postcondition specifies the function returns an
+array of bytes with value zero, expressed this way to avoid the use of the byte
+array equality lemma mentioned in \cref{fig;byte-array-eq-lemma}.
+
+The loop invariant states that ownership moves from the former to the latter at
+the loop index. This version of \kl{CN} required manually folding and unfolding
+predicates, but inferred indices, and so the body of the loop features
+annotations to do the former.
+
+\cfile[fontsize=\footnotesize,breaklines,lastline=18]{code/cn_early_alloc.c}
+
+The second version is to allocate a zeroed page. It accesses two global
+variables, \cinline{cur} which marks the current pointer of the allocator, and
+\cinline{end} which marks the exclusive end of the allocator. It requires there
+is at least a page size difference between the two, and of ownership of the
+bytes from \cinline{cur} to \cinline{end}, defined in the \cninline{EarlyAlloc}
+predicate. It ensures that it retains ownership of the same predicate, but with
+new bounds \textemdash{} \cinline{cur} in the postcondition used to mean the
+its value at the \emph{end} of the function, using \cninline|{cur}@start| to
+refer to the value at the start of the function. And it ensures that the
+returned value is the base address of an array of bytes. The body of the
+function simply unfolds and folds the \cninline{EarlyAlloc} predicate,
+incrementing the pointer by the page size in between.
+
+\cfile[fontsize=\footnotesize,breaklines,firstline=20]{code/cn_early_alloc.c}
+
+\subsection{Early allocator in VeriFast}
+
+The verification of the early allocator in \kl{VeriFast} is similar to the
+\kl{CN} one. The main difference is that since \kl{VeriFast} does not support
+iterated separating conjunction, it may require lemmas to manipulate the
+inductive predicates involved instead. \kl{VeriFast} supports non-precise
+assertions (\cref{subsec:precise-assertion}) as well, but does not support
+ordinary disjunction for impure assertions for the same reason \kl{CN} does
+not: to avoid backtracking in symbolic
+execution.\sidenote{\url{https://verifast.github.io/verifast-docs/faq.html\#how-to-express-a-disjunction-p-or-q-in-an-assertion}}
+
+In this example, the \cninline{characters_zeroed} predicate is recursively
+defined; and is marked as precise. This allows \kl{VeriFast} to unfold
+(\cninline{open}) and fold (\cninline{close}) the predicate automatically. The
+loop invariant is expressed in Tuerk-style,\sidecite{tuerk2010local} but
+regular loop-invariants are supported too.
+
+\cfile[fontsize=\footnotesize,breaklines,lastline=13]{code/verifast_early_alloc.c}
+
+If \kl{VeriFast} does not support iterated separating conjunctions, then how
+does it support the indexing in this example without lemmas? The answer lies in
+a surprising difference between how \kl{VeriFast} handles the semantically
+equivalent subscripting \cinline{e1[e2]} and \cinline{*(e1 + e2)}.\sidenote{\url{https://github.com/verifast/verifast/issues/259}} % chktex 36
+
+\begin{quote}
+    \emph{Indeed, \kl{VeriFast} symbolically evaluates \cinline{*(start + i)} and % chktex 36
+    \cinline{start[i]} differently. \cinline{*(start + i)} is symbolically % chktex 36
+    evaluated just like any other dereference of a pointer to int, whereas
+    evaluation of \cinline{start[i]} first looks for an
+    \cninline{ints(start, ?n, ?vs)} chunk where \cninline{i <= n} and, if it % chktex 26 chktex 36
+    finds one, returns \cninline{nth(i, vs)}. This is convenient for ``random % chktex 36
+    access'' to ints-encoded arrays. If it does not find such a chunk, it falls
+    back to looking for an \cninline{integer(start + i, _)} chunk, but the % chktex 36
+    \cninline{start + i} computation is indeed not checked for overflow. This
+    seems sound because if the integer chunk exists, it implies that the
+    address is within the limits.}
+\end{quote}
+
+%This could end up being a useful heuristic.
+
+This particular example was also a good lesson in how phrasing assertions
+differently can lead to drastically different performance outcomes. Whilst the
+final version uses the \cninline{character} predicate (which is a points-to at
+character type), initially I used a more general \cninline{chars} predicate
+that generalised \cninline{character} relating a current and end pointer to a
+\emph{list} of characters. \cninline{create(count, item)} is a fix-point % chktex 36
+function that I defined, which creates a list of only \cninline{item} of length
+\cninline{count}.
+
+\cfile[fontsize=\footnotesize,breaklines,lastline=2]{code/verifast_alt_loop.c}
+
+\kl{VeriFast} generally has good support for automation, and the ability to
+state and prove lemmas (pure and resourceful) from within the system itself.
+For pure lemmas, \cninline{lemma_auto}, marks it as available for use by
+automation all the time, whereas \cinline{lemma_auto (expr)} automatically
+applies the lemma when a precise predicate \cninline{expr} is in the context.
+
+We need a lemma because the loop exit condition \cninline{i == 4096} means that
+\cninline{length(unzeroed) == 0} and so \cninline{unzeroed == nil == create(0,0)}, % chktex 36
+and this is too much for automation to deduce. Because of this, it was not clear
+to me where to place an annotation to manually instantiate the lemma. At the
+same time, I was not adept enough with triggers to figure out how to fire them
+exactly when needed. Marking it as an automatic lemma without a trigger worked,
+but it slowed down verification considerably: usable in batch mode, a not usable
+interactively. There is no fallback to external assistants.
+
+\cfile[fontsize=\footnotesize,breaklines,firstline=3]{code/verifast_alt_loop.c}
+
+Like \kl{CN}, \kl{VeriFast} also requires annotations to read (and write)
+global variables. The rest of the specification is very similar to the \kl{CN}
+one; the \cninline{earlyAlloc} predicate could be marked as precise, this would
+have removed the need for the unfolding and folding statements.
+
+\cfile[fontsize=\footnotesize,breaklines,firstline=15]{code/verifast_early_alloc.c}
+
+\kl{VeriFast} has a similar (but slightly smaller) annotation overhead to
+\kl{CN}\@. Though I did not use them, fractional permissions are also
+supported. As its names implies, it is indeed very fast, about 10 times faster
+than \kl{CN} in this case (50 milliseconds vs 500 milliseconds). It has a
+useful graphical user-interface which provides syntax highlighting for
+specifications, excellent visibility into the proof state, and highlights the
+annotation it cannot prove directly in the source code. Not only that, it
+supports replaying the steps of the proof leading up to that state.
+
+There are some aspect of \kl{VeriFast} which I do not understand, and cannot
+find any documentation or explanation for, namely its handling of structs.
+First off, it provides no in built predicates to do the equivalent of claiming
+ownership of a whole struct, so users have to write such predicates themselves,
+using auto-generated predicates for each members. With this one can write the
+following. The semicolon is to mark the predicate as precise, and to separate
+input arguments from output ones. Confusingly, it fails, with an error `no
+matching heap chunks s2\_x(..)'. % chktex 36
+
+\cfile[fontsize=\footnotesize,breaklines,lastline=15]{code/verifast_structs.c}
+
+However, changing the predicate definition to explicitly mention the fields in
+the \cinline{inner} struct allows it to pass.
+\cfile[fontsize=\footnotesize,breaklines,firstline=17,lastline=18]{code/verifast_structs.c}
+
+This strikes me as unusual because any changes to the representation of
+\cinline{struct s2} are no longer encapsulated fields of that type. In \kl{CN},
+the following is true (modulo padding),
+\cninline[breaklines]|s1_inner(p, inner) <=> s2_x(&p->inner, inner.x)|,% chktex 36
+\sidenote{`s1\_inner' and `s2\_x' are auto-generated predicates, expressing
+points-to facts for struct fields.} but in \kl{VeriFast} this does not seem
+to be the case.
+
+Furthermore, the specification itself is weak, because it does not connect the
+values in the inner struct to the outer struct of which it is a field. Yet,
+adjusting the specification to link the output value \cninline|?val| of the
+field to the output value of its member, causes the verification to fail again,
+this time saying that it cannot prove \cninline|in.x == 1|.
+
+\cfile[fontsize=\footnotesize,breaklines,firstline=19,lastline=20]{code/verifast_structs.c}
+
+To be clear: I know I am at fault, and specifying things incorrectly. I am
+quite confident such an example can be verified in \kl{VeriFast}. My point is
+to draw attention to the (a) unexpected properties of nested structs and (b)
+the difficulty of understanding any modes/dataflow implicit in the syntax. The
+issue with structs may be an intentional design choice to sidestep handling
+exploding and imploding structs, which does require extra inference and thus
+reduce performance.
+
+Stepping back, \kl{VeriFast} uses an ad-hoc semantics of C the developers
+believe to be sound. During this brief experiment, I noted a few missing
+features.
+\begin{itemize}
+    \item Struct literals/initialisers.
+    \item Implicit type promotions (e.g.\ from \cinline{long long} to
+        \cinline{unsigned long long}).
+    \item Function types in struct fields.
+    \item Taking the address of local variables.
+    \item Expressive/accurate pointer provenance (has basic support).
+    \item \kl{UB} or unspecified values for uninitialised reads.
+\end{itemize}
+
+\subsection{Early allocator in Frama-C and RefinedC}
+
+Whereas \kl{VeriFast} is most similar to \kl{CN}, \kl{Frama-C} and
+\kl{RefinedC} are one step removed. Both use undecidable logics, falling back
+to \kl{Rocq} for manual proof. For \kl{Frama-C}, the logic is a Hoare logic,
+not separation, whereas in \kl{RefinedC}, the logic is an \kl{Iris} instance.
+
+Frama-C has a smaller annotation overhead, though its lack of support for
+separation logic means the end guarantee is weaker than with the other tools.
+It works by translating C programs into CIL~\sidecite{necula2002cil}. Its Hoare
+logic verifier, WP, uses a custom semantics CIL, which is parametric in the
+memory model, allowing the user to select trade-off increased performance for
+pointer manipulation expressiveness. Its includes support for multiple
+specifications per function, ghost parameters, arguments and code, and runtime
+assertion checks, which amongst other things, can be used to error on
+uninitialised reads. \kl{Frama-C} was noticeably slower than \kl{CN} for the
+early allocator (3.5s).
+
+\kl{RefinedC} is implemented inside \kl{Rocq} atop \kl{Iris}, making its
+\kl[TCB]{trusted computing base} (TCB) the smallest out of all the tools
+mentioned so far. This trust is undercut by its custom ad hoc semantics for C
+based on the \emph{Caesium} kernel over which its typing and automation
+framework \emph{Lithium} operates. The rules are intended to be heuristic
+rather than decidable, with the main mode of operation inside a \kl{Rocq}
+session. Its annotation overhead is similar to \kl{CN}, but the performance is
+much slower (16.7s).
+
+\section{Industry feedback}
+
+Lorem ipsum dolor sit amet,\sidenote{Under review from industry, hence
+placeholder for formatting and word count.} consectetuer adipiscing elit.
+Aenean commodo ligula eget dolor. Aenean massa. Cum sociis natoque penatibus et
+magnis dis parturient montes, nascetur ridiculus mus. Donec quam felis,
+ultricies nec, pellentesque eu, pretium quis, sem. Nulla consequat massa quis
+enim. Donec pede justo, fringilla vel, aliquet nec, vulputate eget, arcu. In
+enim justo, rhoncus ut, imperdiet a, venenatis vitae, justo. Nullam dictum
+felis eu pede mollis pretium. Integer tincidunt. Cras dapibus. Vivamus
+elementum semper nisi. Aenean vulputate eleifend tellus.
+
+Aenean leo ligula, porttitor eu, consequat vitae, eleifend ac, enim. Aliquam
+lorem ante, dapibus in, viverra quis, feugiat a, tellus. Phasellus viverra
+nulla ut metus varius laoreet. Quisque rutrum. Aenean imperdiet. Etiam
+ultricies nisi vel augue. Curabitur ullamcorper ultricies nisi. Nam eget dui.
+Etiam rhoncus. Maecenas tempus, tellus eget condimentum rhoncus, sem quam
+semper libero, sit amet adipiscing sem neque sed ipsum. Nam quam nunc, blandit
+vel, luctus pulvinar, hendrerit id, lorem. Maecenas nec odio et ante tincidunt
+tempus.
+
+Donec vitae sapien ut libero venenatis faucibus. Nullam quis ante. Etiam sit
+amet orci eget eros faucibus tincidunt. Duis leo. Sed fringilla mauris sit amet
+nibh. Donec sodales sagittis magna. Sed consequat, leo eget bibendum sodales,
+augue velit cursus nunc, quis gravida magna mi a libero. Fusce vulputate
+eleifend sapien. Vestibulum purus quam, scelerisque ut, mollis sed, nonummy id,
+metus. Nullam accumsan lorem in dui. Cras ultricies mi eu turpis hendrerit
+fringilla.
+
+Vestibulum ante ipsum primis in faucibus orci luctus et ultrices posuere
+cubilia Curae; In ac dui quis mi consectetuer lacinia. Nam pretium turpis et
+arcu. Duis arcu tortor, suscipit eget, imperdiet nec, imperdiet iaculis, ipsum.
+Sed aliquam ultrices mauris. Integer ante arcu, accumsan a, consectetuer eget,
+posuere ut, mauris. Praesent adipiscing. Phasellus ullamcorper ipsum rutrum
+nunc. Nunc nonummy metus. Vestibulum volutpat pretium libero. Cras id dui.
+Aenean ut eros et nisl sagittis vestibulum. Nullam nulla eros, ultricies sit
+amet, nonummy id, imperdiet feugiat, pede. Sed lectus.
+
+Donec mollis hendrerit risus. Phasellus nec sem in justo pellentesque
+facilisis. Etiam imperdiet imperdiet orci. Nunc nec neque. Phasellus leo dolor,
+tempus non, auctor et, hendrerit quis, nisi. Curabitur ligula sapien, tincidunt
+non, euismod vitae, posuere imperdiet, leo. Maecenas malesuada. Praesent congue
+erat at massa. Sed cursus turpis vitae tortor. Donec posuere vulputate arcu.
+Phasellus accumsan cursus velit. Vestibulum ante ipsum primis in faucibus orci
+luctus et ultrices posuere cubilia Curae; Sed aliquam, nisi quis porttitor
+congue, elit erat euismod orci, ac placerat dolor lectus quis orci.
+
+Phasellus consectetuer vestibulum elit. Aenean tellus metus, bibendum sed,
+posuere ac, mattis non, nunc. Vestibulum fringilla pede sit amet augue. In
+turpis. Pellentesque posuere. Praesent turpis. Aenean posuere, tortor sed
+cursus feugiat, nunc augue blandit nunc, eu sollicitudin urna dolor sagittis
+lacus. Donec elit libero, sodales nec, volutpat a, suscipit non, turpis. Nullam
+sagittis. Suspendisse pulvinar, augue ac venenatis condimentum, sem libero
+volutpat nibh, nec pellentesque velit pede quis nunc.
+
+Vestibulum ante ipsum primis in faucibus orci luctus et ultrices posuere
+cubilia Curae; Fusce id purus. Ut varius tincidunt libero. Phasellus dolor.
+Maecenas vestibulum mollis diam. Pellentesque ut neque. Pellentesque habitant
+morbi tristique senectus et netus et malesuada fames ac turpis egestas. In dui
+magna, posuere eget, vestibulum et, tempor auctor, justo. In ac felis quis
+tortor malesuada pretium. Pellentesque auctor neque nec urna. Proin sapien
+ipsum, porta a, auctor quis, euismod ut, mi. Aenean viverra rhoncus pede.
+
+Pellentesque habitant morbi tristique senectus et netus et malesuada fames ac
+turpis egestas. Ut non enim eleifend felis pretium feugiat. Vivamus quis mi.
+Phasellus a est. Phasellus magna. In hac habitasse platea dictumst. Curabitur
+at lacus ac velit ornare lobortis. Curabitur a felis in nunc fringilla
+tristique. Morbi mattis ullamcorper velit. Phasellus gravida semper nisi.
+Nullam vel sem. Pellentesque libero tortor, tincidunt et, tincidunt eget,
+semper nec, quam. Sed hendrerit. Morbi ac felis. Nunc egestas, augue at
+pellentesque laoreet, felis eros vehicula leo, at malesuada velit leo quis
+pede.
+
+Donec interdum, metus et hendrerit aliquet, dolor diam sagittis ligula, eget
+egestas libero turpis vel mi. Nunc nulla. Fusce risus nisl, viverra et, tempor
+et, pretium in, sapien. Donec venenatis vulputate lorem. Morbi nec metus.
+Phasellus blandit leo ut odio. Maecenas ullamcorper, dui et placerat feugiat,
+eros pede varius nisi, condimentum viverra felis nunc et lorem. Sed magna
+purus, fermentum eu, tincidunt eu, varius ut, felis. In auctor lobortis lacus.
+Quisque libero metus, condimentum nec, tempor a, commodo mollis, magna.
+Vestibulum ullamcorper mauris at ligula. Fusce fermentum.
+
+Nullam cursus lacinia erat. Praesent blandit laoreet nibh. Fusce convallis
+metus id felis luctus adipiscing. Pellentesque egestas, neque sit amet
+convallis pulvinar, justo nulla eleifend augue, ac auctor orci leo non est.
+Quisque id mi. Ut tincidunt tincidunt erat. Etiam feugiat lorem non metus.
+Vestibulum dapibus nunc ac augue. Curabitur vestibulum aliquam leo. Praesent
+egestas neque eu enim. In hac habitasse platea dictumst. Fusce a quam. Etiam ut
+purus mattis mauris sodales aliquam. Curabitur nisi. Quisque malesuada placerat
+nisl. Nam ipsum risus, rutrum vitae, vestibulum eu, molestie vel, lacus.
+
+Sed augue ipsum, egestas nec, vestibulum et, malesuada adipiscing, dui.
+Vestibulum facilisis, purus nec pulvinar iaculis, ligula mi congue nunc, vitae
+euismod ligula urna in dolor. Mauris sollicitudin fermentum libero. Praesent
+nonummy mi in odio. Nunc interdum lacus sit amet orci. Vestibulum rutrum, mi
+nec elementum vehicula, eros quam gravida nisl, id fringilla neque ante vel mi.
+Morbi mollis tellus ac sapien. Phasellus volutpat, metus eget egestas mollis,/
+lacus lacus blandit dui, id egestas quam mauris ut lacus. Fusce vel dui. Sed in
+libero ut nibh placerat accumsan. Proin faucibus arcu quis ante. In
+consectetuer turpis ut velit. Nulla sit amet est. Praesent metus tellus,
+elementum eu, semper a, adipiscing nec, purus. Cras risus ipsum, faucibus ut,
+ullamcorper id, varius ac, leo. Suspendisse feugiat. Suspendisse enim turpis,
+dictum sed, iaculis a, condimentum nec, nisi. Praesent nec nisl a purus blandit
+viverra. Praesent ac massa at ligula laoreet iaculis. Nulla neque dolor,
+sagittis eget, iaculis quis, molestie non, velit. Mauris turpis nunc, blandit
+
+\section{Summary}
+
+Here, I summarise the many (incompatible, or at the very least, impractical)
+directions \kl{CN} could pursue based on the comparison with other tools
+and the industry feedback. I leave evaluating and synthesising these points
+to the next chapter.
+\begin{itemize}
+    \item Improve performance by 10x.
+    \item Trace type checking steps for replay.
+    \item Improve syntax concision and approachability.
+    \item Improve error messages.
+    \item Infer/suggest specifications.
+    \item Reduce the \kl{TCB}.
+    \item Support using \kl{CN} `out-of-the-box'.
+    \item Focus on industry-favoured use cases, such as mathematics,
+        input-validation, memory safety beyond current tools, and concurrency.
+\end{itemize}
+
+\chapter{Not-so-great expectations}
+
+In the last chapter, I compared \kl{CN} to some relevant tools in the
+space,\sidenote{A notable omission was \kl{VST}, mostly due to lack of time and
+expertise for a fair comparison.} and I presented industry feedback on \kl{CN}.
+Based on my experience of having worked on programming language tooling both in
+industry and in academia, I will synthesise the two and lay out what I believe
+are achievable standards of usability for \kl{CN}, with an emphasis on how new
+projects can avoid several pitfalls.
+
+\section{Work backwards from examples}
+
+\kl{CN}'s guiding star during its development was the \kl{pKVM buddy
+allocator}. Whilst this was understandable, and indeed its unique selling
+point, this \emph{also} guided its design to a large degree. Features were only
+considered and implemented insofar as they got \kl{CN} closer to verifying the
+entire allocator.
+
+Whilst this produced a successful paper, this over-fitted \kl{CN} to the example.
+More concretely, it meant that we had accrued significant technical and design
+debt, which became more obvious by the time it came to specifying and verifying
+more pedestrian examples, such as those now in the \kl{CN
+tutorial}.~\sidecite{pulte2024tutorial}
+
+Many of the features mentioned in \cref{chap:inform-impl} might have been
+incorporated earlier. An obvious candidate is unifying the syntax for
+functions, predicates and specifications: these features were built separately
+over time and as a result have ended up similar but
+incompatible.\sidenote{\href{https://github.com/rems-project/cerberus/issues/288}{Cerberus
+\#288}} For example, one of the many incompatibilities is the separate scopes
+for predicates and functions: this results in a confusing error message when
+the predicate and a function are mixed up. However, unifying the scopes at
+point would require a major refactor to symbol resolution during
+desugaring.\sidenote{\href{https://github.com/rems-project/cerberus/issues/288}{Cerberus
+\#288}} Had we worked through enough examples and designs concretely, we might
+have noticed the emerging similarities and reworked the approach.
+
+With only slight irony, my point is that \emph{test-driven development is
+exceptionally useful when implementing a verification tool}. This bore out in
+my personal experience in implementing \kl{VIP}: writing examples and
+informally but rigorously working through how they ought to be specified and
+helped enormously in guiding my intuitions and highlighting problems early on,
+and I conjecture a broader range of smaller examples escalating to the
+\kl{buddy allocator} might have done similar.
+
+\section{Design with a formalism}
+
+Whilst there are some changes that I think would have been difficult to
+pre-empt by more careful design at the start, for example, the change in
+inference
+scheme,\sidenote{\href{https://github.com/rems-project/cerberus/commit/7c2c0a364a4373e4eb109f32d01cc9584f51e81f}{Commit
+7c2c0a36.} This was motivated by reducing the annotation burden for folding
+and unfolding predicates, which turned out to be heavier than annotation
+saved by inferring indices.}, or the switch to the monadic syntax
+(\cref{sec:monadic-syntax}), there are few design decisions I conjecture would
+would have benefited from scrutiny prior to implementation.
+
+\subsection{Calling conventions affect syntax}
+
+By default, \kl{Cerberus} elaborates calls to C functions by allocating and
+initialising parameters \emph{at the call site} and then \emph{passing
+pointers} to the temporary objects to the callee. This leads to very verbose
+and awkward specifications, where functions had to (a) claim ownership of their
+parameters and (b) promise they did not modify them so that the objects at the
+call-site remained unaffected.
+
+This eventually became intolerable enough to realise that what needed to change
+was not the specifications but the
+elaboration.\sidenote{\href{https://github.com/rems-project/cerberus/commit/772173d6432c86b029fd1bb993b8dc83b80c96c0}{Cerberus
+772173d6}} Of course, this required changes to \kl{CN}
+too,\sidenote{\href{https://github.com/rems-project/cerberus/commit/186e4e42a75cad2222d441ce608fc1dc84cc7b98}{Cerberus
+186e4e42}} to handle the changed elaboration. Ultimately, this resulted in
+duplicated effort. Had we spent some time looking at small sample core
+programs, and testing out a formalism on it, we might have anticipated the
+issue sooner.
+
+
+\subsection{Error reporting}
+
+Most of the time, \emph{any} programming language tool will be fed an incorrect
+or incomplete program. The standard approach to dealing with this is to layer
+the program's stages such that only well-formed programs pass from one stage to
+the next. Within the context of \kl{CN}, the main stages are:
+\begin{itemize}
+    \item Parsing
+    \item Desugaring
+    \item Elaboration of C into \kl{Core}
+    % \item Translation of \kl{Core} to $\mu$\kl{Core}
+    \item Base type/well-formed specification checks
+    \item Per-function constraint and resource inference and checking.
+\end{itemize}
+
+Such a strategy is understandable, indeed it makes the system more robust
+because each phase assumes the invariants ensured by the previous, and
+establishes new ones. It makes the implementer's job easier, but as important
+as that is, it is quite likely the cumulative user time will dominate
+cumulative implementer time in the long run: code is written once, read many
+times, and used orders of magnitude more.
+
+The problem is that users (rightfully) expect to be able to get feedback on
+their program at multiple stages of development, and getting one error at a
+time slows down the edit-check cycle. Of course, multiple errors can also
+overwhelm the user, but it is easier to limit them once they are already
+supported, than it is to support them if they do not exist.
+
+In the ideal case, users should be able to execute a whole pipeline of stages
+even in the presence of errors from the first; it would be very impressive if
+\kl{CN} could do resource inference in the presence of parse errors
+\emph{within the function it was checking}, or even just in other parts of the
+program.
+
+This is likely unrealistic for \kl{CN}, because of the amount of re-engineering
+it would require in the \kl{Cerberus} front-end. A realistic goal for \kl{CN}
+is to raise the lower bar of recovery, by designing each step such that:
+\emph{it avoids stopping at the first error}. For example, up until relatively
+recently, \kl{CN} stopped at the first error in the first failing function,
+\emph{even though it was designed to support per-function checking}.
+
+It would be ironic, if, in advocating support for multiple errors, I insisted
+that the best way to achieve this was a full rewrite of everything starting
+from the parser. And so, below I conjecture a process which I believe can be
+applied in an incremental way to existing projects, which allows developers
+to reap the benefits of multiple errors in proportion to the amount of
+time they are willing to spend on it.
+\begin{itemize}
+    \item Pick the most important stage.
+    \item For every (or each important) sort, a \emph{hole}
+        construct.~\sidecite{omar2017hazelnut}
+    \item Update the rest of the stage to handle this hole.
+    \item If the subsequent stage supports holes, consider joining them up.
+\end{itemize}
+If, like in \kl{CN} proof mode, the last (semantic analysis) stage backwards is
+the most interesting and expensive one, this suggests working backwards through
+each stage.
+
+To be clear, I am not talking about \emph{incrementalising} the entire type
+checker, though support for holes could make this easier.
+
+What I am saying is that for every \kl{CN} annotation, there is the opportunity
+to support multiple errors through multiple stages. Take the example of failed
+the bit vector update for the buddy allocator (\cref{sec:buddy-failed-bv}). One
+of the major pain points of this update was (tediously) ensuring that
+\emph{every datatype, function, predicate, and pre/postcondition} was updated
+to switch from integer to bit vector types; without this, \kl{CN} would refuse
+to move on to checking any functions. As a result, I was forced to manually
+figure out the dependency structure, start at the leaves, and comment out
+everything else that was irrelevant. This also made it difficult to
+incrementally check my progress into a CI pipeline. Though gating the switch to
+integers behind a flag would have helped, I believe multiple error propagation
+would have been helpful too, \emph{especially when type checking is slow}.
+
+I conjecture inspiration from the below two papers will prove fruitful
+to investigating and guiding the theory and implementation of multiple
+errors for \kl{CN}.
+\begin{itemize}
+    \item \citetitle{zhao2024total}~\sidecite{zhao2024total}.
+        This paper defines a bidirectional gradual
+        type system for types and expressions (including holes), and a total
+        procedure to mark expressions with \emph{all possible} type errors. It
+        then adds constraint solving on top of the type holes, so that
+        inconsistent type constraints are localised \emph{exclusively to holes
+        and marked types and expressions}, by tracking the program origins of
+        unknown types. The relevance of this paper is its principled approach
+        to all of the above.
+    \item \citetitle{spies2024quiver}~\sidecite{spies2024quiver}.
+        This paper also uses a two way flow of
+        information familiar from bidirectional type checking, but describes it
+        using terms more standard in separation logic circles: \emph{abductive
+        deductive verification}. It symbolically evaluates a program using a
+        context of separation logic assertions, proving everything it can and
+        assuming everything it cannot. The specifications (`predicate
+        transformers') they infer are analogous to \kl{CN}'s function types.
+        The relevance of this paper is its similar domain to \kl{CN}.
+\end{itemize}
+Though designing such calculi in this way may seem like it increases the amount
+of work involved for reporting errors, in actuality, it simply makes
+implementation-related error reporting \emph{explicit in the formalism}.
+
+\subsection{Elaborate with care}
+
+Elaboration and large-scale program transformations such as A-normalisation can
+affect the accuracy of source locations. On top of this, if handled without
+care, generated variables can also end up not associated to any source location
+the user wrote, and can be difficult to interpret in a counter-example. \kl{CN}
+used to A-normalise, but does not any
+more,\sidenote{\href{https://github.com/rems-project/cerberus/commit/21808139bda2ee320756c71eb22dbd57d0986f97}{Commit
+21808139}.} because it was difficult to relate such variables to \kl{Core}
+expressions. The situation has improved a bit with more helpful auto-generated
+names and no A-normalising, but the solution is ad hoc, and the gap between
+\kl{Core} and C still remains.
+
+Whilst I have some ideas on how to improve the situation,\sidenote{Low-hanging
+fruit is to associate bound variables to the location of the sub-expression
+they are binding
+(\href{https://github.com/rems-project/cerberus/issues/270}{Cerberus
+\#270}).} a systematic treatment of source location information through
+elaboration would be helpful to understand what it would mean, and what is
+required for maximal source location accuracy.
+
+\section{Software engineering}
+
+\kl{CN} has been developed for around 4 years at the time of writing. It has
+had multiple contributors, some of whom have left the project now. As such,
+it benefits from good software engineering practices like any other project.
+There are many such things, so I will focus on the important ones.
+
+\subsection{Rich regression testing}
+
+For a long time, \kl{CN} did not have any regression testing and so features
+which were implemented, but accidentally broke later, went unnoticed.
+Another substantial benefit to regression testing is that it enables assists
+with fairly large-scale refactors. Regression testing is also very helpful when
+multiple people are working on overlapping parts of the project, so that
+changes which accidentally break other things are picked up \emph{before} being
+merged in to the main branch.
+
+Regression testing should not only capture the ability of the program to
+execute with or without errors, but also \emph{the output} in \emph{both} of
+those cases. If a test is intended to fail before a \kl{VIP}-related change,
+and it continues to fail after the change, it is often good to check that it is
+failing \emph{for the same reason} (we would not a division-by-zero test
+changing its behaviour after a change to the memory-object model).
+
+To assist with this, I wrote a small but increasingly sophisticated Python
+script\sidenote{\href{https://github.com/rems-project/cerberus/pull/703}{Cerberus
+\#703}.} to run a given program, in a particular configuration (consisting a
+name, a filter on file names, and arguments to the program) and capture and
+check the return codes and all the output, against a pre-existing file. If
+there is a difference, the program will raise an error, and also provide a diff
+the developer can apply \emph{across some or all of the affected files} if the
+change is expected.
+
+\subsection{Performance benchmarking}
+
+A slow heavily-automated verification tool is basically an unusable
+verification tool, and the lack of good performance measurement makes it
+difficult to understand why \kl{CN} is slow and how to fix it.
+
+Prior measurements were ad hoc but revealed that most of the time is spent in
+the solver, which we believe to still be the case. Whilst this is useful
+information, we need better granularity on the subject, to answer the following.
+\begin{itemize}
+    \item What is the distribution of times per call to the solver?
+    \item What part of \kl{CN} generates the slowest problems?
+\end{itemize}
+
+We have some performance benchmarking now, enough to demonstrate that enabling
+\kl{VIP} is slow and soundly reducing bounds checks\sidenote{By replacing them
+with liveness checks.} reduces execution time (\cref{sec:vip-ref}). However, we
+do not have good insight into explaining these observations. The measurements
+are very noisy and coarse \textemdash{} the script measures the total execution
+time for running each regression test once, when what we need are answers to
+the aforementioned questions.
+
+As I mentioned before, performance remains the main reason that it is nigh-on
+impossible to update the \kl{pKVM buddy allocator} to verify after \kl{CN}'s
+bit vector update (\cref{sec:buddy-failed-bv}). \kl{CN} is still an order of
+magnitude slower than we would like or expect it to be, and so fixing this, and
+setting up infrastructure prevent backsliding, is a key priority.
+
+\subsection{Get source location right}
+
+Source location information is the fundamental building block of a useful error
+message, without which an error is close to useless. Unfortunately, early
+versions of \kl{CN} did not give this crucial data its due leading to an
+incredibly poor user experience. This is all the more disappointing because
+within the OCaml ecosystem, the \kl{Menhir} parser generator makes getting this
+sort of thing right a lot easier than one might initially
+expect.~\sidecite{pottier2016reachability}
+
+\paragraph{Keep lexer and parser simple.} Initially, support for \kl{CN}
+annotations in comments was implemented with reference to lots of global
+mutable state.\sidenote{A feature of ocamllex that seems to be
+under-appreciated is that each rule is an OCaml function and can be passed
+arbitrary parameters, thus avoid the need to use global mutable state.}
+This prevented code re-use, complicated the code and introduced subtle
+location bugs because of accidentally re-using shared mutable token
+buffers. I simplified the lexer and parser to avoid this, and in the
+process improved and unified the error-reporting for parsing C and
+\kl{CN}.\sidenote{\href{https://github.com/rems-project/cerberus/pull/252}{Cerberus
+\#252}.}
+
+\paragraph{Investigate strange source locations.} Strange source locations are
+bugs which deserve to be investigated, or at the very least, have their
+triggers documented. One such
+issue\sidenote{\href{https://github.com/rems-project/cerberus/issues/382}{Cerberus
+\#382}.} uncovered a subtle interaction between the `lexer hack' used to parse
+C11,~\sidecite{jourdan2017simple} and a token buffer feature offered by
+\kl{Menhir} for more helpful error messages. Again, the issue was mutable state
+which was accidentally shared across what should be separate, fresh instances
+of the lexer. The solution was to stage the creation of the lexer and its
+internal state, and make this explicit in its
+API.\sidenote{\href{https://github.com/rems-project/cerberus/commit/c970a43b7126560b229fb55c32ce22bfbc5d23f2}{Cerberus
+c970a43b}.}
+
+\paragraph{Write parser error messages if feasible.} Initially, a parse error
+in \kl{CN} would simply signal `unexpected token' and signal no other
+information, except a ballpark source location which was sometimes right. This
+was less than helpful for a number of reasons, most notably not telling the
+user what token \emph{was} expected. It is possible to \emph{generate} very
+inelegant, but informative parse error messages based on the error message
+format output by
+\kl{Menhir}.\sidenote{\url{https://gallium.inria.fr/~fpottier/menhir/manual.html\#sec\%3Amessages\%3Aformat}}
+
+I shall now explain how I did
+this.\sidenote{\href{https://github.com/rems-project/cerberus/commit/127758764cd6efdabaaaddb60eabf40575864117}{Cerberus
+12775876}.} The first line shows the sentence used to get to the error state.
+This is useful for \kl{Menhir}, but is not considered to be a good source of
+information for writing an error message. This is because the information in
+the comments shows the production which is being parsed, and at which point in
+it the error occurs. More than half of error states (629) have exactly one
+production, and in this case, I generate an error message as shown at the
+bottom of the excerpt.
+
+\begin{minted}[fontsize=\footnotesize,linenos,breaklines]{py}
+cn_statements: ASSERT WHILE
+##
+## Ends in an error in state: 1585.
+##
+## cn_statement -> ASSERT . LPAREN assert_expr RPAREN SEMICOLON [ .. ]
+##
+## The known suffix of the stack is as follows:
+## ASSERT
+##
+
+parsing "cn_statement": seen "ASSERT", expecting "LPAREN assert_expr RPAREN SEMICOLON"
+\end{minted}
+
+Of course, it is better to fill these and the remainder (593) manually, as I
+demonstrated for one
+case.\sidenote{\href{https://github.com/rems-project/cerberus/issues/245}{Cerberus
+\#245}.} Details of how best to do so are in the \kl{Menhir} manual, along with
+examples and links to how \kl{CompCert} uses it for its C parser (proof that
+the approach can be scaled). For the easy cases I did not auto-generate, I
+output an message which says that an error message is missing for the state
+(identified by a number), and that it can be added in the stated file. In any
+case, I set up \kl{Menhir} to show exactly where and between which tokens
+parsing failed, which is often enough for experienced users to fix the syntax.
+\kl{Menhir} also provides functionality to check and merge its auto-generated
+error messages with existing ones, so that the latter can be preserved despite
+changes in the grammar.
+
+\paragraph{Consider a custom pre-processor.} The bane of any academic C tooling
+seems to be the preprocessor. Whilst it faithfully preserves line numbers, and
+this tends to be good enough, it does not preserve column information, which in
+most cases, leads to inaccurate error messages on any code which is inside, or
+after a macro expansion.\sidenote{The macro call and expansion may have the
+same length if one is lucky.}
+
+We are caught between two unappealing choices: either present the error message
+in terms of the preprocessed code, thus retaining accuracy but sacrificing
+relevancy, or present the error message (with the wrong location) in terms of
+the original code, retaining relevancy but not accuracy. \kl{CN} currently does
+the latter, and given the fact that macros do often represent constants, or
+function-like abstractions~(\cref{subesc:takeaway-features}), we would also
+like to have them supported in \kl{CN} as well.
+
+There are no easy solutions to this,\sidenote{Even CompCert just calls a
+user-specified preprocessor.} but it appears to be a solvable problem. For
+example, there maybe ways to coax GCC or Clang to output debug tokens whilst
+preprocessing a file, which could be input to a custom lexer which takes the
+tokens \emph{and the source location information} output and connects it to the
+\kl{Cerberus} front-end. Or, one could write a Clang plugin, or use the Boost
+pre-processing library Wave to attempt a similar trick, with more control over
+the resulting format. In both cases, it looks like it should be possible to
+preserve comments too, but this will not allow running the preprocessor
+\emph{inside} \kl{CN} annotations.
+
+It may however, be feasible to implement a custom C preprocessor. What makes
+this feasible is the existence of a relatively straightforward pseudo-code
+algorithm by Dave Prosser, \emph{which formed the basis of the prose
+    specification of macro expansion in the C89/ANSI C
+standard}.~\sidecite{prosser1986complete} This algorithm is annotated and
+explained~\sidecite{spinellis2008complete} by the author of the CScout
+refactoring browser for C,~\sidetextcite{spinellis2010cscout} Diomodis
+Spinellis, who was struggling to implement a C preprocessor correctly for about
+five years, before finding a reference to an algorithm by Dave Prosser.
+Spinellis could not find the algorithm, so he emailed Prosser who
+obliged.\sidenote{\url{https://www.spinellis.gr/blog/20060626/}}
+
+Not only is there an algorithm, Spinellis' implementation is available
+online\sidenote{\url{https://github.com/dspinellis/cscout/blob/master/src/macro.cpp}}
+along with a suite of test
+cases\sidenote{\url{https://github.com/dspinellis/cscout/tree/master/src/test/cpp}}
+and expected
+outputs.\sidenote{\url{https://github.com/dspinellis/cscout/tree/master/src/test/out}}
+There is even expertise within the programming language research community on
+the algorithm, since it was recently discussed as being closely related to the
+strategy for checking termination for expanding type definitions in type
+expressions in OCaml.~\sidecite{chataing2024unboxed} This is not to say that it
+will be easy, but at this stage such an effort seems more likely to succeed
+than the tree-carver was when I embarked on implementing it.
+
+\subsection{Error, do not crash}
+
+\subsection{Log, do not debug}
+
+\subsection{Gate large changes}
+
+\subsection{Proof maintenance}
+
+\subsection{Miscellaneous}
+
+Good commit messages.
+Automatic code foramtting.
+
+\section{Invest in error reports}
+
+% Sean Chen - The Anatomy of Error Messages in Rust — RustFest Global 2020 https://youtu.be/oMskswu1SxM?feature=shared
+% https://rustc-dev-guide.rust-lang.org/diagnostics.html
+
+\subsection{Counter examples}\label{sec:counter-ex}
+
+\begin{itemize}
+    \item Not minimal
+    \item Not consistent
+    \item Not easy to relate to source
+\end{itemize}
+
+\subsection{The unreasonable effectiveness of good error messages}\label{sec:error-msgs}
+
+\begin{itemize}
+    \item Translate standards jargon into C programmer friendly words.
+\end{itemize}
+
