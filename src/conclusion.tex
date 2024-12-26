@@ -2,144 +2,153 @@
 \chapter{Conclusion}%
 \label{chap:conclusion}
 
-% I hope that this thesis gives compelling arguments for the adoption of bidirectional typing,
-% but there is more.
-%
-% \arefpart{bidir} shows that one can use the valuable bidirectional structure,
-% without having to  leave their favourite declarative
-% system behind. Indeed, it can most likely  be shown equivalent to a bidirectional one
-% – given it is one’s favourite system, it does surely satisfy the good properties
-% needed for that.
-%
-% In \arefpart{metacoq}, we enter the real world, and see how this plays out
-% on a complex type system: bidirectionalism gives good guidelines to analyse
-% typing rules, and provides a precise specification to prove the implementation sound,
-% while allowing separation of concerns. If this is enough
-% to catch bugs in \kl{Coq}, it should prove useful in finding those in other kernels, too.
-% Yet, \kl{MetaCoq} is much more than bidirectional typing: its certified kernel opens
-% up a new era for proof assistants, with a previously unreached trust level.
-%
-% Finally,
-% \arefpart{gradual} exemplifies how the bidirectional structure can be useful when
-% simply designing a type system, even without a single implementation in sight.
-% But gradual typing can hopefully be more than a mere
-% example. As it enables the transition of programmers from the soft realms of
-% dynamic typing to the discipline of static typing, so it could open the door of
-% dependently typed programming to more than a fraction of fanatic enthusiasts.
-%
-% Still, as most thesis, this one opens up at least as many questions as it answers,
-% in all its three broad directions.
-%
-% \section{Bidirectional Typing for Dependent Types}
-%
-% The formal study of bidirectional typing in the setting of dependent types still begs for
-% more investigations. While I hope the present work gives a robust answer in the setting
-% of Curry-style syntax, where every term infers a type,
-% the case of Church-style syntax is quite different. In the case of normal forms,
-% the proof ideas presented in this thesis should be easily adapted.
-% But if we wish to go beyond normal forms, we must consider the use of annotations in terms,
-% as is done in \eg{} \sidetextcite{McBride2022}, \sidetextcite{Gratzer2019} or
-% \sidetextcite{Dunfield2021}.
-% However, due to the dependently-typed
-% setting, we have to investigate how these annotations play out with conversion and/or reduction.
-% To the best of my knowledge, only \citeauthor{McBride2022} has taken that question up,
-% but does not arrive – yet – at a definitive solution, so there is
-% matter left for further research.
-%
-% Another thread to pull is the relation with Generalized Type Systems
-% \sidecite{Bauer2020,Bauer2022}. Here, as in McBride’s discipline, we find
-% well-formation invariants to be preserved,
-% and carefully structured rules that should respect them. Re-casting
-% the bidirectional concepts in such a setting could allow for a better understanding both of the
-% ideas at work in bidirectional typing,
-% yielding a proper formal account of McBride’s discipline
-% together with a general proof that it ensures
-% good properties of the system, and of the well-formation conditions already explored in
-% \textcite{Bauer2020} on judgment boundaries.
-%
-% Since Generalized Type Systems put conversion and typing on the same footing,
-% it also seems natural
-% to question how we can marry conversion and bidirectionalism. Here again there are ingredients in
-% the air: \sidetextcite{Abel2017} show a notion of conversion geared towards proving decidability
-% of typing, but which is clearly bidirectional, and could serve as a basis to give a general
-% notion of bidirectional conversion. This subject is only scratched in \cref{chap:bidir-conv}, but
-% I believe that the ideas presented there can be scaled to a system such as \kl{PCUIC}, and
-% be an interesting building block in order to specify extensionality rules as used in \kl{Coq}’s
-% kernel.
-%
-% \section{\kl{MetaCoq}’s Future}
-%
-% \kl{MetaCoq} is a mature project, and has reached the stage
-% where the formalization can really
-% serve as a tool to move \kl{Coq} forward.
-%
-% We have already evoked in \cref{chap:bidir-pcuic} the question of the representation of pattern-matching.
-% This is a relatively minor question, but more complex ones – \eg{}
-% the integration of a sort $\SProp$ of strict propositions, or subject reduction for
-% co-inductive types –
-% can now be investigated in \kl{MetaCoq}, providing a valuable guidance
-% to their implementation in \kl{Coq}.
-%
-% However, \kl{MetaCoq} is still quite some distance away from type-checking realistic developments
-% in \kl{Coq}, as it lacks some important features present in the latter’s kernel. Barring
-% template polymorphism,%
-% \sidenote{A restricted form of universe polymorphism, which the latter should hopefully
-% be able to replace.}
-% there are two main lacking elements that are to be integrated if we wish to really reach the
-% project’s goal.
-%
-% The first are extensionality conversion rules: definitional proof irrelevance,
-% and η laws for functions and records.
-% The η conversion laws are basic features, present in virtually
-% any modern proof assistant. However,
-% in the precise context of \kl{MetaCoq}, they pose subtle questions.%
-% \sidenote{For an overview of these, see \textcite{LennonBertrand2022a}.}%
-% \margincite{LennonBertrand2022a}
-% Broadly, giving a specification of such η laws is easy in the setting of typed conversion, but
-% much trickier in that of untyped conversion. However, the whole structure of \kl{MetaCoq} is built
-% around that untyped notion of conversion, and could not be so easily adapted to a typed
-% conversion. This makes the integration of η laws challenging. The case of strict propositions is
-% less well-known, being much more recent, but poses similar challenges.
-% A possible solution to solve these issues would be to move the whole development over to typed conversion,
-% using the ideas introduced in \cref{chap:bidir-conv}.
-%
-% The second lacking feature are modules and functors.
-% While these are less pervasive than η laws, they are still present in a number of developments.
-% Here again the difficulty is not simply to show that an implementation is faithful to a given
-% semantic, but to precisely pin down said semantic. This is tricky in the case of modules, which
-% have interactions with global environments, contrarily to records – their first-class counterpart.
-% This unclear semantic is probably one of the reason modules are not used more, and so putting
-% them on a stabler ground might also give users more confidence to use them.
-%
-% A last important investigation to make \kl{MetaCoq} closer to the real kernel is that of
-% guard conditions. The impossibility to prove full \kl{normalization} of \kl{PCUIC}
-% does not mean that we should not completely abandon this question. We
-% can at least implement a guard condition,
-% and show that it fulfils the conditions we abstractly ask for
-% in the current development. More ambitious, the complex guard condition implemented in \kl{Coq}
-% was designed \sidecite{Gimenez1995} in order to allow a translation back to eliminators.
-% This gives a much stronger validity criterion for the guard, but would not be an easy project.
-% But as for modules, reaching
-% that goal would make the guard much more trustworthy than it currently is. Moreover,
-% it could open the door to extending it, with the formalization
-% as a safeguard as to the validity of those extensions.
-%
-% Beyond these missing but rather necessary pieces,
-% \kl{MetaCoq} should hopefully offer tools for
-% broader investigations around \kl{Coq}’s core: formalization of tactics,
-% of syntax transformation and generation… Some have already started to appear
-% \sidecite{Forster2019,Liesnikov2020}, but hopefully more are to come!
-%
-% \section{Gradual CIC}
-%
-% As for the last part of this thesis, if the aim goal of gradual typing
-% is to answer the needs of developers, we should get closer to those.
-% I believe that \kl{GRIP} gives at least a good starting point to experiment with,
-% so the main missing piece now is an implementation.
-% Such an implementation of course is no small feat: integrating a new feature to \kl{CIC} is
-% never easy, even more so one of this scale.
-% Moreover, it raises subtle questions. For instance, while almost all reduction rules of
-% dependent type theories are parametric over the universe levels,
-% reduction in \kl{CastCIC} crucially depends on those.
-% In a setting where these universe levels are not mere integers,
-% what becomes of those? How do we handle a non-total order between universe levels?
+\margintoc{}
+
+In this thesis, I argued that building a verification tool for C, suitable
+for handling low-level systems programming idioms, is two parts engineering,
+and one part theory.
+
+In~\arefpart{formalisation}, I discussed the origin of \kl{CN} as a tool
+to verify the \kl{pKVM} hypervisor, and \kl{CN}'s design goal of lowering the
+cost of verification and being usable by `systems programmers who know
+Haskell'. I showed how these engineering constraints informed the choice of
+\kl{CN}'s many theoretical foundations. I showed that those these foundations
+are well-established and individually well understood, its application to a
+large calculus \kl{Core} with unique features presents new challenges and
+solutions, such as closely linking resource contexts to heaps by representing
+them as separation logic predicates, and using explicit proof terms to encode
+transformations on both. I concluded by feeding back insights from the theory
+into actual engineering questions we face in developing and extending \kl{CN}.
+
+In~\arefpart{mem-model}, I described a complex, formal, memory object
+model for C which accurately captures most of the behaviour exhibited by
+existing optimsing compilers. I showed that we can simplify some of the
+complexity by exploiting the fact that in verification, small and
+easy-to-explain changes to the code are justified if they make the typing rules
+easier to implement and explain. These engineering constraints defined a
+flexible perimeter for the design space, which I decomposed, guided by the
+theory of the model's definitions, features, purposes, and representations in
+the \kl{CN} type system. I showed that there are multiple reasonable design
+points for typing rules to capture, and that doing so soundly can come down to
+very subtle technical details. After summarising the point I chose for
+\kl{CN-VIP}, I showed that factoring out the definition and use heap as I did
+earlier allows for a significantly more modular updates and structure to the
+overall proof of soundness. I then explained how I implemented these rules in
+\kl{CN} and their effect on the annotation and performance overhead of \kl{CN}.
+I concluded by feeding back insights from the theory to improve performance,
+and sketch out the development of new features such as support for lemmas and
+better foundations for \kl{CN}.
+
+Lastly, in~\arefpart{engineering}, I showed that a verification tool for
+real-world C, needs some way of taming the complexity of large repositories and
+non-standard or unsupported aspects of C. I showed that whilst \kl{CN}'s first
+sub-goal of proving \kl{pKVM} seems to be feasible, there are several concrete
+ways in which needs to become more usable. I showed that the second sub-goal of
+on-going proof maintenance still needs substantial work. I then compared
+\kl{CN} to other proof tools by discussing my experience on verifying a small
+but informative example in all of them, which indicated where it stands with
+respect to the academic state-of-the-art. I then discussed industry feedback on
+\kl{CN}, which indicated of where \kl{CN} stands in relation to user
+expectations. Lastly, I synthesised the large gap between them by outlining
+concrete expectations and how to achieve them for \kl{CN} and similar tools.
+
+There are of course, longer-term lines of research to pursue based on \kl{CN}.
+I see at least four broad directions for this. I already covered in detail the
+direction of more trustworthiness in \nameref{sec:better-foundations}; I will
+discuss the remaining aspects here.
+
+\section{More expressiveness}
+
+% Increasing expressiveness of \kl{CN} means adding support for more C features,
+% and in tow, a richer separation logic.
+\begin{itemize}
+    \item \textbf{Support for unions.} This is a type system design
+        question, and is expected to be straightforward.
+    \item \textbf{User-defined variadic functions.} I believe the types of
+        \kl{CN} are rich enough to support this, but supporting the
+        \kl{Cerberus} constructs which enable this will require more work.
+    \item \textbf{Function pointers.} Supporting this in the general
+        case would require a higher-order separation logic, which would
+        be considerable departure from the current design and require
+        thinking deeply about reasonable schemes and expectations for
+        automation.
+    \item \textbf{Standard library support.} Full support for the above 
+        two features should allow this straightforwardly, though
+        there may be considerable engineering involved.
+    \item \textbf{Locks and relaxed-memory concurrency.} A first-order solution
+        would be to provide locks as a primitive, and that should suffice in
+        many cases, but at the very least would require fractional permissions
+        to make usable. Relaxed memory models will require an even richer
+        separation logic; as before, the impact on automation is unknown.
+    \item \textbf{Inline assembly.} As seen in the early allocator in
+        \kl{pKVM}, inline assembly is used in real-world C, and supporting
+        this soundly would be a rather large integration with frameworks
+        such as Islaris.~\sidecite{sammler2022islaris}
+    \item \textbf{Binary verification.} Mete Polat did some exploratory
+        work~\sidecite{polat2023automated} on translating \kl{CN}
+        specifications and proofs to binary using the
+        Islaris framework, and turning this into full-fledge support
+        for direct binary verification (as opposed to verifying an
+        industrial-grade optimising compiler) would be a large undertaking.
+\end{itemize}
+
+\section{More performance}
+
+\begin{itemize}
+    \item \textbf{Inferring join-points for resource contexts.} If this
+        was possible, even many if not all cases, then this would
+        reduce the chances of state-explosion affecting verification
+        complexity.
+    \item \textbf{Optimising solvers for typical queries.} It seems
+        likely that that the types of queries \kl{CN} will typically send a
+        solver are quite amenable to automation, especially related
+        to pointers and the \kl{CN-VIP} memory model. If these can be
+        made substantially faster, then this would have a large
+        benefit on \kl{CN} performance.
+    \item \textbf{Carefully incrementalisng verification.} For large projects,
+        \kl{CN} should cache proofs it already knows and only check the parts
+        which have changed.
+\end{itemize}
+
+\section{More user-friendliness}
+
+\begin{itemize}
+    \item \textbf{Iterating on syntax with user studies.} Syntax matters
+        a lot to most people outside of programming language research,
+        and the syntax of \kl{CN} right now is elegant but verbose. It
+        needs to be made simultaneously more concise and intuitive, whilst
+        retaining a clear denotation. C programmers may prefer an imperative
+        specification language, and this may be more feasible than one might
+        expect~\sidecite{memarian2024ghost}, accommodating which would be a new
+        challenge for specification research.
+    \item \textbf{Experimenting with graphical representations of resources.}
+        It is difficult to understanding failed resource lookups in \kl{CN}.
+        On top of this, although currently \kl{CN}'s ownership model is simple,
+        features such as fractional permissions will add further complexity
+        this. It would be useful to experiment with graphical explanations of
+        resource manipulations, either representations of a symbolic heap, or
+        resource change timelines à la
+        RustViz\sidenote{\url{https://fplab.github.io/rustviz-tutorial/}}~\sidecite{almeida2022rustviz}.
+        Of course a key difference between C and Rust is not tying aliasing
+        to syntax, and so (potential) aliases would need to be explained
+        appropriately.
+    \item \textbf{Pedagogy and incremental benefits for professionals.}
+        The target audience of \kl{CN} is people who are more invested in
+        correctness and learning than the average programmer, but will still
+        have limited time in which to become productive and show benefits
+        to stakeholders. Even if the preceding two ideas are executed perfectly,
+        verification is different enough to programming and test-based tooling
+        to require structured pedagogy. On top of this, it will always be
+        competing with the other two for attention. A sensible pedagogy,
+        combined with incremental benefits (such as runtime checking of
+        incomplete assertions~\sidecite{banerjee2025fulminate}), will
+        be required for the substantial uptake.
+    \item \textbf{Suggesting specifications, proofs and repairs.} Aside from
+        being difficult, verification is often tedious. There is rich history
+        of using techniques from artificial intelligence to improve the
+        automation of both SAT solvers and interactive proof assistants, and
+        there is much excitement about the potential for using machine
+        learning, particularly large language models, for improving on the
+        state-of-the art.~\sidecite{first2023ml4tp}
+\end{itemize}
+

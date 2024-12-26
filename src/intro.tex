@@ -13,27 +13,27 @@
 On the 1\nth{9} of July, 2024, 8.5 million Windows computers inside banks, airlines, TV
 broadcasters, supermarkets and many other businesses suffered the infamous `Blue Screen of
 Death' after (ironically) a faulty security update from cybersecurity
-provider CrowdStrike was released.\sidecite[4\baselineskip]{verge2024crowdstrike}.
+provider CrowdStrike was released.~\sidecite[4\baselineskip]{verge2024crowdstrike}.
 
 Even though it took only 78 minutes between when the issue was identified and
 rectified, the ensuing chaos and disruption lasted hours if not days, as getting
 the fix on affected machines and restarting complex systems was very difficult.
 Although not as important as the human cost, the total financial cost in terms
 of downtime for businesses was estimated by one insurer to be between 5 and 9
-billion USD.\sidecite{fitch2024crowdstrike}.
+billion USD.~\sidecite{fitch2024crowdstrike}.
 
 To explain what went wrong, I need to outline some key concepts. An
-\intro[OS]{operating systems} (OS), such as iOS, macOS, Windows or Ubuntu, is
+\intro[OS]{operating system} (OS), such as iOS, macOS, Windows or Ubuntu, is
 the ``software you don't care about which runs the software you do care
-about'', knowns as applications (`apps') or programs, such as a timer, a web
+about'', known as applications (`apps') or programs, such as a timer, a web
 browser or a spreadsheet editor. It provides services to software, in a way
 that abstracts from the details of the particular kind of hardware, for
 example, the ability to respond to click from a mouse, or a tap from a touch
 screen, or to play a sound via headphones or speakers. At the heart of the
-operating system is the \intro[OS]{kernel} (for example Linux or Darwin for
+operating system is the \intro[OS]{kernel} (for example Linux, or Darwin for
 Apple systems); it is the lowest level of abstraction within the operating
 system. It uses the hardware via \emph{drivers} to provide key services like
-deciding what gets to run (scheduling),and how much of the hardware it gets to
+deciding what gets to run (scheduling), and how much of the hardware it gets to
 use (resource management), and protecting itself and other code from each other
 (isolation).
 
@@ -53,14 +53,15 @@ programming languages} and run at the kernel level\sidenote{A technically
 questionable design choice, likely motivated by other factors.} to scan and
 protect computers at a fundamental level, but this great power comes with great
 responsibility, since, as we witnessed, the risks of an error is magnified
-greatly at this level.
+greatly.
 
 Whilst most of the commentary, including the root cause
-analysis,\sidecite{rca2024crowdstrike} emphasised the need for better testing
+analysis~\sidecite{rca2024crowdstrike}, emphasised the need for better testing
 and better deployment strategies, both of which are eminently sensible,
 \emph{what} to test, and more importantly \emph{what's missing} in the tests
 are only sufficiently clear with hindsight.
 
+\begin{quote}
 \emph{%
 ``The new IPC Template Type defined 21 input parameter fields, but the
 integration code \ldots supplied only 20 input values to match against. This
@@ -69,10 +70,11 @@ discovered during the sensor release testing process, the Template Type (using
 a test Template Instance) stress testing or the first several successful
 deployments of IPC Template Instances in the field.''
 }
+\end{quote}
 
-Aside from testing, Microsoft is also reported to be discussing locking down
+Aside from testing, Microsoft is also reported to be discussing restricting
 access to the kernel with security vendors, and generally designing it to be
-more robust to rogue drivers and updates.
+more robust to rogue drivers and updates.~\sidecite{verge2024microsoft}
 
 To me, the situation seems akin to building a wall with Swiss cheese, and when
 something gets through, saying `we should have had more layers' or `layers
@@ -131,13 +133,11 @@ However, most of this is the success C had in meeting its initial design goals:
 \end{itemize}
 
 As time went on, hardware became faster, by becoming more complex and so C's
-proximity to it waned. However, it continued to be used in performacne critical
-code such as the Linux \kl{kernel}. Portability, assisted by a large set of
-\kl{UB}, became avenues for optimisations. Under pressure for faster code,
-simplicity of compilation gave way to complex alias analysis and pointer
-provenance reasoning to optimise code.
-
-TODO\@: refer to this: \url{https://queue.acm.org/detail.cfm?id=3212479}
+proximity to it waned.~\sidecite{chisnall2018c} However, it continued to be
+used in performance critical code such as the Linux \kl{kernel}. Portability,
+assisted by a large set of \kl{UB}, became avenues for optimisations. Under
+pressure for faster code, simplicity of compilation gave way to complex alias
+analysis and pointer provenance reasoning to optimise code.
 
 \begin{marginfigure}
     \centering
@@ -147,8 +147,8 @@ TODO\@: refer to this: \url{https://queue.acm.org/detail.cfm?id=3212479}
 
 \cref{fig:ptr-from-int-ub} shows a slightly contrived example (courtesy
 of~\sidetextcite{memarian2019exploring}), which nevertheless illustrates the
-alias assumptions at play here. It assumes that \cinline{ADDRESS_PFI_1PG} is
-the guess the address of a variable local to function \cinline{f}, which is
+alias assumptions at play here. It guess that \cinline{ADDRESS_PFI_1PG} is
+the address of a variable local to function \cinline{f}, which is
 cast to a pointer in \cinline{main}, and then passed in as an argument to
 \cinline{f}. The question this raises is: even if the guess matches the runtime
 address of the local variable, should the compiler be allowed to assume that
@@ -178,7 +178,7 @@ later.\sidenote{This example does have \kl{UB} though because of (demonic)
 allocation address non-determinism.}
 
 Stakeholders have attempted to resolve such questions by the formation of and
-continual updates to the \kl{ISO} standard of C,\cite{isoC1990} however, the
+continual updates to the \kl{ISO} standard of C~\cite{isoC1990}, however, the
 resolutions can be complex and subtle. This is because of the different
 preferences for performance, control and language simplicity, amongst
 application programmers, systems programmers and compiler writers. To add to
@@ -197,9 +197,9 @@ language (known as `\intro{Core}') with a few purpose-built constructs. It
 makes explicit many implicit quirks of C such as integer promotion, \kl{UB} and
 loose evaluation order.
 
-The \intro{compositional} nature of in particular allows a user to see how the
+The \intro{compositional} nature allows a user to see how the
 elaborated \kl{Core} relates to the C a user wrote. I will use a function which
-appends linked list of integers to another as a running example.
+appends linked list of integers as a running example.
 
 \begin{marginfigure}
     \centering
@@ -214,15 +214,16 @@ otherwise it recurses on \cinline{xs->tail} to get the new tail
 result as \cinline{xs}.
 
 This is elaborated into \kl{Core} (\cref{fig:append-core}). All the
-subtleties and sources of \kl{UB} in C, including signed integer over/underflow,
+subtleties and sources of \kl{UB} in C are made explicit, such as signed integer over/underflow,
 use-after-free, leaking, and double-free memory management errors,
 \kl[OOB]{out-of-bounds} indexing in arrays, and dereferencing a \cinline{NULL}
 pointer. These form the contract between the compiler and the programmer, and
-violations can result in difficult to debug, and costly mistakes. From the
+violations can result in difficult to debug and costly mistakes. From the
 perspective of the compiler, they are \emph{assumptions about the program and
-its execution}, and so ideally be \emph{proven} absent; they are not things one
-can check by running the program (though there are tools which instrument code
-in various ways can find such errors, CN included). To aid programmers in
+its execution}; they are not things one
+can check by running the program, and should ideally be \emph{proven}
+absent.\sidenote{There are tools which can instrument code
+to find some classes of assumption violations, CN included.} To aid programmers in
 proving such \kl{UB} absent, we must understand how we can prove things about
 imperative, memory manipulating programs.
 
@@ -246,13 +247,15 @@ whilst assertions in the specification language might \emph{syntactically}
 refer to different locations, \emph{semantically} those locations may alias,
 thus breaking the rule of constancy (\cref{fig:rule-of-constancy}). This rule
 is critical for \intro{modular} verification for programs because we can use it
-to glue togethter two separately verified programs, and compose them (e.g.\
+to glue together two separately verified programs, and compose them (e.g.\
 sequentially) so long as they refer to separate program variables.
 
 \begin{marginfigure}
   \begin{mathpar}
-      \inferrule{\vdash{} \{P\} \; C \; \{Q\}  \\ \mod{(C)} \cap{} \mathit{FV} (R)} = \emptyset{}
-                {\vdash{} \{ P \wedge{} R \} \; C \; \{ Q \wedge{} R \}}
+      \inferrule{
+          \vdash{} \{P\} \; C \; \{Q\}  \\ \mod{(C)} \cap{} \mathit{FV} (R) = \emptyset{}
+      }{
+          \vdash{} \{ P \wedge{} R \} \; C \; \{ Q \wedge{} R \}}
   \end{mathpar}
   \caption{The rule of constancy, where $\mathrm{FV}$ refers to the free
       variables of an assertion and $\mod{}$ is a syntactic
@@ -279,10 +282,10 @@ $O(m^2)$ leads to new assertions with up to ${O(n + m)}^2$ conditions. The
 problem is bad enough that the design of the verification-oriented Euclid
 programming language put in place several restrictions to prevent aliasing in
 the language, unlike its main influence, Pascal, which permitted
-it.\sidecite{popek1977notes}
+it.~\sidecite{popek1977notes}
 
 The key breakthrough came with the arrival of separation logic by John C\@.
-Reynolds and Peter O'Hearn.\sidecite{reynolds2002separation} Specifically, the
+Reynolds and Peter O'Hearn.~\sidecite{reynolds2002separation} Specifically, the
 introduction of the \intro{separating conjunction}, $\astRef$, allows us to
 state a version of the rule of constancy which is sound, known as a the
 \intro{frame rule} (\cref{fig:frame-rule}). Not only did this enable the
@@ -294,8 +297,10 @@ proofs about large and subtle systems.
 
 \begin{marginfigure}
   \begin{mathpar}
-      \inferrule{\vdash{} \{P\} \; C \; \{Q\}  \\ \mod{(C)} \cap{} \mathit{FV} (R)} = \emptyset{}
-                {\vdash{} \{ P \ast{} R \} \; C \; \{ Q \ast{} R \}}
+      \inferrule{
+          \vdash{} \{P\} \; C \; \{Q\}  \\ \mod{(C)} \cap{} \mathit{FV} (R) = \emptyset{}
+      }{
+          \vdash{} \{ P \ast{} R \} \; C \; \{ Q \ast{} R \}}
   \end{mathpar}
   \caption{The frame rule. We still need to be careful about non-intereference
       about program variables on the stack, so we retain $\mod{(C)} \cap{}
@@ -675,6 +680,8 @@ My contributions in this part include:
 \begin{itemize}
     \item An exploration of the design space and trade-offs when designing a
         type system for real-world memory object models.
+    \item An in-depth discussion about soundly supporting pointer equality in
+        the presence of observed, non-deterministic pointer equality.
     \item The formalisation of \kl{CN-VIP}, focusing on its modular integration into
         \kl{Kernel CN} and \kl{ResCore}.
     \item A proof of soundness of \kl{CN-VIP}, with respect to the VIP dynamic semantics.
@@ -709,12 +716,16 @@ My contributions in this part include:
         including macros, for processing by other tools.
     \item \emph{An experience report}, on updating an existing proof of a \intro{buddy
         allocator} (used in the \intro{pKVM} hypervisor) to work with (a)
-        bit-vectors and (b) an early version of CN-VIP\@. In particular, due to
-        poor source location information, poor proof migration path and
-        performance degradation, this port failed.
-    \item A summary of several developer- and user-experience issues we faced,
-        with reference to the their technical origin and if they exist,
-        solutions.
+        changes to the C implementation (b) an early version of CN-VIP and (c)
+        a change to \kl{CN} to represent integers as bit-vectors. Ports
+        for the first two succeeded, but, due to poor source location
+        information, poor proof migration path and performance degradation,
+        this port failed.
+    \item \emph{A summary and discussion of valuable feedback}, from industry
+        partners.
+    \item \emph{A discussion of major issues related to developer- and
+        user-experience}, with reference to the their technical origin and if
+        they exist, solutions.
 \end{itemize}
 
 \chapter{Example: queues in CN}
