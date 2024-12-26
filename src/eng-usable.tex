@@ -355,6 +355,8 @@ to the next chapter.
 
 \chapter{Not-so-great expectations}
 
+\margintoc{}
+
 In the last chapter, I compared \kl{CN} to some relevant tools in the
 space,\sidenote{A notable omission was \kl{VST}, mostly due to lack of time and
 expertise for a fair comparison.} and I presented industry feedback on \kl{CN}.
@@ -384,7 +386,7 @@ over time and as a result have ended up similar but
 incompatible.\sidenote{\href{https://github.com/rems-project/cerberus/issues/288}{Cerberus
 \#288}} For example, one of the many incompatibilities is the separate scopes
 for predicates and functions: this results in a confusing error message when
-the predicate and a function are mixed up. However, unifying the scopes at
+a predicate and a function are mixed up. Unifying the scopes at
 point would require a major refactor to symbol resolution during
 desugaring.\sidenote{\href{https://github.com/rems-project/cerberus/issues/288}{Cerberus
 \#288}} Had we worked through enough examples and designs concretely, we might
@@ -396,7 +398,7 @@ my personal experience in implementing \kl{VIP}: writing examples and
 informally but rigorously working through how they ought to be specified and
 helped enormously in guiding my intuitions and highlighting problems early on,
 and I conjecture a broader range of smaller examples escalating to the
-\kl{buddy allocator} might have done similar.
+\kl{buddy allocator} would have been similarly helpful.
 
 \section{Design with a formalism}
 
@@ -545,12 +547,20 @@ names and no A-normalising, but the solution is ad hoc, and the gap between
 \kl{Core} and C still remains.
 
 Whilst I have some ideas on how to improve the situation,\sidenote{Low-hanging
-fruit is to associate bound variables to the location of the sub-expression
-they are binding
-(\href{https://github.com/rems-project/cerberus/issues/270}{Cerberus
+    fruit is to associate bound variables to the location of the sub-expression
+    they are binding
+    (\href{https://github.com/rems-project/cerberus/issues/270}{Cerberus
 \#270}).} a systematic treatment of source location information through
 elaboration would be helpful to understand what it would mean, and what is
-required for maximal source location accuracy.
+required for maximal source location accuracy. A suitable theory would provide
+guidance on the different kinds of source locations, (points, ranges, cursors,
+preprocessed, elaborated, fresh/dummy) and how they should be preserved in
+different manipulations, such as alpha-renaming and substitution and (partial)
+evaluation. An important feature would be accurately tracking the origins of
+new source locations \emph{from within the implementing code}, because it is
+quite confusing and difficult to debug a bad source location. Ideally, it would
+also explore how one might track which terms have valid locations in a type
+system such as OCaml's or Haskell's.
 
 \section{Software engineering}
 
@@ -559,7 +569,7 @@ had multiple contributors, some of whom have left the project now. As such,
 it benefits from good software engineering practices like any other project.
 There are many such things, so I will focus on the important ones.
 
-\subsection{Rich regression testing}
+\subsection{Test for any visible regressions}
 
 For a long time, \kl{CN} did not have any regression testing and so features
 which were implemented, but accidentally broke later, went unnoticed.
@@ -585,7 +595,7 @@ there is a difference, the program will raise an error, and also provide a diff
 the developer can apply \emph{across some or all of the affected files} if the
 change is expected.
 
-\subsection{Performance benchmarking}
+\subsection{Profile early and often, at the right level}\label{subsec:profile}
 
 A slow heavily-automated verification tool is basically an unusable
 verification tool, and the lack of good performance measurement makes it
@@ -613,7 +623,168 @@ bit vector update (\cref{sec:buddy-failed-bv}). \kl{CN} is still an order of
 magnitude slower than we would like or expect it to be, and so fixing this, and
 setting up infrastructure prevent backsliding, is a key priority.
 
-\subsection{Get source location right}
+\subsection{Error with pride, do not crash}\label{sec:error-msgs}
+
+I will beging this sub-section with a quote from Sean Chen, co-shepherd
+of the Rust Error Handling Working Group.~\sidecite{chen2020anatomy}
+
+\begin{quote}
+\em
+This, to me, really speaks about culture; rustc and the developers [\ldots]
+are all eager to help you, to provide helpful context,
+to provide hopeful errors, to make your job, your workflow, as a developer,
+easier. If you have to spend less deciphering error messages, that is more time
+that you can be productive on the code you are writing.
+
+[\ldots] I think technology takes a little bit of a back seat, [\ldots] all of
+these code examples [\ldots] ingenious in a sense but at the end
+of the day I don't think it is [\ldots] more ingenious than anything else
+inside of rustc [\ldots] It really is a question of culture, more specifically,
+I think the culture of the community is what informs the technology.
+\end{quote}
+
+Rust compiler (`rustc') developers have a clear definition and explanation of
+the structure of an error
+message.\sidenote{\url{https://rustc-dev-guide.rust-lang.org/diagnostics.html}}
+On top of that, as demonstrated by the quote, they have a culture of
+willingness to be helpful.
+
+Whilst \kl{CN} is different from Rust in many ways, they do share the
+commonalities of being low-level systems programming language with complex
+rules dictating whether code is accepted or rejected, and as such, there is
+much to learn from their example.
+
+Of course, there are large differences in the amount of resources available for
+both, with \kl{CN} being an academic project with limited industry support,
+whereas Rust is a mainstream project. And so, I will adjust my recommendations
+accordingly.
+
+\paragraph{Use rich datatypes for errors.} \kl{CN} inherits many of Cerberus'
+error message datatypes, but also explanations, which quote the standard.
+Whilst that is extremely impressive, most users will not understand the jargon
+of the standards committee (\cref{fig:lsp-extra}), and so these need to be
+hidden by default, and eventually translated into language more friendly to C
+programmers. The fact that these are represented by a datatype makes it easy to
+add this functionality later. It is better to add more information an not use
+it than it is to plumb that information through later.
+
+\begin{figure}[htp]
+    \includegraphics{figures/lsp-structs9-hover.png}
+    \includegraphics{figures/lsp-structs9-inline.png}
+    \includegraphics{figures/lsp-structs9-problems.png}
+    \caption{LSP server and client I prototyped using \kl{CN}'s temperamental
+    JSON output. Rather unhelpfully, it quotes the \kl{ISO} standard's jargon
+    rather than explaining signed integers may not overflow.}\label{fig:lsp-extra}
+\end{figure}
+
+\paragraph{Avoid showing crashes and backtraces.} \kl{CN} does an admirable job
+on controlling the effects exposed by various parts of the code by wrapping
+most effectful operations in a typing monad.\sidenote{This comes with its own
+trade-offs.} However, there are a couple cases which result in crashes which
+are predictable and avoidable if the intent is there from the beginning. The
+most important reason for this is that \emph{the output from \kl{CN} can and
+will be used by other tooling, to provide editor services and
+GUIs}.\sidenote{For example,
+\href{https://github.com/rems-project/cerberus/issues/286}{cn \-\-json
+can produce non-JSON output \#286} and
+\href{https://github.com/rems-project/cerberus/issues/221}{Flycheck
+support \#221}.}\label{sn:gui-issues} At the time of writing, there are 185 uses of
+\ocamlinline{failwith} and 297 uses \ocamlinline{assert} in the code
+base, all of which can cause backtraces, and make it difficult for
+tools to build on top of \kl{CN}. Whilst it is possible to work
+around this, by calling into \kl{CN} as an OCaml library instead,
+this increases the overhead of developing tooling for \kl{CN}.
+These come from a couple of sources.
+\begin{itemize}
+    \item \textbf{Unimplemented features.} These are extremely common when
+        building any large project, and so this should by no means be
+        considered an exceptional condition. Instead, an error message should
+        make it clear what feature is not implemented, and \emph{where in the
+        source code} it rose from.
+    \item \textbf{Assertion or invariant failures.} Again, whilst these signal
+        bugs, bugs are common, and they need to be handled gracefully. Whilst
+        backtraces may be helpful, they should not be visible by default.
+\end{itemize}
+
+\subsection{Log, do not debug}
+
+Another regretful aspect of \kl{CN}'s development is its over-reliance on debug
+output as a substitute for a user-interface and well-defined structured logs.
+There are about 255 instances of debug related code in \kl{CN} today.
+
+To be clear, I am not saying that it is necessary to invest heavily in
+producing beautiful and intuitive GUIs from the start \textemdash{} that
+depends on the resources available and priorities of the project.
+
+What I am saying is that clear visibility is a trait of good software, and
+unstructured debug output, whilst occasionally helpful, are rarely the first,
+main or correct tool for this job. Instead, it makes much more sense to record
+the sequence of actions and their effects at each step, in a reasonably
+structure format so that (a) its output format can be wholly separated from the
+recording and (b) processing the output can be wholly separated from both.
+
+Structured logging is \emph{especially} useful in the presence of monadic OCaml
+code, which removes all useful information from any backtraces, and inverted
+control flow with explicit continuations, and manipulating state and contexts.
+Whilst there is some ad hoc logging for recording the memory actions, used
+for the HTML output, a disciplined logging scheme would facilitate the
+following.
+\begin{itemize}
+    \item Profiling the solver (\cref{subsec:profile}).
+    \item Validating resource inference (\cref{sec:better-foundations}).
+    \item Experimenting with the user-interface.
+\end{itemize}
+
+The last one in particular has been the subject of multiple issues related to
+GUIs (see note~\ref{sn:gui-issues}). It was also one of the blockers for
+further progress on an LSP\sidenote{Editor-agnostic language-server protocol.}
+server\sidenote{\url{https://github.com/rems-project/cn-lsp-server}} and
+client\sidenote{\url{https://github.com/rems-project/cn-lsp-client}} I
+prototyped (\cref{fig:lsp-state,fig:lsp-extra}).
+
+\begin{figure*}[htp]
+    \includegraphics{figures/lsp-structs9-state.png}
+    \caption{LSP server and client I prototyped using \kl{CN}'s temperamental
+        JSON output. It shows the counter-example for why signed integer
+        addition may cause UB.}\label{fig:lsp-state}
+\end{figure*}
+
+\subsection{Miscellaneous}
+
+There are a myriad of other small but useful practices which have or would have
+been useful regarding \kl{CN}'s development.
+\begin{itemize}
+    \item Gate substantial changes to \kl{CN} underneath a flag. Whilst this
+        does risk making the code more complex, and accruing unused flags and
+        options, the cost of breaking updates is too high, which I discussed in
+        depth in \nameref{subsec:handling-large-changes}.
+    \item Use version control \emph{well}. Thankfully, using version control
+        these days is convenient and common, though there is an art to
+        using it well.
+        \begin{itemize}
+            \item Break up large features into small commits. This makes them
+                easier to test, review and merge piecemeal.
+            \item Rebase at least daily. This simplifies the commit history and
+                avoid error-prone and time-consuming merges later on.
+            \item Write informative commit messages. Commit messages are just
+                as much documentation as any other part of the code. A good
+                message summarises the change and \emph{explains why}
+                certain decision were made.
+            \item If working on an online platform, work on forks, rather than
+                branches. This prevents clutter on the primary repository.
+        \end{itemize}
+    \item Automate and enforce a continuous-integration (CI) pipeline. The
+        regression testing and profiling should be there to \emph{decrease}
+        developer load, rather than increase  it.
+    \item Automate and enforce code formatting. Whilst no code-formatter will
+        please everyone, the easiest to read (and diff) code is consistent
+        code. This saves a remarkable amount of time and effort.\sidenote{Git
+            has a feature to ignore certain commits when using its blame
+            features, which has minimised the impact on formatting all of the
+        \kl{CN} code.}
+\end{itemize}
+
+\section{Get source locations right}
 
 Source location information is the fundamental building block of a useful error
 message, without which an error is close to useless. Unfortunately, early
@@ -623,7 +794,9 @@ within the OCaml ecosystem, the \kl{Menhir} parser generator makes getting this
 sort of thing right a lot easier than one might initially
 expect.~\sidecite{pottier2016reachability}
 
-\paragraph{Keep lexer and parser simple.} Initially, support for \kl{CN}
+\subsection{Keep lexer and parser simple}
+
+Initially, support for \kl{CN}
 annotations in comments was implemented with reference to lots of global
 mutable state.\sidenote{A feature of ocamllex that seems to be
 under-appreciated is that each rule is an OCaml function and can be passed
@@ -635,7 +808,9 @@ process improved and unified the error-reporting for parsing C and
 \kl{CN}.\sidenote{\href{https://github.com/rems-project/cerberus/pull/252}{Cerberus
 \#252}.}
 
-\paragraph{Investigate strange source locations.} Strange source locations are
+\subsection{Investigate strange source locations}
+
+Strange source locations are
 bugs which deserve to be investigated, or at the very least, have their
 triggers documented. One such
 issue\sidenote{\href{https://github.com/rems-project/cerberus/issues/382}{Cerberus
@@ -648,13 +823,57 @@ internal state, and make this explicit in its
 API.\sidenote{\href{https://github.com/rems-project/cerberus/commit/c970a43b7126560b229fb55c32ce22bfbc5d23f2}{Cerberus
 c970a43b}.}
 
-\paragraph{Write parser error messages if feasible.} Initially, a parse error
-in \kl{CN} would simply signal `unexpected token' and signal no other
-information, except a ballpark source location which was sometimes right. This
-was less than helpful for a number of reasons, most notably not telling the
-user what token \emph{was} expected. It is possible to \emph{generate} very
-inelegant, but informative parse error messages based on the error message
-format output by
+\subsection{Actually use source locations once you have them}
+
+Once source locations are accurately recorded by the front-end, then it is
+important to use them in later stages. Initially, \kl{CN}'s core term type,
+used for representing SMT terms, did not support source location information.
+This made for a very poor and frustrating user experience in common cases, such
+as ill-formed terms, or failing constraints in a specification or a predicate.
+
+Because the type representing this term was large, and used in many places,
+this made adding the location information after the fact much more tedious and
+painful, and adding new code only exacerbates this further. Eventually, I spent
+about one month fixing this
+problem.\sidenote{\href{https://github.com/rems-project/cerberus/pull/225}{Cerberus
+\#225}.} Whilst in some cases, threading source location through was obvious,
+in many cases it is not. The question then arises: is it better to have all
+terms have source location information, even if some of it is approximate,
+or to have missing location information, but be confident about the ones
+which are not missing?
+
+Though the user-experience of the latter seems superficially worse than the
+former, \emph{a bad source location is worse than no source location}, for both
+the user, and the developer who has to debug it later. Hence, missing source
+location information is preferable, \textbf{so long as it documents where in
+the implementation code} the missing location comes from. Here is an example,
+were a resource request has failed. Below is an error message which says that
+ownership of a local is not available at function exit. This means that either
+some predicate is not being unfolded enough, or that a function claimed
+ownership without returning it. Ideally, the error would point to where this
+local was declared, where it disappeared, and the definition of that field of
+in that struct. In the absence of all that information, it is safer to (a) not
+attempt to display any location at all or (b) if a dummy one must be provided,
+point to where in the implementation this dummy location originates.
+
+\begin{minted}[fontsize=\footnotesize,linenos,breaklines]{text}
+tests/cn/reverse.error.c:124:3: error: Missing resource for de-allocating
+  return 0;
+  ^~~~~~~~~
+Resource needed: Block<struct node>(&n3)
+  which requires: Block<signed int>(&&n3->head)
+      other location (File "backend/cn/lib/resourceInference.ml", line 220, characters 31-38)  (arg head)
+State file: file:///tmp/state__reverse.error.c__main.html
+\end{minted}
+
+\subsection{Write parser error messages if feasible}
+
+Initially, a parse error in \kl{CN} would simply signal `unexpected token' and
+exit with no other information, except a ballpark source location which was
+sometimes right. This was less than helpful for a number of reasons, most
+notably not telling the user what token \emph{was} expected. It is possible to
+\emph{generate} very inelegant, but informative parse error messages based on
+the error message format output by
 \kl{Menhir}.\sidenote{\url{https://gallium.inria.fr/~fpottier/menhir/manual.html\#sec\%3Amessages\%3Aformat}}
 
 I shall now explain how I did
@@ -686,21 +905,22 @@ demonstrated for one
 case.\sidenote{\href{https://github.com/rems-project/cerberus/issues/245}{Cerberus
 \#245}.} Details of how best to do so are in the \kl{Menhir} manual, along with
 examples and links to how \kl{CompCert} uses it for its C parser (proof that
-the approach can be scaled). For the easy cases I did not auto-generate, I
+the approach can be scaled). For the cases I did not auto-generate, I
 output an message which says that an error message is missing for the state
 (identified by a number), and that it can be added in the stated file. In any
 case, I set up \kl{Menhir} to show exactly where and between which tokens
 parsing failed, which is often enough for experienced users to fix the syntax.
 \kl{Menhir} also provides functionality to check and merge its auto-generated
 error messages with existing ones, so that the latter can be preserved despite
-changes in the grammar.
+changes to the grammar.
 
-\paragraph{Consider a custom pre-processor.} The bane of any academic C tooling
-seems to be the preprocessor. Whilst it faithfully preserves line numbers, and
-this tends to be good enough, it does not preserve column information, which in
-most cases, leads to inaccurate error messages on any code which is inside, or
-after a macro expansion.\sidenote{The macro call and expansion may have the
-same length if one is lucky.}
+\subsection{Consider a custom pre-processor}
+
+The bane of any academic C tooling seems to be the preprocessor. Whilst it
+faithfully preserves line numbers, and this tends to be good enough, it does
+not preserve column information, which in most cases, leads to inaccurate error
+messages on any code which is inside, or after a macro expansion.\sidenote{The
+macro call and expansion may have the same length if one is lucky.}
 
 We are caught between two unappealing choices: either present the error message
 in terms of the preprocessed code, thus retaining accuracy but sacrificing
@@ -727,7 +947,7 @@ algorithm by Dave Prosser, \emph{which formed the basis of the prose
     specification of macro expansion in the C89/ANSI C
 standard}.~\sidecite{prosser1986complete} This algorithm is annotated and
 explained~\sidecite{spinellis2008complete} by the author of the CScout
-refactoring browser for C,~\sidetextcite{spinellis2010cscout} Diomodis
+refactoring browser for C,~\sidecite{spinellis2010cscout} Diomodis
 Spinellis, who was struggling to implement a C preprocessor correctly for about
 five years, before finding a reference to an algorithm by Dave Prosser.
 Spinellis could not find the algorithm, so he emailed Prosser who
@@ -746,35 +966,43 @@ expressions in OCaml.~\sidecite{chataing2024unboxed} This is not to say that it
 will be easy, but at this stage such an effort seems more likely to succeed
 than the tree-carver was when I embarked on implementing it.
 
-\subsection{Error, do not crash}
+\section{Process counter-examples smartly}\label{sec:counter-ex}
 
-\subsection{Log, do not debug}
-
-\subsection{Gate large changes}
-
-\subsection{Proof maintenance}
-
-\subsection{Miscellaneous}
-
-Good commit messages.
-Automatic code foramtting.
-
-\section{Invest in error reports}
-
-% Sean Chen - The Anatomy of Error Messages in Rust — RustFest Global 2020 https://youtu.be/oMskswu1SxM?feature=shared
-% https://rustc-dev-guide.rust-lang.org/diagnostics.html
-
-\subsection{Counter examples}\label{sec:counter-ex}
-
+Whilst counter-examples have the potential to be very useful for explaining
+abstract proof errors, their use in \kl{CN} is far from that currently.
+The criteria represent real usability issues we have encountered with
+counter-examples, but it is not clear to me how achievable they are.
+In the idea world, we would aim for `dynamic witnesses for static errors',
+as described in~\sidetextcite{seidel2016dynamic}.
 \begin{itemize}
-    \item Not minimal
-    \item Not consistent
-    \item Not easy to relate to source
-\end{itemize}
-
-\subsection{The unreasonable effectiveness of good error messages}\label{sec:error-msgs}
-
-\begin{itemize}
-    \item Translate standards jargon into C programmer friendly words.
+    \item \textbf{Multiple counter-examples may need to be shown.}
+        If there is more than one predicate in the context with a matching
+        name, but unequal arguments, then the counter-example will be of
+        the most recent failure. A user is unable to understand why a resource
+        did not match one of the ones in the middle based on the presented
+        values.
+    \item \textbf{Unconstrained/irrelevant variables should be excluded from the
+        counter-example.} A given error will have many variables irrelevant
+        to the whole program state, but the counter-example will give
+        assignments to all of them, without saying which ones are directly
+        relevant. This makes the user work harder to filter out irrelevant details.
+    \item \textbf{Counter-examples should be consistent.} The counter-examples
+        need not be consistent with respect to the irrelevant variables, and this
+        can be confusing to the user too.
+    \item \textbf{Counter-example variables should be easy to relate to
+        program variables.} Currently, counter-example variables are presented
+        in terms of symbolic variables \emph{from the precondition} of the
+        function rather the values of the program variables at the point
+        of failure. This means the user has to trace and work out values
+        at that point for themselves.
+    \item \textbf{Counter-example variables should be easy to relate to
+        \emph{prior source steps}.} In general, the counter-examples represents
+        the failure at the \emph{latest} step, and what users would like would
+        be to see how a counter-example would evolve \emph{at every step
+        leading to that}.
+    \item \textbf{Counter-example values should be small.} Large numbers in
+        counter-examples are difficult to comprehend. Ideally counter-examples
+        would be rephrased in terms of smaller numbers which are easy to read
+        and track mentally.
 \end{itemize}
 
