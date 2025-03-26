@@ -8,27 +8,27 @@ separation logic assertions, monadic syntax for the latter and its relation to
 kernel syntax for types, let-normalisation and explicit resource terms in
 \kl{ResCore}. I use all of these ingredients in defining the type system for
 \kl{kernel CN} that I will explain in this chapter. Some of the sections will
-based on my contributions to~\sidetextcite[4.5cm]{pulte2023cn}%
+based on my contributions to~\sidetextcite[4.5cm]{pulte2023cn}.%
 
 The \kl{Kernel CN} type system is ordinary \kl{CN}, defined over \kl{ResCore}
-instead of \kl{Core}, without any type or resource inference. In particular, It
+instead of \kl{Core}, without any type or resource inference. In particular, it
 requires that that all universal quantifiers are explicitly instantiated, that
 all existential quantifiers have explicit witnesses, and all resource
 operations are embedded into the program itself as linearly typed proof terms.
 It does not require proof terms for the logical properties, since by
 construction all of the entailments fall into the decidable SMT fragment; many
-rules rely on this. The lack of inference make it a simpler language for which
+rules rely on this. The lack of inference makes it a simpler language for which
 to prove type soundness, whilst still demonstrating all the key ingredients
 mentioned above. Since it handles the majority of C, the entire system is very
 large, and so I will only discuss the main features.
 
 There are some additional minor differences between the implementation and the
-formalisation. As I mentioned \nameref{sec:desugaring}, the formalisation has a
+formalisation. As I mentioned in \nameref{sec:desugaring}, the formalisation has a
 richer grammar of resources: this makes defining predicates to represent tagged
 unions more succinct, and allows for opening predicates in more cases. The
-formalisation assumes that iterated resources output arguments have type array
+formalisation assumes that the output arguments of iterated resources have type array
 of records, whereas the implementation uses records of arrays.\sidenote{This
-purely a notational convenience so I could avoid inventing syntax for indexing
+is purely a notational convenience so I could avoid inventing syntax for indexing
 over an arbitrary record of arrays.}
 
 Along with the type system, I briefly discuss a formalisation of two different
@@ -64,7 +64,7 @@ other base types. Each C type $\tau$ is mapped to a corresponding base type $\be
 
 Logical terms are variously referred to as ${term}$, ${iguard}$ (for boolean
 index guards of iterated predicates), ${ptr}$ (for pointers), ${init}$ (for
-initialisation status), ${value}$ (for pointees), ${iarg}$ (for input mode
+initialisation status), ${value}$ (for pointees), ${iarg}$ (for input
 arguments to predicates),  ${oarg}$ (for output arguments for type record or
 array of records), and later, ${alloc}$ (for constraints about the allocation
 history).
@@ -78,8 +78,8 @@ values abstract.} are very simple pure value synthesis judgements of the form
 $\mathcal{C} \vdash \mathit{pval} \Rightarrow \colorbox{red!8}{\beta}$;
 given computational context and a pure value, synthesise a base type.
 
-Building on the rules for pure values, the pure expression synthesis judgements
-are not that much more complicated either: $\mathcal{C}; \mathcal{L}; \Phi
+Building on top of this (in the same figure), the pure expression synthesis judgement
+is not that much more complicated: $\mathcal{C}; \mathcal{L}; \Phi
 \vdash \mathit{pexpr} \Rightarrow \outpol{pure\_ret}$. Given a computational
 context, a logical context, a constraint context and a pure expression,
 synthesise a \emph{pure} return type (a return type without any resources or
@@ -90,7 +90,7 @@ the refinement type features gestured at earlier. The type $\Sigma y {:}
 CN}. Recall that $\Sigma$ is used to bind a computational value in a
 \emph{return} type, so these types are simply expressing, symbolically, in
 constraints, that these expressions will evaluate to a value. Pure values are
-simply lifted into the grammar of SMT constraints with an equality constraint;
+lifted into the grammar of SMT constraints with an equality constraint;
 pure expressions are lifted similarly but with their equivalent symbolic
 computation.
 
@@ -109,7 +109,7 @@ that they are \emph{checking} judgements instead of synthesising ones, of the
 form $\mathcal{C}; \mathcal{L}; \Phi \vdash \mathit{tpexpr} \Leftarrow
 \mathit{pure\_ret}$ (and similarly for $\mathit{tpexpr}$). Given the
 computational, logical and constraint contexts, check the top-level value (or
-expression) has satisfies this type.
+expression) satisfies this type.
 
 Here we start to see the let-normalisation (\cref{sec:rescore}) and the
 bidirectional (\cref{sec:bidir-subtyping}) approaches pay off. A top-level pure
@@ -122,11 +122,11 @@ like to avoid (\coreinline{undef()} and \coreinline{error()}) check against % ch
 $\mathsf{false}$). Top-level if-expressions synthesise a type for their condition,
 but then check the branches, with an extra constraint on the true or false
 value of the condition. Similarly, top-level let-expressions synthesise a type
-for the bound expressions, and a constraint on the \emph{shape} bound value to
+for the bound expression, add a constraint on the \emph{shape} bound value to
 the context, and then check the body of the let.
 
-The constraint on the shape of the bound value is produced by a judgement which
-given a computational pattern (one inherited from Core) and a base type, it
+The constraint on the shape of the bound value is produced by a judgement which,
+given a computational pattern (one inherited from Core) and a base type,
 produces a computational context and a term corresponding to the \emph{shape}
 of the value according to the pattern match. For the sake of simplicity, I
 assume all patterns are complete.
@@ -174,7 +174,7 @@ Only user-defined predicates can be folded, so $\mathsf{Owned}\langle\_\rangle$
 is excluded.\sidenote{Needs to be updated for $\mathsf{Alloc}$ too.} A term to
 be folded is simply the (partially-evaluated) body of some predicate, so it
 does not have the information required to know which predicate it could belong
-to, especially because resources can and are moved between predicate. Hence,
+to, especially because resources can be moved between predicates. Hence,
 morally, $\mathsf{fold}$ should be checked, not synthesised. However, in a
 prior version of \kl{CN}, users were required to manually fold and unfold
 predicates, and (by accident) that annotation was placed in an
@@ -198,11 +198,11 @@ because these operations can combine more than one kind of resource, they need
 to synthesise separating conjunctions, so the rule for them is also
 synthesising.
 
-For space, I only present the rules for turning ownership of fixed size array
+For space, I only present the rules for turning ownership of fixed-length array
 into an iterated separating conjunction and back (\cref{fig:typing-predops}).
 
 The first rule says that if $\mathit{res\_term}$ synthesises ownership of a
-fixed size array, then the iteration of that synthesises an iterated separating
+fixed-length array, then the iteration of that synthesises an iterated separating
 conjunction for ownership over the indices of that array ($0$ to
 $n-1$).\sidenote{The notational hacks in this rule are a bit too cute and
 difficult to explain, should probably change them.} The second rule does the
@@ -232,8 +232,8 @@ $\mathit{res\_term}$ it carries.
 As I mentioned earlier (\cref{sec:res-terms}), \emph{any} resource term can
 introduce an ordered-disjunction, and so any resource term can be checked by
 it. Furthermore, at most \emph{one} of the branches may be checked, and which
-one depends on whether the condition or its negation can be proven. In the
-situation that neither is possible, I call the condition (and the resource)
+one depends on whether the condition or its negation can be proven. If
+neither is possible, I call the condition (and the resource)
 \intro{under-determined} (with respect to a constraint context). In this case,
 the system may attempt to synthesise a type for the term and check that the
 synthesised type is equal to the ordered-disjunction. Only variables can
@@ -270,8 +270,8 @@ The rule for \coreinline{create()} is a bit busy because of % chktex 36
 constraints on allocations required by the C standard (in premise 2), which I
 will ignore. For now, the main thing to note is that the return type speaks of
 the pointer to the newly created allocation as a computational value $y_p$,
-constraints on pointer $y_p$ as required by the C standard, a unconstrained
-logical (ghost) value for the pointee of the new allocation $x$, and the
+constraints on pointer $y_p$ as required by the C standard, an unconstrained
+logical (ghost) value for the pointee of the new allocation $x$, and
 finally the two resources it creates. The first is ownership of an
 uninitialised piece of memory, at address $y_p$, and the second is an
 allocation token $\mathsf{Alloc()}$ which is related to the memory object model
@@ -314,7 +314,7 @@ prove the pointer is live.
 
 \section{Spine judgement}
 
-There are two parts of the grammar which use spine, lists of values. The first
+There are two parts of the grammar which use spines (lists of values). The first
 is its typical use in calls to pure Core functions, elaborated C functions, and
 effectful Core procedures, as well as to the \coreinline{run()} % chktex 36
 operator. Second is the less typical one, in \emph{top-level return values},
@@ -347,8 +347,8 @@ instantiation\sidenote{Remember that for \kl{kernel CN}, I assume all logical
 the rest of the spine. The substitution produced by this is extended with the
 same.\sidenote{Building the substitution this way, rather than
 `tail-recursively', made it easier to prove properties about it by induction
-(\cref{sec:sub-ctxts}).}\label{sn:tail-rec-sub}. Constraints in types are
-simply checked by the calling the SMT solver, and resources in types are
+(\cref{sec:sub-ctxts}).}\label{sn:tail-rec-sub} Constraints in types are
+checked by the calling the SMT solver, and resources in types are
 checked by splitting resource context, using one part to type the resource
 term, and the other part to type the rest of the function type. Though these
 types are not dependent over resources, the terms are, so this rule extends the
@@ -369,7 +369,7 @@ resolved.} and simply produce the return type synthesised by the spine
 judgement. This is also basically identical to how the top-level value
 \coreinline{done<_>} is typed, with the main difference that (a) the judgement
 $\mathcal{C}; \mathcal{L}; \Phi; \mathcal{R} \vdash \mathit{tval} \Leftarrow
-\mathit{ret}$ is checking (b) the return type must be mapped to its dual
+\mathit{ret}$ is checking and (b) the return type must be mapped to its dual
 function type before using the spine judgement. Similar to the pure case, the
 \coreinline{undef()} and \coreinline{error()} constructs % chktex 36 check
 against any type if the constraint context is inconsistent.
@@ -419,11 +419,11 @@ algebraic datatypes after I formalised \kl{kernel CN}
 0e50207}) and so and I did not formalise logical pattern matching; I would
 formalise it identically to computational pattern matching.} and the same is
 substituted into the rest of the return type. Similar to the computational
-rule, the synthesised contexts is extended with the pattern variable.
+rule, the synthesised context is extended with the pattern variable.
 
 Pattern matching for constraints simply adds the constraint to the contexts
 synthesised by the rest of the return type for any pattern. And pattern
-matching for resources similarly synthesises combines contexts from both the
+matching for resources similarly synthesises contexts from both the
 resource type and pattern, and the rest of the return type and patterns.
 
 This brings us on to how resource patterns synthesise contexts
@@ -510,7 +510,7 @@ I shall only present a small slice of the elaboration to highlight the key
 concepts, leaving the rest of the large system to the appendix. The main
 judgement for synthesising a resource term and an instantiation for a logical
 quantifier is $\Phi; \underline{\mathcal{R}} \vdash \mathtt{calc}\; y \;
-\mathtt{using} \mathit{res} \rightsquigarrow \mathtt{bind}\;
+\mathtt{using}\; \mathit{res} \rightsquigarrow \mathtt{bind}\;
 \outpol{res\_bind}\; \mathtt{for} \outpol{res\_term} \; \mathtt{and} \;
 \outpol{oarg} \dashv \outpol{\underline{\mathcal{R}'}}$
 (\cref{fig:elab-res-oarg}). Given a constraint context, a resource context, an
@@ -563,7 +563,7 @@ output argument is just a dummy value.
 
 Synthesising an output argument from equality constraints\sidenote{Should
 update the rule to use a single one.} is just taking the right-hand-side of the
-equality. Synthesising a resource term and an output argument for a
+equality. Synthesising a resource term and an output argument for an
 ordered-disjunction requires proving the condition or its negation, and then
 synthesising the appropriate branch. For under-determined conditions, as
 mentioned in~\nameref{subsec:checking-res-terms}, the term must be a variable
@@ -573,7 +573,7 @@ provability.
 By construction, every existential quantifies over the output argument of
 (iterated) predicates, and so synthesising a resource term and an output
 argument for the \emph{whole} requires synthesising the output argument of the
-(iterated) predicate. That it in turn, may require inferring an index to the
+(iterated) predicate. That in turn, may require inferring an index to the
 resource from an iterated version, which is handled by a separate judgement.
 The inferred argument is substituted into the rest of the resource type to
 infer another resource term and the originally requested output argument. The
@@ -664,7 +664,7 @@ terms) are the main things elaborated into the program.
 \label{chap:kernel-soundness}
 
 To ensure that \kl{Kernel CN} had served as a useful formalisation for \kl{CN},
-I proved that it was sound. The whole proof is large and in the appendix; In
+I proved that it was sound. The whole proof is large and in the appendix; in
 this chapter, I will discuss the key definitions, lemmas and proof sketches. I
 will first define an operational semantics for \kl{ResCore}, and then do a
 straightforward, if not slightly tedious, syntactic proof of type
@@ -682,12 +682,12 @@ theorem, and a type-preservation theorem.
 The definitions and lemmas of note in this proof are (a) the careful definition
 of substitution, and its accompanying substitution lemma (b) the novel
 structure of the heap, which is unusual in that is essentially just separation
-logic predicate (c) the interaction between the resource terms and heaps.
+logic predicate and (c) the interaction between the resource terms and heaps.
 
 \section{Substitution and contexts}\label{sec:sub-ctxts}
 
 The first three rules for typing substitutions (\cref{fig:soundness-sub}) are
-simple enough: the empty substitution represents the empty context, a
+straightforward: the empty substitution represents the empty context, a
 computational or logical substitution requires the substituted value to be well
 typed, and same for the resource term. However, because resource terms and
 types can depend on the first two, scoping needs to be handled carefully,
@@ -695,7 +695,7 @@ so resource types in a substitution may only mention variables
 either in the contexts on the left of the turnstile, or the computational
 and logical context in the substitution type. This makes it easier to decompose
 substitutions into valid parts, each of which can be applied sequentially but
-still produce a meaningful results (because of the dependent types,
+still produce meaningful results (because of the dependent types,
 substitutions may be telescoping, so need not commute). Hence, the
 \textsc{Sub\_Chk\_Concat} rule checks not only the first half $\psi$ of the
 substitution against half the context, but checks the second half
@@ -709,9 +709,9 @@ $\mathcal{R}'_2$.
     \caption{\kl{Kernel CN} substitution typing}\label{fig:soundness-sub}
 \end{figure*}
 
-In the appendix, I use this definition to prove lemmas such as substitution
+In the appendix, I use this definition to prove lemmas such as the fact that substitution
 preserves SMT results and that substitutions can be split up (linearity means
-this property is not completely trivial). The key lemma is the substitution
+this property is not completely trivial). The key one is the substitution
 lemma stated below.
 
 \begin{lemma}[Substitution lemma]
@@ -723,7 +723,7 @@ then $ \forall \ \mathcal{C}, \mathcal{L}, \mathcal{R}, \sigma.\
 \mathcal{C}    \mathcal{L}  ;  \sigma  (  \Phi  )  ;  \mathcal{R}  \vdash  \sigma ( J ) $.
 \\[\baselineskip]
 If a judgement holds under some context, and the context is the type of
-a substitution in \emph{another} context, then the judgement is also holds in
+a substitution in \emph{another} context, then the judgement also holds in
 that other context substituted appropriately.
 \\[\baselineskip]
 Since $\Phi$ is scoped to $\mathcal{C}' ;
@@ -752,7 +752,7 @@ four parts to this proof.
     restrictions on the resource context. If a rule uses the SMT judgement, use
     the substitution preserves SMT results lemma.
 \item \textbf{Remaining rules}. Straightforward induction.
-\end{itemize}
+\end{itemize}%
 \end{proof}
 
 \section{Heaps and their types}\label{sec:heap-types}
@@ -805,7 +805,7 @@ the sub-heap containing the (iterated) predicates referred to in said value.
 \end{figure*}
 
 I defined both the pattern matching and the resource term reduction dynamic
-semantics in a big-step style; this makes the definition of both more concise,
+semantics in a big-step style; this makes their definitions more concise,
 at the cost of intertwining the usually separate proofs of progress and type
 preservations for resource term reduction.
 
@@ -823,9 +823,9 @@ pattern-matching for the whole of the annotated and let-normalised Core.
 \end{figure*}
 
 As with elaboration, using normalised resource contexts does not restrict the
-generality of progress and type preservations theorems.This is because of the
+generality of progress and type preservations theorems. This is because of the
 following lemma: if a well-typed resource term is closed, then the context in
-which it is well-typed must normalised (formal definition and proof in the
+which it is well-typed must be normalised (formal definition and proof in the
 appendix). We now have all the ingredients to state and sketch a proof for the
 progress and type preservation for resource terms.
 
@@ -854,8 +854,8 @@ for proving type preservation for \coreinline{let}-expressions.
 
 The configuration for the operational semantics is a pair of a heap and a
 ResCore program. As one might expect, proving progress requires well-typed
-patterns successfully produce substitutions. I assume that all computational
-patterns are exhaustive, because if they are not, this is a bug in Cerberus.
+patterns successfully produce substitutions. Cerberus generates all computational
+patterns and ensures they are all exhaustive, so I assume this in the proof.
 Proving well-typed patterns successfully produce substitutions is complicated
 by two things, the solution to which requires the introduction of a relation on
 SMT terms and resource types, $[[ N |- res \~ res' ]]$ (to be read ``under
@@ -894,7 +894,7 @@ Moving on to type preservation, a few things are noteworthy about its proof.
 First is that a frame-heap has to be explicitly passed around.  Whilst this is
 inconvenient, it becomes necessary in the \textsc{Expl\_Top\_Seq\_LetT} case.
 
-Second is in the lemma ``Well-typed values pattern match successfully''.%\nameref{subsec:wt_values_pat_match}.
+Second is in the lemma ``Well-typed values pattern match successfully''. %\nameref{subsec:wt_values_pat_match}.
 There are two substitutions at play here. As an example, let
 the value being matched be $[[ Cons ( Unit , Nil unit ( ) ) , ret\_terms ]]$ and
 the pattern be $[[ comp Cons ( x1 : unit , x2 : list unit ) , ret\_pat ]]$.

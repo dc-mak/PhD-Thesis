@@ -26,7 +26,7 @@ an updated model of \kl{ResCore} heaps. Lastly, I will explain how I proved the
 In \textsc{Expl\_Is\_Action\_Create}, creating an allocation produces new
 constraints on its base address and size. These are tracked via constraints on a
 logical variable $\mathit{alloc}_\mathrm{var}$, a map from \kl{allocation ID}s to
-pairs of a base address and size. This can simply be interpreted as an implicit
+pairs of a base address and size. This can be interpreted as an implicit
 logical argument and return value for each function call.\sidenote{Need to
 check the typing rules to ensure enforce this idea consistently.} Creating an
 allocation also produces an \cninline{Alloc} token, to track the fact the
@@ -40,8 +40,8 @@ pointer returned is never \cinline{NULL}. Hence the typing rule is similar,
 but instead of ownership of a single object at a given C type, the ownership
 is an iterated one over an array of memory bytes.
 
-Conversely, in \textsc{Exp\_Is\_Action\_Kill}, destroying an allocations
-requires both ownership of it (remember ownership represent read/write
+Conversely, in \textsc{Exp\_Is\_Action\_Kill\_Static}, destroying an allocation
+requires both ownership of it (remember ownership represents read/write
 permissions, but not allocation and freeing permissions), and the
 \cninline{Alloc} token, plus proof that the given pointer is the same as the
 owned pointer, and has the same base address as indicated by the allocation
@@ -93,7 +93,7 @@ proceed.
   \caption{Rules for computing pointer offsets (member and array, with
       pure/permissive (P) and ISO variants) in PNVI-ae-udi, across three
       different sources. `{\checksymbol✗}' means the rule is omitted. `case'
-      means the rule special cases on that value. `\textendash{}' means
+      means the rule has a special case for that value. `\textendash{}' means
       there are no checks. `bounds' means a bounds check on the resulting
       pointer. `liveness' means a liveness check on the allocation.}\label{fig:offset-confusion}
 \end{figure*}
@@ -101,9 +101,9 @@ proceed.
 Pointer operations such as taking the difference between two pointers or
 relational comparison between two pointers, require both pointers to be in
 bounds of the same live allocation. Hence the rule in\sidenote{TODO fix the
-rule, which is very wrong in many ways} \cref{fig:cnvip-mem-action} ask
-asks the solver to prove (a) the \kl{allocation ID}s are equal (b) that the
-pointer are within bounds of the allocation (c) to check there exists a
+binop rule, which is a bit wrong in many ways} \cref{fig:cnvip-mem-action}
+asks the solver to prove (a) the \kl{allocation ID}s are equal, (b) that the
+pointer are within bounds of the allocation and (c) to check there exists a
 live allocation with that ID\@. The evidence of a live allocation can be
 either ownership with the same \kl{allocation ID}, or an \cninline{Alloc} token,
 and the rule is agnostic as to which, just that this evidence is returned
@@ -115,7 +115,7 @@ which is permitted so long as the address can fit within the target integer
 type. Since \kl{VIP} does not track exposure, the live and the dead
 pointer cases collapse into the same case. On top of this, as I mentioned in
 \cref{subsec:prov-int-bytes}, I chose to support the limited provenance in
-integers required via a new C type, to make the any additional complexity and
+integers required via a new C type, to make any additional complexity and
 performance cost as opt-in, and to avoid changing all the base types for
 integers of various sizes (bit vectors) to a datatype with two constructors.
 Because of these two simplifications, the cast is therefore just an identity,
@@ -144,11 +144,11 @@ returns ownership of both, unlike \cinline{memcpy} its resulting value is not
 straightforward to specify, because the concise or obvious specification would
 use quantifiers. I refer to a recursively defined logical function which
 constrains the result to be (a) unconstrained if it reads any
-\coreinline{unspec} values (b) 0 if all bytes (excluding provenances) are equal
+\coreinline{unspec} values, (b) 0 if all bytes (excluding provenances) are equal
 and (c) the difference between the first two unequal bytes otherwise. The presence
 of \coreinline{unspec} values makes it difficult to give a simpler specification
 to the result such as \cninline[breaklines]{src == dest && result == 0i3 || src
-!= dest && result != 0i32}, because we want to do not wish to imply % chktex 26
+!= dest && result != 0i32}, because we do not wish to imply % chktex 26
 \cninline{unspec == unspec}.\sidenote{The simpler specification could be
 achieved with a notion of \emph{comparable bytes}, converting to which would
 require ownership of only initialised and non-padding bytes.}
@@ -165,7 +165,7 @@ There are few steps involved to updating the formalisation to use a \kl{VIP}
 based memory object model from its current concrete one.
 \begin{enumerate}
     \item Extend the configuration of the dynamic semantics to be a step
-        relation between abstract \emph{states} and expression, rather than
+        relation between abstract \emph{states} and expressions, rather than
         just \emph{heaps} and expressions.
     \item Extend the heap typing rules to incorporate the newly added
         allocation history.
@@ -183,7 +183,7 @@ logical variable $\mathit{alloc}_\mathrm{var}$. This means that even morally
 closed programs have that variable free in explicit logical and resource terms.
 At the same time, because the allocation history is extended during the course
 of evaluating a \kl{ResCore} program, it is not a term which can be substituted
-once at the start of the program and close. Hence, the allocation history must
+once at the start of the program. Hence, the allocation history must
 be threaded through to any part of dynamic semantics which relies on checking
 constraints (in the empty context) using the SMT solver. At the point of
 calling, the allocation history is substituted in, with the most up to date
@@ -274,7 +274,7 @@ modularity pays off now. The new constructs such as non-deterministic pointer
 equality, \coreinline{allocate_region}, \coreinline{kill_dynamic},
 \cinline{memcpy}, \cinline{memcmp}\cinline{copy_alloc_id}, and the conversions
 to and from memory bytes, are just additional cases in the proof, the rest are
-merely updates. The updates are small because the additional the additional
+merely updates. The updates are small because the additional
 constraints on the allocation history are easy to link across the static and
 dynamic semantics by the definition of allocation history typing. The bounds
 and liveness checks are similarly easy to link across the static and dynamic
@@ -334,7 +334,7 @@ and the top-level expression too
 
 In addition to designing, formalising, and proving it sound, I also implemented
 CN-VIP\@. This was a substantial project which I worked on for about seven
-months, from August to October of 2023, and May, June, Septemeber and October
+months, from August to October of 2023, and May, June, September and October
 of 2024.\sidenote{See
     \href{https://github.com/search?q=repo\%3Arems-project\%2Fcerberus+author\%3Adc-mak\&type=commits\&s=committer-date\&o=asc}{my commits}
     to the \kl{Cerberus} repository. In the intervening months, I
@@ -381,7 +381,7 @@ of the transition, shown in \cref{fig:vip-performance-hit}.
 
 Aside from performance, at this stage, it also became clear that not supporting
 provenance in bytes was unworkable \textemdash{} 18 out of 44 tests required
-additional \cinline{copy_alloc_id} annotation to work as intended. Lack of
+additional \cinline{copy_alloc_id} annotations to work as intended. Lack of
 support for round-trip was also an issue, this affected an additional 2 tests.
 
 \begin{itemize}
@@ -451,7 +451,7 @@ are synthesised, but base types are checked, and the contexts are changed along
 the way.
 
 The \coreinline{create} action takes as its arguments a pure expression for expressing
-the alignment new allocation \ocamlinline{pe}, a C type \ocamlinline{act} and some
+the alignment of the new allocation \ocamlinline{pe}, a C type \ocamlinline{act} and some
 source location information \ocamlinline{prefix}. The latter is used only to generate
 a helpful name for the logical variable representing the returned pointer.
 
@@ -460,7 +460,7 @@ The continuation for checking the alignment expression names the result as
 \ocamlinline{arg}, which is used to create the alignment value
 \ocamlinline{align_v}. The return value \ocamlinline{ret} is defined, and a
 fresh symbol is created \ocamlinline{ret_s} and added to a (unified) variable
-context using \ocamlinline{add_a}. The function \ocamlinline{add_c} add the
+context using \ocamlinline{add_a}. The function \ocamlinline{add_c} adds the
 constraint that the return value \ocamlinline{ret} is aligned to
 \ocamlinline{align_v} to the constraint context. Similarly, \ocamlinline{add_r}
 adds the uninitialised ownership resource to the resource context.
@@ -502,7 +502,7 @@ interface).
 I will only show the code for member shifting; the code for array shifting is
 very similar.
 
-Bounds check constraints are as expect \textemdash{} a lookup in the
+Bounds check constraints are as expected \textemdash{} a lookup in the
 allocation history followed by constraints that the address of the pointer
 (assumed to have an \kl{allocation ID}) must be between the base and base plus
 size.
@@ -512,7 +512,7 @@ size.
 Having created the constraints, the check for the bound and liveness are gated
 by the flag to enable VIP or not. First, it checks the allocation is live.
 Next, if the SMT solver can prove the bounds check statically, based on the
-available constraints, it will quietly succeed, if not, it will raise an error
+available constraints, it will quietly succeed; if not, it will raise an error
 saying the allocation for \ocamlinline{term}, is out of bounds
 (\ocamlinline{constr} could not be proven), resulting in the \kl{UB} specified
 by \ocamlinline{ub}, with \ocamlinline{model} as the counter-example.
@@ -521,10 +521,10 @@ by \ocamlinline{ub}, with \ocamlinline{model} as the counter-example.
 
 The member shift constructor takes as its arguments a \ocamlinline{pe}
 representing the struct address to shift, the struct type \ocamlinline{tag},
-and the field \ocamlinline{member}. After the base types are checks, and
+and the field \ocamlinline{member}. After the base types are checked, and
 \ocamlinline{pe} has been type checked and symbolically evaluated to
 \ocamlinline{vt} (value term), first it is checked to have an \kl{allocation ID}
-(not be \cinline{NULL}), then, (assuming strict pointer arithmetic), checked to
+(not be \cinline{NULL}), and then (assuming strict pointer arithmetic) checked to
 be in bounds of a live allocation.\sidenote{As explained in the comment in the
 code, this check is technically redundant because the elaboration guarantees
 that every use of \coreinline{member_shift} is preceded by a call to
@@ -537,7 +537,7 @@ fragile, I implement the checks anyway.}
 \section{Adding copy\_alloc\_id}
 
 Checking \cinline{copy_alloc_id} has a similar pattern. It checks the base
-types, checks and symbolically evaluates the two arguments. After it does so,
+types, and checks and symbolically evaluates the two arguments. After it does so,
 it checks the pointer is not \cinline{NULL}, and then checks the resulting
 pointer is in bounds of a live allocation.
 
@@ -607,7 +607,7 @@ case, nor the ambiguous case.
 Unlike other rules, the result in this case is not a value, a boolean variable
 which is constrained to be true in the both-equal case, and to be false in the
 neither-equal-nor-ambiguous case. I do not need to state the contrapositive
-implications since SMT solvers assume a classical logic. The ambiguous case
+implications since SMT solvers assume classical logic. The ambiguous case
 leaves the result under-determined by omission, and the result is passed to the
 continuation.
 
@@ -653,7 +653,7 @@ useful.
 Instead, such facts must be derived from the resource context. For
 example, for a single ownership in the context, we may deduce that (a) it has
 an \kl{allocation ID} (is not \cinline{NULL}), that the range of addresses it
-owns does not wrap-around (the base is less than its upper bound), and that, if
+owns does not wrap-around (the base is less than its upper bound), and that, (b) if
 \kl{VIP} is enabled, there exists an allocation which contains it.
 
 \ocamlfile[lastline=15]{code/resource_derived_lc.ml}
@@ -686,7 +686,7 @@ solver.\sidenote{\url{https://github.com/rems-project/cerberus/pull/436}}
 
 \ocamlfile[firstline=37]{code/resource_derived_lc.ml}
 
-The facts are derived every time a new resources is added to the context.
+The facts are derived every time a new resource is added to the context.
 They are added to the constraint context because they need to persist,
 even if the resource is consumed (for example, consuming ownership
 of two pointers does not change the fact that they were and still
@@ -696,13 +696,13 @@ are unequal).
 
 \section{Basic support for \cinline{memcpy}}
 
-To understand the importance the impact and importance of having provenance in
-bytes, I initially specified \cinline{memcpy} as a simple copy of iterated
+To understand the impact and importance of having provenance in
+bytes, I initially specified \cinline{memcpy} merely to copy iterated
 ownership of characters. I derived the initial version of the specification
-from verifying a user-defined version of \cinline{memcpy}, which just copied an
+from verifying a user-defined version of \cinline{memcpy}, which copied an
 array character by character. The specification ends with a quantified constraint,
 saying the arrays are equal over the given range. This is because the SMT arrays
-are total/not finite, and stating a constraint which says the arrays are equal
+are total (not finite), and stating a constraint which says the arrays are equal
 would spuriously fail with a counter-example index outside of the intended range.
 
 \cfile[fontsize=\footnotesize,breaklines,firstline=9,lastline=23]{code/pointer_copy_user_dataflow_direct_bytewise.c}
@@ -752,7 +752,7 @@ The issue is that upon converting ownership of pointers \cinline{&p} and
 hence, when those bytes are converted back into pointers, they have an
 $@\mathsf{empty}$ provenance.
 
-A temporary work-around for this is to simply \cinline{copy_alloc_id} the
+A temporary work-around for this is to \cinline{copy_alloc_id} the
 provenance back, but this just happens to work because the original pointer is
 in scope. If it was not, then the example could not be rescued. And as it
 happens, the lack of provenances in bytes affects 18 out of 44 tests, and a
@@ -842,7 +842,7 @@ go faster. Furthermore, any slow down for bounds checks will be some mixture of
 the effect of derived constraints, and the complexity of the check itself.
 
 The above two facts combined\sidenote{And a few hours of experimentation}
-suggest a possible remedy::if any bounds checks can be replaced with checks in
+suggest a possible remedy: if any bounds checks can be replaced with checks in
 the resource context, then it may offer a substantial speed-up. Since ownership
 of a pointer is sufficient (but not necessary) to deduce bounds checks, we can
 replace some of those with checking the resource context for ownership.
@@ -850,15 +850,15 @@ replace some of those with checking the resource context for ownership.
 In particular, for member and array shifts, this is a good strategy, because
 often the shifting is done just before loading, for which ownership needs to be
 present regardless. The ownership check can be done first, and if it fails, the
-code will fall back to the slower, full.
+code will fall back to the slower, full check.
 
 The net result of this is a substantial speed-up of CN-VIP overall: a 3x
 slowdown is now less than 50\% slowdown, which although not ideal, is a
-worthwhile improvement. Although the \kl{VIP} increase complexity and slows
+worthwhile improvement. Although \kl{VIP} increases complexity and slows
 things down considerably, it did also provide a helpful equivalence which I
 exploited to improve execution time.
 
-However this does raise the questions: why is a linear lookup in the resource
+However this does raise questions: why is a linear lookup in the resource
 context faster than proving a pure SMT constraint? One possibility is that most
 equalities tested in resource lookup can be resolved syntactically without
 appeal to the solver. This may just be an empirical fact about most C programs,
@@ -894,7 +894,7 @@ Thankfully, my fears turned out to be unnecessary, as
 ``working'' test cases, only 7 had to be updated.\sidenote{A limitation of the
     testing framework for the tutorial, and at the time, the \kl{CN} regression
     suite, is that it only checks returns codes, not the whole output. So there
-    was no automated way of checking whether an already failing tests starts
+    was no automated way of checking whether an already failing test starts
 failing for a different reason. I eventually fixed this
 \href{https://github.com/rems-project/cerberus/pull/703}{(cerberus/\#703)} by
 capturing all output and automatically diffing it.} Four of them were
@@ -908,8 +908,8 @@ was not supported initially. All of them were updated using
 
 The other three were all related to \emph{decrementing} a pointer out of
 bounds, and technically \kl{UB}, and so assuming the intent was to test pointer
-decrementing rather then catching \kl{UB}, I adjusted the code to either not
-decrement or increase the range of the allocations involved.
+decrementing rather than catching \kl{UB}, I adjusted the code to either not
+decrement the pointer, or increase the size of the allocations involved to allow it.
 
 \inputminted[fontsize=\footnotesize,breaklines,firstline=69,lastline=107]{diff}{code/add_support_for_vip.patch}
 
@@ -960,12 +960,12 @@ will find the tool rough around the edges but useful, but a novice will find
 it frustrating and miss the value of verification.
 
 Let \cinline{snoc} be the function which adds an element (by induction) to the
-back of a list. Because of its recursive definition, the SMT solver will not be
-able to prove facts about it. The lemma for popping below states that the head
-and the tail of a \cinline{snoc}'d list to which an is simply the head of the
+back of a list. Because of its recursive definition, the SMT solver will be
+unable to prove facts about it. The lemma for popping below states that the head
+and the tail of a \cinline{snoc}'d list is the head of the
 original list, and the \cinline{snoc} of the original tail. A limitation of the
 syntax \textemdash{} the inability to have an assertion about a resource in the
-middle of a function, and bind its output \textemdash{} means that we are
+middle of a function and bind its output \textemdash{} means that we are
 forced to mention resources to get a handle on the logical values of their
 output.
 
@@ -976,7 +976,7 @@ because it requires induction on a user-defined recursive resource predicate,
 rather than a \kl{logical} (\kl{ghost}) data-structure. It says that if you
 have ownership of a list segment from pointers \cinline{front} to \cinline{p},
 and ownership of node \cinline{struct queue_cell} at \cinline{p}, then you can
-reinterpret that as a ownership of a larger queue from \cinline{front} to
+reinterpret that as ownership of a larger queue from \cinline{front} to
 \cinline{p->next}, and interpret the \kl{logical} queue it represents as a
 \cinline{snoc} of the original queue and the payload \cinline{p->first}.
 
@@ -1006,38 +1006,38 @@ back for constant time pushing. Instead, it demonstrates that there is a class
 of resource lemmas that are provable without appeal to the underlying memory
 model.
 
-\section{Lemma proofs in a prover}\label{sec:lemma-prover}
+\section{Lemma proofs in a proof-assistant}\label{sec:lemma-prover}
 
 There are however, lemmas which need to be proved outside of even the fragment
 expressible by C programs. Some of these work-around limitations of using the
 decidable fragment of SMT theories, such as the mismatch between the intended
 finite arrays represented by resources, and the total maps used in decidable
 SMT theories (\cref{fig:byte-array-eq-lemma}). Using that, it would be possible
-to build support for on merging array values. Non-SMT related examples have not
+to build support on merging array values. Non-SMT related examples have not
 come up quite yet, but it is difficult to rule them out and say they will never
 come up.
 
 \kl{CN} already has a mechanism, implemented by Thomas Sewell, for exporting
-lemmas about pure facts to Rocq, this was used extensively with earlier version
+lemmas about pure facts to Rocq; this was used extensively in an earlier version
 with integers instead of bit vectors, to reason about the bit manipulations done
 by the \kl{buddy allocator} in \kl{pKVM} (\cref{chap:buddy}). It supports
 exporting pure facts involving datatypes too.
 
-It does not however, supporting exporting and proving lemmas involving
+It does not however, support exporting and proving lemmas involving
 resources, which are currently just trusted by \kl{CN}. Because of \kl{CN}'s
 aim (\cref{sec:cn-goals}) to behave like a decidable type system rather than a
 program logic, there will always be limits to the number of features that we
-would like to build in to the type checker, and the degree of automation which
+would like to build into the type checker, and the degree of automation which
 is pragmatic.
 
 At the same time, we would like the logic used for proving lemmas to be sound,
 so that we have assurance that users cannot use it subvert the rules enforced
 by the OCaml implementation. An obvious candidate for this is the
-Iris\sidecite{jung2018iris} framework in Rocq, which allows users to define a
+Iris~\sidecite{jung2018iris} framework in Rocq, which allows users to define a
 separation logic and inherit many powerful proof rules based on that. However,
 the fundamental way that Iris works means that it requires an operational
-semantics over which to prove the basic primitives sounds, using which other
-predicates and rules and defined.
+semantics over which to prove the basic primitives sound, on top of which other
+predicates and rules are defined. TODO\@: also mention linearity vs affinity.
 
 However, the idea of putting all of \kl{Core} and its dynamic semantics inside
 Rocq, would be a substantial reduplication of work (it is already
@@ -1053,16 +1053,16 @@ losing too much fidelity to \kl{Core}. It is not clear to me exactly how this
 would work, or integrate into the current project. Another approach would be to
 do a pen-and-paper proof of soundness and build our own logic, but as \kl{CN}
 is extended with more features such as concurrency and fractional permissions,
-this would simply reduplicate the work of the \emph{Iris} project instead of
-\kl{Cerberus}.
+this would simply reduplicate the work of the \emph{Iris} project instead that
+of \kl{Cerberus}.
 
 This impasse can be broken with a few observations:
 \begin{itemize}
-    \item Currently, resources and contexts are defined/interpreted only with
-        respect to a chosen memory object model.
+    \item Currently, resources and contexts are defined and interpreted only
+        with respect to a chosen memory object model.
     \item A lemma is a purely ghost state operation, and so would entail
         proving that the \emph{interpretation} of the sub-heap it consumes is
-        the same as the \emph{interpretation} sub-heap it produces.
+        the same as the \emph{interpretation} of the sub-heap it produces.
 \end{itemize}
 
 With this, a lemma is sound if the interpretations of its pre- and
@@ -1071,7 +1071,7 @@ postconditions are equal. The interpretations are defined to be exactly as in
 
 \section{Better foundations for CN}\label{sec:better-foundations}
 
-Whilst this resolution to the problems of supporting lemmas soundly is
+Whilst this resolution to the problems raised by supporting lemmas soundly is
 pleasing, it does raise an uncomfortable question: if \kl{CN} \emph{users}
 should be prevented from introducing unsoundness via lemmas, should \kl{CN}
 \emph{implementers} also be treated similarly?
@@ -1102,9 +1102,9 @@ the implementation.
     \item Before a \coreinline{kill*}, \coreinline{load}, \coreinline{store}
         and many pointer operations, looking up resources in the context.
     \item After a \coreinline{store}, updating the resource context.
-    \item During any lookup, change the syntactic structure of resources via
+    \item During any lookup, changing the syntactic structure of resources via
         folding and unfolding predicates, decomposing and rebuilding pairs,
-        structs, fixed size arrays and byte representations, and indexing and
+        structs, fixed-length arrays and byte representations, and indexing and
         splitting iterated predicates.
 \end{itemize}
 
@@ -1122,7 +1122,7 @@ resource terms would be an impractically large refactor. A more realistic and
 gradual approach would be to instrument the \kl{CN} implementation as it
 currently stands, but to record a tree of traces of each of the events
 described above. Each event would correspond to a transition between pairs of
-\kl{CN-VIP} abstract states, upon which an Iris logic could be defined and
+\kl{CN-VIP} abstract states, upon which an Iris instantiation could be defined and
 proved sound. The logic could then be used to construct separation logic proofs
 for each path through the tree of events. The traces would need to record any
 logical facts proved using the solver, since those would turn into assumptions
@@ -1131,9 +1131,9 @@ or proof obligations in Rocq.
 At this point, the boundary of trust has been shifted away from the
 pen-and-paper proofs discussed in this thesis, and towards trust in how well
 the OCaml implementation implements the theory. The next step would be to
-refactor the implementation that it becomes impossible to manipulate the
-resource context without it being recorded in a trace, so that the
-instrumentation does not need to be updated every time the inference algorithm
+refactor the implementation so that it becomes impossible to manipulate the
+resource context without it being recorded in a trace. Thus the
+instrumentation would not need to be updated every time the inference algorithm
 changes. The primitives would stay the same, just encapsulated at a
 higher-level, so for example an implementer could not just add or remove
 resources at arbitrary points during type checking, but only for the specific
@@ -1142,7 +1142,7 @@ events given.
 Once all the operations are encapsulated, we could replace the implementation
 with one defined in and extracted from Rocq. It would be an implementation of a
 data-structure call a resource context, with each operation on it corresponding
-to an event. The implementation of those event in terms of how they
+to an event. The implementation of those events in terms of how they
 syntactically manipulate linear separation logic types/assertions would be
 proved correct with respect to a mechanised definition of the \kl{CN-VIP}
 memory model.
@@ -1156,7 +1156,7 @@ Accomplishing this would require some non-trivial engineering to connect the
 proof-assistant to the SMT solver, used heavily by the inference algorithms.
 
 At the point that even inference is mechanised, the remaining bases of trust
-would be (a) the SMT solver (b) the accuracy of the traces. The former could be
+would be (a) the SMT solver and (b) the accuracy of the traces. The former could be
 checked  by asking for certificates of proofs from the solver.\sidenote{Thus
 avoid the need to reimplement an SMT solver inside a proof assistant, even
 if it is only for decidable theories.} The latter would require \kl{Core} and
@@ -1166,7 +1166,7 @@ evaluation order.
 Of course, mechanising any substantial system is a significant undertaking, and
 although extraction of verified code sounds nice, it may not be technically
 practical. Still, if possible, the latter is where I see most of the value
-coming from; a parallel implementation of and proof would also work but that
+coming from; a parallel implementation and proof would also work but that
 carries a risk of the two drifting apart over time. I also expect mechanisation
-to be increasingly values as more expressive features are added such as support
+to be increasingly valueable as more expressive features are added such as support
 for concurrency, higher-order resources, fractional permissions.

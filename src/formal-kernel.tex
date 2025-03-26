@@ -106,22 +106,22 @@ refer to ${term}$, ${iguard}$, ${ptr}$, ${init}$, ${value}$, ${iarg}$, ${oarg}$
 (and later, ${alloc}$). These are all simply aliases for pure (SMT) terms, used
 so that the roles of these terms in different productions, especially ones
 productions which refer to multiple instances of them, are clearer. \intro{Base
-types}, represented by $\beta$ or ${bty}$ are simply they types of such terms.
+types}, represented by $\beta$ or ${bty}$ are simply the types of such terms.
 
 Desugaring \kl{CN} types into \kl{Kernel CN} starts with the C functions, which
 map their parameters into computational variables in function types, or with
 predicate definitions, which map their parameters into essentially a
 $\lambda$-abstraction over a resource type (\cref{fig:prepost-to-kernel}). To
-clear, this is merely quantifying over pure (SMT) terms in the type, rather
+be clear, this is merely quantifying over pure (SMT) terms in the type, rather
 than any higher-order assertions about the shape of the heap.
 
 \begin{figure*}[tp]
     \includegraphics{figures/prepost-to-kernel}
     \caption{\kl{CN} to \kl{Kernel CN} pre- and postcondition and predicate
         definition desugaring. For the C functions, each C argument is bound to
-        a computational argument, with a base type corresponding to the C type.
-        Predicate definitions simply abstract pure (SMT) terms over
-        resources.}\label{fig:prepost-to-kernel}
+        a computational argument, with a base type $\beta_\tau$ corresponding
+        to the C type $\tau$. Predicate definitions simply abstract pure (SMT)
+        terms over resources.}\label{fig:prepost-to-kernel}
 \end{figure*}
 
 Desugaring preconditions into function types requires the postcondition to be
@@ -141,7 +141,8 @@ quantifications can be inferred when required.
 \begin{figure*}[tp]
     \includegraphics{figures/preconditions-to-kernel-1}
     \includegraphics{figures/preconditions-to-kernel-2}
-    \caption{\kl{CN} to \kl{Kernel CN} precondition desugaring.
+    \caption{\kl{CN} to \kl{Kernel CN} precondition desugaring. I use $x \equiv e$
+        to introduce $x$ as an abbreviation for $e$ when $e$ is a long term.
         Postcondition desugaring is similar, and thus omitted.}\label{fig:precond-to-kernel}
 \end{figure*}
 
@@ -152,15 +153,15 @@ parameterised over whether or not a return is expected. If one is not, then the
 resource is simply an $\mathsf{emp}$, otherwise it is an equality constraint,
 as shown in \cref{fig:monad-sl}. Outputs of (iterated) predicates are always
 assumed to be of the shape of a record for uniformity, which I will justify
-later. Abbreviation are also substituted in,\sidenote{As in note~\ref{sn:abbrev}.}
+later. Abbreviations are also substituted in.\sidenote{As in note~\ref{sn:abbrev}.}
 Because pure (SMT) terms are syntactically stratified out of
 the impure ones, they are embeded directly into a resource type (separation
 logic assertion) with $\astRef{}$. Ifs in the syntax are translated into ifs in
 the resource type grammar, with some adjustment based on whether it occurs in a
 terminal place; no returns are expected/allowed in non-terminal
 ifs. This restriction side steps the need for a more complicated
-destination-passing style \sidecite{shaikhha2017destination} transformation to
-translate the semantics early-returns into precise separation logic
+destination-passing style~\sidecite{shaikhha2017destination} transformation to
+translate the semantics of early-returns into precise separation logic
 assertions. Lastly, as before, the monadic binding \cninline{take id = ..} is % chktex 26
 always translated into a logical quantification over the output argument of the
 (iterated) predicate.
@@ -173,11 +174,11 @@ always translated into a logical quantification over the output argument of the
 
 \section{ResCore}\label{sec:rescore}
 
-Not only is the formalisation defined over a desugar representation of types
+Not only is the formalisation defined over a desugared representation of types
 from the surface \kl{CN} syntax, it is also defined over the let-normal form of
 the \kl{Core} grammar
 (\cref{fig:pure-core-grammar,fig:effectful-core-grammar}). By let-normal, I
-mean an A-normal\sidecite{flanagan1993essence} form which is closed under
+mean an A-normal~\sidecite{flanagan1993essence} form which is closed under
 substitution.
 
 Specifically, it syntactically stratifies values and
@@ -190,7 +191,7 @@ This dramatically simplifies presenting and working with the type system, becaus
 \begin{itemize}
     \item \coreinline{undef()}. In typing this, it is necessary to give is a % chktex 36
         checking rule, since control flow is required to not reach that point
-        (\cref:fig:core-ub-typing).
+        (\cref{fig:core-ub-typing}).
     \item \textbf{Control flow}. Here too, we would also very much like to use
         a checking rule, since this would sidestep the need to synthesise
         least-upper bound types for join-points after all \kl{Core}
@@ -228,7 +229,7 @@ let-normalising the constructs related to C's loose evaluation order.\sidenote{%
 \coreinline{let strong}, \coreinline{bound()}, \coreinline{nd()}, % chktex 36
 \coreinline{par()}.} However, this also means the formalisation glosses % chktex 36
 over the fact that those constructs can contain each other in a semantically
-meaningful way, such that flattening out that nesting seems impossible. The
+meaningful way, such that flattening out that nesting seems impossible. A
 solution would be to require type annotations on any situation which requires
 top-level expressions to be nested inside one another.
 
@@ -310,13 +311,13 @@ syntax trees} (ASTs).
 Yet, the effort was still fruitful since it brought extra clarity to questions
 around the implementation (\nameref{chap:inform-impl}) and inspired ideas on
 how to feasibly and gradually transition the most subtle and complex parts of
-\kl{CN} (either now, or in the future) to a stronger foundations to a
+\kl{CN} (either now, or in the future) to a
 proof-assistant (\nameref{sec:better-foundations}).
 
 The key concept which makes this possible is to include explicit (linearly
 typed) terms for both resources \emph{and operations on them} in the grammar of
 \kl{ResCore}. Though this is not a new
-concept,~\sidecite{xi1999dependent,cui2005ats,ahmed2007l3} its application in a
+concept~\sidecite{xi1999dependent,cui2005ats,ahmed2007l3}, its application in a
 separation logic settings appears to be so, because these sorts of
 manipulations are usually done manually in an interactive proof-assistant and
 recorded as tactics in a proof script \emph{external} to the program being
@@ -364,7 +365,7 @@ object model (\cref{sec:cn-vip-soundness}).
 \cref{fig:res-terms} shows the resource terms of \kl{ResCore}. There are
 \emph{several} side conditions for each of the operations the terms represent,
 which I will show in \nameref{sec:typing-res-terms}, but for now it suffices to
-explain the simple intuitions for all of them. Terms $\mathsf{emp}$ and
+explain just the intuition. Terms $\mathsf{emp}$ and
 $\mathsf{term}$ are introduction forms for the types $\mathsf{emp}$ and pure
 assertions $\mathit{term}$, and they have corresponding forms for eliminating
 them too. Variables are also resource terms and patterns, for any resource
@@ -380,10 +381,10 @@ eliminated by any resource pattern.
 
 The following terms are all operations on predicates. Types for
 user-defined predicates are introduced and eliminated by the $\mathsf{fold}$
-construct, so that definitions of predicates can hidden or exposed as required
+construct, so that definitions of predicates can be hidden or exposed as required
 (necessary because we need and allow predicates to be recursive). The
 $\mathsf{implode}$ and $\mathsf{explode}$ constructs are for transforming from
-and to a $\mathsf{Owned}\langle \mathtt{struct} \mathit{tag} \rangle$ predicate
+and to an $\mathsf{Owned}\langle \mathtt{struct} \mathit{tag} \rangle$ predicate
 (which, in kernel CN, represents both \cninline{Owned<ct>} and
 \cninline{Block<ct>} from the surface syntax); the first consumes ownership of
 a struct and produces ownership of its members, the second does the inverse.
@@ -395,7 +396,7 @@ The remaining terms are all operations on iterated predicates. The
 $\mathsf{break}$ operation indexes an iterated predicate to move ownership out
 of it, whereas the $\mathsf{glue}$ operation does the inverse. The
 $\mathsf{inj}$ operation introduces a singleton (non-empty) iterated
-predicate,\sidenote{I chose a singleton introduction form rather than an empty
+predicate.\sidenote{I chose a singleton introduction form rather than an empty
     one to enforce the invariant that all iterated predicates in the typing
     context are guaranteed to be non-empty. I do not believe this makes a
     material difference to soundness, but it reduces redundant lookups in the
@@ -408,7 +409,7 @@ TODO\@: allow empty arrays and require the array value to be put in the rather
 term than assume default.}
 Lastly, the $\mathsf{chop}$ operation splits an iterated predicate along a
 given index guard $\mathit{iguard}$. As mentioned in
-\nameref{sec:monadic-syntax}, to preserve decidability by avoiding inferring
+\nameref{sec:monadic-syntax}, to preserve decidability by not inferring
 quantified constraints, the type system does not support merging arrays.
 
 \begin{figure*}[tbp]

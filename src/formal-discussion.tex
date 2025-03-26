@@ -3,7 +3,7 @@
 In the early stages, \kl{CN} was implemented by Christopher Pulte and Thomas
 Sewell, based on sketches by Neel Krishnaswami. I started formalising
 \kl{Kernel CN} much later, and benefited by the clarity of having an
-implementations and implementers to which and whom I could refer in moments of
+implementation and implementers I could consult in moments of
 confusion.
 
 However, this mode of development means that there were \emph{many} design
@@ -16,7 +16,7 @@ formal and holistic consideration of the constructs and interactions at play.
 
 As such, there are several restrictions in the implementation, which with the
 benefit of hindsight and formalisation, are completely unnecessary, but persist
-as technical debt. This chapter list a few of these, and explains how the
+as technical debt. This chapter lists a few of these, and explains how the
 formalisation brings much needed clarity to many questions around the
 implementation.
 
@@ -26,7 +26,7 @@ implementation.
 \section{Supporting partially initialised reads of structs/unions}\label{sec:partial-init-structs}
 
 So far in working on verifying the buddy allocator, writing a tutorial and
-working with our industry partners, no code has needed to ability to read a
+working with our industry partners, no code has needed the ability to read a
 partially (including completely) uninitialised struct/union, and any valid code
 which does this would have to simply ignore that result. The \kl{UB} only comes
 when one tries to read an uninitialised primitive type member of the
@@ -36,7 +36,7 @@ Because we can decompose ownership of a struct into its fields, and track the
 initialised status of those individually (perhaps verbosely for large structs),
 it does not seems like we lose much in expressiveness in forbidding this. The
 only valid code that would be additionally rejected if this was forbidden in
-the type system would be a reads a partially initialised struct followed by a
+the type system would be a read of a partially initialised struct followed by a
 call to a function which reads only the initialised fields. And in such
 instances, it seems likely that the code could be refactored to only pass the
 initialised fields, or a pointer with the appropriate precondition to only read
@@ -50,11 +50,10 @@ symbolic terms, rather than in a flag the name of a predicate, adds a
 non-trivial amount of noise to formalisation and would do the same in the
 implementation.
 
-And when we think about the potential origins of allowing such behaviour.
 Perhaps such an allowance simplifies data-flow analysis inside a compiler, so
 that it may safely ignore the values resulting from a load of partially
 uninitialised loads of a of struct, so long as none of the fields are accessed.
-It seems hard to think of a case for this allowance motivate by performance or
+It seems hard to think of a case for this allowance motivated by performance or
 programmer ergonomics, and so the experience from formalising this suggests
 that the current implementation of \kl{CN}, which does not allow loads from
 partially (including completely) uninitialised structs, can and will remain
@@ -64,7 +63,7 @@ expressive enough for all of its use cases.
 
 \url{https://github.com/rems-project/cerberus/issues/483}
 
-One the strange parts of working with \kl{CN} is the predicate definitions are
+One of the strange parts of working with \kl{CN} is the predicate definitions are
 automatically unfolded but not logical functions, even though both may be
 recursive. As such there is separate and cumbersome annotation to manually
 unfold a function.
@@ -87,8 +86,8 @@ it nor its negation can be proven'' would work for logical functions too.
 
 It is important to note that with automatic constraint-based unfolding, it is
 possible for users to write constraints (including via control flow) which make
-\kl{CN} diverge, and it is not clear at this stage checks on the definitions
-of predicates would prevent this particular failure
+\kl{CN} diverge, and at this stage it is unclear how any well-foundedness
+checks on the definitions of predicates would prevent this particular failure
 mode.\sidenote{\url{https://github.com/rems-project/cerberus/issues/451}}
 
 \section{Higher-order resources}
@@ -96,9 +95,9 @@ mode.\sidenote{\url{https://github.com/rems-project/cerberus/issues/451}}
 
 If we want \kl{CN} to be used in real-world settings, it must support
 concurrency. We can use the formalisation to reflect on what changes
-would be needed to support this
+would be needed to support this.
 
-First, fractional permissions would be useful to enable sharing. After that,
+Fractional permissions would be useful to enable sharing. After that,
 the issue becomes what level of support would be useful and worth implementing
 based on the size of the change.
 
@@ -115,14 +114,12 @@ change to the resource type definitions and rules.
 As mentioned in~\nameref{sec:auto-unfold-functions}, the formalisation
 separates out two features (unfolding definitions, and selecting a branch of an
 ordered-disjunction) which are tied together in the implementation. One of
-the other places this shows up is in the restriction on the definition of
-predicates that they must either have no ordered-disjunctions, or they
-must have only one, placed first at the top-level.
+the other places this shows up is in a restricted syntax for predicate definitions:
+they must either have no ordered-disjunctions, or only one, placed first at the
+top-level.
 
-With the formalisation, not only can I meaningfully state that a more general
-scheme for resources which supports nested ordered-disjunctions in any place in
-a predicate definition, I can also shed light on how to change the
-implementation to allow for this.
+With the formalisation, not only can I show that that restriction is
+unnecessary, I can also shed light on how to change the implementation to lift it.
 
 This is because I can argue that the surface syntactic restriction and the
 internal representation of predicate definition are actually two
@@ -130,7 +127,7 @@ internal representation of predicate definition are actually two
 add any extra expressive power, it simply unbundles to features which are
 orthogonal in the formalisation. Indeed, users can work around the restriction
 by manually defining an extra auxiliary predicate each time they wish to use an
-ordered-disjunction any where which is not first and at the top-level, it is just
+ordered-disjunction anywhere which is not first and at the top-level, it is just
 clunky.
 
 This orthogonality extends to implementing fixes for this issue too
@@ -166,13 +163,13 @@ strong constraints, strong scrutiny and strong opinions.
 Currently, logical (ghost) functions and predicates. This is with good reason,
 the pure parts are shipped off to an SMT solver, but the heap parts are the
 domain of the resource reasoning. However, \kl{CN} also enforces this
-distinction syntactically, which is a perfectly valid choice, but it trades-off
+distinction syntactically, which is a perfectly valid choice, but it trades
 concision and occasional confusion when those worlds need to mix, for clarity
 in separating when the two do not.\sidenote{\url{https://github.com/rems-project/cerberus/issues/288}}
 
 Another equally valid choice would be to unify the two syntaxes and find some
 other way of enforcing the necessary distinction between the two worlds.
-Exposing the monad implicit in the predicate syntax a type constructor would
+Exposing the monad implicit in the predicate syntax as a type constructor would
 achieve both, though at the cost of exposing developers to a fancier type
 system. As a programming-language theorist, I prefer this, though the ultimate
 arbiter of such a decision would have to well-designed user-studies.
@@ -182,8 +179,8 @@ arbiter of such a decision would have to well-designed user-studies.
 I will conclude this part by sketching out an alternative presentation of the
 \kl{CN} type system, \intro{MiniCN}, closer to both C as a surface language and
 the \kl{CN} implementation. It will demonstrate the challenges of \emph{not}
-using \kl{ResCore}, due to the it not being a first-order functional with
-language with explicit resources, and let-normalisation. The former means the
+using \kl{ResCore}, due to it not being a first-order functional
+language with explicit resources and let-normalisation. The former means the
 inference cannot be specified separately, whereas the latter in particular
 complicates typing early-returns and join-points. It will also demonstrate the
 challenges which seem to be inherent to designing a type system for a C-like
@@ -193,14 +190,14 @@ language.
 
 \kl{MiniC} is a C-like language intended to capture the parts of C relevant to
 explaining the core ideas behind
-\intro{Fulminate},\sidecite{banerjee2025fulminate} a separation-logic testing
+\intro{Fulminate}\sidecite{banerjee2025fulminate}, a separation-logic testing
 framework which translates \kl{CN} specifications to C. It includes global
 variables, mutable function paramaters, block-scoped local variables, and early
 return, but omits loops and unstructured control flow such as \cinline{goto}.
-Expressions and statement are unified into a single construct, and evaluation
-is fixed to be left-to-right. The only MiniC types as integers or pointers
+Expressions and statements are unified into a single construct, and evaluation
+is fixed to be left-to-right. The only MiniC types are integers or pointers
 (with free conversion between the two), hence no structured data such as
-structs or arrays. Notably, in \kl{MiniC} includes taking the address of
+structs or arrays. Notably, \kl{MiniC} includes taking the address of
 variables, indirect assignment and dereferencing arbitrary expressions. Its
 expression grammar is shown in \cref{fig:minic-grammar}.
 
@@ -212,8 +209,8 @@ expression grammar is shown in \cref{fig:minic-grammar}.
 I will omit discussion of the operational semantics of \kl{MiniC}, which is
 explained in the Fulminate paper.
 
-The specification language for \kl{MiniC}, dubbed \kl{MiniCN} is similar to the
-surface syntax of \kl{CN}, shown in \cref{fig:minic-grammar}. It includes the
+The specification language for \kl{MiniC}, dubbed \kl{MiniCN}, is similar to the
+surface syntax of \kl{CN}, and is shown in \cref{fig:minic-grammar}. It includes the
 familiar features, include the distinction between functions and predicates,
 the use of \cninline{take} and \cninline{let} in predicate definitions, and
 the built-in ownership predicate.
@@ -255,7 +252,7 @@ too.} if the location is proven to be equal.
 
 \section{Implicit resources and terms intertwine elaboration and typing}
 
-\kl{MiniCN} is intended to be closer to the syntax (and implementation) than
+\kl{MiniCN} is intended to be closer to the syntax (and implementation)
 than \kl{Kernel CN}. This is why I phrased the rules in terms of input and
 output contexts, rather than the substructural kind. It also means that there
 are no explicit resource terms or logical (ghost) quantifier instantiations in
