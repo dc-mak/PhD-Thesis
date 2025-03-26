@@ -100,7 +100,7 @@ effort.
 
 In this thesis, I will argue that building a verification tool for C, suitable
 for handling low-level systems programming idioms, is two parts engineering,
-and one part theory. Little of the theory are novel or complex, but its
+and one part theory. Little of the theory is novel or complex, but its
 application at scale present new challenges and insights. The proportions do
 not correspond to three different topics, which fit neatly in either bucket.
 Rather, each conceptual part of this thesis has varying mix of those
@@ -147,7 +147,7 @@ analysis and pointer provenance reasoning to optimise code.
 
 \cref{fig:ptr-from-int-ub} shows a slightly contrived example (courtesy
 of~\sidetextcite{memarian2019exploring}), which nevertheless illustrates the
-alias assumptions at play here. It guess that \cinline{ADDRESS_PFI_1PG} is
+alias assumptions at play here. It guesses that \cinline{ADDRESS_PFI_1PG} is
 the address of a variable local to function \cinline{f}, which is
 cast to a pointer in \cinline{main}, and then passed in as an argument to
 \cinline{f}. The question this raises is: even if the guess matches the runtime
@@ -170,7 +170,7 @@ from integers). An example similar to the previous one (from the same source)
 is shown in \cref{fig:ptr-from-int}, with the difference that instead of the
 address being cast to a pointer in the calling function \emph{before} the local
 variable is in scope one, it is cast to a pointer \emph{after} and its address
-has been variable is \intro{exposed}: cast to an integer (but otherwise
+has been \intro{exposed}: cast to an integer (but otherwise
 unused). Though we can clearly see that there is no dataflow between
 \cinline{k} and \cinline{i}, in general, the compiler cannot rule it out, so it
 conservatively disables constant propagation to the call to \cinline{printf}
@@ -284,9 +284,9 @@ programming language put in place several restrictions to prevent aliasing in
 the language, unlike its main influence, Pascal, which permitted
 it.~\sidecite{popek1977notes}
 
-The key breakthrough came with the arrival of separation logic by John C\@.
-Reynolds and Peter O'Hearn.~\sidecite{reynolds2002separation} Specifically, the
-introduction of the \intro{separating conjunction}, $\astRef$, allows us to
+The key breakthrough came with the arrival of separation logic by 
+Reynolds, O'Hearn, Yang and Ishtiaq~\sidecite{reynolds2002separation,ishtiaq2001BI,o2001local}.
+Specifically, the introduction of the \intro{separating conjunction}, $\astRef$, allows us to
 state a version of the rule of constancy which is sound, known as a the
 \intro{frame rule} (\cref{fig:frame-rule}). Not only did this enable the
 practical pen-and-paper verification of programs with pointers, aliasing, and
@@ -373,7 +373,7 @@ traditional approach. It works over an idealised imperative language, suitable
 for simple proofs of algorithms and their implementations, and the link between
 this and the C implementation in \cref{fig:append-c} is based on trust. This
 issue persists with contemporary, mechanised frameworks for separation
-logic,\sidecite{appelSF5,sammler2021refinedc,jacobs2011verifast}
+logic,~\sidecite{appelSF5,sammler2021refinedc,jacobs2011verifast}
 which use trust-based model of C, rather than an \emph{empirically validated}
 one.
 
@@ -389,7 +389,7 @@ logic to a systems programmer who knows
 Haskell~\sidecite{haskell}.\sidenote{This pithy wording is courtesy of Neel
 Krishnaswami.} It is designed to be used pre-existing C programs (so they are
 not written or structured in a way to be verified beforehand). Before I explain
-how \emph{works}, I will first explain how it is \emph{used}.
+how it \emph{works}, I will first explain how it is \emph{used}.
 
 When given a C file, \kl{CN} ensures that (a) the input code is free of
 undefined behaviour and (b) correctly implements any specification written in
@@ -540,7 +540,7 @@ resource we wish to read or write from.
 
 \kl{Iterated} resources are powerful because they supports random access
 (unlike a recursive predicate over an array, which would fix the order of
-traversal).\cref{fig:init-arr-rev} shows how \kl{CN} can transform an array of
+traversal).~\cref{fig:init-arr-rev} shows how \kl{CN} can transform an array of
 uninitialised values (\cninline{Block}s) from the precondition, into an array
 of initialised values (\cninline{Owned}s) in the postcondition, by looping over
 it \emph{in reverse}. All loops in \kl{CN} must be annotated with \intro{loop
@@ -794,8 +794,8 @@ user-defined one.
 Similar to C syntax, \kl{CN} \kl{predicate} definitions first specify return
 type, then a name, and a \intro{base type} annotated list of arguments. Their
 definition consists of either a top-level \cninline{f} with a list of ${specs}$
-in each branch, or a just the list of ${specs}$ at the top-level. ${specs}$ are
-the ${conditions}$ followed by a return expression.\sidenote{\url{https://github.com/rems-project/cerberus/issues/266}}.
+in each branch, or just the list of ${specs}$ at the top-level. ${specs}$ are
+the ${conditions}$ followed by a return expression.\sidenote{\url{https://github.com/rems-project/cerberus/issues/266}}
 
 \section{Queue definitions}
 
@@ -820,7 +820,7 @@ pointer to next node \cinline{struct queue_cell *next}.
 
 \cfile[fontsize=\footnotesize,breaklines,firstline=28,lastline=36]{code/queue_headers.h}
 
-Base on this, we define some predicates relating the shape of the heap, and
+Based on this, we define some predicates relating the shape of the heap, and
 invariants we expect to hold on the data-structure at all times, to the logical
 value represented in memory. The first is the top-level predicate
 \cninline{QueuePtr_At(p)} for a pointer \cninline{p}, with output % chktex 36
@@ -836,7 +836,7 @@ list) value in memory.
 
 The predicate \cninline{QueueFB} takes two pointers as its argument, a front
 and back, and returns a list of integers too. If the front is \cninline{NULL},
-then the list returned in empty. If not, it claims ownership of the back, binds
+then the list returned is empty. If not, it claims ownership of the back, binds
 the value of that cell to \cninline{B} and asserts the \cninline{B.next}
 pointer is \cninline{NULL} (the last cell). It also adds a constraint about
 front and back pointers which may be ignored for now. At this stage, it too
@@ -862,7 +862,7 @@ resulting list to \cninline{B}. The result returned is a list with head
 \cfile[fontsize=\footnotesize,breaklines,firstline=62,lastline=74]{code/queue_headers.h}
 
 Lastly there are some work-around functions to support dynamic allocation and
-freeing for the two struct definitions. They allocations are modeled as always
+freeing for the two struct definitions. The allocations are modeled as always
 succeeding to keep the example simple.
 
 \cfile[fontsize=\footnotesize,breaklines,firstline=76,lastline=98]{code/queue_headers.h}
@@ -948,7 +948,7 @@ chain.
 
 \cfile[fontsize=\footnotesize,breaklines,firstline=13]{code/queue_push.c}
 
-It is precisely this fact which \cninline{push_lemma} represents: if one has
+It is precisely this fact which \cninline{push_lemma} (omitted) represents: if one has
 ownership of a segment of a list from  \cninline{front} to \cninline{p}
 (exclusive), and ownership of a cell at \cninline{p}, then that is the same as
 ownership of a longer segment from \cninline{front} to \cninline{p->next}
@@ -959,7 +959,7 @@ ownership of a longer segment from \cninline{front} to \cninline{p->next}
 
 \section{Proofs of lemmas}
 
-\kl{CN} current does not support export and proofs of lemmas which mention
+\kl{CN} currently does not support export and proofs of lemmas which mention
 resources, even if those resources are there just to help state a pure fact.
 Support for this is planned (\cref{sec:lemma-prover}). However, as it turns
 out, for some lemmas, such as the ones shown here, it is possible to give a

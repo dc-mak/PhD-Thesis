@@ -15,7 +15,7 @@ explained in \cref{sec:c-lang}, a completely concrete view of pointers would
 invalidate fundamental optimisations we would like to perform on our code, but
 a completely abstract view where pointers cannot alias each other is simply
 incompatible with C's ability to take addresses of variables and compute with
-pointers (incremet, calculate offsets, cast them to and from integers).
+pointers (increment, calculate offsets, cast them to and from integers).
 
 Whilst many aspects of C are specified using an elaboration, the representation
 of pointers, and the choice of rules for manipulating them, are factored out
@@ -69,7 +69,7 @@ formalising and implementing \kl{CN-VIP}, the memory model of \kl{CN} as a schem
 within the formalised and implemented type systems.
 \begin{itemize}
     \item \textbf{Expressiveness vs simplicity.} \kl{VIP} makes a particular
-        choices about its representation of pointers and integers, and relatedly
+        set of choices about its representation of pointers and integers, and relatedly
         about the idioms it supports. I will explain it, and the other
         design around it, both simpler and more expressive. In particular,
         I will explain important and subtle complexities around round-trip casts,
@@ -110,12 +110,19 @@ unsequenced expressions, which I will ignore.}
 The key concept which begins this brief overview of memory object models is
 that of provenance. To optimise our code, compilers would like to assume that
 not all pointers that a programmer can magically create (a) are valid, i.e.\
-point to a live allocation (b) can alias any other live allocation in scope.
+point to a live allocation and (b) can alias any other live allocation in scope.
 
 Let us revisit the example from \cref{fig:ptr-from-int}, reproduced in
 \cref{fig:mem-model-ptr-from-int} for convenience. It shows a simple function
-which takes an integer as an argument, assigns the number 5 to a local, and the
-prints the value of that local, with some intervening pointer shenanigans.
+\cinline{f}, which takes an integer \cinline{i} as an argument, assigns the
+number 5 to a local \cinline{j}, and then prints it. Interspersed are some
+seemingly irrelevant casts of the pointer \cinline{&j}, to a new local integer
+\cinline{k}, and a cast of the argument \cinline{i} to a new local pointer
+\cinline{p}, finishing with a write to \cinline{*p}. The function \cinline{f}
+is called from \cinline{main} with a value \cinline{ADDRESS_PFI_1I}, this is a
+``guess'' of the location of where \cinline{f}'s local variable \cinline{j}
+will be allocated during execution.
+
 Despite the fact that there is no data flowing between \cinline{k} and
 \cinline{i}, the mere fact that the address of \cinline{j} was taken (and
 ``exposed'' via its assignment to an integer \cinline{k}) is enough to make the
@@ -143,11 +150,12 @@ each pointer can be thought of as an \emph{pair} of an address $a$ and an
 provenance $\pi$. The address is simply what programmers might be familiar
 with as `the pointer', which, unlike the provenance, may be inspected or
 manipulated directly from the C program at runtime. From the perspective of
-separation logic verification, the provenance can be thought of the ghost
+separation logic verification, the provenance can be thought of as the ghost
 part of a pointer, but it does play an integral part of the model of memory I
 will outline next.
 
-Allocation IDs (non-$@\mathsf{empty}$ provenances) are allocated fresh
+Provenances are either $@\mathsf{empty}$, or allocation IDs $@i$ for integer
+$i$. Allocation IDs are allocated fresh
 globally\sidenote{PNVI-ae-udi does not support concurrency.} for every new
 allocation, and thus guaranteed to be unique. An \intro{allocation history}
 $\mathit{A}$ is a partial map indexed by allocation IDs, which tracks the size
@@ -159,13 +167,13 @@ allocation history includes other information too, which I will ignore because
 it is not relevant to the key concepts.
 
 The \kl{allocation history} merely tracks information about the allocation as a
-whole, to track values of what resides in those allocations, \kl{PNVI-ae-udi}
+whole; to track values of what resides in those allocations, \kl{PNVI-ae-udi}
 also uses a memory $M$ as part of the abstract state. This is not just a map
 from addresses to bytes, but triples of a (potentially empty) provenance and a
 concrete 8-bit byte or $\mathsf{unspec}$ value for uninitialised or padding
 bytes.\sidenote{There is an additional component, an optional \intro{pointer
     index} (an integer $j$ or $\mathsf{none}$) which stores which part of a
-    pointer a byte came from. This is only relevant if either (a) pointer are
+    pointer a byte came from. This is only relevant if either (a) pointers are
     not uniform, i.e.\ different pointers types can have different sizes or (b)
     provenance is tracked via integers (PVI) and bytes of those pointers have
     been overwritten.}\label{sn:ignore-ptr-index}
@@ -184,12 +192,13 @@ an integer and back again, and this \intro{round-trip} property is in fact
 guaranteed by the ISO standard.\sidenote{§6.3.2.3\#5: An integer may be
     converted to any pointer type. Except as previously specified, the result
 is implementation-defined, might not be correctly aligned, might not point to
-an entity of the referenced type, and might be a trap representation.}. The
-most obvious way to assign a provenance to a pointer created from casting an
-integer is to simply track the provenance in the integer (PVI) when it was
-casted \emph{from} a pointer earlier. However, the updates to the integer
-operations to preserve their provenances would break the algebraic properties
-of integers relied upon for optimisations by compilers.
+an entity of the referenced type, and might be a trap representation.}. A
+straightforward way to model the round-trip property is to ensure casts from
+pointers to integers do not lose any information, by augmenting the model of
+integer values to also carry (as ghost information) provenance. This is called
+\intro{PVI} for \emph{provenance-via-integers}. However, the updates to the
+integer operations to preserve their provenances would break the algebraic
+properties of integers relied upon for optimisations by compilers.
 
 Hence the reason for the first crucial design choice in PNVI-ae-udi: the
 representation of integer values. As the name suggests, in contrast to PVI,
@@ -216,7 +225,8 @@ cast would then only examine those (\cref{fig:pnvi-ival-to-pval}).
     \includegraphics{figures/mem-model-pnvi-ival-to-pval}
     \caption{PNVI-* rules for casting an integer to a pointer. From
     \textcite{memarian2022cerberus}. The first rule should have $x \in [ a \;
-        .. \; a + n - 1]$.}\label{fig:pnvi-ival-to-pval}
+    .. \; a + n - 1]$, and the second rule should have $p = (\mathsf{@empty},
+    x)$ (TODO\@: fix these).}\label{fig:pnvi-ival-to-pval}
 \end{figure*}
 
 \begin{definition}[Exposed allocation]
@@ -395,8 +405,8 @@ in inconsistent ways. This means that the disambiguation would need to be
 tracked in the (linear) resource context, not the (intuitionistic) constraint
 context.
 
-So the choice is between: use annotations to thread pointer disambiguation in
-pre- and postconditions, or or change the code to pass in a pointer with the
+So the choice is this: either use annotations to thread pointer disambiguation in
+pre- and postconditions, or change the code to pass in a pointer with the
 correct provenance to use with \cinline{copy_alloc_id}, forcing eager
 disambiguation and sidestepping the associated implementation complexity. I
 chose the latter.
@@ -434,7 +444,7 @@ That being said, it is not clear to me how much this exposure tracking reflects
 the analysis inside compilers, especially across functions. Address exposure
 seems to be a syntactic over-approximation to pointer capture and escape
 analyses.\sidenote{\url{https://jonasdevlieghere.com/post/escape-analysis-capture-tracking-in-llvm/}}
-It seems unlikely to me that to me that if a call to a function exposed an
+It seems unlikely to me that if a call to a function exposed an
 allocation, but did so without leaking any information about the exposed
 address to the caller, that analyses in the caller would add that allocation to
 the list of potential aliases resulting from an integer-to-pointer cast.
@@ -452,7 +462,7 @@ that \kl{VIP} reinstates them albeit in a very limited form (i.e.\ not preserve
 via integer operations to retain a simple theory of integers for optimisation).
 
 From the view of a formalisation, an extra constructor or optional field on
-each integer values does not make too much of a difference, since all the rules
+each integer value does not make too much of a difference, since all the rules
 handle this uniformly and sensibly. But, as I hinted at earlier, this comes
 with a disadvantage for implementations above SMT solvers which, at first
 glance, looks like it could be sidestepped by tracking exposure instead.
@@ -476,7 +486,7 @@ counter-examples for users. This presents us with four options.
             example, users opt-in with a
             \cinline[breaklines]{typedef uintptr_t rt_uintptr [[roundtrip]];}
             so the C program treats them identically, but \kl{CN} enforces a
-            subtyping relation, so \cninline{rt_uintptr <:uintptr_t}.}\label{sn:optin-typedef-subtype}
+            subtyping relation, so \cninline{rt_uintptr <: uintptr_t}.}\label{sn:optin-typedef-subtype}
     \item \textbf{Associate the provenance to \emph{a location} rather than a
         value, and track it in the resource system.} Such a resource would need
         to be duplicated, moved and destroyed in sync with the \emph{value} it
@@ -496,7 +506,7 @@ features of \kl{VIP} and \kl{PNVI-ae-udi} which does not get discussed very
 much, but are quite important, is pointer bytes and
 \cinline{memcpy}/\cinline{memcmp}.
 
-In C, it is possible to take convert any pointer to an (\cinline{unsigned})
+In C, it is possible to convert any pointer to an (\cinline{unsigned})
 \cinline{char*} value and manipulate its byte representation. For example,
 given a particular platform\sidenote{Endianness is an implementation-defined
 property.} programmers can store information in the lower or upper bits of
@@ -585,17 +595,16 @@ happens because:
 In the face of these options, I first implemented \kl{VIP} \emph{without}
 support for provenance in integers and bytes (in any form). This was
 informative because it showed that the lack of provenance in bytes was much
-more restrictive (on the \kl{VIP}/\kl{PNVI-ae-udi}) tests cases than the lack
+more restrictive (on the \kl{VIP}/\kl{PNVI-ae-udi} tests cases) than the lack
 of provenance in integers.
 
-Considering this, and the options outlined above, I chose to restrict the
-ability the features (supporting round-trip casts, and having provenance in
+Considering this, and the options outlined above, I chose to restrict
+the features (supporting round-trip casts, and having provenance in
 bytes) to different, new C types. Aside from making any complexity and
 performance penalties opt-in, it also follows the convention set out in C++17
 with the introduction \mintinline{cpp}{std::byte}, which is specifically
 intended to be used to access byte representation of objects. For simplicity, I
-chose to defer any implementation of subtyping resources automatically until
-later.
+chose to defer any implementation of subtyping resources automatically.
 
 \subsection{Non-deterministic pointer equality}\label{subsec:non-det-ptr-eq}
 
@@ -605,7 +614,7 @@ determine whether two pointers are considered equal.
 
 Disappointingly, things are not quite so simple in actual C
 (\cref{fig:nd-ptr-eq-example}). Because of provenance analysis, the compiler can
-\emph{sometimes, but not always} detect when two pointers either side of an
+\emph{sometimes, but not always} detect when two pointers of an
 equality test must have different provenances, and so optimise the result to be
 false.
 
@@ -615,11 +624,11 @@ false.
         in some cases, a false result for pointer equality.}\label{fig:nd-ptr-eq-example}
 \end{marginfigure}
 
-Therefore, when the pointers either side of an \cinline{==} have equal
+Therefore, when the pointers of an \cinline{==} have equal
 addresses but distinct provenances are distinct, the result will be
-non-deterministic true or false (\cref{fig:nd-ptr-eq}). In practice, this will
-only happen if either or both of the pointers are one-past, out-of-bounds as
-the result of permissive array/member shift, or have an $@\mathsf{empty}$
+non-deterministically true or false (\cref{fig:nd-ptr-eq}). In practice, this will
+only happen if one of the pointers is a one-past, out-of-bounds as
+the result of permissive array/member shift, or has an $@\mathsf{empty}$
 provenance as the result of a cast from an integer.
 
 \begin{figure*}
@@ -673,7 +682,7 @@ return values. Now consider the example in \cref{fig:vip-non-det-ptr-eq-problem}
 Both steps start in related states; the relation given in the proof of
 soundness says that any provenance $\pi$ in \kl{PNVI-ae-udi} may be related
 ($\pi \approx_w @\mathsf{empty}$) to an empty one in \kl{VIP}. But if two
-pointer both have $@\mathsf{empty}$ provenances in VIP, then we are free to
+pointers have $@\mathsf{empty}$ provenances in VIP, then we are free to
 choose pointers with distinct provenances in \kl{PNVI-ae-udi}, to force the
 pointer-equality operation to end up in the non-deterministic case. At this
 point, the result values are no longer related by equality, and cannot be,
@@ -700,7 +709,7 @@ This presents us with the classic ``pick two of three'' situation:
     \item \textbf{Drop totality for pointer equality.} An alternative approach
         would be to make the pointer equality test \kl{UB} if either argument
         has the $@\mathsf{empty}$ provenance. This would mean accepting a
-        different interpretation/information ordering for empty provenances.
+        different interpretation (information order) for empty provenances.
     \item \textbf{Drop non-determinism for pointer equality.} The existing
         \kl{VIP} system is sound with respect to \kl{PNVI-ae-udi} with strict
         (address-only) pointer equality, meaning no non-determinism.
@@ -709,7 +718,7 @@ This presents us with the classic ``pick two of three'' situation:
 \subsection{Allocation history}\label{subsec:alloc-history}
 
 The allocation history in \kl{VIP} and \kl{PNVI-ae-udi} is mostly append-only
-(new allocation are added, but old allocations are never removed) with the
+(new allocations are added, but old allocations are never removed) with the
 exception that when an allocation is \coreinline{kill}ed, a boolean flag in its
 entry (which is marked true when it is created) is set to false.
 
@@ -745,7 +754,7 @@ typing rules to reflect this.}
 Unlike pointer disjointness facts based on \coreinline{Owned} and
 \coreinline{Block}, I do not derive allocation or ID disjointness facts from
 multiple allocation tokens, since there has been no visible need for it
-yet.\sidenote{The only rule which needs to know whether to provenances are
+yet.\sidenote{The only rule which needs to know whether two provenances are
 \emph{not} equal is the non-deterministic case in the pointer equality rule,
 and a relatively simple, if not slightly confusing annotation,
 \cninline[breaklines]{ptr_eq(p,q) || !addr_eq(p,q)} can rule that% chktex 26 chktex 36
@@ -788,10 +797,10 @@ proceed in each of the three situations.
     \item \textbf{Drop $@\mathsf{empty}$ provenances.} This requires
         no representation of this construct.
     \item \textbf{Drop totality for pointer equality.}
-        A single/global unconstrained variable, with explicit constraints that
+        A single, global unconstrained variable, with explicit constraints that
         non-empty provenances are not equal to it, would work.
     \item \textbf{Drop non-determinism for pointer equality.}
-        A single/global unconstrained variable would work. However, since with
+        A single, global unconstrained variable would work. However, since with
         this option, all rules are monotonic with respect to $@\mathsf{empty}$
         provenances, i.e.\ any rule which uses an empty provenance will end up
         failing its bounds checks and thus signalling \kl{UB}, there is no need
@@ -809,11 +818,10 @@ relevant provenances.
 With the representation of provenance and addresses fixed, the representation
 of pointers I chose was guided by that given in \kl{VIP} and \kl{PNVI-ae-udi}:
 a special constructor for the \cinline{NULL} pointer, or a pair of a
-provenance and address. I omit support for function pointers
-because (a) \kl{CN} does not calling functions via pointers (b) it would need
-care to integrate in a way so as to not be cumbersome. For example,in defining
+provenance and an address. I omit support for function pointers:
+they would need care to be integrated ergonomically. For example, in defining
 predicates which take pointer arguments, almost all the time a pointer will be
-intended to be either \cinline{NULL} or pointing an object, so it would be sensible to
+intended to be either \cinline{NULL} or pointing to an object, so it would be sensible to
 have a default which opts out of the function pointer case.\sidenote{A refinement
 type system for the CN specification language?}
 
@@ -833,7 +841,7 @@ equal but have distinct provenances.
 
 As I mentioned in \nameref{subsec:alloc-history}, to deduce \cinline{p} equals
 \cinline{q} from testing \cinline{p == q}, a programmer needs the slightly
-confusing annotation that \cninline{ptr_eq(p,q) || !addr_eq(p,q)}.% chktex 26 chktex 36
+confusing annotation that \cninline[breaklines=true]{ptr_eq(p,q) || !addr_eq(p,q)}. % chktex 26 chktex 36
 This constraint excludes the counter-intuitive (and non-deterministic) case of
 the provenances being distinct but the addresses equal.\sidenote{Stated another
 way, it can be seen as a promise that neither of the pointers are one-past
@@ -841,7 +849,7 @@ pointers, nor out-of-bounds as the result of a permissive array/member shift,
 nor have an empty provenance as a result of a cast from an integer. A
 sufficient (but not necessary) condition for this is that both pointers are
 strictly within bounds of their allocations.} Whilst \kl{CN} aims to minimise
-obvious annotations, this one seems difficult to avoid due the
+obvious annotations, this one seems difficult to avoid due to the
 inherited complexity of pointer equality tests, and the complexity with
 tracking allocation and ID disjointness in the type system.
 
@@ -857,7 +865,7 @@ To convert ownership of a struct into ownership of its representation bytes,
 one needs to take into account the initialisation status of the struct and its
 fields, and its padding bytes. Whilst I track the former with a structured SMT
 value $.\mathit{init}$ in the formalisation, in \kl{CN}, the distinction is
-more coarse with \cninline{Block} for uninitialised ownership (write-only) and
+coarser with \cninline{Block} for uninitialised ownership (write-only) and
 \cninline{Owned} for initialised (read and write).\sidenote{See
 \nameref{sec:partial-init-structs} for a discussion.} The resulting ownership
 needs to permit reading from bytes which are safe to read from (and constrain
@@ -874,7 +882,7 @@ uninitialised memory,\sidenote{Which is fair in a verification context.} and it
 would be inconsistent to subvert this design choice via accessing byte
 representations.
 
-\kl{Cerberus} opts for an defined semantics for reads of uninitialised objects,
+\kl{Cerberus} opts for a defined semantics for reads of uninitialised objects,
 involving a notion of \intro{unspecified values}\sidenote{From 4.6.2 in
     \textcite{memarian2022cerberus}: \textit{``\ldots an abstract unspecified
         value which is propagated by arithmetic in a strict way, with the
