@@ -18,7 +18,7 @@ OTTS := $(addprefix ott/, $(OTTS))
 
 PDFS := $(BUILD)/defns.pdf $(BUILD)/soundness.pdf
 
-all: $(PDFS) $(GEN)/mucore.ml
+all: $(BUILD)/main.pdf $(PDFS) $(GEN)/mucore.ml
 
 .PHONY: all
 
@@ -27,9 +27,24 @@ $(PDFS):$(BUILD)/%.pdf: $(GEN)/$$*.tex \
     $(GEN)/$(PREFIX)_included.tex \
     $(GEN)/$(PREFIX)_override.tex \
     $(GEN)/$(PREFIX)_drulenames.tex | $(BUILD)
-	latexmk -quiet $< $(FLAGS) \
-	    || (cat $(BUILD)/$(basename $(notdir $<)).log; exit 1)
-	@grep "Warning" $(BUILD)/$(basename $(notdir $<)).log || true
+ifeq ($(CAT_ON_FAIL),y)
+	latexmk $< $(FLAGS) || (cat $(BUILD)/$(basename $(notdir $<)).log; exit 1)
+else
+	latexmk $< $(FLAGS)
+endif
+
+$(BUILD)/main.pdf: $(GEN)/formal-statics.tex \
+    $(GEN)/$(PREFIX)_included.tex \
+    $(GEN)/$(PREFIX)_override.tex \
+    $(GEN)/$(PREFIX)_drulenames.tex | $(BUILD)
+ifeq ($(CAT_ON_FAIL),y)
+	latexmk $(FLAGS) || (cat $(BUILD)/main.log; exit 1)
+else
+	latexmk $(FLAGS)
+endif
+
+$(GEN)/formal-statics.tex: formal-statics.mng $(CACHE) | check_rule_diff $(GEN)
+	ott -readsys $(CACHE) -tex_name_prefix $(PREFIX) -tex_filter $< $@ | tac
 
 $(GEN)/soundness.tex: ott/soundness.mng $(CACHE) | check_rule_diff $(GEN)
 	ott -readsys $(CACHE) -tex_name_prefix $(PREFIX) -tex_filter $< $@ | tac

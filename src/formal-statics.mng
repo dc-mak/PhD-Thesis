@@ -1,3 +1,4 @@
+% vim: ft=tex
 \chapter{Kernel CN:\ Static semantics}\label{chap:kernel-statics}
 
 \margintoc{}%
@@ -101,7 +102,7 @@ computation.
         expressions.}\label{fig:typing-pval-pexpr}
 \end{figure*}
 
-\section{Top-level pure value values and expressions}
+\section{Top-level pure values and expressions}
 
 Whilst the rules for typing \emph{top-level} pure values and pure expressions
 share the same context as typing pure values and expressions, they differ in
@@ -830,14 +831,14 @@ appendix). We now have all the ingredients to state and sketch a proof for the
 progress and type preservation for resource terms.
 
 \begin{theorem}[Progress and type preservation for resource terms]
-For all closed resource terms ($[[ res\_term ]]$) which type check or
-synthesise ($[[ cdot ; cdot ; N ; nR |- res\_term <= res ]]$) and all well-typed
-heaps ($[[ N |- h <= nR ]]$) there exists a resource value ($[[ res\_val ]]$),
+For all closed resource terms ($[[ res_term ]]$) which type check or
+synthesise ($[[ cdot ; cdot ; N ; nR |- res_term <= res ]]$) and all well-typed
+heaps ($[[ h <= nR ]]$) there exists a resource value ($[[ res_val ]]$),
 context ($[[ nR' ]]$) and heap ($[[ h' ]]$), such that: the value is
-well-typed ($[[ cdot ; cdot ; N ; nR' |- res\_val <= res ]]$); the heap is
-well-typed ($[[ N |- h' <= nR' ]]$); for all frame-heaps ($[[ f ]]$), the
+well-typed ($[[ cdot ; cdot ; N ; nR' |- res_val <= res ]]$); the heap is
+well-typed ($[[ h' <= nR' ]]$); for all frame-heaps ($[[ f ]]$), the
 resource term reduces to the resource value without affecting the frame-heap
-($[[ < h + f ; res\_term > ||v < h' + f ; res\_val > ]]$).
+($[[ _t | < h + f ; res_term > ||v < h' + f ; res_val > ]]$).
 \end{theorem}
 
 \begin{proof}
@@ -858,16 +859,16 @@ patterns successfully produce substitutions. Cerberus generates all computationa
 patterns and ensures they are all exhaustive, so I assume this in the proof.
 Proving well-typed patterns successfully produce substitutions is complicated
 by two things, the solution to which requires the introduction of a relation on
-SMT terms and resource types, $[[ N |- res \~ res' ]]$ (to be read ``under
-constraints $[[ N ]]$, $[[ res ]]$ is related to $[[ res' ]]$'').
+SMT terms and resource types, $[[ res ~ res' ]]$.
 
 The first is that the constraint term generated when typing a computational
 pattern (this is required to record, in the constraint context, which branch
 the type system is assuming it is in) is not exactly equal to the values it can
-match in the operational semantics (nor would we want it to be: the pattern $[[
-Cons ( x1 , x2 ) ]]$ should match the value $[[ Cons ( pval1 , Cons ( pval21 ,
-Nil base\_type ( ) ) ) ]]$). Hence, we must weaken the notion of equality on
-types to $[[ \~ ]]$ relatedness, which links the two, so that during the proof,
+match in the operational semantics (nor would we want it to be: the pattern
+$[[ Cons ( x1 , x2 ) ]]$ should match the value
+$[[ Cons ( pval1 , Cons ( pval21 , Nil base_type ( ) ) ) ]]$).
+Hence, we must weaken the notion of equality on
+types to $~$ relatedness, which links the two, so that during the proof,
 we can substitute the constraint term $[[ x1 cons x2 ]]$ at the type-level, and
 maintain a link to the corresponding value.
 
@@ -880,8 +881,8 @@ If a top-level expression ($[[ texpr ]]$) is well-typed
 ($[[ cdot ; cdot ; N ; nR |- texpr <= ret ]]$) and all computational patterns
 in it are exhaustive, then either it is a value ($[[ tval ]]$), or it is
 unreachable, or for all heaps ($[[ h ]]$), if the heap is well-typed
-($[[ N |- h <= nR ]]$) then there exists another heap ($[[ h' ]]$) and expression
-($[[ texpr' ]]$) which is stepped to ($[[ < h ; texpr > --> < h' ; texpr' > ]]$)
+($[[ h <= nR ]]$) then there exists another heap ($[[ h' ]]$) and expression
+($[[ texpr' ]]$) which is stepped to ($[[ < _t ; h ; texpr > --> < _t ; h' ; texpr' > ]]$)
 in the operational semantics.
 \end{theorem}
 
@@ -896,20 +897,20 @@ inconvenient, it becomes necessary in the \textsc{Expl\_Top\_Seq\_LetT} case.
 
 Second is in the lemma ``Well-typed values pattern match successfully''. %\nameref{subsec:wt_values_pat_match}.
 There are two substitutions at play here. As an example, let
-the value being matched be $[[ Cons ( Unit , Nil unit ( ) ) , ret\_terms ]]$ and
-the pattern be $[[ comp Cons ( x1 : unit , x2 : list unit ) , ret\_pat ]]$.
+the value being matched be $[[ Cons ( Unit , Nil unit ( ) ) , ret_terms ]]$ and
+the pattern be $[[ comp Cons ( x1 : unit , x2 : list unit ) , ret_pat ]]$.
 For the return type $[[ sigma y : list unit . ret ]]$, the type-level
 substitution will be $[[ Cons ( x1 , x2 ) / y ( ret )]]$.  However, at the
 term-level, the substitution will be $[[ [ Unit / x1 , Nil unit ( ) / x2 ] ]]$.
 \emph{Bridging this difference is the main reason for the $[[ ~ ]]$ relation}
-(the other is the use of $[[ to\_fun ret ]]$).  \emph{The type-level substitution
+(the other is the use of $[[ to_fun ret ]]$).  \emph{The type-level substitution
 is open}, and only makes sense with respect to the variables introduced in the
 pattern-match.
 
 Lastly, we gather constraints throughout the proof, since these are accumulated
 by the typing rules, during pattern-matching, case and if. Given the constraint
 context is always well-formed
-% VIP related (w.r.t.~to the initial logical variable context $[[ L0 ]] = [[ allocv : id\_map ]]$), this means that after substituting in the
+% VIP related (w.r.t.~to the initial logical variable context $[[ L0 ]] = [[ allocv : id_map ]]$), this means that after substituting in the
 allocation history, all the constraints involve no variables
 % VIP related (hence the substitutions in \textsc{Heap\_Ty} and \textsc{Alloc\_Ty})
 , and so will be trivially decidable.
@@ -917,19 +918,19 @@ allocation history, all the constraints involve no variables
 \begin{theorem}[Type preservation for the annotated and let-normalised Core]
 For all closed and well-typed top-level expressions
 ($[[ cdot ; cdot ; N ; nR |- texpr <= ret ]]$),
-well typed heaps ($[[ N |- h <= nR ]]$),
+well typed heaps ($[[ h <= nR ]]$),
 frame-heaps ($[[ f ]]$),
 new heaps ($[[ heap ]]$),
 and new top-level expressions ($[[ texpr' ]]$),
 which are connected by a step in the operational semantics
-($[[ < h + f ; texpr > -->  < heap ; texpr' > ]]$),
+($[[ < _t ; h + f ; texpr > -->  < _t ; heap ; texpr' > ]]$),
 if all top-level functions are annotated correctly,
 there exists a constraint context ($[[ N' ]]$),
 sub-heap ($[[ h' ]]$),
 and resource context ($[[ nR' ]]$),
 such that the constraint context is $[[ N ]]$ extended,
 the frame is unaffected ($[[ heap ]] = [[ h' + f ]]$),
-the sub-heap is well-typed ($[[ N' |- h' <= nR' ]]$),
+the sub-heap is well-typed ($[[ h' <= nR' ]]$),
 and the top-level expression too
 ($[[ cdot ; cdot ; N' ; nR' |- texpr' <= ret ]]$).
 \end{theorem}

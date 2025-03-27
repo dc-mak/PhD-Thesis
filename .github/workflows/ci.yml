@@ -78,10 +78,10 @@ jobs:
         cd src
         mkdir -p _build/mevens
         mv main.tex old_minted.tex && tail -n +2 old_minted.tex > main.tex # hack to build with newer version of minted
-        latexmk -quiet || (cat _build/main.log; exit 1)
-        texcount -inc main.tex | tee _build/wordcount.tex
         eval $(opam env --switch=${{ matrix.version }})
         make
+        cp -r _build/_gen .
+        texcount -inc main.tex | tee _build/wordcount.tex
 
     - name: Release
       uses: softprops/action-gh-release@v2
