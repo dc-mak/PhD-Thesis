@@ -1,0 +1,721 @@
+% These rules are out of date
+grammar
+
+  res_diff {{ tex \outpol{res\_diff} }} :: 'Res_diff_' ::= {{ com resource difference }}
+    | None                                                                                                :: :: None
+      {{ com not possible to take a difference }} {{ tex \outpol{[[None]]} }}
+    | out_res_term and out_oarg                                                                           :: :: Clean
+      {{ com request is satisfied exactly by $[[out_res_term]]$ and the output argument is $[[out_oarg]]$ }}
+    | out_oarg and out_res_req                                                                            :: :: More
+      {{ com request is satisfied partially with output argument $[[out_oarg]]$ with remaining $[[out_res_req]]$ }}
+    | bind out_res_pat1 : out_res1 = out_res_term1 for out_Sym1 & out_oarg and out_Sym2 : out_rem     :: :: Rem
+      {{ com deconstruct $[[out_res_term1]] [[:]] [[out_res1]]$ using $[[out_res_pat1]]$ to satisfy request exactly (using $[[out_Sym1]]$ and $[[out_oarg]]$) with remainder $[[out_Sym2]] [[:]] [[out_rem]]$ }}
+
+
+  res_bind :: 'res_bind_' ::= {{ com resource bindings }}
+    | cdot                      :: :: nil    {{ com empty resource binding                                       }}
+    | res_pat : res = res_term  :: :: cons   {{ com match $[[res_term]] [[:]] [[res]]$ against $[[res_pat]]$ }}
+    | </ res_bindi // , // i /> :: :: concat {{ com concatenate resource bindings                                }}
+
+
+  % OUT_HACK|res_bind
+  out_res_bind {{ tex \outpol{ res\_bind } }}   :: 'Out_hack_' ::=  {{ com Ott-hack, ignore }}
+    | res_bind :: :: res_bind {{ tex \outpol{ [[res_bind]] } }}
+
+  opt_term :: 'Opt_term_' ::= {{ com optional SMT term }}
+    | None :: :: None
+    | term :: :: Some
+
+  % OUT_HACK|opt_term
+  out_opt_term {{ tex \outpol{ opt\_term } }}   :: 'Out_hack_' ::=  {{ com Ott-hack, ignore }}
+    | opt_term :: :: opt_term {{ tex \outpol{ [[opt_term]] } }}
+
+  cmp :: 'Cmp_' ::= {{ com result of binary comparison }}
+    | Lt :: :: Lt {{ com less-than    }}
+    | Eq :: :: Eq {{ com equals       }}
+    | Gt :: :: Gt {{ com greater-than }}
+
+  opt_cmp :: 'Opt_cmp_' ::= {{ com optional result of binary comparison }}
+    | None :: :: None
+    | cmp  :: :: Some
+
+  % OUT_HACK|opt_cmp
+  out_opt_cmp {{ tex \outpol{ opt\_cmp } }}   :: 'Out_hack_' ::=  {{ com Ott-hack, ignore }}
+    | opt_cmp :: :: opt_cmp {{ tex \outpol{ [[opt_cmp]] } }}
+
+  opt_cmp_term :: 'Opt_cmp_term_' ::= {{ com optional result of binary comparison and SMT term }}
+    | None       :: :: None
+    | cmp , term :: :: Some
+
+  % OUT_HACK|opt_cmp_term
+  out_opt_cmp_term {{ tex \outpol{ opt\_cmp\_term } }}   :: 'Out_hack_' ::=  {{ com Ott-hack, ignore }}
+    | opt_cmp_term :: :: opt_cmp_term {{ tex \outpol{ [[opt_cmp_term]] } }}
+
+defns
+  inf_res :: '' ::=
+
+  defn N |- pred_term in? qpred_term ~> out_opt_term :: :: PinQ :: PinQ_
+  {{ com given constraints $[[N]]$, $[[pred_term]]$ is potentially a part of $[[qpred_term]]$ at index $[[out_opt_term]]$ }} by
+
+    a1 != a2
+    ----------------------------------------------------------------------- :: Name_Neq
+    N |- a1 ( _t , _iargs ) in? { _ ; _t . a2 ( _t + _int , _iargs ) } ~> None
+
+
+    term eq ( ptrt2 - ptrt1 ) / step
+    term1 eq term / x ( iguard )
+    term2 eq /\\ ( </ iarg1i = [ term / x ] ( iarg2i ) // i /> )
+    smt ( N => neg ( term1 /\ term2 ) )
+    -------------------------------------------------------------------------- :: IG_Or_IArg_Neq
+    N |- a ( ptrt2 , </ iarg1i // i /> ) in? { x ; iguard . a ( ptrt1 + step , </ iarg2i // i /> ) }  ~> None
+
+
+    term eq ( ptrt2 - ptrt1 ) / step
+    term1 eq term / x ( iguard )
+    term2 eq /\\ ( </  iarg1i = [ term / x ] ( iarg2i ) // i /> )
+    smt ( N => term1 /\ term2 )
+    -------------------------------------------------------------------------- :: Comp
+    N |- a ( ptrt2 , </ iarg1i // i /> ) in? { x ; iguard . a ( ptrt1 + step , </ iarg2i // i /> ) } ~> term
+
+
+  defn N |- Symbol_sym : norm_res -? res_req ~> res_diff :: :: Res_Diff :: Res_Diff_
+  {{ com the difference between $[[Symbol_sym]] [[:]] [[norm_res]]$ and requested $[[res_req]]$ is $[[res_diff]]$ }} by
+
+    ---------------------------------------------------------- :: If_None
+    N |- _ : if term then res1 else res2 -? res_req ~> None
+
+
+    N |- pred_term eq pred_term' ~> false
+    ----------------------------------------------- :: PP_None
+    N |- _ : pred_term' ( _ ) -? pred_term  ~> None
+
+
+    N |- pred_term eq pred_term' ~> true
+    -------------------------------------------------------- :: PP_Exact
+    N |- r : pred_term' ( oarg ) -? pred_term ~> r and oarg
+
+
+    N |- pred_term in? qpred_term ~> None
+    ------------------------------------------------ :: PQ_None
+    N |- _ : qpred_term ( _t ) -? pred_term ~> None
+
+
+    N |- pred_term in? qpred_term ~> term
+    qpred_term eq { x ; iguard . a ( ptrt1 + step , iargs ) }
+    rem eq { x ; iguard /\ ( x != term ) . a ( ptrt1 + step , iargs ) } ( oarg )
+    -------------------------------------------------------------------------- :: PQ_Rem
+    N |- r : qpred_term ( oarg ) -? pred_term ~> bind < r1 , r2 > : rem * pred_term ( oarg [ term ] ) = break ( r , term ) for r2 & oarg [ term ]  and r1 : rem
+
+
+    N |- pred_term in? qpred_term ~> None
+    ------------------------------------------------ :: QP_None
+    N |- _ : pred_term ( _t ) -? qpred_term ~> None
+
+
+    N |- pred_term in? qpred_term ~> term
+    qpred_term eq { x ; iguard . a ( ptrt1 + step , iargs ) }
+    smt ( N => exists x . iguard /\ ( x != term ) )
+    ------------------------------------------------------------------------------------------------ :: QP_More
+    N |- r : pred_term ( oarg ) -? qpred_term ~> oarg and { x ; iguard /\ ( x != term ) . a ( ptrt1 + step , iargs ) }
+
+
+    N |- pred_term in? qpred_term ~> term
+    qpred_term eq { x ; iguard . a ( ptrt1 + step , iargs ) }
+    smt ( N => forall x . neg ( iguard /\ ( x != term ) ) )
+    C ; L |- oarg => base_type
+    ------------------------------------------------------------------------------------------------ :: QP_Last
+    N |- r : pred_term ( oarg ) -? qpred_term ~> inj ( r , ptrt1 , step , x . iargs ) and const oarg
+
+
+    N |- qpred_term [=? qpred_term' ~> None
+    -------------------------------------------------- :: QQ_None
+    N |- _ : qpred_term' ( _t ) -? qpred_term ~> None
+
+
+    N |- qpred_term' [=? qpred_term ~> Eq
+    ------------------------------------------------------------------- :: QQ_Eq
+    N |- r : qpred_term ( oarg ) -? qpred_term'  ~> r and oarg
+
+
+    N |- qpred_term' [=? qpred_term ~> Lt
+    % qpred_term' < qpred_term
+    qpred_term eq { x ; iguard  . a ( ptrt + step , iargs ) }
+    qpred_term' eq { x ; iguard' . a ( ptrt + step , iargs ) }
+    rem eq { x ; iguard  /\ neg iguard' . a ( ptrt + step , iargs ) } ( oarg )
+    ---------------------------------------------------------------------------------------- :: QQ_Lt
+    N |- r : qpred_term ( oarg ) -? qpred_term' ~> bind < r1 , r2 > : res = chop ( r , iguard' ) for r1 & oarg [ k ] and r2 : rem
+
+
+    % This would require being able to merge arrays, which the implementation does not support
+    % N |- qpred_term' [=? qpred_term ~> Gt
+    % % qpred_term' > qpred_term
+    % qpred_term  eq { x ; iguard  . a ( ptrt + step , iargs ) }
+    % qpred_term' eq { x ; iguard' . a ( ptrt + step , iargs ) }
+    % ------------------------------------------------------------------ :: QQ_Gt
+    % N |- r : qpred_term & oarg -? qpred_term'  ~> oarg and { x ; iguard' /\ neg iguard . a ( ptrt + step , iargs ) }
+
+
+  defn N |- Symbol_sym1 : norm_res +? res_term2 : res_req & oarg2 ~> out_res_term and out_oarg3 :: :: Res_Comb :: Res_Comb_
+  {{ com combining $[[Symbol_sym1]] [[:]] [[norm_res]]$, $[[res_term2]] [[:]] [[res_req]] \& [[oarg2]]$, results in $[[out_res_term]]$ $[[out_oarg3]]$ }} by
+
+    N |- pred_term in? qpred_term ~> term
+    C ; L |- oarg1 => record </ Symbol_identifieri : base_typei // i />
+    C ; L |- oarg2 => array record </ Symbol_identifieri : base_typei // i />
+    ---------------------------------------------------------- :: PQ
+    N |- r : pred_term ( oarg1 ) +? res_term : qpred_term & oarg2 ~> glue( < res_term , r > ) and oarg2 [ term ] := oarg1
+
+
+  defn N ; nR |- wf res_req ~> bind out_res_bind for out_res_term and out_oarg -| out_nRp :: :: Req_ :: Req_
+  {{ com $[[N]] ; [[nR]]$ fulfil well-formed request $[[res_req]]$ (via $[[out_res_bind]]$) for answer $[[out_res_term]]$ and $[[out_oarg]]$, with $[[out_nRp]]$ leftover }} by
+
+
+    N |- r : norm_res -? res_req ~> None
+    N ; nR |- wf res_req ~> bind res_bind for res_term and oarg -| nR
+    ------------------------------------------------------------------------------------------------ :: Rej
+    N ; nR , r : norm_res |- wf res_req ~> bind res_bind for res_term and oarg -| nR , r : norm_res
+
+
+    N |- r : norm_res -? res_req ~> res_term and oarg
+    ----------------------------------------------------------------------------- :: Acc_Clean
+    N ; nR , r : norm_res |- wf res_req ~> bind cdot for res_term and oarg -| nR
+
+
+    N |- r : norm_res -? res_req ~> bind res_pat1 : res1 = res_term1 for r1 & oarg and r2 : rem
+    -------------------------------------------------------------------------------------------------------------------- :: Acc_Rem
+    N ; nR , r : norm_res |- wf res_req ~> bind res_pat1 : res1 = res_term1 , cdot for r1 and oarg -| nR , r2 : rem
+
+
+    N |- r : norm_res -? res_req1 ~> oarg1 and res_req2
+    N ; nR |- wf res_req2 ~> bind res_bind2 for res_term2 and oarg2 -| nR2
+    N |- r : norm_res +? res_term2 : res_req2 & oarg2 ~> res_term3 and oarg3
+    -------------------------------------------------------------------------------------- :: Acc_More
+    N ; nR , r : norm_res |- wf res_req1 ~> bind res_bind for res_term3 and oarg3 -| nR2
+
+
+  defn N ; nR |- res_req ~> bind out_res_bind for out_res_term and out_oarg -| out_nRp :: :: Req_Wf_ :: Req_Wf_
+  {{ com $[[N]] ; [[nR]]$ (check well-formedness of and then) fulfil request $[[res_req]]$ (via $[[out_res_bind]]$) for answer $[[out_res_term]]$ and $[[out_oarg]]$, with $[[out_nRp]]$ leftover }} by
+
+    a eq _ : loc , </ _i : base_typei // i  /> , y' : record </ Symbol_identifierj : base_type'j // j /> |-> res inEnv Globals
+    C ; L |- ptrt => loc
+    indexed </ C ; L |- iargi => base_typei // i />
+    N ; nR |- wf a ( ptrt , </ iargi // i /> ) ~> bind res_bind for res_term and oarg -| nR'
+    ----------------------------------------------------------------- :: Pred
+    N ; nR |- a ( ptrt , </ iargi // i /> ) ~> bind res_bind for res_term and oarg -| nR'
+
+
+    a eq _ : loc , </ _i : base_typei // i  /> , y' : record </ Symbol_identifierj : base_type'j // j /> |-> res inEnv Globals
+    C ; L |- ptrt => loc
+    indexed </ C ; L |- iargi => base_typei // i />
+    N ; nR |- wf { x ; iguard . a ( ptrt + step , </ iargi // i /> ) } ~> bind res_bind for res_term and oarg -| nR'
+    ----------------------------------------------------------------- :: QPred
+    N ; nR |- { x ; iguard . a ( ptrt + step , </ iargi // i /> ) } ~> bind res_bind for res_term and oarg -| nR'
+
+
+  defn N ; nR |- if term then res1 else res2 ~> out_Sym -| out_nRp :: :: If_ :: If_
+  {{ com under-determined conditional resource request: $[[N]] ; [[nR]]$ fulfil request for $[[if]]$ $[[term]]$ $[[then]]$ $[[res1]]$ $[[else]]$ $[[res2]]$ with \textbf{synthesising} $[[out_Sym]]$ and $[[out_nRp]]$ leftover }} by
+
+
+    N |- norm_res eq if term then res1 else res2
+    -------------------------------------------------------------- :: Acc
+    N ; nR , x : norm_res |- if term then res1 else res2 ~> x -| nR
+
+
+    N ; nR |- if term then res1 else res2 ~> x -| nR
+    ----------------------------------------------------------------------------------- :: Rej
+    N ; nR , x : norm_res |- if term then res1 else res2 ~> x -| nR , x : norm_res
+
+
+  defn N ; nR |- calc y using res ~> bind out_res_bind for out_res_term and out_oarg -| out_nRp :: :: Oarg :: Oarg_
+  {{ com arbirtrary resource and output-arg request: $[[N]] ; [[nR]]$ fulfil request for resource $[[res]]$ and output-arg $[[y]]$ (via $[[out_res_bind]]$) with \textbf{checking} $[[out_res_term]]$ and $[[out_oarg]]$, leaving resources $[[out_nRp]]$}} by
+
+
+    -------------------------------------------------------------------- :: Empty
+    N ; nR |- calc _ using emp ~> bind cdot for emp and unit -| nR
+
+
+    ---------------------------------------------------------------- :: Return
+    N ; nR |- calc y using /\\ ( </  y dot Symbol_identifieri = termi // i /> ) ~> bind cdot for TERM and { </ Symbol_identifieri= termi // i /> } -| nR
+
+
+    smt ( N => term )
+    N ; nR |- calc y using res1 ~> bind res_bind for res_term and oarg -| nR'
+    -------------------------------------------------------------------------------------------------------- :: EndIf_True
+    N ; nR |- calc y using if term then res1 else res2 ~> bind res_bind for res_term and oarg -| nR'
+
+
+    smt ( N => neg term )
+    N ; nR |- calc y using res2 ~> bind res_bind for res_term and oarg -| nR'
+    -------------------------------------------------------------------------------------------------------- :: EndIf_False
+    N ; nR |- calc y using if term then res1 else res2 ~> bind res_bind for res_term and oarg -| nR'
+
+
+    N ; nR |- if term then res1 else res2 ~> x -| nR'
+    ---------------------------------------------------------------------------------------- :: EndIf_UnderDet
+    N ; nR |- calc _ using if term then res1 else res2 ~> bind cdot for x and unit -| nR'
+
+
+    N ; nR |- calc _ using if term then res1 else res2 ~> bind res_bind for res_term and unit -| nR'
+    N ; nR' |- calc y using res3 ~> bind res_bind3 for res_term3 and oarg -| nR''
+    ------------------------------------------------------------------------------------- :: MiddleIf
+    N ; nR |- calc y using ( if term then res1 else res2 ) * res3 ~> bind res_bind , res_bind3 for < res_term , res_term3 > and oarg -| nR''
+
+
+    smt ( N => term )
+    N ; nR |- calc y using res ~> bind res_bind for res_term and oarg -| nR'
+    ------------------------------------------------------------------------------------- :: Assert
+    N ; nR |- calc y using term * res ~> bind res_bind for < TERM , res_term > and oarg -| nR'
+
+
+    N ; nR |- pred_term ~> bind res_bind1 for res_term1 and oarg' -| nR'
+    N ; nR' |- calc y using oarg' / y' ( res ) ~> bind res_bind2 for res_term2 and oarg -| nR''
+    res_term eq pack ( oarg' , < res_term1 , res_term2 > )
+    -------------------------------------------------------------------------------------------------------------- :: LetPred
+    N ; nR |- calc y using exists y' : record </ Symbol_identifierj : base_type'j // j />.  pred_term ( y' ) * res ~> bind res_bind1 , res_bind2 for res_term and oarg  -| nR''
+
+
+    N ; nR |- qpred_term ~> bind res_bind1 for res_term1 and oarg' -| nR'
+    N ; nR' |- calc y using oarg' / y' ( res ) ~> bind res_bind2 for res_term2 and oarg -| nR''
+    res_term eq pack ( oarg' , < res_term1 , res_term2 > )
+    -------------------------------------------------------------------------------------------------------------- :: LetQPred
+    N ; nR |- calc y using exists y' : array record </ Symbol_identifierj : base_type'j // j /> . qpred_term ( y' ) * res ~> bind res_bind1 , res_bind2 for res_term and oarg  -| nR''
+
+
+defns
+  elab_is_expr :: 'Elab_' ::=
+
+  % DEFER out_action'
+  defn CLNnR |- action ~> bind out_res_bind for action' : out_norm_ret -| out_nRp :: :: Is_Action :: Is_Action_
+  {{ com memory action elaboration: given $[[CLNnR]]$, $[[action]]$ elaborates (via $[[out_res_bind]]$) to $[[action']] [[:]] [[out_norm_ret]]$, with $[[out_nRp]]$ leftover }} by
+
+
+    C ; L ; N ; nR |- create ( pval , ct ) Symbol_prefix => norm_ret
+    norm_ret eq sigma yp : loc . term /\ exists x : to_base ( ct ) . ( yp |- const ct false - ct -> x ) *o I
+    term eq representable ( ct * , yp ) /\ alignedI ( inj pval , yp )
+    ----------------------------------------------------------------------- :: Create
+    C ; L ; N ; nR |- create ( pval , ct ) Symbol_prefix ~> bind cdot for create ( pval , ct ) Symbol_prefix : norm_ret -| nR
+
+
+    % DEFER (not implemented)
+    % C ; L ; N ; cdot |-> create_readonly ( vp , ct , v ) Symbol_prefix => ??
+
+
+    % DEFER relax this rule - loading a (partially) undefined struct is fine
+    % DEFER (not implemented) - memory order
+    C |- pval0 => loc
+    N ; nR |- Owned < ct > ( inj pval0 , ) ~> bind res_bind for res_term and oarg -| nR'
+    smt ( N =>  oarg dot sym_init = const ct true )
+    norm_ret eq sigma y : to_base ( ct ) . y = oarg dot sym_value /\ pt *o I
+    -------------------------------------------------------------------------- :: Load
+    C ; L ; N ; nR |- load ( ct , pval0 , _mem_order , _rest ) ~> bind res_bind for load ( ct , pval0 , _mem_order , res_term ) : norm_ret -| nR'
+
+
+    % DEFER relax this rule - storing (partially) undefined struct preserves init
+    C |- pval0 => loc
+    C |- pval1 => to_base ( ct )
+    % DEFER (not implemented) - locking boolean
+    smt ( N => representable ( ct , inj pval1 ) )
+    N ; nR |- Owned < ct > ( inj pval0 , ) ~> bind res_bind for res_term and _t -| nR'
+    norm_ret eq sigma _ : unit . ( inj pval0 |- const ct true - ct -> inj pval1 ) *o I
+    ------------------------------------------------------------------------------------------- :: Store
+    C ; L ; N ; nR |- store ( _b , ct , pval0 , pval1 , _mem_order , _rest ) ~> bind res_bind for store ( _b , ct , pval0 , pval1 , _mem_order , res_term ) : norm_ret -| nR'
+
+
+    C |- pval0 => loc
+    N ; nR |- Owned < ct > ( inj pval , ) ~> bind res_bind for res_term and _t -| nR'
+    ---------------------------------------------------------------------------------------- :: Kill_Static
+    C ; L ; N ; nR |- kill ( static ct , pval , _rest ) ~> bind res_bind for kill ( static ct , pval , res_term ) : sigma _ : unit . I -| nR'
+
+
+    % DEFER (not implemented)
+    % C ; L ; N ; ?? |- kill ( dynamic , v ) => ??
+
+
+    % action {{ tex mem\_action }} :: 'M_' ::= {{ aux ty_loc _ }} {{ auxparam 'TY }} {{ com memory actions }}
+    %   | alloc ( ty_asym1 , ty_asym2 ) Symbol_prefix                                                         :: :: Alloc
+    %   | load ( ty_act , ty_asym , Cmm_memory_order )                                                        :: :: Load
+    %   | rmw ( ty_act ,  ty_asym1 , ty_asym2 , ty_asym3 , Cmm_memory_order1 , Cmm_memory_order2 )            :: :: RMW
+    %   | fence ( Cmm_memory_order )                                                                          :: :: Fence
+    %   | cmp_exch_strong ( ty_act , ty_asym1 , ty_asym2 , ty_asym3 , Cmm_memory_order1 , Cmm_memory_order2 ) :: :: CompareExchangeStrong
+    %   | cmp_exch_weak ( ty_act , ty_asym1 , ty_asym2 , ty_asym3 , Cmm_memory_order1 , Cmm_memory_order2 )   :: :: CompareExchangeWeak
+    %   | linux_fence ( Linux_linux_memory_order )                                                            :: :: LinuxFence
+    %   | linux_load ( ty_act , ty_asym , Linux_linux_memory_order )                                          :: :: LinuxLoad
+    %   | linux_store ( ty_act , ty_asym1 , ty_asym2 , Linux_linux_memory_order )                             :: :: LinuxStore
+    %   | linux_rmw ( ty_act , ty_asym1 , ty_asym2 , Linux_linux_memory_order )                               :: :: LinuxRMW
+
+
+  % DEFER out_memop'
+  defn CLNnR |- memop ~> bind out_res_bind for memop' : out_norm_ret -| out_nRp :: :: Is_Memop :: Is_Memop_
+  {{ com memory operation elaboration: given $[[CLNnR]]$, $[[memop]]$ elaborates to (via $[[out_res_bind]]$) to $[[memop']] [[:]] [[out_norm_ret]]$, with $[[out_nRp]]$ leftover }} by
+
+
+    % DEFER - how to infer provenances
+
+    % C |- pval1 => loc
+    % C |- pval2 => loc
+    % C ; L ; N ; R |- res_term => res
+    % N |- inj pval1 inEnv res
+    % N |- inj pval2 inEnv res
+    % -------------------------------- :: Rel_Binop
+    % C ; L ; N ; R |- res_term | pval1 rel_binop pval2 => sigma y : bool . y = ( inj pval1 ' rel_binop ' inj pval2 ) /\ res *o I
+
+
+    % C |- pval1 => loc
+    % C |- pval2 => loc
+    % C ; L ; N ; R |- res_term => res
+    % res eq Arr < ct > ( ptrt , _b , _b ) ( _t )
+    % N |- inj pval1 inEnv res
+    % N |- inj pval2 inEnv res
+    % -------------------------------- :: PtrDiff_Arr
+    % C ; L ; N ; R |- res_term | pval1 - array n ct - pval2 => sigma y : bool . y = ( inj pval1 - inj pval2 ) / sizeof ct /\ res *o I
+
+    % C |- pval1 => loc
+    % C |- pval2 => loc
+    % C ; L ; N ; R |- res_term => res
+    % N |- inj pval1 inEnv res
+    % N |- inj pval2 inEnv res
+    % -------------------------------- :: PtrDiff
+    % C ; L ; N ; R |- res_term | pval1 - ct - pval2 => sigma y : bool . y = ( inj pval1 - inj pval2 ) / sizeof ct /\ res *o I
+
+
+    % C |- pval => loc
+    % C ; L ; N ; R |- res_term => res
+    % N |- inj pval inEnv res
+    % ------------------------------- :: IntFromPtr
+    % C ; L ; N ; R |- intFromPtr ( res_term | ct1 , ct2 , pval ) => sigma y : integer . y = cast_ptr_to_int inj pval /\ res *o I
+
+
+    % C |- pval => integer
+    % C ; L ; N ; R |- res_term => res
+    % N |- inj pval inEnv res
+    % ----------------------------------- :: PtrFromInt
+    % C ; L ; N ; R |- ptrFromInt ( res_term | ct1 , ct2 , pval ) => sigma y : loc . y = cast_int_to_ptr inj pval /\ res *o I
+
+    % C |- pval1 => loc
+    % C |- pval2 => integer
+    % C ; L ; N ; R |- res_term => res
+    % res eq Arr < ct > ( ptrt , _b , _b ) ( _t )
+    % N |- inj pval1 inEnv res
+    % N |- inj pval1 +ptr ( inj pval2 * sizeof ct ) inEnv res
+    % ----------------------------------------------------- :: PtrArrayShift
+    % C ; L ; N ; R |- ptrArrayShift ( res_term | pval1 ,  ct , pval2 ) => sigma y : loc . y = inj pval1 +ptr ( inj pval2 * sizeof ct ) /\ res *o I
+
+
+    C ; L ; N ; nR |- memop => norm_ret
+    --------------------------------------------------------------------- :: Rest
+    C ; L ; N ; nR |- memop ~> bind cdot for memop : norm_ret -| nR
+
+
+  % DEFER out_is_expr'
+  defn CLNnR |- is_expr ~> bind out_res_bind for ( is_expr' ) : out_ret -| out_nRp :: :: Is :: Is_
+  {{ com indet. seq. expression elaboration: given $[[CLNnR]]$, $[[is_expr]]$ elaborates (via $[[out_res_bind]]$) to $[[is_expr']] [[:]] [[out_ret]]$, with $[[out_nRp]]$ leftover }} by
+
+
+    % DEFER (not implemented)
+    % memcpy ( pval1 , pval2 , pval3 )
+    % memcmp ( pval1 , pval2 , pval3 )
+    % realloc ( pval1 , pval2 , pval3 )
+    % va_start ( pval1 , pval2 )
+    % va_copy ( pval )
+    % va_arg ( pval , ty_act )
+    % va_end ( pval )
+
+
+    C ; L ; N ; nR |- memop ~> bind res_bind for memop' : norm_ret -| nR'
+    ----------------------------------------------------------------------------------------------- :: Memop
+    C ; L ; N ; nR |- MEMOP ( memop ) ~> bind res_bind for ( MEMOP ( memop' ) ) : norm_ret -| nR'
+
+
+    C ; L ; N ; nR |- action ~> bind res_bind for action' : norm_ret -| nR'
+    -------------------------------------------------------------------------------- :: Action
+    C ; L ; N ; nR |- Pos action ~> bind res_bind for ( Pos action' ) : norm_ret -| nR'
+
+
+    C ; L ; N ; nR |- action ~> bind res_bind for action' : norm_ret -| nR'
+    -------------------------------------------------------------------------------- :: Neg_Action
+    C ; L ; N ; nR |- Neg action ~> bind res_bind for ( Neg action' ) : norm_ret -| nR'
+
+
+    a eq xp : loc , </ xi : base_typei // i  /> , y : record </ Symbol_identifierj : base_type'j // j /> |-> res inEnv Globals
+    C |- pval => loc
+    indexed </ C |- pvali => base_typei // i />
+    N ; nR |- calc y using [ [ </ pvali / xi // i /> ] , pval / xp ] ( res ) ~> bind res_bind for res_term and oarg -| nR'
+    ret eq sigma _ : unit . a ( inj pval , </ inj pvali // i /> ) ( oarg ) *o I
+    ----------------------------------------------------------------------------------------------------------------------------------- :: Pack
+    C ; L ; N ; nR |- pack a ( pval , </ pvali // i /> ) ~> bind res_bind for ( done < Unit , fold res_term : a ( inj pval , </ inj pvali // i /> ) ( oarg ) > : ret ) : ret -| nR'
+
+
+    a eq xp : loc , </ xi : base_typei // i  /> , y : record </ Symbol_identifierj : base_type'j // j /> |-> res inEnv Globals
+    C |- pval => loc
+    indexed </ C |- pvali => base_typei // i />
+    N ; nR |- a ( inj pval , inj </ pvali // i /> ) ~> bind res_bind for res_term and oarg -| nR'
+    res' eq [ oarg / y , [ </ iargi / xi // i /> ] , ptrt / xp ] ( res )
+    ret eq sigma _ : unit . res' *o I
+    ------------------------------------------------------------------------------------------------ :: Unpack
+    C ; L ; N ; nR |- unpack a ( pval , </ pvali // i /> ) ~> bind fold ( x ) : a ( inj pval , </ inj pvali // i /> ) ( oarg ) = res_term for ( done < Unit , x > : ret ) : ret -| nR'
+
+
+    % </ C ; L ; N ; nRi |- texpri <= reti // i />
+    % -------------------------------------------------------------------------------------------- :: Unseq
+    % C ; L ; N ; </ nRi // i /> |- unseq ( </ texpri : reti // i /> ) => concat </ reti // i />
+
+defns
+  elab_spine :: 'Elab_' ::=
+
+  % DEFER out_spine'
+  defn CLNnR |- spine :; norm_fun ~> bind out_res_bind for spine' and out_norm_ret -| out_nRp :: :: Spine :: Spine_
+  {{ com spine elaboration: given $[[CLNnR]]$, arguments $[[spine]]$ and function type $[[norm_fun]]$ elaborate (via $[[out_res_bind]]$ ) to $[[spine']]$ and result type $[[out_norm_ret]]$ , with $[[out_nRp]]$ leftover }} by
+
+    -------------------------------------------------------------- :: Empty
+    C ; L ; N ; nR |- :; norm_ret ~> bind cdot for and norm_ret -| nR
+
+
+    C |- pval => base_type
+    C ; L ; N ; nR |- spine :; pval / x  ( norm_fun ) ~> bind res_bind for spine' and norm_ret -| nR'
+    ---------------------------------------------------------------------------------------------------------------- :: Comp
+    C ; L ; N ; nR |- pval , spine :; pi x : base_type . norm_fun ~> bind res_bind for pval , spine' and norm_ret -| nR'
+
+
+    % Could infer a pack here
+    N ; nR |- pred_term ~> bind res_bind for res_term and oarg -| nR'
+    C ; L ; N ; nR' |- spine :; norm_fun ~> bind res_bind' for spine' and norm_ret -| nR''
+    ------------------------------------------------------------------------------------------- :: LetPred
+    C ; L ; N ; nR |- spine :; forall y : record </ Symbol_identifierj : base_typej // j /> . pred_term ( y ) --o norm_fun ~> bind res_bind , res_bind' for oarg , res_term , spine' and norm_ret -| nR''
+
+
+    N ; nR |- qpred_term ~> bind res_bind for res_term and oarg -| nR'
+    C ; L ; N ; nR' |- spine :; oarg / y ( norm_fun ) ~> bind res_bind' for spine' and norm_ret' -| nR''
+    --------------------------------------------------------------------------------------------------------------- :: LetQPred
+    C ; L ; N ; nR |- spine :; forall y : array record </ Symbol_identifierj : base_typej // j /> . qpred_term ( y ) --o norm_fun ~> bind res_bind , res_bind' for oarg , res_term , spine' and norm_ret -| nR''
+
+
+    N ; nR |- calc _ using if term then res1 else res2 ~> bind res_bind for res_term and unit -| nR'
+    C ; L ; N ; nR' |- spine :; norm_fun ~> bind res_bind' for spine' and norm_ret -| nR''
+    ----------------------------------------------------------------------------------------------------------------------------------------------- :: MiddleIf
+    C ; L ; N ; nR |- spine :;  if term then res1 else res2 --o norm_fun ~> bind res_bind , res_bind' for res_term , spine' and norm_ret -| nR''
+
+
+    smt ( N => term )
+    C ; L ; N ; nR |- spine :; norm_fun ~> bind res_bind for spine' and norm_ret -| nR'
+    ------------------------------------------------------------------------------------------- :: Phi
+    C ; L ; N ; nR |- spine :;  term -) norm_fun ~> bind res_bind for spine' and norm_ret -| nR'
+
+
+defns
+  elab_seq_expr :: 'Elab_' ::=
+
+  % DEFER out_seq_expr'
+  defn CLNnR |- seq_expr ~> bind out_res_bind for seq_expr' : out_norm_ret -| out_nRp :: :: Seq :: Seq_
+  {{ com seq. expression elaboration: given $[[CLNnR]]$, $[[seq_expr]]$ elaborates (via $[[out_res_bind]]$) to $[[seq_expr']] [[:]] [[out_norm_ret]]$, with $[[out_nRp]]$ leftover }} by
+
+
+    Symbol_sym :  norm_fun eq </ xi // i /> |-> texpr  inEnv Globals
+    C ; L ; N ; nR |- spine :; norm_fun ~> bind res_bind for </ spine_elemi // i /> and norm_ret -| nR'
+    ---------------------------------------------------------------------------------------------------------------- :: CCall
+    C ; L ; N ; nR |- ccall ( ty_act , Symbol_sym , spine ) ~> bind res_bind for ccall ( ty_act , Symbol_sym , </ spine_elemi // i /> ) : norm_ret -| nR'
+
+
+    name :  norm_fun eq </ xi // i /> |-> texpr  inEnv Globals
+    C ; L ; N ; nR |- spine :; norm_fun ~> bind res_bind for </ spine_elemi // i /> and norm_ret -| nR'
+    ------------------------------------------------------------------------------------------------------------------ :: Proc
+    C ; L ; N ; nR |- pcall ( name , spine ) ~> bind res_bind for pcall ( name , </ spine_elemi // i /> ) : norm_ret -| nR'
+
+
+
+defns
+  elab_top :: 'Elab_' ::=
+
+  defn N |- res ~> out_res_pat :: :: Res_Pat :: Res_Pat_
+  {{ com resource normalisation by pat-matching: under constraints $[[N]]$ , $[[res]]$ will produces a normalised resourced context if it matches against $[[out_res_pat]]$ }} by
+
+
+    ---------- :: Empty
+    N |- emp ~> emp
+
+    ----------------- :: Phi
+    N |- term ~> TERM
+
+
+    smt ( N => term )
+    N |- res1 ~> res_pat
+    ---------------------------------------------- :: If_True
+    N |- if term then res1 else res2 ~> res_pat
+
+
+    smt ( N => neg term )
+    N |- res2 ~> res_pat
+    ---------------------------------------------- :: If_False
+    N |- if term then res1 else res2 ~> res_pat
+
+
+    ------------- :: Var
+    N |- norm_res ~> r
+
+
+    N |- res1 ~> res_pat1
+    N |- res2 ~> res_pat2
+    ------------------------------------------------ :: SepConj
+    N |- res1 * res2 ~> < res_pat1 , res_pat2 >
+
+
+    N |- x / y ( res ) ~> res_pat
+    ------------------------------------------------------ :: Pack
+    N |- exists y : base_type . res ~> pack ( x , res_pat )
+
+
+
+  defn N |- ret ~> out_ret_pat :: :: Ret_Pat :: Ret_Pat_
+  {{ com return-value normalisation by pattern-matching: under constraints $[[N]]$ , $[[ret]]$ will produce a normalised resourced context if it matches against $[[out_ret_pat]]$ }} by
+
+  --------- :: I
+  N |- I ~>
+
+
+  N |- res ~> res_pat
+  N |- ret ~> ret_pat
+  ------------------------------------------------------------ :: Res
+  N |- res *o ret ~> reso res_pat , ret_pat
+
+
+  N |- ret ~> ret_pat
+  ------------------------------------------------------------ :: Log
+  N |- exists x : base_type . ret ~> log x , ret_pat
+
+
+  % DEFER out_texpr
+  defn CLNnR |- is_texpr <= norm_ret ~> texpr :: :: Top_Is :: Top_Is_
+  {{ com top-level indet. seq. expression elaboration: given $[[CLNnR]]$, $[[is_texpr]]$ elaborates to $[[texpr]]$ }} by
+
+
+    % % DEFER (not implemented) - memory events
+    % C ; L ; N ; nR |- is_expr => ret1
+    % ret_pat : ret1 ~> C1 ; L1 ; N1 ; nR1
+    % C , C1 ; L , L1 ; N , N1 ; nR , nR1 |- texpr <= ret2
+    % ------------------------------------------------------- :: LetW
+    % C ; L ; N ; nR |- let weak ret_pat = is_expr in texpr <= ret2 ~> ...
+
+    C ; L ; N ; nR |- is_expr ~> bind res_bind for ( is_expr' ) : sigma y : base_type . ret -| nR'
+    N |- ret ~> ret_pat
+    N |- comp sym_or_pat , ret_pat : sigma y : base_type . ret ~> C1 ; L1 ; N1 ; nR1
+    C , C1 ; L , L' , L1 ; N , N' , N1 ; nR' , nR1 |- texpr <= norm_ret2 ~> texpr'
+    texpr'' eq insert_lets ( res_bind , let strong comp sym_or_pat , ret_pat = is_expr' in texpr' )
+    --------------------------------------------------------------------------------------------- :: LetS
+    C ; L ; N ; nR |- let strong comp sym_or_pat = is_expr in texpr <= norm_ret2 ~> texpr''
+
+  % DEFER out_tval'
+  defn CLNnR |- tval <= norm_ret ~> bind out_res_bind for tval' -| out_nRp :: :: Top_Val :: Top_Val_
+  {{ com top-level value elaboration: given $[[CLNnR]]$, $[[tval]]$ elaborates (via $[[out_res_bind]]$) to $[[tval']]$ with $[[out_nRp]]$ leftover }} by
+
+
+    C ; L ; N ; nR |- ret_terms :; to_fun norm_ret ~> bind res_bind for ret_terms' and I -| nR'
+    ----------------------------------------------------------------------------------------- :: Done
+    C ; L ; N ; nR |- done < ret_terms > <= norm_ret ~> bind res_bind for done < ret_terms' > -| nR'
+
+
+    smt ( N => false )
+    ----------------------------------------------------------------------------------------------- :: Undef
+    C ; L ; N ; nR |- undef ty_loc UB_name <= norm_ret ~> bind cdot for undef ty_loc UB_name -| nR
+
+
+  defn N ; nR ~> out_res_bind :: :: Simp_Ctx :: Simp_Ctx_
+  {{ com partial-simplification of resource context: given $[[N]]; [[nR]]$ can partially simplify the resources using $[[out_res_bind]]$ }} by
+
+    ---------------- :: Empty
+    N ; cdot ~> cdot
+
+    N |- simp ( norm_res ) ~> res'
+    N |- res' ~> res_pat
+    N ; nR ~> res_bind
+    ----------------------------------------------------------- :: Simp
+    N ; nR , x : norm_res ~> res_bind , res_pat : res' = x
+
+
+    N |- simp ( res ) ~> None
+    N ; nR ~> res_bind
+    --------------------------------- :: Skip
+    N ; nR , _ : norm_res ~> res_bind
+
+
+  % DEFER out_seq_texpr'
+  defn CLNnR |- seq_texpr <= norm_ret ~> seq_texpr' :: :: Top_Seq :: Top_Seq_
+  {{ com top-level seq. expression elaboration: given $[[CLNnR]]$, $[[seq_texpr]]$ checks against $[[norm_ret]]$ and elaborates to $[[seq_texpr']]$ }} by
+
+
+    C ; L ; N ; nR |- tval <= norm_ret ~> bind res_bind for tval' -| cdot
+    --------------------------------------------------------------------- :: TVal
+    C ; L ; N ; nR |- tval <= norm_ret ~> insert_lets ( res_bind , tval )
+
+
+    C ; L ; N |- pexpr => sigma y : base_type . term /\ I
+    sym_or_pat : base_type ~> C1 with term1
+    C , C1 ; L ; N , term1 / y ( term ) ; nR |- texpr <= norm_ret ~> texpr'
+    ---------------------------------------------------------------------------------- :: LetP
+    C ; L ; N ; nR |- let sym_or_pat = pexpr in texpr <= norm_ret ~> let sym_or_pat = pexpr in texpr'
+
+
+    C ; L ; N |- tpexpr <= pure_ret
+    sym_or_pat : base_type ~> C1 with term1
+    C , C1 ; L ; N , term1 / y ( term ) ; nR |- texpr <= norm_ret ~> texpr'
+    ----------------------------------------------------------------------------------- :: LetTP
+    C ; L ; N ; nR |- let sym_or_pat : pure_ret = tpexpr in texpr <= norm_ret ~> let sym_or_pat : pure_ret = tpexpr in texpr'
+
+
+    C ; L ; N ; nR1 |- seq_expr ~> bind res_bind for seq_expr' : sigma y : base_type . norm_ret1 -| nR1'
+    N |- norm_ret1 ~> ret_pat
+    N |- comp sym_or_pat , ret_pat : sigma y : base_type . norm_ret1 ~> C1 ; L1 ; N1 ; nR1''
+    C , C1 ; L , L1 ; N , N1 ; nR1' , nR1'' , nR2 |- texpr <= norm_ret2 ~> texpr'
+    seq_texpr'' eq insert_lets ( res_bind , let comp sym_or_pat , ret_pat = seq_expr' in texpr' )
+    ----------------------------------------------------------------------------------- :: Let
+    C ; L ; N ; nR1 , nR2 |- let comp sym_or_pat = seq_expr in texpr <= norm_ret2 ~> seq_texpr''
+
+
+    C ; L ; N ; nR' |- texpr1 <= sigma y : base_type . norm_ret1 ~> texpr1'
+    N |- norm_ret1 ~> ret_pat
+    N |- comp sym_or_pat , ret_pat : sigma y : base_type . norm_ret1 ~> C1 ; L1 ; N1 ; nR1
+    C , C1 ; L , L1 ; N , N1 ; nR , nR1 |- texpr2 <= norm_ret2 ~> texpr2'
+    seq_texpr'' eq let comp sym_or_pat , ret_pat : sigma y : base_type . norm_ret1 = texpr1' in texpr2'
+    ---------------------------------------------------------------------- :: LetT
+    C ; L ; N ; nR' , nR |- let comp sym_or_pat : sigma y : base_type . norm_ret1 = texpr1 in texpr2 <= norm_ret2 ~> seq_texpr''
+
+
+    C |- pval => base_type1
+    indexed pati : base_type1 ~> Ci with termi
+    indexed </ N , termi = inj pval ; nR ~> res_bindi // i />
+    indexed </ C , Ci ; L ; N , termi = inj pval ; nR |- insert_lets ( res_bindi , texpri ) <= norm_ret ~> texpr'i // i />
+    ------------------------------------------------------------------------------------------------------ :: Case
+    C ; L ; N ; nR |- case pval of </ | pati => texpri // i /> end <= norm_ret ~> case pval of </ | pati => texpr'i // i /> end
+
+
+    C |- pval => bool
+    N , inj pval = true ; nR ~> res_bind1
+    C ; L ; N , inj pval = true  ; nR1 |- insert_lets ( res_bind1 , texpr1 ) <= norm_ret ~> texpr1'
+    N , inj pval = false ; nR2 ~> res_bind2
+    C ; L ; N , inj pval = false ; nR2 |- insert_lets ( res_bind2 , texpr2 ) <= norm_ret ~> texpr2'
+    ------------------------------------------------------------------------- :: If
+    C ; L ; N ; nR |- if pval then texpr1 else texpr2 <= norm_ret ~> if pval then insert_lets ( res_bind1 , texpr1' ) else insert_lets ( res_bind2 , texpr2' )
+
+
+    Symbol_sym :  norm_fun eq </ xi // i /> |-> texpr inEnv Globals
+    C ; L ; N ; cdot |- </ xi = pvali // i /> :; norm_fun >> subs ; false /\ I
+    ----------------------------------------------------------------------------- :: Run
+    C ; L ; N ; cdot |- run Symbol_sym </ pvali // i /> <= false /\ I ~> run Symbol_sym </ pvali // i />
+
+
+    C ; L ; N ; nR |- is_texpr <= norm_ret ~> insert_lets ( res_bind , is_texpr' )
+    ------------------------------------------------------------------------------------------- :: Bound
+    C ; L ; N ; nR |- bound [ ty_int ] ( is_texpr ) <= norm_ret ~> insert_lets ( res_bind , bound [ ty_int ] ( is_texpr' ) )
+
+
+  % DEFER out_seq_texpr'
+  defn CLNnR |- texpr <= norm_ret ~> texpr' :: :: Top :: Top_
+  {{ com top-level expression elaboration: given $[[CLNnR]]$, $[[texpr]]$ checks against $[[norm_ret]]$ and elaborates to $[[texpr']]$ }} by
+
+    C ; L ; N ; nR |- seq_texpr <= norm_ret ~> seq_texpr'
+    ------------------------------------------------------------- :: Seq
+    C ; L ; N ; nR |- seq_texpr <= norm_ret ~> seq_texpr'
+
+
+    C ; L ; N ; nR |- is_texpr <= norm_ret ~> texpr
+    ---------------------------------------------------- :: Is
+    C ; L ; N ; nR |- is_texpr <= norm_ret ~> texpr
+
+

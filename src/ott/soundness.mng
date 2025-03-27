@@ -1,0 +1,3178 @@
+% vim: ft=tex
+% updated rules
+% PureExprArrayShift   ResSynPredOpsCongeal   ExplIsActionCreate        ExplIsMemopRelBinop
+% PureExprMemberShift  ResSynPredOpsImplode   ExplIsActionKillStatic    ExplIsMemopPtrDiffArr
+%                      ResSynPredOpsGlue                                ExplIsMemopPtrDiff
+%                      ResSynPredOpsInj                                 ExplIsMemopIntFromPtr
+%                                                                       ExplIsMemopPtrFromInt
+%                                                                       ExplIsMemopPtrArrayShift
+
+\PassOptionsToPackage{dvipsnames,usenames}{color}
+\documentclass[11pt]{article}%
+
+\usepackage{parskip}
+
+\usepackage[unicode]{hyperref}
+\hypersetup{colorlinks=true,linkcolor=OliveGreen,urlcolor=OliveGreen,citecolor=OliveGreen}
+\usepackage{amsmath,amssymb}%
+% supertabular package required if using the default grammar tabular
+\usepackage{supertabular}
+\usepackage[margin=1in]{geometry}
+
+% the un-wrapped (-tex_wrap false) generated LaTeX file for CN
+\include{_gen/cn_included}
+% the package that allows customized layout described in this document
+\usepackage{ott/ottlayout}
+% the automatically generated file (with our Makefile) to link the generated
+% LaTeX with the ottlayout package
+\include{_gen/cn_override}
+\include{_gen/cn_drulenames}
+
+\usepackage{titlesec}
+\newcommand{\sectionbreak}{\clearpage}
+
+\renewcommand{\thesection}{B\arabic{section}}
+\makeatletter
+\renewcommand{\l@section}{\@dottedtocline{1}{1.5em}{2.6em}}
+\renewcommand{\l@subsection}{\@dottedtocline{2}{4.0em}{3.6em}}
+\renewcommand{\l@subsubsection}{\@dottedtocline{3}{7.4em}{4.5em}}
+\makeatother
+
+\newtheorem{theorem}{Theorem}
+
+\usepackage{ott/pf2}
+\beforePfSpace{15pt, 10pt, 10pt, 10pt, 5pt, 2pt}
+\afterPfSpace{15pt, 10pt, 10pt, 10pt, 5pt, 2pt}
+\interStepSpace{15pt, 10pt, 10pt, 10pt, 5pt, 2pt}
+\pflongindent%
+
+\usepackage{verbatim}
+
+\makeatletter
+\renewcommand\tableofcontents{\@starttoc{toc}}
+\makeatother
+
+\usepackage{abstract}
+\renewcommand{\abstractname}{}    % clear the title
+\renewcommand{\absnamepos}{empty} % originally center
+
+\setcounter{tocdepth}{2}
+
+\newcommand{\lemmaref}[1]{lemma~\ref{#1} (\nameref{#1})}
+
+\newcommand{\Vip}[1]{\textsc{VIP-#1}}
+\newcommand{\VipAlloc}{\Vip{alloc}}
+\newcommand{\VipKill}{\Vip{kill}}
+\newcommand{\VipLoad}{\Vip{load}}
+\newcommand{\VipStore}{\Vip{store}}
+\newcommand{\VipDiffPtr}{\Vip{diff-ptr}}
+\newcommand{\VipArray}{\Vip{array}}
+\newcommand{\VipMember}{\Vip{member}}
+\newcommand{\VipRelOpPtr}{\Vip{rel-op-ptr}}
+\newcommand{\VipEqOpPtr}{\Vip{eq-op-ptr}}
+\newcommand{\VipRelOpInt}{\Vip{rel-op-int}}
+\newcommand{\VipArithBinOp}{\Vip{arith-bin-op}}
+\newcommand{\VipEqOpInt}{\Vip{eq-op-int}}
+\newcommand{\VipCopyAllocId}{\Vip{copy-alloc-id}}
+\newcommand{\VipCastIntToPtrLoc}{\Vip{cast-int-to-ptr-loc}}
+\newcommand{\VipCastIntToPtrInt}{\Vip{cast-int-to-ptr-int}}
+\newcommand{\VipCastPtrToInt}{\Vip{cast-ptr-to-int}}
+
+% Ignore TODOs for now
+\newcommand{\TODO}[1]{}
+\usepackage{wrapfig}
+
+\begin{document}
+\ottstyledefaults{premiselayout=justify}%
+
+\begin{center}
+{\Large Soundness proof of type checking\\[1em]
+\large Dhruv C. Makwana}
+\end{center}
+
+\vspace{1em}
+
+%% \begin{abstract}
+%% CN is a type system for the C programming language. It is defined (in
+%% a separate document) over an let-normalised version of the Core language of
+%% \href{https://github.com/rems-project/cerberus}{Cerberus}.
+%% This document
+%% contains a proof of soundness of the explicit system.
+%% \end{abstract}
+
+{\let\clearpage\relax \tableofcontents}
+
+\section{Commentary}
+
+Since Core is a first-order language, and we require that all functions and
+labels are annotated with the correct type, it suffices to only use purely
+syntactic techniques to prove soundness. This remains true despite the
+addition of linear types, systems with which are normally proved using logical
+relations~\TODO{CITE}. There are three main components to this: a joint
+progress-and-type-preservation proof for resource term reduction, a progress
+theorem and a type-preservation theorem.
+
+Let a resource be called \emph{normalised} if it is either a $[[ pred ]]$ or
+$[[ qpred ]]$. Let a resource context $[[ nR ]]$ be called normalised if it contains
+only normalised resources.  Even though the grammar of resources is richer, we
+can, in all the proofs relating to well-typed closed resource terms, assume
+the resource context to be normalised. This is fine because of the following
+lemma: if a well-typed resource term is closed, then the context in which it is
+well-typed can be normalised.
+
+Operational semantics for resource terms happens to be defined using big-step
+style; this makes its definition concise and modular, at the cost of making the
+proof of soundness of resource term reduction more complicated since it requires
+joint progress and type preservation. The configuration for the operational
+semantics is a pair of a state -- itself, a allocation history and heap --
+and an annotated and let-normalised Core program. This state is tracked in
+the typing rules via the initial logical variable context
+$[[ L0 ]] = [[ allocv : id_map ]]$, the constraint context $[[ N ]]$ and the resource
+context $[[ nR ]]$.
+
+\begin{wrapfigure}{r}{.6\textwidth}
+\vspace{-\baselineskip}
+\small
+\centering
+\cndrule{
+    \cnpremise{ [[ pred eq pred_term ( oarg ) ]] }%
+    \cnpremise{ [[ < h + h' ; res_pat = def > ~> < h'' ; subs > ]] }%
+}{%
+    [[ < h + { pred & def & h' } ; fold ( res_pat ) = pred_term > ~> < h'' ; subs > ]]
+}{}%
+\\[-\baselineskip]
+\cndrule{
+    \cnpremise{ [[ pred eq pred_term ( oarg ) ]] }%
+    \cnpremise{ [[ alloct | < h ; res_term > ||v < h1 ; def > ]] }%
+    \cnpremise{ [[ footprint_of def in h1 ~> h2 REM h3 ]] }%
+}{%
+    [[ alloct | < h ; fold res_term : pred > ||v < h3 + { pred & def & h2 }  ; pred_term > ]]
+}{}%
+\end{wrapfigure}
+%
+An allocation history is a map from allocation IDs to a base address and a length.
+A heap is a collection of normalised resources. Predicates in heaps are optionally
+tagged with their ``definition'' $[[ def ]]$  (a resource value of the type of
+the predicate body) and a sub-heap (of the resources used by the definition).
+This is to support folding and unfolding predicates in the operational
+semantics, and to capture the idea that predicate encapsulate their contents
+until opened.
+
+The types of heaps are normalised contexts; the rules for these are
+straightforward, except the fact a heap with a folded predicate requires there
+exists a context for which the resource value $[[ def ]]$ and $[[ heap ]]$ is
+well-typed. This becomes necessary for proving the progress of pattern-matching
+for the whole of the annotated and let-normalised Core.
+
+\begin{theorem}[Progress and type preservation for resource terms]
+For all resource terms ($[[ res_term ]]$) closed which type check or synthesise
+($[[ cdot ; L0 ; N ; nR |- res_term <= res ]]$), and well-typed states
+($[[ alloct ; h <= N ; nR ]]$), there exists a resource value ($[[ res_val ]]$),
+context ($[[ nR' ]]$) and heap ($[[ h' ]]$), such that: the value is well-typed
+($[[ cdot ; L0 ; N ; nR' |- res_val <= res ]]$); the heap is well-typed
+($[[ alloct |- h' <= nR' ]]$), and for all frame-heaps ($[[ f ]]$), the resource term
+reduces to the resource value without affecting the frame-heap
+($[[ alloct | < h + f ; res_term > ||v < h' + f ; res_val > ]]$).
+\end{theorem}
+
+The interesting case in the proof of this is folding a predicate; proving this
+case requires a notion of \emph{footprint} of a resource value: the subheap
+containing the resources referred to by the value.
+
+\begin{theorem}[Progress for the annotated and let-normalised Core]
+If a top-level expression ($[[ texpr ]]$) is well-typed
+($[[ cdot ; L0 ; N ; nR |- texpr <= ret ]]$) and all computational patterns
+in it are exhaustive, then either it is a value ($[[ tval ]]$), or it is
+unreachable, or for all well-typed states ($[[ s <= N ; nR ]]$)
+then there exists another state ($[[ s' ]]$) and expression ($[[ texpr' ]]$)
+which is stepped to ($[[ < s ; texpr > --> < s' ; texpr' > ]]$)
+in the operational semantics.
+\end{theorem}
+
+The assumption that all computational patterns are exhaustive is justified
+because they are generated by Cerberus. As one might expect, proving progress
+requires well-typed patterns successfully produce substitutions. However, this
+complicated by two things, the solution to which requires the introduction of a
+relation on SMT terms and resource types, $[[ res ~ res' ]]$ (to be read
+``$[[ res ]]$ is syntactically related to $[[ res' ]]$'').
+
+First is that the constraint term generated when typing a computational
+pattern (this is required to record, in the constraint context, which branch the
+type system is assuming it is in) is not exactly equal to the values it can
+match in the operational semantics (nor would we want it to be: the pattern
+$[[ Cons ( x1 , x2 ) ]]$ should match the value
+$[[ Cons ( pval1 , Cons ( pval2 , Nil base_type ( ) ) ) ]]$). Hence, we
+must weaken the notion of equality on types to $[[ ~ ]]$ relatedness, which
+links the two, so that during the proof can substitute the constraint term
+$[[ x1 cons x2 ]]$ at the type-level, and maintain a link to the corresponding
+value.
+
+Second is that the conditions of related conditional resource must
+remain SMT-equivalent (with reference to a constraint context), so that
+pattern-match typing and resource term typing are consistent.
+
+\begin{theorem}[Type preservation for the annotated and let-normalised Core]
+For all closed and well-typed top-level expressions
+($[[ cdot ; L0 ; N ; nR |- texpr <= ret ]]$),
+well typed states ($[[ alloct ; h <= N ; nR ]]$),
+frame-heaps ($[[ f ]]$),
+new states ($[[ alloct' ; h' ]]$),
+and new top-level expressions ($[[ texpr' ]]$),
+which are connected by a step in the operational semantics
+($[[ < alloct ; h + f ; texpr > -->  < alloct' ; heap ; texpr' > ]]$),
+if all top-level functions are annotated correctly,
+there exists a constraint context ($[[ N' ]]$),
+sub-heap ($[[ h' ]]$),
+and resource context ($[[ nR' ]]$),
+such that the constraint context is extended
+($[[ cdot ; L0 ; N ; cdot [= cdot ; L0 ; N' ; cdot ]]$),
+the frame is unaffected ($[[ heap ]] = [[ h' + f ]]$),
+the sub-state is well-typed ($[[ alloct' ; h' <= N' ; nR' ]]$),
+and the top-level expression too
+($[[ cdot ; L0 ; N' ; nR' |- texpr' <= ret ]]$).
+\end{theorem}
+
+A few things are noteworthy about the proof.
+
+First is that a frame-heap has to be explicitly passed around.  Whilst this is
+inconvenient, it becomes necessary in the \ExplTopSeqLetT{} case.
+% Don't think this applies any more.
+% The next is that proof that well-typed spines produce well-typed substitutions
+% require quantifying over the substitutions done \emph{so far}, so that the
+% inductive case matches up \emph{and} the substitution so far $[[ psi ]]$ shows
+% up in the conclusion, `closing' otherwise `open' substitution and terms.
+
+Second is in the lemma~\nameref{subsec:wt_values_pat_match}.
+There are two substitutions at play here. As an example, let
+the value being matched be $[[ Cons ( Unit , Nil unit ( ) ) , ret_terms ]]$ and
+the pattern be $[[ comp Cons ( x1 : unit , x2 : list unit ) , ret_pat ]]$.
+For the return type $[[ sigma y : list unit . ret ]]$, the type-level
+substitution will be $[[ Cons ( x1 , x2 ) / y ( ret )]]$.  However, at the
+term-level, the substitution will be $[[ [ Unit / x1 , Nil unit ( ) / x2 ] ]]$.
+\emph{Bridging this difference is the main reason for the $[[ ~ ]]$ relation}
+(the other is the use of $[[ to_fun ret ]]$).  \emph{The type-level substitution
+is open}, and only makes sense with respect to the variables introduced in the
+pattern-match.
+
+Lastly, we gather constraints throughout the proof, since these are accumulated
+by the typing rules, during pattern-matching, case and if. Given the constraint
+context is always well-formed (w.r.t.~to the initial logical variable context
+$[[ L0 ]] = [[ allocv : id_map ]]$), this means that after substituting in the
+allocation history, all the constraints involve no variables (hence the
+substitutions in \HeapTy{} and \AllocTy), and so will be trivially decidable.
+
+\section{Typing Judgements}\label{sec:type_judge}
+
+In this document, $[[ C ; L ; N ; R ]] [[|-]] J$ stands for all \emph{defined}
+judgements, listed in the remainder of this section after this paragraph.  In
+particular, it does not stand for $[[ C |- ty_mem_value => mem base_type ]]$
+or $[[ C ; L |- term => out_base_type ]]$. Furthermore, I assume that
+\lemmaref{sec:weakening} and \lemmaref{subsec:sub} (proven for the
+\emph{defined} judgements in the referenced sections) hold for these
+($[[ C |- ty_mem_value => mem base_type ]]$,
+and $[[ C ; L |- term => out_base_type ]]$) judgements.\\
+
+\cngrammartabular{
+\cnresXXjudge\cninterrule%
+\cnretXXjudge\cninterrule%
+\cnpatXXjudge\cninterrule%
+\cnexplXXpure\cninterrule%
+\cnexplXXres\cninterrule %
+\cnexplXXspine\cninterrule%
+\cnexplXXisXXexpr\cninterrule%
+\cnexplXXseqXXexpr\cninterrule%
+\cnexplXXtop\cnafterlastrule%
+}
+
+\section{Operational Semantics Judgements}\label{sec:opsem_judge}
+
+\grammartabularSTY{
+\cnsubsXXjudge\cninterrule%
+\cnpureXXopsemXXdefns\cninterrule%
+\cnopsemXXdefns\cnafterlastrule%
+}
+
+\section{Proof Judgements}\label{sec:proof_judge}
+
+Note that the definition of $[[ term ~ term' ]]$ is omitted/assumed.  It simply
+means that $[[ term ]]$ and $[[ term' ]]$ can be unified. Informally,
+$[[ term ~ term' ]]$ are defined recursively over the structure of SMT terms,
+using the standard definition of unification: variables unify with anything
+(modulo an occurs check), atoms unify if they are identical, compound terms
+unify if their constructors (except for $[[ Specified ]]$) and arity are
+identical, and their arguments unify recursively.\\
+
+\noindent
+To clarify the $[[ Specified ]]$ exception: $[[ term ~ inj Specified ( pval ) ]]$
+(and $[[ inj Specified ( pval ) ~ term  ]]$) iff $[[ term ~ inj pval ]]$.\\
+
+\noindent
+$[[ ~ ]]$ is additionally assumed to be an equivalence relation and preserved by
+substitution: if $[[ term ~ term' ]]$ and $[[ x ~ y ]]$ in $[[ term1 ~ term1' ]]$
+then $[[ term / x ( term1 ) ~ term' / y ( term1' ) ]]$.\\
+
+\noindent
+\textbf{Note: $[[ ~ ]]$ is \emph{only} used in the \emph{proof} of soundness,
+and \emph{not} in the \emph{explicit CN type system}.} There is no unification
+required in the type system, but the notion of related terms is required to
+argue for the soundness of pattern-matching
+(Section~\ref{subsec:wt_values_pat_match}~\nameref{subsec:wt_values_pat_match}).\\
+
+\grammartabularSTY{
+\cnmiscXXextra\cninterrule%
+\cnproofXXdefns\cnafterlastrule%
+}
+
+\raggedright%
+
+\section{Groups of Rules}
+
+\subsection{Typing rules with an \texorpdfstring{$[[smt ( N => qterm) ]]$}{smt ( Φ ⇒ qterm )} premise}\label{subsec:smt_premise_rules}
+
+\IGCmpEq, \IGCmpLt, \IGCmpGt, \QCmpPtrStepNeq, \QCmpIGNeq, \QCmpIArgNeq,
+\QCmpComparable, \ReqEqPPIArgNeq, \ReqEqPPEq, \ResEqPhi, \ResEqOrdDisj,
+\ResSimpRecIfTrue, \ResSimpRecIfFalse, \RetEqPhi, \PatResMatchIfTrue,
+\PatResMatchIfFalse, \PureExprArrayShift, \PureExprMemberShift,
+\PureExprAssertUndef, \PureTopValDone, \PureTopValUndef,
+\PureTopValError, \ResSynPredOpsCongeal, \ResSynPredOpsImplode,
+\ResSynPredOpsBreak, \ResSynPredOpsGlue, \ResSynPredOpsInj, \ResSynPredOpsChop,
+\ResChkPhi, \ResChkIfTrue, \ResChkIfFalse, \ExplIsActionLoad,
+\ExplIsActionStore, \ExplIsActionKillStatic, \ExplIsMemopRelBinop,
+\ExplIsMemopPtrDiffArr, \ExplIsMemopPtrDiff, \ExplIsMemopIntFromPtr,
+\ExplIsMemopPtrFromInt, \ExplIsMemopPtrArrayShift,
+\ExplTopValUndef, \ExplTopValError.
+
+\subsection{Typing rules which change the context}\label{subsec:ctx_change_rules}
+
+\subsubsection{Rules which add constraints}
+\ExplTopSeqIf.
+
+
+\subsubsection{Rules which add constraints and computational or logical variables}
+
+\ExplTopSeqLetP, \ExplTopSeqLetTP, \ExplTopSeqCase.\\
+
+\subsubsection{Rules which restrict the resource context}
+
+No-resource / ``pure'' rules: \IGCmpEq, \IGCmpLt, \IGCmpGt, \IGCmpNone,
+\QCmpNameNeq, \QCmpPtrStepNeq, \QCmpIGNeq, \QCmpIArgNeq, \QCmpComparable,
+\ReqEqPPNameNeq, \ReqEqPPIArgNeq, \ReqEqPPEq, \ReqEqQQEq, \ReqEqQQNeq,
+\ResEqEmp, \ResEqPhi, \ResEqPred, \ResEqQPred, \ResEqSepConj, \ResEqExists,
+\ResEqOrdDisj, \ResSimpRecIfTrue, \ResSimpRecIfFalse, \ResSimpRecSepConj,
+\ResSimpRecExists, \ResSimpRecNoChange, \SimpNoSimp, \SimpSimp, \RetEqEnd,
+\RetEqComp, \RetEqLog, \RetEqPhi, \RetEqRes, \PatCompNoSymAnnot,
+\PatCompSymAnnot, \PatCompNil, \PatCompCons, \PatCompTuple, \PatCompArray,
+\PatCompSpecified, \PatSymOrPatSym, \PatSymOrPatPat, \PatResMatchEmp,
+\PatResMatchPhi, \PatResMatchIfTrue, \PatResMatchIfFalse, \PatResMatchVar,
+\PatResMatchSepConj, \PatResMatchPack, \PatResMatchFold, \PatRetEmpty,
+\PatRetComp, \PatRetLog, \PatRetRes, \PatRetPhi, \PatRetAux, \PureValObjInt, \PureValObjPtr,
+\PureValObjArr, \PureValObjStruct, \PureValVar, \PureValObj, \PureValLoaded,
+\PureValUnit, \PureValTrue, \PureValFalse, \PureValList, \PureValTuple,
+\PureValCtorNil, \PureValCtorCons, \PureValCtorTuple, \PureValCtorArray,
+\PureValCtorSpecified, \PureValStruct, \PureExprVal, \PureExprCtorIvXOR, \PureExprArrayShift,
+\PureExprMemberShift, \PureExprNot, \PureExprArithBinop, \PureExprRelBinop,
+\PureExprBoolBinop, \PureExprCall, \PureExprAssertUndef, \PureExprBoolToInteger,
+\PureExprWrapI, \PureTopValUndef, \PureTopValError, \PureTopValDone,
+\MemopIsPtrValidForDeref, \MemopIsPtrWellAligned.\\[\baselineskip]
+
+Resource-mentioning rules: \ResSynEmp, \ResSynVar, \ResSynVarSimp, \ResSynPred,
+\ResSynQPred, \ResSynSepConj, \ResChkPhi, \ResChkSepConj, \ExplSpineRet,
+\ExplSpineRes, \ExplIsActionCreate, \ExplIsMemopRelBinop,
+\ExplIsMemopPtrDiffArr, \ExplIsMemopPtrDiff,
+\ExplIsMemopIntFromPtr, \ExplIsMemopPtrFromInt, \ExplIsMemopPtrArrayShift,
+\ExplTopValUndef, \ExplTopValError, \ExplTopSeqRun, \SubsChkEmpty, \SubsChkRes.
+
+\subsubsection{Rules which add constraints and restrict the resource context}
+\PureTopIf.
+
+\subsubsection{Rules which add constraints and variables, and
+restrict the resource context}
+
+\PureTopLet, \PureTopLetT, \PureTopCase, \ExplTopSeqLet, \ExplTopSeqLetT,
+\ExplTopIsLetS.
+
+\subsection{Value typing rules}\label{subsec:value_typing_rules}
+
+\PureValObjInt, \PureValObjPtr, \PureValObjArr, \PureValObjStruct, \PureValVar,
+\PureValObj, \PureValLoaded, \PureValUnit, \PureValTrue, \PureValFalse,
+\PureValTuple, \PureValCtorNil, \PureValCtorCons, \PureValCtorTuple,
+\PureValCtorArray, \PureValCtorSpecified, \PureValStruct, \PureTopValDone,
+\ResSynEmp, \ResSynVar, \ResSynVarSimp, \ResSynPred, \ResSynQPred,
+\ResChkPhi, \ExplTopValDone.
+
+
+\section{Weakening}\label{sec:weakening}
+
+If $[[ C ; L ; N ; R [= C' ; L' ; N' ; R' ]]$ and $[[ C ; L ; N ; R ]] [[|-]] J$ then
+$[[ C' ; L' ; N' ; R' ]] [[|-]] J$.
+
+\begin{proof}
+
+\assume{%
+\begin{pfenum}
+    \item $[[ C ; L ; N ; R [= C' ; L' ; N' ; R' ]]$.
+    \item $[[ C ; L ; N ; R ]] [[|-]] J$
+\end{pfenum}\leavevmode\\}
+
+\prove{$[[ C' ; L' ; N' ; R' ]] [[|-]] J$.\\[\baselineskip]}
+
+\step{<1>1}{\case{\PureValVar.}{%
+    \pf{} By \WeakConsComp{}, if $[[ x : base_type inEnv C]]$
+    then $[[ x : base_type inEnv C' ]]$.}}
+
+\step{<1>2}{\case{\nameref{subsec:smt_premise_rules} (see~\ref{subsec:smt_premise_rules}).}{}}
+
+\begin{proof}
+
+\assume{$[[smt ( N => qterm )]]$.\\}
+
+\prove{$[[smt ( N' => qterm )]]$.\\[\baselineskip]}
+
+\step{<2>1}{%
+    For all $[[term]]$, if $[[ term ]] \in [[ N ]]$
+    then $[[ term ]] \in [[ N' ]]$.\\
+    \pf{} By \WeakConsPhi.}
+
+\step{<2>2}{%
+    Any extra constraints in $[[N']]$ (by \WeakSkipPhi) would either be
+    irrelevant, redundant, or inconsistent.}
+
+\step{<2>3}{%
+    In all cases, $[[ smt ( N' => qterm ) ]]$ as required.}
+
+\end{proof}
+
+\step{<1>3}{\case{All remaining rules.}{}}
+
+    \begin{proof}
+
+    \step{<2>1}{%
+        $[[R]] = [[R']]$.\\
+        \pf{} Only \WeakConsRes{} exists.}
+
+    \step{<2>2}{%
+        All remaining rules are functorial in $[[C ; L ; N]]$,
+        so one can proceed by straightforward induction.}
+
+    \step{<2>3}{%
+        So $[[C' ; L' ; N' ; R']] [[|-]] J$ as required.}
+
+    \end{proof}
+
+\end{proof}
+
+\section{Substitution}
+
+\subsection{Substitutions preserve SMT results}\label{subsec:sub_smt}
+
+If $[[smt ( N => qterm )]]$
+and $[[ C ; L ; subs ( N ) ; R |- subs <= ( C' ; L' ; R' ) ]]$,
+then $[[smt ( subs ( N ) => subs < qterm > )]]$.
+
+\pf{} By the first assumption, $[[qterm]]$ holds for all (well-typed, ensured by
+the second assumption) instantiations of its free variables.
+
+\subsection{Substitutions can be split up}\label{subsec:sub_split}
+
+If $[[ C ; L ; N ; R |- subs <= ( C' ; L' ; R1' , R2' ) ]]$
+then $[[ exists ]] [[ R1 ]], [[ R2 ]], [[ subs1 ]], [[ subs2 ]].\
+[[ C ; L ; N ; R1 |- subs1 <= ( C' ; L' ; R1' ) ]] [[ /\ ]]
+[[ C ; L ; N ; R2 |- subs2 <= ( C' ; L' ; R2' ) ]]$.
+
+\begin{proof}
+
+\pfsketch{ By induction on the substitution. If $[[ subs ]] = [[ [ res_term / r , subs'] ]]$
+where $[[ r : res ]]$:\\[\baselineskip]}
+
+\step{<1>1}{%
+     Let $[[ R' ]]$ be such that $[[ C ; L ; N ; R' |- res_term <= res ]]$.}
+
+\step{<1>2}{%
+     Recursively split $[[ subs' ]]$ into $[[ subs1' ]]$ and $[[ R1'' ]]$;
+     $[[ subs2' ]]$ and $[[ R2'' ]]$.}
+
+\step{<1>3}{%
+     If $[[ r ]] \in [[ R1' ]]$, let $[[ subs1 ]] = [[ [ res_term / r , subs1' ] ]]$
+     and $[[ R1 ]] = [[ R' , R1'' ]]$ .}
+
+\step{<1>4}{%
+     If $[[ r ]] \in [[ R2' ]]$, let $[[ subs2 ]] = [[ [ res_term / r , subs2' ] ]]$.}
+
+\step{<1>5}{%
+    For other cases, both are treated exactly the same.}
+
+\end{proof}
+
+\subsection{Substitution}\label{subsec:sub}
+
+If $[[ C' ; L' ; N ; R' ]] [[|-]] J$,
+then $[[forall]]\ [[ C ]], [[ L ]], [[ R ]], [[ subs ]].\
+\left( [[ C ; L ; subs ( N ) ; R |- subs <= ( C' ; L' ; R' ) ]] \right) [[=>]]\allowbreak
+[[ C ; L ; subs ( N ) ; R ]] [[|-]] [[ subs ]] ( J ) $.\\[\baselineskip]
+
+For types, substitutions are only defined over resource types $[[res]]$, and
+return types $[[ret]]$, not base types $[[base_type]]$. Similarly, for terms,
+substitutions are only defined over expressions (including SMT terms
+$[[term]]$), but not (computational, resource or return) patterns.\\[\baselineskip]
+
+Since $[[ N ]]$ is scoped to $[[ C' ]] ; [[ L' ]]$, we must substitute
+over it as well as all the usual suspects on the right.\\[\baselineskip]
+
+Substitution of contexts is defined by substituting over each constraint in
+$[[ N ]]$. As a result, $[[ subs ( N1 , N2) ]] = [[ subs ( N1 ) , subs ( N2 ) ]]$,
+and if $[[ subs ( N ) ]] = [[ N1' , N2' ]]$ then
+$[[ exists ]] [[ N1 ]], [[ N2 ]] [[ . ]] [[ subs ( N1 , N2 ) ]] = [[ subs ( N1 ) , subs ( N2 ) ]]$.
+
+\begin{proof}
+\pfsketch{ Induction over the typing judgements.\\
+\begin{pfenum*}
+\item Variable rules: \PureValVar, \ResSynVarSimp, \ResSynVar.
+\item \ExplTopValDone: prove that $\cnkw{to\_fun}$ commutes with substitution.
+\item \nameref{subsec:ctx_change_rules} (see~\ref{subsec:ctx_change_rules}).
+\item Remaining rules by straightforward induction.
+\end{pfenum*}\leavevmode\\[\baselineskip]}
+
+\assume{%
+\begin{pfenum}
+    \item $[[ C' ; L' ; N ; R' ]] [[|-]] J$.\label{sub_a2}
+    \item Arbitrary $[[ C ]], [[ L ]], [[ R ]], [[ subs ]]$.
+    \item $[[ C ; L ; subs ( N ) ; R |- subs <= ( C' ; L' ; R' ) ]]$.\label{sub_a1}
+\end{pfenum}\leavevmode\\}
+
+\prove{$[[ C ; L ; subs ( N ) ; R ]] [[|-]] [[ subs ]] ( J )$.\\[\baselineskip]}
+
+\step{<1>1}{\case{\PureValVar.}{%
+    $[[ C' ; L' |- x => base_type ]]$\\
+    $[[ C ; L ; subs ( N ) ; R |- subs <= ( C' ; L' ; cdot ) ]]$.}}
+
+    \begin{proof}
+
+    \step{<2>1}{%
+        $[[ x : base_type inEnv C' ]]$.\\
+        \pf{} By inversion on assumption~\ref{sub_a2}.}
+
+    \step{<2>2}{%
+        $[[ R ]]$ is empty.\\
+        \pf{} \SubsChkRes{} is the only rule which could require a non-empty
+        resource context, and it is never used because $[[R']]$ is empty.}
+
+    \step{<2>3}{%
+        $[[ exists ]] [[ subs1 ]], [[ pval ]], [[subs2]], [[ base_type ]],
+        [[ C1 , C2 ]], [[ L1 , L2 ]].$
+        \begin{pfenum}
+        \item $[[ subs ]] = [[ [ subs1 , pval / x , subs2 ] ]]$
+        \item $[[ C ; L ; N ; cdot  |- subs1 <= ( C1 ; L1 ; cdot ) ]]$
+        \item $[[ C ; L ; N ; cdot  |- subs1 ( pval / x ) <= ( x : base_type ; cdot ; cdot ) ]]$
+        \item $[[ C |- subs1 ( pval ) => base_type ]]$
+        \item $[[ C ; L ; N ; cdot  |- subs1 ( pval / x ( subs2 ) ) <= ( C2 ; L2 ; cdot ) ]]$.
+        \end{pfenum}
+        \pf\ Repeated inversion on assumption~\ref{sub_a1} until the
+        \SubsChkComp{} responsible for adding $x$ (by \stepref{<2>1}, there must
+        be at least one).}
+
+    \step{<2>4}{%
+        Since $[[ subs ( x ) ]] = [[ subs1 ( pval ) ]]$, we are done.\\
+        \pf{} By $[[ C ; L |- subs ( x ) => base_type ]]$.}
+
+    \end{proof}
+
+\step{<1>2}{\case{\ResSynVarSimp.}{%
+    $[[ C' ; L' ; N ; r : res |- r => res' ]]$\\
+    $[[ C ; L ; subs ( N ) ; R |- subs <= ( C' ; L' ; r : res' ) ]]$.}}
+
+    \begin{proof}
+
+    \step{<2>1}{%
+        $[[ exists ]] [[ subs1 ]], [[ res_term ]], [[subs2]],
+        [[ C1 , C2 ]], [[ L1 , L2 ]].$
+        \begin{pfenum}
+        \item $[[ subs ]] = [[ [ subs1 , res_term / r , subs2 ] ]]$
+        \item $[[ C ; L ; subs ( N ) ; cdot  |- subs1 <= ( C1 ; L1 ; cdot ) ]]$
+        \item $[[ cdot ; L0 ; subs ( N ) ; R |- subs1 ( res_term / r ) <= ( cdot ; cdot ; r : subs1 ( res' ) ) ]]$
+        \item $[[ C ; L ; subs ( N ) ; R |- subs1 ( res_term ) <= subs1 ( res' ) ]]$
+        \item $[[ C ; L ; subs ( N ) ; cdot  |- subs1 ( res_term / r ( subs2 ) ) <= ( C2 ; L2 ; cdot ) ]]$.
+        \end{pfenum}
+        \pf{} Repeated inversion on assumption~\ref{sub_a1} until the
+        \SubsChkRes{} responsible for adding $[[ r ]]$ (there must be exactly one).}
+
+    \step{<2>2}{\suffices{%
+        \begin{pfenum}
+        \item $[[ subs ( r ) ]] = [[ subs1 ( res_term ) ]]$
+        \item $[[ subs ( res' ) ]] = [[ [ subs1 , res_term / r , subs2 ] ( res' ) ]] = [[  subs1 ( res' ) ]]$.
+        \end{pfenum}}}
+
+    \step{<2>3}{%
+        $[[ subs ( r ) ]] = [[ subs1 ( res_term ) ]]$.\\
+        \pf{} $[[ subs2 ( r ) = r]]$, because $[[ subs2 ]]$ does not mention any resource variables.}
+
+    \step{<2>4}{%
+        $[[ subs ( res' ) ]] = [[ [ subs1 , res_term / r , subs2 ] ( res' ) ]] = [[  subs1 ( res' ) ]]$.}
+        \begin{proof}
+
+        \step{<3>1}{%
+            $[[ [ subs1 , res_term / r , subs2 ] ( res' ) ]] = [[ [ subs1 , subs2] ( res' ) ]]$.\\
+            \pf{} Resource types do not refer to resource variables.}
+
+        \step{<3>2}{%
+            $[[ [ subs1 , subs2] ( res' ) ]] = [[ subs1 ( res ) ]]$.\\
+            \pf{} By $[[ cdot ; L0 ; subs ( N ) ; R |- subs1 ( res_term ) <= subs1 ( res' ) ]]$,
+            we know that $[[ res' ]]$ only refers to variables in $[[ C , C1 ]] ; [[ L , L1 ]]$.}
+
+        \end{proof}
+
+    \end{proof}
+
+\step{<1>3}{\case{\ResSynVar.}{%
+    $[[ C' ; L' ; N' ; r : res |- r => res ]]$\\
+    \pf{} Similar to \ResSynVarSimp}, but with $[[res']] = [[res]]$.}
+
+
+\step{<1>4}{\case{\ExplTopValDone.}{%
+\pfsketch{
+    $\cnkw{to\_fun}$ recursively maps
+    $[[ sigma ]]$ to $[[ pi ]]$,
+    $[[ exists ]]$ to $[[ forall ]]$,
+    $[[ /\ ]]$ to $[[ -) ]]$ and
+    $[[ *o ]]$ to $[[ --o ]]$,
+    and otherwise keeps any $[[ term ]]$ and $[[ res ]]$ the same.
+    Hence, $[[ subs ( to_fun ret ) ]] = [[ to_fun subs ( ret ) ]]$, and the case
+    proceeds by induction straightforwardly.}}}
+
+\step{<1>5}{\case{\nameref{subsec:ctx_change_rules}
+        (see~\ref{subsec:ctx_change_rules}), except for
+        \PureValVar, \ResSynVar, and \ResSynVarSimp.}{%
+    For brevity, I shall only go over \ExplTopSeqLet, as it is one of the most
+    general rules; one which adds constraints and variables, and restricts the
+    resource context.\\[\baselineskip]
+
+    \pfsketch{ The key idea is to apply \lemmaref{subsec:sub_split} as
+    required by the restrictions on the resource context. If a rule has a
+    $[[ smt ( N => qterm ) ]]$ premise, then apply \lemmaref{subsec:sub_smt}}.\\[\baselineskip]
+
+    $[[ C' ; L' ; N ; R1' , R2' |- let ret_pat = seq_expr in texpr <= ret2 ]]$\\
+    $[[ C ; L ; subs ( N ) ; R |- subs <= ( C' ; L' ; R1' , R2' ) ]]$.
+    \prove{ $[[ C ; L ; subs ( N ) ; R |- let ret_pat = subs ( seq_expr ) in subs ( texpr) <= subs ( ret2 ) ]]$.}}}
+
+    \begin{proof}
+
+    \step{<2>1}{%
+        $[[ exists ]] [[ ret1 ]], [[ C3 ]], [[ L3 ]] , [[ N3 ]] , [[ R3 ]]$.
+        \begin{pfenum}
+        \item $[[ C' ; L' ; N ; R1' |- seq_expr => ret1 ]]$
+        \item $[[ N |- ret_pat : ret1 ~> C3 ; L3 ; N3 ; R3 ]]$
+        \item $[[ C' , C3 ; L' , L3 ; N , N3 ; R2' , R3 |- texpr <= ret2 ]]$.
+        \end{pfenum}
+        \pf{} Inversion on assumption~\ref{sub_a2}.}
+
+    \step{<2>2}{%
+        \begin{pfenum}
+        \item $[[ forall ]] [[ C ]], [[ L ]] , [[ R1 ]] , [[ subs1 ]].$\\
+            $\left( [[ C ; L ; subs1 ( N ) ; R1 |- subs1 <= ( C' ; L' ; R1' ) ]] \right) [[=>]]$\\
+            $[[ C ; L ; subs1 ( N ) ; R1 |- subs1 ( seq_expr ) => subs1 ( ret1 ) ]]$.
+        \item $[[ forall ]] [[ C ]], [[ L ]] , [[ R4 ]] , [[ subs2 ]].$\\
+            $\left( [[ C ; L ; subs2 ( N ) ; R4 |- subs2 <= ( C' ; L' ; cdot ) ]] \right) [[=>]]$\\
+            $[[ subs2 ( N ) |- ret_pat : subs2 ( ret1 ) ~> C3 ; L3 ; subs2 ( N3 ) ; subs2 ( R3 ) ]]$.
+        \item $[[ forall ]] [[ C ]], [[ L ]] , [[ R2 ]] , [[ subs3 ]].$\\
+            $\left( [[ C ; L ; subs3 ( N , N3 ) ; R2 |- subs3 <= ( C' , C3 ; L' , L3 ; R2' , R3 ) ]] \right) [[=>]]$\\
+            $[[ C ; L ; subs ( N , N3 ) ; R2 |- subs ( texpr )  <= subs ( ret2 ) ]]$.
+        \end{pfenum}
+        \pf{} By induction on \stepref{<2>1}.}
+
+    \step{<2>3}{%
+        $[[ subs ]]$ and $[[ R ]]$ can be split up into $[[ subs1 ]]$
+        and $[[ R1 ]]$; $[[ subs2 ]]$; and $[[ subs3 ]]$ and $[[ R2 ]]$ such that:
+        \begin{pfenum}
+        \item $[[ R ]] = [[ R1 , R2 ]]$
+        \item $[[ C ; L ; subs ( N ) ; R1 |- subs1 <= ( C' ; L' ; R1' ) ]]$
+        \item $[[ C ; L ; subs ( N ) ; cdot        |- subs2 <= ( C' ; L' ; cdot ) ]]$
+        \item $[[ C ; L ; subs ( N ) ; R2 |- subs3 <= ( C' ; L' ; R2' ) ]]$.
+        \end{pfenum}
+        \pf{} By \lemmaref{subsec:sub_split}.}
+
+    \step{<2>4}{%
+        \begin{pfenum}
+        \item $[[ subs ( N ) ]] = [[ subs1 ( N ) ]] = [[ subs2 ( N ) ]] = [[ subs3 ( N ) ]]$
+        \item $[[ subs ( N3 ) ]] = [[ subs2 ( N3 ) ]] = [[ subs3 ( N3 ) ]]$
+        \item $[[ subs ( R3 ) ]] = [[ subs2 ( R3 ) ]] = [[ subs3 ( R3 ) ]]$.
+        \end{pfenum}
+        \pf{} All the substitutions differ only the resource-variable substitutions, but
+        $[[ term ]]$ and $[[ res ]]$ (and so $[[ ret ]]$ and $[[ N ]]$)
+        do not mention resource variables.}
+
+    \step{<2>5}{\suffices{%
+        $[[ exists ]] [[ R1 ]], [[ R2 ]], [[ ret1 ]], [[ C3 ]], [[ L3 ]] , [[ N3 ]] , [[ R3 ]]$.
+        \begin{pfenum}
+        \item $[[ R ]] = [[ R1 , R2 ]]$
+        \item $[[ C ; L ; subs ( N ) ; R1 |- subs ( seq_expr ) => ret1 ]]$
+        \item $[[ subs ( N ) |- ret_pat : subs ( ret1 ) ~> C3 ; L3 ; N3 ; R3 ]]$
+        \item $[[ C , C3 ; L , L3 ; subs ( N ) , N3 ; R2 , R3 |- subs ( texpr ) <= subs ( ret2 ) ]]$.
+        \end{pfenum}}
+        \pf{} By \ExplTopSeqLet.}
+
+    \step{<2>6}{%
+        \pflet{$[[ R1 ]]; [[ R2 ]]; [[ subs ( ret1 ) ]];
+        [[ C3 ]]; [[ L3 ]]; [[ subs ( N3 ) ]]; [[ subs ( R3 ) ]]$
+        be the witnesses for \stepref{<2>5}.}
+        \suffices{
+            \begin{pfenum}
+            \item $[[ R ]] = [[ R1 , R2 ]]$
+            \item $[[ C ; L ; subs ( N ) ; R1 |- subs ( seq_expr ) => subs ( ret1 ) ]]$
+            \item $[[ subs ( N ) |- ret_pat : subs ( ret1 ) ~> C3 ; L3 ; subs ( N3 ) ; subs ( R3 ) ]]$
+            \item $[[ C , C3 ; L , L3 ; subs ( N ) , subs ( N3 ) ; R2 , subs ( R3 ) |- subs ( texpr ) <= subs ( ret2 ) ]]$.
+            \end{pfenum}}}
+
+    \step{<2>7}{%
+        We are done.\\
+        \pf{} Apply \stepref{<2>2} with \stepref{<2>3} and \stepref{<2>4}.}
+
+    \end{proof}
+
+
+\step{<1>6}{\case{All remaining rules.}{%
+    \pfsketch\ By straightforward induction. If the rule has a
+    $[[ smt ( N => qterm ) ]]$ premise, apply \lemmaref{subsec:sub_smt}.}}
+
+\end{proof}
+
+\section{Resource Term Lemmas}
+
+\subsection{Definition: Normalised contexts}
+
+A resource context is \emph{normalised} is it contains only predicates and quantified
+predicates.
+
+\subsection{Resource contexts typing closed terms can be normalised}\label{subsec:res_ctx_closed_norm}
+
+\begin{proof}
+
+\assume{\begin{pfenum}
+    \item Arbitrary $[[ res ]]$
+    \item Closed (no free-variables) $[[ res_term ]]$
+    \item $[[ cdot ; L0 ; N ; R |- res_term <= res ]]$ (or synthesising)
+\end{pfenum}\leavevmode\\}
+
+\prove{ $[[ exists ]] [[ nR ]] [[.]] [[ R ]] = [[ nR ]]$.\\[\baselineskip]}
+
+\pfsketch{ By induction on the typing judgement.\\[\baselineskip]}
+
+\step{<1>1}{\case{\ResSynEmp, \ResSynPred, \ResSynQPred, \ResChkPhi.}{%
+    \pf{} $[[ nR ]] = [[ R ]]$ (the context is already normalised).}}
+
+\step{<1>2}{\case{\ResSynVar, \ResSynVarSimp}{%
+    \pf{} Impossible cases ($[[ res_term ]]$s are not closed).}}
+
+\step{<1>3}{\case{All remaining cases (\ResSynPredOpsIterate,
+        \ResSynPredOpsCongeal, \ResSynPredOpsExplode, \ResSynPredOpsImplode,
+        \ResSynPredOpsBreak, \ResSynPredOpsGlue, \ResSynPredOpsInj, \ResSynPredOpsChop,
+        \ResSynPredOps, \ResSynFold, \ResSynSepConj, \ResChkPack, \ResChkSepConj,
+        \ResChkIfTrue, \ResChkIfFalse, \ResChkSwitch).\\}{%
+    \pf{} By induction.}}
+
+\end{proof}
+
+\subsection{Non-conditional resources determine context and values}\label{subsec:non_cond_res_det_ctx_val}
+
+This is a simple inversion lemma.
+
+\begin{proof}
+
+\assume{\begin{pfenum}
+    \item Arbitrary $[[ res_val ]]$
+    \item $[[ res ]] [[ != ]] [[ if term then res1 else res2 ]]$.
+    \item $[[ cdot ; L0 ; N ; nR |- res_val <= res ]]$ (or synthesising)
+    \end{pfenum}\leavevmode\\}
+
+\step{<1>1}{The typing assumption cannot be any of: \ResSynVar, \ResSynVarSimp,
+    \ResSynFold, \ResSynPredOpsIterate, \ResSynPredOpsCongeal,
+    \ResSynPredOpsExplode, \ResSynPredOpsImplode, \ResSynPredOpsBreak,
+    \ResSynPredOpsGlue, \ResSynPredOpsInj, \ResSynPredOpsChop,
+    \ResSynPredOps.\\
+    \pf{} $[[ res_term ]]$s in these rules are not values.}
+
+\step{<1>2}{If $[[ res ]] = [[ emp ]]$, then $[[ nR ]] = [[ cdot ]]$
+    and $[[ res_val ]] = [[ emp ]]$.\\
+    \pf{} By inversion, the assumption must be \ResSynEmp{} (and optionally \ResChkSwitch).}
+
+\step{<1>3}{If $[[ res ]] = [[ term ]]$, then $[[ nR ]] = [[ cdot ]]$
+    and $[[ res_val ]] = [[ TERM ]]$.\\
+    \pf{} By inversion, the assumption must be \ResChkPhi.}
+
+\step{<1>4}{If $[[ res ]] = [[ pred_term ( oarg ) ]]$, then $[[ nR ]] = [[ _ : pred_term ( oarg ) ]]$
+    and $[[ res_val ]] = [[ pred_term ]]$.\\
+    \pf{} By inversion, the assumption must be \ResSynPred{} (and optionally \ResChkSwitch).}
+
+\step{<1>5}{If $[[ res ]] = [[ qpred_term ( oarg ) ]]$, then $[[ nR ]] = [[ _ : qpred_term ( oarg ) ]]$
+    and $[[ res_val ]] = [[ qpred_term ]]$.\\
+    \pf{} By inversion, the assumption must be \ResSynQPred{} (and optionally \ResChkSwitch).}
+
+\step{<1>6}{If $[[ res ]] = [[ res1 * res2 ]]$, then $[[ nR ]] = [[ nR1 , nR2 ]]$
+    and $[[ res_val ]] = [[ < res_val1 , res_val2 > ]]$.\\
+    \pf{} By inversion, the assumption must be \ResSynSepConj{} (and optionally \ResChkSwitch),
+    or \ResChkSepConj.}
+
+\step{<1>7}{If $[[ res ]] = [[ exists y : base_type . res ]]$,
+    then $[[ res_val ]] = [[ pack ( oarg , res_val' )]]$.\\
+    \pf{} By inversion, the assumption must be \ResChkPack.}
+
+\end{proof}
+
+\subsection{Normalised resource context determines structure of heap}\label{subsec:norm_ctx_det_heap}
+
+This is as simple inversion lemma.
+
+\begin{proof}
+
+\assume{$[[ alloct |- h <= nR ]]$, $[[ subs0 ]] = [[ alloct / allocv ]]$.\\}
+
+\step{<1>1}{If $[[ nR ]] = [[ cdot ]]$, then $[[ h ]] = [[ cdot ]]$.\\
+    \pf{} By inversion, the assumption must be \HeapEmpty.}
+
+\step{<1>2}{If $[[ pred ]] = [[ ptrt |- init - ct -> valuet ]]$, $[[ nR ]] = [[ _ : pred ]]$,
+    then $[[ h ]] = [[ { pred' & None } ]]$ for $[[ cdot |- subs0 ( pred)  eq subs0 ( pred' ) ]]$.\\
+    \pf{} By inversion, the assumption must be \HeapPredOwned{}.}
+
+\step{<1>3}{If $[[ nR ]] = [[ _ : pred ]]$, then $[[ h ]] = [[ { pred' & def & h' } ]]$.\\
+    for $[[ cdot |- subs0 ( pred ) eq subs0 ( pred' ) ]]$.\\
+    \pf{} By inversion, the assumption must be \HeapPredOther.}
+
+\step{<1>4}{If $[[ qpred ]] = [[ *S x . iguard => ptrt |- ct -> oarg ]]$, $[[ nR ]] = [[ _ : qpred ]]$,
+    then $[[ h ]] = [[ { qpred' & cdot } ]]$ for $[[ cdot |- subs0 ( qpred ) eq subs0 ( qpred' ) ]]$.\\
+    \pf{} By inversion, the assumption must be \HeapQPredOwned.}
+
+\step{<1>5}{If $[[ nR ]] = [[ _ : qpred ]]$, then $[[ h ]] = [[ { qpred' & arr_def_heap } ]]$
+    for $[[ cdot |- subs0 ( qpred ) eq subs0 ( qpred' ) ]]$.\\
+    \pf{} By inversion, the assumption must be \HeapQPredOther.}
+
+\step{<1>6}{If $[[ nR ]] = [[ nR1 , nR2 ]]$, then $[[ h ]] = [[ h1 + h2 ]]$,
+    where $[[ alloct |- h1 <= nR1 ]]$ and $[[ alloct |- h2 <= nR2 ]]$.\\
+    \pf{} By inversion, the assumption must be \HeapConcat.}
+
+\end{proof}
+
+\subsection{Well-typed resource value determines its footprint}\label{subsec:wt_res_val_det_footprint}
+
+\begin{proof}
+
+\assume{%
+    $[[ cdot ; L0 ; N ; nR |- res_val <= res ]]$ (or synthesising)\\
+    $[[ alloct |- h <= nR ]]$.\\}
+
+\prove{%
+    $[[ forall ]] [[ f ]] [[.]] [[ footprint_of res_val in h + f ~> h REM f ]]$.\\[\baselineskip]}
+
+\pfsketch{ By induction on the typing judgement.\\[\baselineskip]}
+
+\step{<1>1}{\case{\ResSynEmp{} or \ResChkPhi}{%
+    $[[ nR ]] = [[ cdot]]$ and so $[[ h ]] = [[ cdot ]]$ by lemma~\ref{subsec:norm_ctx_det_heap}.\\
+    \pf{} \FootprintEmp{} or \FootprintTerm{} respectively.}}
+
+\step{<1>2}{\case{\ResSynPred{} or \ResSynQPred}{%
+    $[[ nR ]] = [[ _ : pred_term ( oarg ) ]] \textrm{ or } [[ _ : qpred_term ( oarg ) ]]$, and so
+    $[[ h ]] = [[ { pred_term ( oarg ) & opt_def_heap } ]] \textrm{ or }
+    [[ { qpred_term ( oarg ) & arr_def_heap } ]]$ by lemma~\ref{subsec:norm_ctx_det_heap}.\\
+    \pf{} \FootprintPred{} or \FootprintQPred{} respectively.}}
+
+\step{<1>3}{\case{$[[ pack ( oarg , res_val' ) ]]$.}{%
+    \pf{} By induction.}}
+
+\step{<1>4}{\case{\FootprintSepPair.}{%
+    $[[ res_val ]] = [[ < res_val1 , res_val2 >]]$,\\
+    $[[ nR ]] = [[ nR1 , nR2 ]]$, and so\\
+    $[[ h ]] = [[ h1 + h2 ]]$ where $[[ alloct |- h1 <= nR1 ]]$ and $[[ alloct |- h2 <= nR2 ]]$
+    by lemma~\ref{subsec:norm_ctx_det_heap}.}}
+
+    \begin{proof}
+
+    \step{<2>1}{%
+        $[[ footprint_of res_val1 in h1 + h2 + f ~> h1 REM h2 + f ]]$.\\
+        \pf{} Instantiate inductive hypothesis with $[[ h2 + f]]$.}
+
+    \step{<2>2}{%
+        $[[ footprint_of res_val1 in h2 + f ~> h2 REM f ]]$.\\
+        \pf{} Instantiate inductive hypothesis with $[[ f  ]]$.}
+
+    \end{proof}
+
+\end{proof}
+
+\subsection{Progress and type preservation for resource terms}\label{subsec:res_term_progress}
+
+\begin{proof}
+
+\assume{\begin{pfenum}
+    \item Closed (no free-variables) $[[ res_term ]]$
+    \item $[[ cdot ; L0 ; N ; nR |- res_term <= res ]]$ (or synthesising)
+    \item $[[ alloct ; h <= N ; nR ]]$
+    \end{pfenum}\leavevmode\\}
+
+\prove{%
+    $[[ exists ]] [[ res_val ]] , [[ nR']] , [[ h' ]] [[.]] $
+    \begin{pfenum}
+    \item $[[ cdot ; L0 ; N ; nR'  |- res_val <= res ]]$ (or synthesising respectively)
+    \item $[[ alloct |- h' <= nR' ]]$
+    \item $[[ forall ]] [[ f ]] [[.]] [[ alloct | < h + f ; res_term > ||v < h' + f ; res_val > ]]$.
+    \end{pfenum}\leavevmode\\[\baselineskip]}
+
+\pfsketch{ Induction on the resource term typing assumption. The type
+    dictates the value and context, the latter of which dictates
+    the shape of the heap.\\[\baselineskip]}
+
+Because of this direction of information, you cannot prove that
+$[[ forall ]] [[ nR' ]] [[.]] ( [[ alloct |- h' <= nR' ]] )
+[[ => ]] ( [[ cdot ; L0 ; N ; R'' |- res_val' <= res ]] )$.
+The converse is already true by the composition of
+lemmas~\ref{subsec:non_cond_res_det_ctx_val} and~\ref{subsec:norm_ctx_det_heap}.
+You need the existential, so that you can provide it as a witness when proving
+heap typing for folded predicates, which you need to use in proving unfolding
+predicates in pattern-matching.\\[\baselineskip]
+
+\step{<1>1}{\case{\ResSynPredOpsIterate}{%
+    \pflet{%
+        $[[ res_term ]]  = [[ iterate ( res_term' , n ) ]]$\\
+        $[[ qpred_term ]] = [[ { x ; z_zero =< x =< n - z_one . Owned < ct > ( ptrt + sizeof ct , ) } ]]$\\
+        $[[ res ]]       = [[ qpred_term ( oarg ) ]]$\\
+        $[[ pred_term ]] = [[ Owned < array n ct > ( ptrt , ) ]]$\\
+        $[[ res' ]]      = [[ pred_term ( oarg' ) ]]$.}}}
+
+    \begin{proof}
+
+    \step{<2>1}{%
+        $[[ cdot ; L0 ; N ; nR |- res_term' => res' ]]$.\\
+        \pf{} By inversion on the typing assumption.}
+
+    \step{<2>2}{%
+        $[[ exists ]] [[ h'' ]] , [[ nR'' ]] , [[ res_val' ]] [[.]] $
+        \begin{pfenum}
+        \item $[[ cdot ; L0 ; N ; R'' |- res_val' => res' ]]$
+        \item $[[ alloct |- h' <= nR' ]]$
+        \item $[[ forall ]] [[ f ]] [[.]] [[ alloct | < h + f ; res_term' > ||v < h'' + f ; res_val' > ]]$.
+        \end{pfenum}
+        \pf{} By the induction hypothesis.}
+
+    \step{<2>3}{$[[ res_val' ]] = [[ pred_term ]]$ and $[[ nR'' ]] = [[ _ : res' ]]$.\\
+        \pf{} By \stepref{<2>2} and \lemmaref{subsec:non_cond_res_det_ctx_val}.}
+
+    \step{<2>4}{%
+        $[[ h'' ]] = [[ { pred_term ( oarg' ) & None } ]]$.\\
+        \pf{} By \stepref{<2>3} and \lemmaref{subsec:norm_ctx_det_heap}.}
+
+    \step{<2>5}{\pflet{%
+        $[[ res_val ]] = [[ { x ; z_zero =< x =< n - z_one . Owned< ct > ( ptrt + sizeof ct , ) } ]]$\\
+        $[[ nR' ]] = [[ _ : qpred_term ( oarg ) ]]$ and $[[ h' ]] = [[ { qpred_term ( oarg ) & cdot } ]]$.}
+        \pf{} Prove value typing using \ResSynQPred; heaping typing using \HeapQPredOwned; reduction using \PredOpsResVIterate.}
+
+    \end{proof}
+
+\step{<1>2}{\case{\ResSynPredOpsCongeal}{%
+    \pf{} Like \ResSynPredOpsIterate, but with:\\
+    $[[ res_term ]]= [[ congeal ( res_term' , n ) ]]$\\
+    $[[ res ]]     = [[ pred_term ( oarg ) ]]$
+    where $[[ pred_term ]] = [[ Owned < array n ct > ( ptrt , ) ]]$\\[\baselineskip]
+
+    $[[ res' ]]    = [[ qpred_term ( oarg' ) ]]$
+    where $[[ qpred_term ]] = [[ { x ; iguard . Owned < ct > ( ptrt + sizeof ct , ) } ]]$\\
+    $[[ res_val' ]] = [[ qpred_term ]]$
+    and $[[ nR'' ]] = [[ _ : res' ]]$,
+    by lemma~\ref{subsec:non_cond_res_det_ctx_val}\\[\baselineskip]
+
+    Let $[[ res_val ]] = [[ pred_term ]]$,
+    $[[ nR' ]] = [[ _ : pred_term ( oarg ) ]]$ and
+    $[[ h' ]] = [[ { pred_term ( oarg ) & None } ]]$
+    to prove:
+    value typing using \ResSynPred;
+    heap typing using \HeapPredOwned;
+    reduction using \PredOpsResVCongeal.}}
+
+\step{<1>3}{\case{\ResSynPredOpsExplode}{%
+    \pf{} Like \ResSynPredOpsIterate, but with:\\
+    $[[ res_term ]]= [[ explode ( res_term' ) ]]$\\
+    $[[ res ]]     = [[ *S ( </ pred_termi ( oargi ) // i /> ) ]]$
+    where $[[ pred_termi ]] = [[ Owned < cti > ( ptrt +ptr offsetof ty_tag Symbol_identifieri , ) ]]$\\[\baselineskip]
+
+    $[[ res' ]]    = [[ pred_term ( oarg ) ]]$
+    where $[[ pred_term ]] = [[ Owned< struct ty_tag > ( ptrt , ) ]]$\\
+    $[[ res_val' ]] = [[ pred_term ]]$
+    and $[[ nR'' ]] = [[ _ : pred_term ( oarg ) ]]$,
+    by lemma~\ref{subsec:non_cond_res_det_ctx_val}\\[\baselineskip]
+
+    Let $[[ res_val ]] = [[ < </ pred_termi // i /> > ]]$,
+    $[[ nR' ]] = [[ </ _ : pred_termi ( oargi ) // i /> ]]$
+    and $[[ h' ]] = [[ </ { pred_termi ( oargi ) & None } // i /> ]]$, to prove:
+    value typing using \ResSynPred{} and \ResSynSepConj;
+    heap typing using \HeapConcat{} and \HeapPredOwned;
+    reduction using \PredOpsResVExplode.}}
+
+\step{<1>4}{\case{\ResSynPredOpsImplode}{%
+    \pf{} Like \ResSynPredOpsIterate, but with:\\
+    $[[ res_term ]] = [[ implode ( res_term' , ty_tag ) ]]$\\
+    $[[ res ]] = [[ pred_term ( oarg ) ]]$
+    where $[[ pred_term ]] = [[ Owned < struct ty_tag > ( ptrt , ) ]]$\\[\baselineskip]
+
+    $[[ res' ]] = [[ *S ( </ pred_termi ( oargi ) // i /> ) ]]$
+    where $[[ pred_termi ]] = [[ Owned < cti > ( ptrt +ptr offsetof ty_tag Symbol_identifieri , ) ]]$\\
+    $[[ res_val' ]] = [[ </ pred_termi // i /> ]]$
+    and $[[ nR'' ]] = [[ </ _ : pred_termi ( oargi ) // i /> ]]$,
+    by lemma~\ref{subsec:non_cond_res_det_ctx_val}\\[\baselineskip]
+
+    Let $[[ res_val ]] = [[ Owned < struct ty_tag > ( ptrt , ) ]]$,
+    $[[ nR' ]] = [[ _ : pred_term ( oarg ) ]]$,
+    and $[[ h' ]] = [[ { pred_term ( oarg ) & None } ]]$, to prove:
+    value typing using \ResSynPred;
+    heap typing using \HeapPredOwned;
+    reduction using \PredOpsResVImplode.}}
+
+\step{<1>5}{\case{\ResSynPredOpsBreak}{%
+    \pf{} Like \ResSynPredOpsIterate, but with:\\
+    $[[ res_term ]]= [[ break ( res_term' , term ) ]]$\\
+    $[[ res ]] = [[ qpred_term ( oarg ) * pred_term ( oarg [ term ] ) ]]$
+    where $[[ qpred_term ]] = [[ { x ; iguard /\ ( x != term ) . a ( ptrt + step , iargs ) } ]]$
+    and $[[ pred_term ]] = [[ a ( ptrt + ( term * step ) , term / x ( iargs ) ) ]]$\\[\baselineskip]
+
+    $[[ res' ]] = [[ qpred_term' ( oarg ) ]]$
+    where $[[ qpred_term' ]] = [[ { x ; iguard . a ( ptrt + step , iargs ) } ]]$\\
+    $[[ res_val' ]] = [[ qpred_term' ]]$,
+    and $[[ nR'' ]] = [[ _ : qpred_term' ( oarg ) ]]$,
+    by lemma~\ref{subsec:non_cond_res_det_ctx_val}.\\[\baselineskip]
+
+    If predicate is $[[ Owned < ct > ]]$, $[[ h'' ]] = [[ { qpred_term' ( oarg ) & cdot } ]]$
+    (by lemma~\ref{subsec:norm_ctx_det_heap}),
+    so let $[[ h' ]] = [[ { qpred_term ( oarg ) & cdot } + { pred_term ( oarg [ term ] ) & None } ]]$
+    (by $[[ cdot [ term ] ]] = [[ None ]]$).\\
+    Otherwise, $[[ h'' ]] = [[ { qpred_term' ( oarg ) & arr_def_heap } ]]$,
+    (again by lemma~\ref{subsec:norm_ctx_det_heap}),
+    so let $[[ h' ]] = [[ { qpred_term ( oarg ) & arr_def_heap } + { pred_term ( oarg [ term ] ) & arr_def_heap [ term ] } ]]$.\\[\baselineskip]
+
+    Let $[[ res_val ]] = [[ < qpred_term , pred_term > ]]$ and
+    $[[ nR' ]] = [[ _ : qpred_term ( oarg ) , _ : pred_term ( oarg [term ] ) ]]$ to prove:
+    value typing using \ResSynQPred, \ResSynPred, \ResSynSepConj;
+    heap typing using \HeapConcat, \HeapQPredOwned{} / \HeapQPredOther, and
+    \HeapPredOwned{} / \HeapPredOther{} (with witness $[[ _ : pred_term ( oarg [ term ] ) ]]$);
+    reduction using \PredOpsResVBreak.}}
+
+\step{<1>6}{\case{\ResSynPredOpsGlue}{%
+    \pf{} Like \ResSynPredOpsIterate, but with:\\
+    $[[ res_term ]]= [[ glue ( res_term' ) ]]$\\
+    $[[ res ]] = [[  qpred_term ( oarg1 [ term ] := oarg2 ) ]]$
+    where $[[ qpred_term ]] = [[ { x ; iguard \/ x = term . a ( ptrt1 + step , </ iarg1i // i /> ) } ]]$\\[\baselineskip]
+
+    $[[ res' ]] = [[ qpred_term1 ( oarg1 ) * pred_term ( oarg2 ) ]]$
+    where $[[ qpred_term1 ]] = [[ { x ; iguard . a ( ptrt1 + step , </ iarg1i // i /> ) } ]]$
+    and $[[ pred_term ]] = [[ a ( ptrt2 , </ iarg2i // i /> ) ]]$.\\
+    $[[ res_val' ]] = [[ < qpred_term1 , pred_term > ]]$,
+    and $[[ nR'' ]] = [[ _ : qpred_term1 ( oarg1 ) , _ : pred_term ( oarg2 ) ]]$,
+    by lemma~\ref{subsec:non_cond_res_det_ctx_val}.\\[\baselineskip]
+
+    If predicate is $[[ Owned < ct > ]]$, $[[ h'' ]] = [[ { qpred_term1 ( oarg1 ) & cdot } + { pred_term ( oarg2 ) & None } ]]$
+    (by lemma~\ref{subsec:norm_ctx_det_heap}),
+    so let $[[ h' ]] = [[ { qpred_term ( oarg ) & cdot } ]]$ (by $[[ cdot [ term ] := None ]] = [[ cdot ]]$).
+    Otherwise, $[[ h'' ]] = [[ { qpred_term1 ( oarg1 ) & arr_def_heap } + { pred_term ( oarg2 ) & def & heap } ]]$
+    (again by lemma~\ref{subsec:norm_ctx_det_heap}),
+    so let $[[ h' ]] = [[ { qpred_term ( oarg ) & arr_def_heap [ term ] := def & heap } ]]$.\\[\baselineskip]
+
+    Let $[[ res_val ]] = [[ qpred_term ]]$ and
+    $[[ nR ]] = [[ _ : qpred_term ( oarg1 [ term ] := oarg2 ) ]]$, to prove:
+    value typing using \ResSynQPred;
+    heap typing using \HeapQPredOwned{} / \HeapQPredOther;
+    reduction using \PredOpsResVGlue.}}
+
+\step{<1>7}{\case{\ResSynPredOpsInj}{%
+    \pf{} Like \ResSynPredOpsIterate, but with:\\
+    $[[ res_term ]]= [[ inj ( res_term' , ptrt1 , step , x . </ iarg1 // i /> ) ]]$\\
+    $[[ res ]]     = [[ qpred_term ( const oarg ) ]]$
+    where $[[ qpred_term ]] = [[{ x ; x = term . a ( ptrt1 + step , </ iarg1i // i /> ) } ]]$\\[\baselineskip]
+
+    $[[ res' ]]    = [[ pred_term ( oarg ) ]]$
+    where $[[ pred_term ]] = [[ a ( ptrt2 , </ iarg2i // i /> ) ]]$\\
+    $[[ res_val' ]] = [[ pred_term ]]$,
+    and $[[ nR'' ]] = [[ _ : pred_term ( oarg ) ]]$,
+    by lemma~\ref{subsec:non_cond_res_det_ctx_val}.\\[\baselineskip]
+
+    If predicate is $[[ Owned < ct > ]]$, $[[ h'' ]] = [[ { pred_term ( oarg ) & None } ]]$
+    (by lemma~\ref{subsec:norm_ctx_det_heap}),
+    so let $[[ h' ]] = [[ { qpred_term ( const oarg ) & cdot } ]]$
+    (by $ ( [[ cdot [ term ] := None ]] ) = [[ cdot ]]$).\\
+    Otherwise, $[[ h'' ]] = [[ { pred_term ( oarg ) & def & heap } ]]$
+    (again by lemma~\ref{subsec:norm_ctx_det_heap}),
+    so let $[[ h' ]] = [[ { qpred_term ( const oarg ) & cdot [ term ] := def & heap } ]]$.\\[\baselineskip]
+
+    Let $[[ res_val ]] = [[ qpred_term ]]$,
+    and $[[ nR ]]  = [[ _ : qpred_term ( const oarg ) ]]$,
+    to prove typing using \HeapQPredOwned{} / \HeapQPredOther,
+    and reduction using \PredOpsResVInj.}}
+
+\step{<1>8}{\case{\ResSynPredOpsChop}{%
+    \pf{} Like \ResSynPredOpsIterate, but with:\\
+    $[[ res_term ]]= [[ chop ( res_term' , iguard ) ]]$\\
+    $[[ res ]]     = [[  qpred_term1 ( oarg ) * qpred_term2 ( oarg ) ]]$
+    where $[[ qpred_term1 ]] = [[ { x ; iguard . a ( ptrt + step , iargs ) } ]]$
+    and $[[ qpred_term2 ]] = [[ { x ; iguard2 . a ( ptrt + step , iargs ) } ]]$\\[\baselineskip]
+
+    $[[ res' ]]    = [[  qpred_term ( oarg ) ]]$
+    where $[[ qpred_term ]] = [[ { x ; iguard' . a ( ptrt + step , iargs ) } ]]$\\
+    $[[ res_val' ]] = [[ qpred_term ]]$,
+    and $[[ nR'' ]] = [[ _ : qpred_term ( oarg ) ]]$,
+    by lemma~\ref{subsec:non_cond_res_det_ctx_val}.\\[\baselineskip]
+
+    If predicate is $[[ Owned < ct > ]]$, $[[ h'' ]] = [[ { qpred_term ( oarg ) & cdot } ]]$
+    (by lemma~\ref{subsec:norm_ctx_det_heap}),
+    so let $[[ h' ]] = [[ { qpred_term1 ( oarg ) & cdot } + { qpred_term2 ( oarg ) & cdot } ]]$.
+    Otherwise, $[[ h'' ]] = [[ { qpred_term ( oarg ) & arr_def_heap } ]]$
+    (again by lemma~\ref{subsec:norm_ctx_det_heap}),
+    so let $[[ h' ]] = [[ { qpred_term1 ( oarg ) & arr_def_heap } + { qpred_term2 ( oarg ) & arr_def_heap } ]]$.\\[\baselineskip]
+
+    Let $[[ res_val ]] = [[ < qpred_term1 , qpred_term2 > ]]$,
+    and $[[ nR ]] = [[ _ : qpred_term1 ( oarg ) , _ : qpred_term2 ( oarg ) ]]$, to prove:
+    value typing using \ResSynQPred{} and \ResSynSepConj;
+    heap typing using \HeapConcat{} and \HeapQPredOwned{} / \HeapQPredOther;
+    reduction using \PredOpsResVChop.}}
+
+\step{<1>9}{\case{\ResSynEmp, \ResSynPred, \ResSynQPred, \ResChkPhi.}{%
+    \pf{} In these cases, $[[ h ]] = [[ h' ]]$, $[[ nR ]] = [[ nR' ]]$ and $[[ res_term ]] = [[ res_val ]]$.\\
+    Typing holds by assumption; prove reduction using \ResTResVVal{}.}}
+
+\step{<1>10}{\case{\ResSynPredOps}{%
+    \pf{} Both typing and reduction (using \ResTResVPredOps{}) hold by
+    induction.}}
+
+\step{<1>11}{\case{\ResSynSepConj, \ResChkSepConj.}{%
+    $[[ res ]] = [[ res1 * res2 ]]$,\\
+    $[[ res_term ]] = [[ < res_term1 , res_term2 > ]]$,\\
+    $[[ h ]] = [[ h1 + h2 ]]$, so $[[ nR ]] = [[ nR1 , nR2 ]]$,\\
+    $[[ alloct |- h1 <= nR1 ]]$ and $[[ alloct |- h2 <= nR2 ]]$.}}
+
+    \begin{proof}
+
+    \step{<2>1}{%
+        $ [[ exists ]] [[ h1' ]] , [[ nR1' ]] , [[ res_val1 ]] \ldots [[ /\ ]] ( [[ forall ]] [[ f1 ]] \ldots )$\\
+        $ [[ exists ]] [[ h2' ]] , [[ nR2' ]] , [[ res_val2 ]] \ldots [[ /\ ]] ( [[ forall ]] [[ f2 ]] \ldots )$\\
+        \pf{} By induction.}
+
+    \step{<2>2}{%
+        $[[ alloct | < h1 + h2 + f ; res_term1 > ||v < h1' + h2 + f ; res_val1 > ]]$.\\
+        $[[ term' | < h1' + h2 + f ; res_term > ||v < h1' + h2' + f ; res_val2 > ]]$.\\
+        \pf{} Instantiate $[[ f1 ]]$ with $[[ h2 + f ]]$, and $[[ f2 ]]$ with, $[[ h1' + f ]]$.}
+
+    \step{<2>3}{\pflet{%
+        $[[ res_val ]] = [[ < res_val1 , res_val2 > ]]$,
+        $[[ nR' ]] = [[ nR1' , nR2' ]]$,
+        and $[[ h' ]] = [[ h1' + h2' ]]$.}
+        Prove value typing using \ResSynSepConj{} / \ResChkSepConj; heap typing
+        using \HeapConcat; reduction using \stepref{<2>2} and \ResTResVSepPair.}
+
+    \end{proof}
+
+\step{<1>12}{\case{\ResChkPack}{%
+    \pf{} Like \ResSynPredOpsIterate, but with:\\
+    $[[ res_term ]] = [[ pack ( oarg , res_term' ) ]]$,
+    $[[ res ]]      = [[ exists y : base_type . res'' ]]$,
+    $[[ res' ]]     = [[ oarg / y ( res'' ) ]]$\\
+    $[[ res_val ]]  = [[ pack ( oarg , res_val' ) ]]$.
+    Value and heap typing hold by induction; prove reduction using \ResTResVPack.}}
+
+\step{<1>13}{\case{\ResSynFold}{%
+    \pf{} Like \ResSynPredOpsIterate, but with:\\
+    $[[ a eq xp : _bt , </ xi : _bti // i /> , y : _bt  |-> res'' inEnv Globals ]]$\\
+    $[[ res_term ]]= [[ fold res_term' : a ( ptrt , </ iargi // i /> ) ( oarg ) ]]$\\
+    $[[ res ]]     = [[ a ( ptrt , </ iargi // i /> ) ( oarg ) ]]$\\
+    $[[ res' ]]    = [[ [ oarg / y , [ </ iargi / xi // i /> ] , ptrt / xp ] ( res'' ) ]]$.\\[\baselineskip]
+
+    $[[ exists ]] [[ h1 ]] , [[ nR' ]] , [[ res_val' ]] [[.]]$\\
+    \begin{enumerate}
+    \item $[[ cdot ; L0 ; N ; nR' |- res_val' <= res' ]]$
+    \item $[[ alloct |- h1 <= nR' ]]$
+    \item $[[ forall ]] [[ f ]] [[.]] [[ alloct | < h + f ; res_term > ||v < h1 + f ; res_val' > ]]$
+    \end{enumerate}
+    (by induction).\\[\baselineskip]
+
+    Let $[[ res_val ]] = [[ a ( ptrt , </ iargi // i /> ) ]]$,
+    $[[ nR' ]] = [[ _ : a ( ptrt , </ iargi // i /> ) ( oarg ) ]]$
+    and $[[ h' ]] = [[ { a ( ptrt , </ iargi // i /> ) ( oarg ) & res_val' & h1 } ]]$,
+    to prove: value typing using \ResSynPred; heap typing using \HeapPredOther.\\
+    Since $[[ footprint_of res_val' in h1 + f ~> h1 REM f ]]$ by
+    \lemmaref{subsec:wt_res_val_det_footprint}, prove reduction using \ResTResVFold.}}
+
+\step{<1>14}{\case{\ResChkIfTrue, \ResChkIfFalse}{%
+    \pf{} By induction with $[[ res' ]]$ as $[[ res1 ]]$ or $[[ res2]]$ respectively.
+    This is exhaustive because only variables can synthesise under-determined conditional
+    resources and those are excluded by assumption of $[[ res_term ]]$ being closed.}}
+
+\step{<1>15}{\case{\ResChkSwitch}{%
+    \pf{} By induction on the synthesising judgement.}}
+
+\end{proof}
+
+\subsection{Resource term reduction is deterministic}\label{subsec:res_term_red_det}
+
+\pfsketch{ Induction over the definition: it is syntax directed.}
+
+\subsection{Resource term reduction is isolated}\label{subsec:res_term_red_isolated}
+
+If $[[ res_term ]]$ is closed, $[[ cdot ; L0 ; N ; nR |- res_term <= res ]]$,
+$[[ alloct |- h <= nR ]]$ and $[[ alloct | < h + f ; res_term > ||v < heap ; res_val > ]]$
+then $[[ exists ]] [[ h' ]] , [[ nR' ]] [[ . ]]
+[[ heap ]] = [[ h' + f ]]
+[[ /\ ]] ( [[ alloct |- h' <=  nR' ]] )
+[[ /\ ]] ( [[ cdot ; L0 ; N ; nR' |- res_val <= res ]] )$.
+
+\pf{} This simply the composition of \lemmaref{subsec:res_term_red_det} and \lemmaref{subsec:res_term_progress}.
+
+\section{Progress}
+
+\subsection{\texorpdfstring{$[[ res ~ res' ]]$}{ res ∼ res' } is an equivalence relation}\label{subsec:rel_res_eqrel}
+
+\pfsketch{ By induction and $[[ term ~ term' ]]$ assumed to be an equivalence relation
+(see section~\ref{sec:proof_judge} \nameref{sec:proof_judge}).}
+
+\subsection{\texorpdfstring{$[[ res ~ res' ]]$}{ res ∼ res' } is preserved by substitution}\label{subsec:rel_res_pres_sub}
+
+If $[[ x ~ y ]]$ in $[[ res ~ res' ]]$ and $[[ term ~ term' ]]$ then
+$[[ term / x ( res ) ~ term / y ( res' ) ]]$.
+
+\pfsketch{ By induction and $[[ term ~ term' ]]$ assumed to be preserved by substitution
+(see section~\ref{sec:proof_judge} \nameref{sec:proof_judge}).}
+
+\subsection{Well-typed spines produce substitutions and the same return type}\label{subsec:wt_spine_sub}
+
+\begin{proof}
+
+\assume{%
+    $[[ cdot ; L0 ; N ; nR |- </ xi = spine_elemi // i /> :; fon >> subs1 ; ret1 ]]$\\
+    $[[ alloct ; h <= N ; nR ]]$\\
+    $[[ alloct | </ xi = spine_elemi // i /> :; fon >> < subs2 ; ret2 > ]]$.\\[\baselineskip]}
+
+\prove{%
+    $[[ subs1 ]] = [[ subs2 ]]$, $[[ ret1 ]] = [[ ret2 ]]$.\\[\baselineskip]}
+
+\pfsketch{ Induction over the typing judgement.\\[\baselineskip]}
+
+\end{proof}
+
+\subsection{Well-typed values pattern-match successfully}\label{subsec:wt_values_pat_match}
+
+Note that the definition of $[[ term ~ term' ]]$ is not explicitly stated;
+see section~\ref{sec:proof_judge} (\nameref{sec:proof_judge}) for more details.
+
+$[[C]]; [[L]]$ need to be arbitrary for induction: because the pattern-matching
+rules are monadic in them because types can be dependent on computational and
+logical variables. If we had type-dependencies on resources, this too would be 
+arbitrary (not normalised).
+
+\begin{proof}
+
+\assume{\begin{pfenum}
+    \item $[[ C ; L ; N |- </ ret_pati // i /> : ret ~> C' ; L' ; N' ; R' ]]$
+    \item $[[ </ ret_pati // i /> ]]$ is exhaustive
+    \item $[[ fon ~ ret ]]$
+    % res_terms have to be closed for progress/type-pres
+    \item $[[ cdot ; L0 ; N ; nR |- to_param </ ret_termi // i /> :; fon >> psi ; I ]]$
+    \item $[[ alloct ; h <= N ; nR ]]$
+    \end{pfenum}\leavevmode\\}
+
+\prove{$[[ exists ]] [[ h' ]] , [[ subs ]] [[.]]$\\
+    $\quad [[ forall ]] [[ f ]] [[ . ]] [[ < h + f ; </ ret_pati = ret_termi // i /> > ~> < h' + f ; subs > ]]$\\
+    $\quad [[ exists ]] [[ nR' ]] [[ . ]]$\\
+    $\qquad [[ alloct |- h' <= nR' ]] [[ /\ ]] [[ cdot ; L0 ; N ; nR' |- subs <= ( C' ; L' ; R' )  ]]$.\\[\baselineskip]}
+
+\pfsketch{ Induction over the pattern-matching judgement.\\[\baselineskip]}
+
+% C ; L ; N |- </ ret_pati // i /> : ret ~> C' ; L' ; N' ; R'        | exists h' , subs .
+% </ ret_pati // i /> is exhaustive                                  |   forall f . < h + f ; </ ret_pati = ret_termi // i /> > ~> < h' + f ; subs >
+% fon ~ ret                                                          |   exists nR' .
+% cdot ; L0 ; N ; nR |- </ ret_termi // i /> :; fon >> I             |     alloct |- h' <= nR'
+% alloct |- h <= nR                                                  |     C ; L ; N ; nR' |- subs <= ( C' ; L' ; R' )
+
+
+\step{<1>1}{\case{\PatRetEmpty}{%
+    $[[ C ; L ; N |- : I ~> cdot ; cdot ; cdot ; cdot ]]$\\
+    which means $[[ fon ]] = [[ I ]]$ (by inversion, \RelRetI)\\
+    and so $[[ cdot ; L0 ; N ; cdot |- :; I >> cdot ; I ]]$ (by inversion, \ExplSpineRet),\\
+    and $[[ h ]] = [[ cdot ]]$ (by lemma~\ref{subsec:norm_ctx_det_heap}).\\
+    Let $[[ h' ]] = [[ cdot ]]$, to step with \SubsPatRetEmpty.\\
+    Let $[[ nR' ]] = [[ cdot ]]$, to type $[[ h' ]]$ with
+    \HeapEmpty{} and $[[ subs ]]$ with \SubsChkEmpty.}}
+
+\step{<1>2}{\case{\PatRetComp}{%
+    $[[ C ; L ; N |- comp sym_or_pat , </ ret_patj // j /> : sigma y : base_type . ret ~> C1 , C2 ; L2 ; N2 ; R2 ]]$\\
+    which means $[[ fon ]] = [[ pi x : base_type . fon' ]]$ (by inversion, \RelRetComp),\\
+    and so $[[ cdot ; L0 ; N ; nR |- to_param pval , </ ret_termj // j /> :; pi x : base_type . fon' >> psi ; I ]]$
+    (by inversion, \ExplSpineComp).\\[\baselineskip]
+
+    $[[ sym_or_pat : base_type ~> C1 with term1 ]]$ (from the pattern-matching assumption),\\
+    $[[ sym_or_pat ]]$ is exhaustive (from the exhaustive asumption),\\
+    and $[[ cdot |- pval => base_type ]]$ (from the spine typing assumption),\\
+    imply $[[ term1 ~ inj pval ]]$, $[[ sym_or_pat = pval ~> subs1 ]]$\\
+    and $[[ cdot ; cdot ; cdot ; cdot |- subs1 <= ( C1 ; cdot ; cdot ) ]]$
+    (by the nested proof below).\\[\baselineskip]
+
+    $[[ C1 ; L0 ; N |- </ ret_patj // j /> : term1 / y ( ret' ) ~> C2 ; L2 ; N2 ; R2 ]]$
+    (from the pattern-matching assumption),\\
+    $[[ forall term1 ~ inj pval . pval / x ( fon' ) ~ term1 / y ( ret' ) ]]$
+    (from the related assumption),\\
+    $[[ cdot ; L0 ; N ; nR |- to_param </ ret_termj // j /> :; pval / x ( fon' ) >> psi ; I ]]$
+    (from the spine typing assumption),\\
+    and $[[ alloct |- h <= nR ]]$,
+    imply $[[ exists ]] [[h'']], [[subs2]] [[.]] [[ < h + f ; </ ret_patj = ret_termj // j /> > ~> < h'' + f ; subs2 > ]]$\\
+    and that $[[ exists ]] [[ nR' ]]$ such that
+    $[[ alloct |- h' <= nR' ]]$ and $[[ C1 ; L0 ; N ; nR' |- subs2 <= ( C2 ; L2 ; R2 ) ]]$
+    (by induction, then~\lemmaref{sec:weakening}).\\[\baselineskip]
+
+    Since $[[ cdot ; L0 ; [ id , subs1 ] ( N ) ; nR' |- [ id , subs1 ] <= ( C1 ; L0 ; nR' ) ]]$
+    (by \SubsChkConcat{}
+    and $[[ [ id , subs1 ] ( N ) ]] = [[ N ]]$,
+    because $[[ N ]]$ is well-scoped / does
+    not contain any variables from $[[ C1 ]]$)
+    we have $[[ cdot ; L0 ; N ; nR' |- subs1 ( subs2 ) <= ( C2 ; L2 ; subs1 ( R2 ) ) ]]$
+    (by \lemmaref{subsec:sub}).\\[\baselineskip]
+
+    \pflet{$[[ subs ]] = [[ [ subs1 , subs2 ] ]]$ to step with \SubsPatRetComp.}
+    Since $[[ nR' ]] = [[ subs1 ( nR' ) ]]$ (for same reason as $[[N]]$)
+    we have $[[ cdot ; L0 ; N ; nR' |- subs <= ( C1 , C2 ; L2 ; R2 ) ]]$
+    by~\lemmaref{sec:weakening} and \SubsChkConcat.}}
+
+    \begin{proof}
+
+    \assume{\begin{pfenum}
+        \item $[[ sym_or_pat : base_type ~> C1 with term1 ]]$
+        \item $[[ sym_or_pat ]]$ is exhaustive
+        \item $[[ cdot |- pval => base_type ]]$
+    \end{pfenum}\leavevmode\\}
+
+    \prove{\begin{pfenum}
+        \item $[[ term1 ~ inj pval ]]$
+        \item $[[ exists ]] [[ subs ]] [[ . ]] [[ sym_or_pat = pval ~> subs ]]$
+        and $[[ cdot ; cdot ; cdot ; cdot |- subs <= ( C1 ; cdot ; cdot ) ]]$.
+    \end{pfenum}\leavevmode\\[\baselineskip]}
+
+    \step{<2>1}{\case{\PatCompNoSymAnnot}{%
+        \pf{} $[[ term1 ]]$ is a wildcard (fresh variable) which would unfiy with
+        $[[ pval ]]$; let $[[ subs ]] = [[ cdot ]]$ for \SubsPatValueNoSymAnnot{}
+        / \SubsChkEmpty.}}
+
+    \step{<2>2}{\case{\PatCompSymAnnot, \PatSymOrPatSym}{%
+        \pf{} $[[ term1 ]] = [[ x ]]$, a fresh pattern variable, so would unify with $[[ pval ]]$;\\
+        let $[[ subs ]] = [[ pval / x ]]$ for \SubsPatValueSymAnnot{} /
+        \SubsChkComp{} (using $[[ cdot |- pval => base_type ]]$).}}
+
+    \step{<2>3}{\case{\PatCompNil}{%
+        \pf{} $[[ term1 ]] = [[ nil ]]$, and by inversion on the typing
+        assumption, and then by exhaustiveness,
+        $[[ pval ]] = [[ Nil base_type () ]]$, so would unify;
+        let $[[ subs ]] = [[ cdot ]]$ for \SubsPatValueNil{}
+        / \SubsChkEmpty.}}
+
+    \step{<2>4}{\case{\PatCompCons}{%
+        \pf{} $[[ term1 ]] = [[ term11 cons term12 ]]$, and by inversion on the
+        typing assumption, and then by exhaustiveness,
+        $[[ pval ]] = [[ Cons ( pval1 , pval2 ) ]]$.
+        By induction (1) they would unify and (2)
+        let $[[ subs ]] = [[ [ subs1 , subs2 ] ]]$ for \SubsPatValueCons{}
+        / \SubsChkComp{} and \SubsChkConcat{} (both are independent).}}
+
+    \step{<2>5}{\case{\PatCompTuple}{%
+        \pf{} $[[ term1 ]] = [[ ( </ termi // i /> ) ]]$, and by inversion
+        on the typing assumption, $[[ pval ]] = [[ Tuple ( </ pvali // i /> ) ]]$.
+        By induction (1) they would unify\\
+        (2) let $[[ subs ]] = [[ [ </ subsi // i /> ] ]]$
+        for \SubsPatValueTuple{} / \\SubsChkComp{} and \SubsChkConcat.}}
+
+    \step{<2>6}{\case{\PatCompArray}{%
+        \pf{} Similar to \PatCompTuple, but with \SubsPatValueArray.}}
+
+    \step{<2>7}{\case{\PatCompSpecified}{%
+        \pf{} By induction we have (1) $[[ term1 ~ inj pval ]]$, and by the $[[ Specified ]]$
+        exception (see Section~\ref{sec:proof_judge}, \nameref{sec:proof_judge})
+        $[[ term1 ~ inj Specified ( pval ) ]]$;\\
+        $[[ subs ]]$ for \SubsPatValueSpecified, typing by induction.}}
+
+    \step{<2>8}{\case{\PatSymOrPatPat}{%
+        \pf{} By induction.}}
+
+    \end{proof}
+
+\step{<1>3}{\case{\PatRetLog}{%
+    $[[ C ; L ; N |- log y' , </ ret_patj // j /> : exists y : base_type . ret ~> C2 ; y' : base_type , L2 ; N2 ; R2 ]]$\\
+    which means $[[ fon ]] = [[ forall x : base_type . fon' ]]$ (by inversion, \RelRetLog)\\
+    and so $[[ cdot ; L0 ; N ; nR |- to_param oarg , </ ret_termj // j /> :; forall x : base_type . fon' >> psi ; I ]]$
+    (by inversion, \ExplSpineLog).\\[\baselineskip]
+
+    $[[ C ; L , y : base_type ; N |- </ ret_patj // j /> : ret' ~> C2 ; L2 ; N2 ; R2 ]]$
+    (from the pattern-matching assumption),\\
+    $[[ forall oarg ~ oarg' . oarg / x ( fon' ) ~ oarg' / y' ( ret' ) ]]$
+    (from the related assumption),\\
+    $[[ cdot ; L0 ; N ; nR |- to_param </ ret_termj // j /> :; oarg / x ( fon' ) >> psi ; I ]]$
+    (from the spine typing assumption)\\
+    and $[[ alloct |- h <= nR ]]$,
+    imply $[[ < h + f ; </ ret_patj = ret_termj // j /> > ~> < h' + f ; subs > ]]$\\
+    and $[[ exists]] [[ nR' ]]$ such that
+    $[[ alloct |- h' <= nR' ]]$
+    and $[[ cdot ; L0 , y' : base_type ; N ; nR' |- subs2 <= ( C2 ; L2 ; R2 ) ]]$
+    (by induction, then~\lemmaref{sec:weakening}).\\[\baselineskip]
+
+    Since $[[ cdot ; L0 |- oarg => base_type ]]$, and $[[ [ id , oarg / y' ] ( N ) ]] = [[ N ]]$
+    (by \SubsChkConcat{} and because it is well-scoped / doesn't refer to $[[ y' ]]$)
+    we have $[[ cdot ; L0 ; [ id , oarg / y' ] ( N ) ; nR' |- [ id , oarg / y' ] <= ( cdot ; L0 , y' : base_type ; nR' ) ]]$
+    (by~\SubsChkLog, \SubsChkRes, \SubsChkConcat)
+    and so $[[ cdot ; L0 ; N ; nR' |- oarg / y' ( subs2 ) <= ( C2 ; L2 ; oarg / y' ( R2 ) ) ]]$
+    (by~\lemmaref{subsec:sub}).\\[\baselineskip]
+
+    \pflet{$[[ subs ]] = [[ [ oarg / y' , subs2 ] ]]$ to step with \SubsPatRetLog.}
+    Since $[[ nR' ]] = [[ subs1 ( nR' ) ]]$ (for same reason as $[[N]]$)
+    $[[ cdot ; L0 ; N ; nR' |- subs <= ( C2 ; y' : base_type , L2 ; R2 ) ]]$
+    by \SubsChkConcat.}}
+
+\step{<1>4}{\case{\PatRetPhi}{%
+    $[[ C ; L ; N |- </ ret_pati // i /> : term' /\ ret' ~> C' ; L' ; N' , term' ; R' ]]$\\
+    which means $[[ fon ]] = [[ term -) fon' ]]$ (by inversion, \RelRetPhi),\\
+    and so $[[ cdot ; L0 ; N ; nR |- to_param </ ret_termj // j /> :;  term --o fon' >> psi ; I ]]$
+    (by inversion, \ExplSpineRes).\\[\baselineskip]
+
+    $[[ C ; L ; N |- </ ret_pati // i /> : ret' ~> C' ; L' ; N' , term' ; R' ]]$
+    (from the pattern-matching assumption)\\
+    $[[ fon' ~ ret' ]]$ (from the related assumption),\\
+    $[[ cdot ; L0 ; N ; nR |- to_param </ ret_termj // j /> :; fon' >> psi ; I ]]$
+    (from the spine typing assumption)\\
+    imply $[[ < h + f ; </ ret_pati = ret_termi // i /> > ~> < h' + f ; subs > ]]$
+    and the heap and substitution typings (by induction).}}
+
+\step{<1>5}{\case{\PatRetRes}{%
+    $[[ C ; L ; N |- reso res_pat , ret_pat : res' *o ret' ~> C4 ; L3, L4 ; N3, N4 ; R3 , R4 ]]$\\
+    which means $[[ fon ]] = [[ res --o fon' ]]$ (by inversion, \RelRetRes),\\
+    and so $[[ cdot ; L0 ; N ; nR1 , nR2 |- to_param res_term , spine :;  res --o fon >> psi ; I ]]$
+    (by inversion, \ExplSpineRes),
+    and $[[ h ]] = [[ h1 + h2 ]]$ where $[[ alloct |- h1 <= nR1 ]]$ and $[[ alloct |- h2 <= nR2 ]]$
+    (by lemma~\ref{subsec:norm_ctx_det_heap}).\\[\baselineskip]
+
+    $[[ cdot ; L0 ; N ; nR1 |- res_term <= res ]]$ (from the spine typing assumption)\\
+    and $[[ alloct |- h1 <= nR1 ]]$, imply
+    $[[ exists ]] [[ res_val ]] , [[ nR1' ]] , [[ h1'  ]]$ such that
+    $[[ alloct |- h1' <= nR1' ]]$,  $[[ cdot ; L0 ; N ; nR1' |- res_val <= res ]]$
+    and $[[ alloct | < h1 + h2 + f ; res_term > ||v < h1' + h2 + f ; res_val >  ]]$
+    (by \lemmaref{subsec:res_term_progress}).\\[\baselineskip]
+
+    $[[ L ; N |- res_pat : res' ~> L3 ; N3 ; R3 ]]$ (from the pattern matching assumption),\\
+    $[[ res ~ res' ]]$ (from the related assumption),\\
+    $[[ cdot ; L0 ; N ; nR1' |- res_val <= res ]]$
+    and $[[ alloct |- h1' <= nR1' ]]$, imply\\
+    $[[ exists ]] [[ h1'' ]], [[subs1]], [[ nR1'' ]]$ such that
+    $[[ < h1' + h2 + f ; res_pat = res_val > ~> < h1'' + h2 + f ; subs1 > ]]$,
+    $[[ alloct |- h1' <= nR1'' ]]$,
+    and $[[ cdot ; L0 ; N ; nR1'' |- subs1 <= ( cdot ; L3 ; R3 ) ]]$
+    (by the nested proof below).\\[\baselineskip]
+
+    $[[ C ; L ; N |- </ ret_patj // j /> : ret' ~> C4 ; L4 ; N4 ; R4 ]]$
+    (from the pattern matching assumption),\\
+    $[[ fon' ~ ret' ]]$ (from the related assumption),\\
+    $[[ cdot ; L0 ; N ; nR2 |- to_param </ ret_termj // j /> :; fon' >> psi ; I ]]$
+    (from the spine typing assumption),\\
+    and $[[ alloct |- h2 <= nR2 ]]$,
+    imply $[[ < h2 + h1'' + f ; </ ret_patj = ret_termj // j /> > ~> < h2' + h1'' + f ; subs2 > ]]$
+    and $[[ exists ]] [[ nR2' ]]$ such that
+    $[[ alloct |- h2' <= nR2' ]]$,
+    and $[[ cdot ; L0 , L3 ; N ; nR2' |-  subs2 <= ( C4 ; L4 ; R4 ) ]]$
+    (by induction and \lemmaref{sec:weakening}).\\[\baselineskip]
+
+    \pflet{$[[ subs11]]$ where $[[ cdot ; L0 ; N ; cdot |- subs11 <= ( cdot ; L3 ; cdot ) ]]$
+    (by \lemmaref{subsec:sub_split}).\\
+        $[[ psi ]] = [[ [ allocv / allocv , subs11 , id ] ]]$ where
+        $[[ cdot ; L0 ; psi ( N ) ; nR2' |- psi <= ( cdot ; L0 , L3 ; nR2' ) ]]$ so
+        $[[ psi ( term ) = subs1 ( term ) ]]$ for any $[[term]]$ $[[ cdot ; L0 , L3 |- term => base_type ]]$
+        (because $[[ psi ( N ) ]] = [[N]]$ since $[[N]]$ does not refer to any variables from $[[L3]]$).}
+    Hence, $[[ cdot ; L0 ; psi ( N ) ; nR2' |- psi ( subs2 ) <= ( C4 ; L4 ; psi ( R4 ) ) ]]$
+    (by~\lemmaref{subsec:sub}).\\
+    Which implies $[[ cdot ; L0 ; N ; nR2' |- subs1 ( subs2 ) <= ( C4 ; L4 ; subs1 ( R4 ) ) ]]$
+    (since resources and constraints cannot depend oh resource variables).\\[\baselineskip]
+
+    \pflet{$[[ h' ]] = [[ h1'' + h2' ]]$\\
+        $[[ subs ]] = [[ [ subs1 , subs2 ] ]]$ to step with \SubsPatRetRes.\\
+        $[[ nR' ]] = [[ nR1'' , nR2' ]]$.}
+    So $[[ alloct |- h' <= nR' ]]$ by \HeapConcat\\
+    and $[[ cdot ; L0 ; N ; nR' |- subs <= ( C4 ; L3 , L4 ; R3 , R4 ) ]]$ by \SubsChkConcat{}.\\}}
+
+    \begin{proof}
+
+    % exists h', nR' such that
+    %   < h + f ; res_pat = res_val > ~> < h' + f ; subs >
+    %   C ; L ; N |- h' <= nR',
+    %   C ; L ; N ; nR' |- subs <= ( cdot ; L3 ; R3 )
+
+    \assume{\begin{pfenum}
+        \item $[[ L ; N |- res_pat : res' ~> L' ; N' ; R' ]]$
+        \item $[[ res ~ res' ]]$
+        \item $[[ exists ]] [[ nR ]] . ( [[ cdot ; L0 ; N ; nR |- res_val <= res ]] )
+            [[ /\ ]] ( [[ alloct ; h <= N ; nR ]] )$
+    \end{pfenum}\leavevmode\\}
+
+    \prove{$[[ exists ]] [[ h' ]] , [[ subs ]] [[ . ]]$\\
+        $\quad [[ forall ]] [[ f ]] [[ . ]] [[ < h + f ; res_pat = res_val > ~> < h' + f ; subs > ]]$\\
+        $\quad [[ exists ]] [[ nR' ]] [[ . ]]
+            [[ alloct |- h' <= nR' ]]
+            [[ /\ ]] [[ cdot ; L0 ; N ; nR' |- subs <= ( cdot ; L' ; R' ) ]]$.\\[\baselineskip]}
+
+    \step{<2>1}{\case{\PatResMatchFold}{%
+        $[[ L0 ; N |- fold ( res_pat' ) : a ( ptrt' , </ iarg'i // i /> ) ( oarg' ) ~> L' ; N' ; R' ]]$\\
+        which means $[[ res ]] = [[ a ( ptrt , </ iargi // i /> ) ( oarg ) ]]$
+        (by inversion, \RelResPred)\\
+        and so $[[ nR ]] = [[ _ : a ( ptrt , </ iargi // i /> ) ( oarg ) ]]$ and
+        $[[ res_val ]] = [[ a ( ptrt2 , </ iarg2i // i /> ) ]]$
+        (by lemma~\ref{subsec:non_cond_res_det_ctx_val}).}}
+
+        \begin{proof}
+
+        \step{<3>1}{$[[ h ]] = [[ { a ( ptrt , </ iargi // i /> ) ( oarg ) & def & heap } ]]$\\
+            \pf{} $[[ a != Owned < ct > ]]$ (from the pattern-matching assumption),
+            and \lemmaref{subsec:norm_ctx_det_heap}.}
+
+        \step{<3>2}{$[[ exists ]] [[ nR1' ]] [[ . ]]$
+        \begin{pfenum}
+            \item $[[ a eq xp : loc , </ xi : base_typei // i  /> , y : record </ Symbol_identifierj : base_type'j // j /> |-> res'' inEnv Globals ]]$
+            \item $[[ cdot ; cdot ; cdot ; nR1' |- def <= [ oarg / y , [ </ iarg / xi // i /> ] , ptrt / xp ] ( res'' ) ]]$
+            \item $[[ alloct |- heap <= nR1' ]]$
+        \end{pfenum}
+        \pf{} By inversion, $[[ alloct |- h <= nR ]]$ is \HeapPredOther.}
+
+        \step{<3>3}{$[[ L0 ; N |- res_pat' : [ oarg' / y , [ </ iarg'i / xi // i /> ] , ptrt' / xp ] ( res'' ) ~> L ; N ; R ]]$\\
+            \pf{} By inversion on the pattern-matching assumption.}
+
+        \step{<3>4}{$[[ [ oarg / y , [ </ iarg / xi // i /> ] , ptrt / xp ] ( res'' ) ~ [ oarg' / y , [ </ iarg'i / xi // i /> ] , ptrt' / xp ] ( res'' ) ]]$\\
+            \pf{} By lemma~\ref{subsec:rel_res_pres_sub}, using $[[ res'' ~ res'' ]]$
+            (by lemma~\ref{subsec:rel_res_eqrel})
+            and $[[ ptrt ~ ptrt' ]]$, $[[ indexed </ iargi ~ iarg'i // i /> ]]$
+            and $[[ oarg ~ oarg' ]]$.}
+
+        \step{<3>5}{$[[ < heap + f ; res_pat = res_val > ~> < h' + f ; subs > ]]$\\
+            \pf{} By induction, using \stepref{<3>2}, \stepref{<3>3} and \stepref{<3>4}.}
+
+        \step{<3>6}{Step with \SubsPatResFold.}
+
+        \step{<3>7}{$[[ h' ]], [[ nR' ]]$ as given by induction.}
+
+        \end{proof}
+
+    \step{<2>2}{\case{\PatResMatchEmp{} / \PatResMatchPhi}{
+        $[[ res ]] = [[ emp ]] \textrm{ or } [[ term ]]$ (by inversion, \RelResEmp{} / \RelResPhi)
+        and so $[[ res_val ]] = [[ emp ]] \textrm{ or } [[ TERM ]]$ and $[[ nR ]] = [[ cdot ]]$
+        (by lemma~\ref{subsec:non_cond_res_det_ctx_val}),
+        meaning $[[ h ]] = [[ cdot ]]$ (by lemma~\ref{subsec:norm_ctx_det_heap}).\\
+
+        \pf{} Let $[[ h' ]] = [[ cdot ]]$ to step with \SubsPatResEmp{} / \SubsPatResPhi{}.\\
+        $[[ nR' ]] = [[ cdot ]]$, so \HeapEmpty{} and \SubsChkEmpty{} suffice.}}
+
+    \step{<2>3}{\case{\PatResMatchIfTrue{} / \PatResMatchIfFalse}{%
+        Only showing true case, false case is symmetric.\\[\baselineskip]
+
+        $[[ res' ]] = [[ if term' then res'1 else res'2 ]]$ so\\
+        $[[ res ]] = [[ if term then res1 else res2 ]]$ (by inversion, \RelResIf).\\[\baselineskip]
+
+        Since $[[ smt ( N => term' ) ]]$ (from the pattern-matching assumption)
+        and $[[ term' ~ term ]]$, we can conclude the typing
+        assumption must be \ResChkIfTrue.\\[\baselineskip]
+
+        From there, we proceed by induction.}}
+
+    \step{<2>4}{\case{\PatResMatchVar}{%
+        \pf{} Let $[[ h' ]] = [[ h ]]$ to step with \SubsPatResVar.\\
+        $[[ nR' ]] = [[ nR ]]$ so \SubsChkRes.}}
+
+    \step{<2>5}{\case{\PatResMatchSepConj}{%
+        $[[ L ; N |- < res_pat1 , res_pat2 > : res'1 * res'2 ~> L1, L2 ; N1 , N2 ; R1 , R2 ]]$\\[\baselineskip]
+        $[[ res ]] = [[ res1 * res2 ]]$ (by inversion, \RelResSepConj)
+        and $[[ cdot ; L0 ; N ; nR1 , nR1 |- < res_val1 , res_val2 > <= res1 * res2 ]]$
+        (by lemma~\ref{subsec:non_cond_res_det_ctx_val}),\\
+        so $[[ h ]] = [[ h1 + h2 ]]$ where $[[ alloct |- h1 <= nR1 ]]$ and $[[ alloct |- h2 <= nR2 ]]$.\\[\baselineskip]
+
+        By induction, obtain $[[ h1' ]]$ and $[[ h2' ]]$, and then let $[[ h' ]] = [[ h1' + h2' ]]$.
+        Instantiate the frame, from the inductive hypothesis with $[[ h2 + f ]]$ and then $[[ h1' + f ]]$
+        to conclude $[[ < h1 + h2 + f ; res_pat1 = res_val1 > ~> < h1' + h2 + f ; subs1 > ]]$ and
+        $[[ < h2 + h1' + f ; res_pat2 = res_val2 > ~> < h2' + h1' + f ; subs2 > ]]$
+        to step with \SubsPatResPair.\\
+
+        \pflet{$[[ nR' ]] = [[ nR1' , nR2' ]]$ (obtained from induction).}
+        We then have and $[[ alloct |- h1' + h2' <= nR' ]]$
+        and (since $[[ subs1 ( R2 ) ]] = [[ R2 ]]$ because it can not refer to $[[ L1 ]]$)
+        $[[ cdot ; L0 ; N ; nR' |- [ subs1 , subs2 ] <= ( cdot ; L1 , L2 ; R1 , R2 ) ]]$.}}
+
+    \step{<2>6}{\case{\PatResMatchPack}{%
+        $[[ L ; N |- pack ( x , res_pat' ) : exists y' : base_type . res1' ~> x : base_type ,  L' ; N' ; R' ]]$\\[\baselineskip]
+
+        $[[ res ]] = [[ exists y : base_type . res1 ]]$ (by inversion, \RelResExists)
+        and $[[ cdot ; L0 ; N ; nR |- pack ( oarg , res_val' ) <= exists y : base_type . res1 ]]$
+        (by lemma~\ref{subsec:non_cond_res_det_ctx_val}).\\
+
+        $[[ L , x : base_type ; N |- res_pat' : x / y' ( res1' ) ~> L' ; N' ; R' ]]$
+        (from the pattern-matching assumption),
+        $[[ cdot ; L0 ; N ; nR |-  res_val' <= oarg / y ( res1 ) ]]$
+        (from the typing assumption),
+        $[[ forall term ~ term' . term / y ( res1 ) ~ term' / y' ( res1' ) ]]$
+        (from the related assumption),
+        $[[ oarg ~ x ]]$
+        imply $[[ exists ]] [[ h' ]] , [[ subs' ]] [[.]] [[ forall ]] [[ f ]] \ldots$
+        $[[ exists ]] [[ nR' ]] [[ . ]] [[ alloct |- h' <= nR' ]]$ and
+        $[[ cdot ; L0 , x : base_type ; N ; nR'' |- subs' <= ( cdot ; L' ; R' )]]$
+        (by induction, then \lemmaref{sec:weakening}).\\[\baselineskip]
+
+        Since $[[ cdot ; L0 |- oarg => base_type ]]$, and $[[ oarg / x ( N ) ]] = [[ N ]]$
+        (because it is well-scoped / doesn't refer to $[[ x ]]$)
+        and $[[ cdot ; L0 ; [ id , oarg / x ] ( N ) ; nR' |- [ id , oarg / x  ] <= ( cdot ; L0 , x : base_type ; nR' ) ]]$
+        (by \SubsChkLog, \SubsChkRes, \SubsChkConcat),\\
+        and $[[ cdot ; L0 ; N ; nR'' |- oarg / x ( subs' ) <= ( cdot ;  L' ; oarg / x ( R' ) ) ]]$
+        (by \lemmaref{subsec:sub}).\\[\baselineskip]
+
+        \pflet{$[[ subs ]] = [[ [ oarg / x , subs' ] ]]$ to step with \SubsPatResPack,\\
+        and $[[ cdot ; L0 ; N ; nR''|- [ oarg / x , subs' ] <= ( cdot ; L' ;  R2 )  ]]$ by \SubsChkConcat.}}}
+
+    \end{proof}
+
+\end{proof}
+
+\subsection{\texorpdfstring{$[[ to_fun ret ~ ret ]]$}{ to\_fun ret ∼ ret }}\label{subsec:tofun_ret_rel_ret}
+
+\pfsketch{ Induction over $[[ ret ]]$.}
+
+\subsection{Statement and proof}
+
+\begin{proof}
+
+\assume{%
+    \begin{pfenum}
+    \item $[[ cdot ; L0 ; N ; nR |- texpr <= ret ]]$
+    \item All patterns in $[[ texpr ]]$ are exhaustive.
+    \item All allocations succeed.
+    \end{pfenum}\leavevmode\\}
+
+\prove{%
+    Either $[[ texpr ]]$ is a value $[[ tval ]]$, or it is unreachable,
+    or $[[ forall ]] [[ s ]] [[.]] ( [[ s <= N ; nR ]] ) [[ => ]]
+    [[ exists ]] [[ s' ]] , [[ texpr' ]] [[ . ]]
+        [[ < s ; texpr > --> < s' ; texpr' > ]]$.\\[\baselineskip]}
+
+\pfsketch{ Induction over the typing rules.\\[\baselineskip]}
+
+\step{<1>1}{\case{%
+    \nameref{subsec:value_typing_rules} (see~\ref{subsec:value_typing_rules}).
+}{%
+    \pf{} All these judgements/rules give types to syntactic values; and there
+    are no operational rules corresponding to them (see Section~\ref{sec:opsem_judge}).}}
+
+\step{<1>2}{\case{%
+    \PureTopValUndef, \PureTopValError,\ExplTopValUndef, \ExplTopValError.
+}{%
+    \pf{} All these rules require inconsistent constraint context, and so would
+    be unreachable.}}
+
+\step{<1>3}{\case{%
+    \PureExprCtorIvXOR.
+}{%
+    \pf{} By inversion on $[[ cdot |- pval1 => integer]]$,
+    $[[pval1]]$ must be a $[[ty_mem_int1]]$ (\PureValObjInt).
+    Similarly $[[pval2]]$ must be a $[[ty_mem_int2]]$,
+    so step with \PETPCtorIvXOR.}}
+
+\step{<1>4}{\case{\PureExprArrayShift.}{}}
+
+    \begin{proof}
+
+    \step{<2>1}{%
+        $[[pval1]]$ must be a $[[ty_mem_ptr]]$; $[[pval2]]$ must be a $[[ty_mem_int]]$.\\
+        \pf{} By inversion on the typing assumption and \PureValObjPtr and \PureValObjInt.}
+    
+    \step{<2>2}{%
+        $[[ alloct |- smt ( x dot base =< inj ty_mem_ptr' =< x dot base + x dot len ) ]]$ for $[[x eq alloct [ inj ty_mem_ptr dot id ] ]]$.\\
+        \pf{} By inversion on the typing assumption and $[[ alloct <= N ]]$.}
+
+    \step{<2>3}{%
+        Step with \PETPArrayShift.}
+
+    \end{proof}
+
+\step{<1>5}{\case{%
+    \PureExprMemberShift.
+}{%
+    \pf{} $[[ pval ]]$ must be a $[[ ty_mem_ptr ]]$ so step with
+    \PETPMemberShift.}}
+
+\step{<1>6}{\case{%
+    \PureExprPtrEq.
+}{%
+    \pf{} $[[ pval1 ]]$ must be a $[[ ty_mem_ptr1 ]]$,
+    $[[ pval2 ]]$ must be a $[[ ty_mem_ptr2 ]]$, so step with
+    \PETPPtrEq.}}
+
+\step{<1>7}{\case{%
+    \PureExprNot.
+}{%
+    \pf{} $[[ pval ]]$ must be a $[[ bool_value ]]$ so step with
+    \PETPNotTrue{} or \PETPNotFalse.}}
+
+\step{<1>8}{\case{%
+    \PureExprArithBinop, \PureExprRelBinop.
+}{%
+    \pf{} $[[ pval1 ]]$ and $[[ pval2 ]]$ must be $[[ ty_mem_int ]]$s,
+    so step with \PETPArithBinop{} or \PETPRelBinop{} respectively.}}
+
+\step{<1>9}{\case{%
+    \PureExprBoolBinop.
+}{%
+    \pf{} $[[pval1]]$ and $[[pval2]]$ must be $[[bool_value]]$s,
+    so step with \PETPBoolBinop.}}
+
+\step{<1>10}{\case{\PureExprCall.}{}}
+
+    \begin{proof}
+
+    \step{<2>1}{%
+        \begin{pfenum}
+        \item $[[name : pure_fun eq </ xi // i /> |-> tpexpr inEnv Globals]]$.
+        \item $[[ cdot ; L0 ; N ; cdot |- </ xi = pvali // i /> :; pure_fun >> subs ; sigma y : base_type . term /\ I ]]$.
+        \end{pfenum}
+    \pf{} By inversion on the assumption.}
+
+    \step{<2>2}{%
+        $[[ alloct | </ xi = pvali // i /> :; pure_fun >> < subs ; sigma y : base_type . term /\ I > ]]$.\\
+        \pf{} By lemma \ref{subsec:wt_spine_sub}.}
+
+    \step{<2>3}{%
+        Thus it can step with \PETPCall.}
+
+    \end{proof}
+
+\step{<1>11}{\case{\PureExprAssertUndef.}{}}
+
+    \begin{proof}
+
+    \step{<2>1}{%
+        $[[ pval ]]$ must be a $[[ bool_value ]]$
+        \pf{} By \PureValTrue, \PureValFalse.}
+
+    \step{<2>2}{%
+        $[[ smt ( N => inj pval ) ]]$.
+        \pf{} By inversion on the assumption.}
+
+    \step{<2>3}{%
+        If it is $[[False]]$, then by the latter, we have an inconsistent
+        constraints context, meaning the code is unreachable.}
+
+    \step{<2>4}{%
+        If it is $[[True]]$, we may step with \PETPAssertUndef.}
+
+    \end{proof}
+
+\step{<1>12}{\case{%
+    \PureExprBoolToInteger.
+}{%
+    \pf{} $[[ pval ]]$ must be a $[[ bool_value ]]$ (\PureValTrue, \PureValFalse)
+    and so step with \PETPBoolToIntegerTrue, \PETPBoolToIntegerFalse{} respectively.}}
+
+\step{<1>13}{\case{%
+    \PureExprWrapI.
+}{%
+    \pf{} $[[ pval ]]$ must be a $[[ ty_mem_int ]]$ (\PureValObjPtr) and so
+    step with \PETPWrapI.}}
+
+\step{<1>14}{\case{%
+    \PureTopIf, \PureTopCase, \PureTopLet, \PureTopLetT.
+}{%
+    \pf{} See \ExplTopSeqIf, \ExplTopSeqCase, \ExplTopSeqLet, \ExplTopSeqLetT,
+    case for more general proofs.}}
+
+\step{<1>15}{\case{\ExplIsActionCreate.}{}}
+
+    \begin{proof}
+
+    \step{<2>1}{%
+        $[[ pval ]]$ must be a $[[ ty_mem_int ]]$.\\
+        \pf{} By \PureValObjPtr.}
+
+    \step{<2>2}{%
+        $[[ h ]]$ must be $[[ cdot ]]$ (empty).\\
+        \pf{} By \HeapEmpty.}
+
+    \step{<2>3}{%
+        Step with \ActionIsCreate.\\
+        \pf{} Since we assume all allocations succeed, $[[ mem_addr ]]$ is
+        constructible.  $[[ mem_id ]]$ is simply a fresh allocation ID, and so
+        $[[ ty_mem_ptr ]]$ can be constructed to satisfy the requirements.}
+
+    \end{proof}
+
+\step{<1>16}{\case{\ExplIsActionLoad.}{}}
+
+    \begin{proof}
+
+    \step{<2>1}{%
+        $[[ pval0 ]]$ must be a $[[ ty_mem_ptr ]]$.\\
+        \pf{} By \PureValObjPtr.}
+
+    \step{<2>2}{%
+        $[[ cdot ; L0 ; N ; nR' |- res_term => term |- init - ct -> inj pval1 ]] $.\\
+        $[[ alloct |- smt ( ptrt = inj ty_mem_ptr /\ init = const ct true ) ]]$.\\
+        \pf{} By inversion on the typing assumption, $[[ alloct <= N ]]$ and \stepref{<2>1}.}
+
+    \step{<2>3}{%
+        $[[ exists ]] [[ h' ]], [[ nR' ]], [[ res_val ]] [[.]]$
+        \begin{pfenum}
+        \item $[[ alloct |- h' <= nR' ]]$
+        \item $[[ alloct | < h ; res_term > ||v < h' ; res_val > ]]$
+        \item $[[ cdot ; L0 ; N ; nR' |- res_val => term |- init - ct -> inj pval1 ]]$
+        \end{pfenum}
+        \pf{} By \stepref{<2>2} and \lemmaref{subsec:res_term_progress}.}
+
+    \step{<2>4}{%
+        $[[ res_val ]] = [[ Owned < ct > (  term , ) ]]$.\\
+        \pf{} By \lemmaref{subsec:non_cond_res_det_ctx_val}.}
+
+    \step{<2>5}{%
+        $[[ h' ]] = [[ { term |- init - ct -> inj pval1 & None } ]]$.\\
+        \pf{} By inversion on the term typing assumption in \stepref{<2>3} using
+        \stepref{<2>4}, $[[ alloct |- h' <= nR' ]]$ and \lemmaref{subsec:norm_ctx_det_heap}.}
+
+    \step{<2>6}{Step with \ActionIsLoad.}
+
+    \end{proof}
+
+
+\step{<1>17}{\case{\ExplIsActionStore.}{%
+}}
+
+    \begin{proof}
+
+    \step{<2>1}{%
+        $[[ pval0 ]]$ must both be a $[[ ty_mem_ptr ]]$.\\
+        \pf{} By \PureValObjPtr.}
+
+    \step{<2>2}{%
+        $[[ alloct |- smt ( representable ( ct , inj pval ) ) ]]$\\
+        $[[ cdot ; L0 ; N ; nR |- res_term => term |- _init - ct -> _t ]]$\\
+        $[[ alloct |- smt ( ptrt = inj ty_mem_ptr ) ]]$.\\
+        \pf{} By inversion on the typing assumption, $[[ alloct <= N ]]$ and \stepref{<2>1}.}
+
+    \step{<2>3}{%
+        $[[ exists ]] [[ h' ]], [[ nR' ]], [[ res_val ]] [[.]]$
+        \begin{pfenum}
+        \item $[[ alloct |- h' <= nR' ]]$
+        \item $[[ alloct | < h ; res_term > ||v < h' ; res_val > ]]$
+        \item $[[ cdot ; L0 ; N ; nR' |- res_val => term |- _init - ct -> _t ]] $.
+        \end{pfenum}
+        \pf{} By \stepref{<2>2} and \lemmaref{subsec:res_term_progress}.}
+
+    \step{<2>4}{%
+        $[[ res_val ]] = [[ Owned < ct > (  term , ) ]]$.\\
+        \pf{} By \lemmaref{subsec:non_cond_res_det_ctx_val}.}
+
+    \step{<2>5}{%
+        $[[ h' ]] = [[ { term |- _init - ct -> _t & None } ]]$.\\
+        \pf{} By inversion on the term typing assumption in \stepref{<2>3},
+        $[[ alloct |- h' <= nR' ]]$ and \lemmaref{subsec:norm_ctx_det_heap}.}
+
+    \step{<2>6}{Step with \ActionIsStore.}
+
+    \end{proof}
+
+\step{<1>18}{\case{\ExplIsActionKillStatic}{}}
+
+    \begin{proof}
+
+    \step{<2>1}{%
+        $[[pval]]$ must be a $[[ ty_mem_ptr ]]$.\\
+        \pf{} By \PureValObjPtr.}
+
+    \step{<2>2}{%
+        $[[ cdot ; L0 ; N ; nR |- res_term => ptrt1 |- _init - ct -> _t * Alloc ( ptrt2 , ) ( term ) ]]$\\
+        $[[ alloct |- smt ( ptrt = ptrt' = inj ty_mem_ptr /\ sizeof ct = term ) ]]$.\\
+        \pf{} By inversion on the typing assumption, $[[ alloct <= N ]]$ and \stepref{<2>1}.}
+
+    \step{<2>3}{%
+        $[[ exists ]] [[ h' ]], [[ nR' ]], [[ res_val ]] [[.]]$\\
+        \begin{pfenum}
+        \item $[[ alloct |- h' <= nR' ]]$
+        \item $[[ alloct | < h ; res_term > ||v < h' ; res_val > ]]$
+        \item $[[ cdot ; L0 ; N ; nR' |- res_val => ptrt1 |- _init - ct -> _t * Alloc ( ptrt2 , ) ( term ) ]]$.
+        \end{pfenum}
+        \pf{} By \stepref{<2>2} and \lemmaref{subsec:res_term_progress}.}
+
+    \step{<2>4}{%
+        $[[ res_val ]] = [[ < Owned < ct > ( ptrt1 , )  , Alloc ( ptrt2 , ) > ]]$.\\
+        \pf{} By \lemmaref{subsec:non_cond_res_det_ctx_val}.}
+
+    \step{<2>5}{%
+        $[[ h' ]] = [[ { ptrt1 |- _init - ct -> _t  & None } + { Alloc ( ptrt2 , ) ( term ) & None } ]]$.\\
+        \pf{} By inversion on the typing assumption in \stepref{<2>3},
+        $[[ alloct |- h' <= nR' ]]$ and \lemmaref{subsec:norm_ctx_det_heap}.}
+
+    \step{<2>6}{Step with \ActionIsKillStatic.}
+
+    \end{proof}
+
+\step{<1>19}{\case{\ExplIsMemopRelBinop.}{}}
+
+    \begin{proof}
+
+    \step{<2>1}{%
+        $[[pval1]]$ must be a $[[ ty_mem_ptr1 ]] = [[ ( @ mem_id1 , mem_addr1 ) ]]$.\\
+        $[[pval2]]$ must be a $[[ ty_mem_ptr2 ]] = [[ ( @ mem_id2 , mem_addr2 ) ]]$.\\
+        \pf{} By on the typing assumption and \PureValObjPtr.}
+
+    \step{<2>2}{%
+        $[[ C ; L ; N ; R |- res_term => Alloc ( ptrt1 , ) ( term1 ) * Alloc ( ptrt2 , ) ( term2 ) ]]$.\\
+        \pf{} By inversion on the typing assumption.}
+
+    \step{<2>3}{%
+        $[[ alloct |- smt ( to_int mem_id1 = to_int mem_id2 = ptrt1 dot id = ptrt2 dot id2 ) ]]$\\
+        $[[ alloct |- smt ( ptrt1 dot base =< to_int mem_addr1 =< ptrt1 dot base1 + term1 ) ]]$\\
+        $[[ alloct |- smt ( ptrt2 dot base =< to_int mem_addr2 =< ptrt2 dot base2 + term2 ) ]]$.\\
+        \pf{} By inversion on the typing assumption and $[[ alloct <= N ]]$.}
+
+    \step{<2>4}{%
+        $[[ exists ]] [[ h' ]], [[ nR' ]], [[ res_val ]] [[.]]$\\
+        \begin{pfenum}
+        \item $[[ alloct |- h' <= nR' ]]$
+        \item $[[ alloct | < h ; res_term > ||v < h' ; res_val > ]]$
+        \item $[[ cdot ; L0 ; N ; nR' |- res_val => Alloc ( ptrt1 , ) ( term1 ) * Alloc ( ptrt2 , ) ( term2 ) ]]$.
+        \end{pfenum}
+        \pf{} By \stepref{<2>2} and \lemmaref{subsec:res_term_progress}.}
+
+    \step{<2>5}{%
+        $[[ res_val ]] = [[ < Alloc ( ptrt1 , ) , Alloc ( ptrt2 , ) > ]]$.\\
+        \pf{} By \lemmaref{subsec:non_cond_res_det_ctx_val}.}
+
+    \step{<2>6}{%
+        $[[ h' ]] = [[ { Alloc ( ptrt1 , ) ( term1 ) & None } + { Alloc ( ptrt2 , ) ( term ) & None } ]]$.\\
+        \pf{} By inversion on the typing assumption in \stepref{<2>3},
+        $[[ alloct |- h' <= nR' ]]$ and \lemmaref{subsec:norm_ctx_det_heap}.}
+
+    \step{<2>7}{Step with \MemopIsRelBinop.}
+
+    \end{proof}
+
+\step{<1>20}{\case{%
+    \ExplIsMemopPtrDiff, \ExplIsMemopPtrDiffArr.
+}{%
+    \pf{} Similar to \ExplIsMemopRelBinop, so step with \MemopIsPtrDiff/\MemopIsPtrDiffArr respectively.
+}}
+
+\step{<1>21}{\case{%
+    \ExplIsMemopIntFromPtr.
+}{%
+    \pf{} Similar to \ExplIsMemopRelBinop, so step with \MemopIsIntFromPtr.}}
+
+\step{<1>22}{\case{\ExplIsMemopPtrFromInt.}{}}
+
+    \begin{proof}
+
+    \step{<2>1}{%
+        $[[pval]]$ must be a $[[ ty_mem_int ]] = [[ mem_addr ]]$.\\
+        \pf{} By inversion on the typing assumption and \PureValObjInt.}
+
+    \step{<2>2}{%
+        $[[ C ; L ; N ; R |- res_term => ptrt |- init - ct1 -> valuet ]]$.\\
+        \pf{} By inversion on the typing assumption.}
+
+    \step{<2>3}{%
+        $[[ alloct |- smt ( x dot base =< to_int mem_addr =< x dot base + x dot len ) ]]$ for $[[ x eq alloct [ ptrt dot id ] ]]$.\\
+        \pf{} By inversion on the typing assumption and $[[ alloct <= N ]]$.}
+
+    \step{<2>4}{%
+        $[[ exists ]] [[ h' ]], [[ nR' ]], [[ res_val ]] [[.]]$\\
+        \begin{pfenum}
+        \item $[[ alloct |- h' <= nR' ]]$
+        \item $[[ alloct | < h ; res_term > ||v < h' ; res_val > ]]$
+        \item $[[ cdot ; L0 ; N ; nR' |- res_val => ptrt |- init - ct1 -> valuet ]]$.
+        \end{pfenum}
+        \pf{} By \stepref{<2>2} and \lemmaref{subsec:res_term_progress}.}
+
+    \step{<2>5}{%
+        $[[ res_val ]] = [[ Owned < ct > ( ptrt , ) ]]$.\\
+        \pf{} By \lemmaref{subsec:non_cond_res_det_ctx_val}.}
+
+    \step{<2>6}{%
+        $[[ h' ]] = [[ { Owned < ct > ( ptrt , ) ( oarg ) & None } ]]$.\\
+        \pf{} By inversion on the typing assumption in \stepref{<2>3},
+        $[[ alloct |- h' <= nR' ]]$ and \lemmaref{subsec:norm_ctx_det_heap}.}
+
+    \step{<2>7}{Step with \MemopIsPtrFromInt.}
+
+    \end{proof}
+
+\step{<1>23}{\case{\ExplIsMemopPtrValidForDeref.}{
+    \pf{} $[[ pval ]]$ must be a $[[ ty_mem_ptr ]]$, so step with
+    \MemopIsPtrValidForDeref.}}
+
+\step{<1>24}{\case{%
+    \ExplIsMemopPtrWellAligned.
+}{%
+    \pf{} $[[ pval ]]$ must be a $[[ ty_mem_ptr ]]$, so step with
+    \MemopIsPtrWellAligned.}}
+
+\step{<1>25}{\case{%
+    \ExplIsMemopPtrArrayShift.
+}{%
+    \pf{} Similar to \ExplIsMemopRelBinop, so step with \MemopIsPtrArrayShift.}}
+
+\step{<1>26}{\case{\ExplSeqCCall.}{}}
+
+    \begin{proof}
+
+    \step{<2>1}{%
+        $[[Symbol_sym : fon eq </ xi // i /> |-> texpr inEnv Globals]]$\\
+        $[[ cdot ; L0 ; N ; nR |- </ xi = spine_elemi // i /> :; fon >> subs ; ret ]]$.\\
+        \pf{} By inversion.}
+
+    \step{<2>2}{%
+        $[[ alloct | </ xi = spine_elemi // i /> :; fon >> < subs ; ret > ]]$.\\
+        \pf{} By \stepref{<2>1} and \lemmaref{subsec:wt_spine_sub}.}
+
+    \step{<2>3}{Step with \SeqTCCall.}
+
+    \end{proof}
+
+\step{<1>27}{\case{\ExplSeqProc, \ExplTopSeqRun.}{%
+    \pf{} Similar to \ExplSeqCCall, but step with \SeqTProc{} / \TSeqTRun.}}
+
+\step{<1>28}{\case{\ExplIsMemop.}{%
+    \pf{} By induction, if $[[memop]]$ is unreachable, then the whole expression
+    is so. $[[memop]]$s are not values. Only stepping cases applies, so
+    step with \IsIsMemop.}}
+
+\step{<1>29}{\case{\ExplIsAction, \ExplIsNegAction.}{%
+    \pf{} By induction, if $[[action]]$ is unreachable, then the whole
+    expression is so. $[[action]]$s are not values. Only stepping case applies, so
+    step with \IsIsAction{} (or \IsIsNegAction{} respectively).}}
+
+\step{<1>30}{\case{\ExplTopSeqLetP, \ExplTopSeqLetTP.}{%
+    \pf{} See \ExplTopSeqLet{} / \ExplTopSeqLetT{} for more general cases and proofs.}}
+
+\step{<1>31}{\case{\ExplTopSeqLet.}{%
+    \pf{} By induction, since $[[seq_expr]]$ is not value, if it is unreachable,
+    the whole expression is so. If $[[seq_expr]]$ takes a step, the whole
+    expression steps with \TSeqTLetLetT.}}
+
+\step{<1>32}{\case{\ExplTopSeqLetT.}{%
+    \pf{} By induction, if $[[texpr]]$ is unreachable, so is the whole
+    expression.\\[\baselineskip]
+
+    If if it a $[[tval]]$, use \lemmaref{subsec:wt_values_pat_match}, with
+    \lemmaref{subsec:tofun_ret_rel_ret} and the assumption that all
+    patterns are exhaustive, so the whole expression steps with
+    \TSeqTLetTSub.\\[\baselineskip]
+
+    If $[[texpr]]$ takes a step, the whole expression steps with
+    \TSeqTLetTLetT.}}
+
+\step{<1>33}{\case{\ExplTopSeqCase.}{%
+    \pf{} By assumption that all patterns are exhaustive, and
+    \lemmaref{subsec:wt_values_pat_match}, there is at least one pattern against
+    which $[[pval]]$ will match, so \TSeqTCase.}}
+
+\step{<1>34}{\case{\ExplTopSeqIf.}{%
+    \pf{} $[[pval]]$ must be a $[[bool_value]]$ and so
+    \TSeqTIfTrue / \TSeqTIfFalse.}}
+
+\step{<1>35}{\case{\ExplTopSeqBound.}{%
+    \pf{} Step with \TSeqTBound.}}
+
+\step{<1>36}{\case{\ExplTopIsLetS.}{%
+    \pf{} Similar to \ExplTopSeqLetT, but step with \TIsTLetSSub{} /
+    \TIsTLetSLetS instead.}}
+
+\step{<1>37}{\case{\ExplTopSeq, \ExplTopIs.}{%
+    \pf{} Step with \TTTSeqT{} / \TTTIsT{} respectively.}}
+
+\end{proof}
+
+\section{Type Preservation}
+
+% cdot ; L0 ; N ; nR |- texpr <= ret
+% alloc ; h <= N ; nR
+% < alloct ; h + f ; texpr > -->  < alloct' ; heap ; texpr' >
+% -------------------------------------------------------------------
+% exists h' , N' , nR'.
+%    cdot ; L0 ; N ; cdot [= cdot ; L0 ; N' ; cdot
+%    heap  =  h' + f
+%    N |- h' <= nR'
+%    cdot ; L0 ; N ; nR' |- texpr' <= ret .
+
+
+\subsection{\texorpdfstring{$[[ Owned < ct > ]]$}{Owned⟨τ⟩} resource output values have type \texorpdfstring{$[[to_base ( ct ) ]]$}{βτ}}\label{subsec:owned_val_type}
+
+If $[[ C ; L ; N ; R |- Owned < ct > ( ptrt , ) <= ptrt' |- init - ct -> inj pval ]]$ then
+$[[ C |- pval => to_base ( ct ) ]]$ and $[[ C ; L |- init => bool_of ( ct ) ]]$.
+
+\pfsketch{ Induction over the typing judgements. Only \ExplIsActionStore{}
+    constrain $[[ _ dot sym_value ]]$ of $[[ Owned < ct > ]]$ resources, and its
+    premises ensure it has type $[[ to_base ( ct ) ]]$; \ExplIsActionLoad{} and
+    \ExplIsMemopPtrValidForDeref{} simply propagate the value.
+    \ExplIsActionCreate, \ExplIsActionLoad{} and \ExplIsActionStore{} and ensure
+    $[[ _ dot sym_init ]]$ has type $[[ bool_of ( ct ) ]]$.}
+
+\subsection{Type Preservation Statement and Proof}
+
+If $[[ cdot ; L0 ; N ; nR |- texpr <= ret ]]$ and
+$[[ alloct ; h <= N ; nR ]]$, and all top-level functions are well-typed
+then $[[ forall ]] [[ f ]] [[ . ]] [[ < alloct ; h + f ; texpr > -->  < alloct' ; heap ; texpr' > ]] [[ => ]]
+[[ exists ]] [[ N' ]] , [[ h' ]] , [[ nR' ]] [[ . ]]
+( [[ cdot ; L0 ; N ; cdot [= cdot ; L0 ; N' ; cdot ]] )
+[[ /\ ]] [[ heap ]] = [[ h' + f ]]
+[[ /\ ]] ( [[ alloct' ; h' <= N' ; nR' ]] )
+[[ /\ ]] ( [[ cdot ; L0 ; N' ; nR' |- texpr' <= ret ]] )$.\\[\baselineskip]
+
+You can equally well prove $[[ forall ]] [[ nR' ]] [[ . ]] [[ alloct ; h' <= N' ; nR' ]]
+[[ => ]] [[ cdot ; L0 ; N ; nR' |- texpr' <= ret ]]$ instead. Instead of
+supplying $[[ nR' ]]$ and proving heap typing, you instead invert heap typing
+to deduce that $[[ nR' ]]$ can only be what you would have supplied anyways.
+
+\begin{proof}
+
+\pfsketch{ Induction over the typing rules, which don't refer to values or
+    unreachable program points.\\[\baselineskip]}
+
+\assume{\begin{pfenum}
+    \item $[[ cdot ; L0 ; N ; nR |- texpr <= ret ]]$,
+    \item $[[ alloct ; h <= N ; nR ]]$
+    \item for all $[[ Symbol_sym : fon eq </ xi // i /> |-> texpr inEnv Globals ]]$,
+            if $[[ C ; L ; N ; R |- param_spine :; fon >> subs ; ret ]]$
+            then $[[ C ; L ; N ; R |- subs ( texpr ) <= ret ]]$
+    \item $[[ forall ]] [[ f ]] [[ . ]] [[ < alloct ;  h + f ; texpr > -->  < alloct' ; heap ; texpr' > ]]$.
+\end{pfenum}\leavevmode\\}
+
+\prove{$[[ exists ]] [[ N' ]] , [[ h' ]], [[ nR' ]] [[ . ]]$
+    \begin{pfenum}
+        \item $[[ cdot ; L0 ; N ; cdot [= cdot ; L0 ; N' ; cdot ]]$
+        \item $[[ heap ]] = [[ h' + f ]]$
+        \item $[[ alloct ; h' <= N' ; nR' ]]$
+        \item $[[ cdot ; L0 ; N' ; nR' |- texpr' <= ret ]]$.
+    \end{pfenum}\leavevmode\\[\baselineskip]}
+
+\step{<1>1}{\case{%
+    \PureExprCtorIvXOR.
+}{%
+    For all pure expressions, $[[ nR ]] = [[ cdot ]]$, $[[ h ]] = [[ cdot ]]$,
+    and $[[ heap ]] = [[ f ]]$.
+    \pflet{$[[ h' ]] = [[ cdot ]]$ and $[[ nR' ]] = [[ cdot ]]$,
+        so $[[ heap ]] = [[ h' + f ]]$ trivially and $[[ alloct |- cdot <= cdot ]]$ (by \HeapEmpty).}
+
+    $[[ ret ]] = [[ sigma y : integer . y = xor_uf ( to_int ty_mem_int1 , to_int ty_mem_int2 ) /\ I ]]$\\[\baselineskip]
+    \pf{} By \PureTopValDone, suffices to show $[[ cdot |- ty_mem_int => integer ]]$
+    (true by \PureValObjInt).}}
+
+\step{<1>2}{\case{%
+    \PureExprArrayShift.
+}{%
+    As before, $[[ nR ]] = [[ cdot ]]$, $[[ h ]] = [[ cdot ]]$, and
+    $[[ heap ]] = [[ f ]]$.
+    \pflet{$[[ h' ]] = [[ cdot ]]$ and $[[ nR' ]] = [[ cdot ]]$,
+        so $[[ heap ]] = [[ h' + f ]]$ trivially and $[[ alloct |- cdot <= cdot ]]$ (by \HeapEmpty).}
+
+    $[[ ret ]] = [[ sigma y : loc . y = inj ty_mem_ptr +ptr ( to_int ty_mem_int * sizeof ct ) /\ I ]]$\\[\baselineskip]
+    \pf{} By \PureTopValDone, suffices to show $[[ cdot |- ty_mem_ptr' => loc ]]$
+    (true by \PureValObjPtr) and
+    $[[ smt ( N => inj ty_mem_ptr' = inj ty_mem_ptr +ptr ( to_int ty_mem_int * sizeof ct ) ) ]]$
+    (true by definition of \PETPArrayShift).}}
+
+\step{<1>3}{\case{%
+    \PureExprMemberShift, \PureExprPtrEq, \PureExprNot, \PureExprArithBinop,
+    \PureExprBoolBinop, \PureExprRelBinop, \PureExprAssertUndef,
+    \PureExprBoolToInteger, \PureExprWrapI.
+}{%
+    \pf{} Similar to \PureExprArrayShift.}}
+
+\step{<1>4}{\case{%
+    \PureExprCall
+}{%
+    \pf{} See \ExplSeqCCall{} for a more general case and proof.}}
+
+\step{<1>5}{\case{%
+    \PureTopIf.
+}{%
+    \pf{} See \ExplTopSeqIf{} for a more general case and proof.}}
+
+\step{<1>6}{\case{%
+    \PureTopLet.
+}{%
+    \pf{} See \ExplTopSeqLet{} for a more general case and proof.}}
+
+\step{<1>7}{\case{%
+    \PureTopLetT.
+}{%
+    \pf{} See \ExplTopSeqLetT{} for a more general case and proof.}}
+
+\step{<1>8}{\case{%
+    \PureTopCase.
+}{%
+    \pf{} See \ExplTopSeqCase{} for a more general case and proof.}}
+
+\step{<1>9}{\case{%
+    \ExplIsActionCreate.
+}{%
+    \pflet{%
+        $[[ ret ]] = [[ sigma yp : loc . term /\ exists x : to_base ( ct ) . ( yp |- const ct false - ct -> x ) *o I  ]]$\\
+        where $[[ term ]] = [[ representable ( ct * , yp ) /\ alignedI ( to_int ty_mem_int , yp )  /\ allocv [ to_int mem_id ] = ( to_int mem_addr , sizeof ct ) ]]$.\\
+        $[[ pt ]] = [[ Owned < ct > ( inj ty_mem_ptr , ) ( oarg ) ]]$
+        where $[[ oarg ]] = [[ { sym_init = const ct false , sym_value = default to_base ( ct ) } ]]$.\\[\baselineskip]}
+
+    \assume{%
+        $[[ cdot ; L0 ; N ; cdot |- create ( ty_mem_int , ct ) Symbol_prefix => ret ]]$
+        and so $[[ h ]] = [[ cdot ]]$ (by inversion, \HeapEmpty)
+        and $[[ heap ]] = [[ f + { pt & None } + { Alloc ( inj ty_mem_ptr , ) ( sizeof ct ) & None } ]]$.\\}
+
+    \pflet{%
+        $[[ h' ]] = [[ { pt & None } + { Alloc ( inj ty_mem_ptr , ) ( sizeof ct ) & None } ]]$,
+        $[[ nR' ]] = [[ _ : pt , _ : Alloc ( inj ty_mem_ptr , ) ( sizeof ct ) ]]$,
+        $[[ alloct' ]] = ( [[ alloct [ to_int mem_id ] := ( to_int mem_addr , sizeof ct ) ]])$,
+        $[[ N' ]] = [[ N , allocv [ to_int mem_id ] = ( to_int mem_addr , sizeof ct )  ]]$.}}
+    This means $[[ heap ]] = [[ h' + f ]]$ (trivially).
+    Also, $[[ alloct' <= N' ]]$ from since $[[ alloct <= N ]]$ (by expanding definitions).
+    Hence $[[ alloct' ; h' <= N' ; nR' ]]$
+    (by \HeapPredOwned, \AllocTy, \StateTy).\\[\baselineskip]
+
+    \prove{%
+        $[[ cdot ; L0 ; N' ; nR' |- done < ty_mem_ptr , default to_base ( ct ) , Owned < ct > (  inj ty_mem_ptr , ) > : ret => ret ]]$.\\[\baselineskip]}}
+
+    \begin{proof}
+
+    \step{<2>1}{$[[ cdot |- ty_mem_ptr => loc ]]$ by \PureValObjPtr{} and \PureValObj.}
+
+    \step{<2>2}{$[[ smt ( N' => term ) ]]$ by construction of $[[ ty_mem_ptr ]]$ and $[[ N' ]]$.}
+
+    \step{<2>3}{$[[ cdot ; L0 |- default to_base ( ct ) => to_base ( ct ) ]]$ by construction.}
+
+    \step{<2>4}{$[[ cdot ; L0 ; N ; nR'  |- Owned < ct > ( inj ty_mem_ptr , ) <= pt ]]$ by
+        \ResSynPred.}
+
+    \step{<2>5}{Prove typing with \ExplSpineRet; \stepref{<2>4} -- \stepref{<2>1} with
+        \ExplSpineRes, \ExplSpineLog, \ExplSpinePhi, \ExplSpineComp{}
+        respectively; \ExplIsTVal{}.}
+
+    \end{proof}
+
+\step{<1>10}{\case{%
+    \ExplIsActionLoad.
+}{%
+    \pflet{%
+        $[[ ret ]] = [[ sigma y : to_base ( ct ) . y = inj pval /\ ( inj ty_mem_ptr |- const ct true - ct -> inj pval ) *o I ]]$\\
+        $[[ pt ]] = [[ Owned < ct > ( inj ty_mem_ptr , ) ( oarg ) ]]$
+        where $[[ oarg ]] = [[ { sym_init = const ct true , sym_value = inj pval } ]]$.\\[\baselineskip]}
+
+    \assume{%
+        $[[ cdot ; L0 ; N ; nR |- load ( ct , ty_mem_ptr , _mem_order , res_term ) => ret ]]$\\
+        and $[[ heap ]] = [[ heap' + { pt & None } ]]$
+        so $[[ alloct | < h + f ; res_term > ||v < heap' + { pt & None } ; Owned < ct > ( inj ty_mem_ptr , ) > ]]$.\\[\baselineskip]}
+
+    \pflet{$[[ h' ]]$ and $[[ nR' ]]$ be as per \lemmaref{subsec:res_term_red_isolated}.}
+    $[[ nR' ]] = [[ _ : pt ]]$ by lemma~\ref{subsec:non_cond_res_det_ctx_val}
+    and $[[ h' ]] = [[ { pt & None } ]]$ by lemma~\ref{subsec:norm_ctx_det_heap},
+    hence $[[ heap' ]] = [[ f ]]$.\\
+    This means $[[ heap ]] = [[ h' + f ]]$, $[[ alloct |- h' <= nR' ]]$
+    and $[[ cdot ; L0 ; N ; nR' |- Owned < ct > ( inj ty_mem_ptr , ) => pt ]]$.\\[\baselineskip]
+
+    \prove{$[[ cdot ; L0 ; N ; nR' |- done < pval , Owned < ct > (  inj ty_mem_ptr ,  ) > : ret => ret ]]$.\\}}}
+
+    \begin{proof}
+
+    \step{<2>1}{$[[ cdot |- pval => to_base ( ct ) ]]$
+        by~\lemmaref{subsec:owned_val_type}.}
+
+    \step{<2>2}{$[[ smt ( N => inj pval = inj pval ) ]]$ trivially.}
+
+    \step{<2>3}{$[[ cdot ; L0 ; N ; nR' |- Owned < ct > ( inj ty_mem_ptr , ) => pt ]]$, already established.}
+
+    \step{<2>4}{Prove typing with \ExplSpineRet; \stepref{<2>3} -- \stepref{<2>1} with
+        \ExplSpineRes, \ExplSpineLog, \ExplSpineComp{} respectively; \ExplIsTVal{}.}
+
+    \end{proof}
+
+\step{<1>11}{\case{%
+    \ExplIsActionStore.
+}{%
+    \pflet{%
+        $[[ ret ]] = [[ sigma _ : unit . ( inj ty_mem_ptr |- const ct true - ct -> inj pval ) *o I ]]$.\\
+        $[[ pt ]] = [[ Owned < ct > ( inj ty_mem_ptr , ) ( _t )]]$,
+        $[[ pt' ]] = [[ Owned < ct > ( inj ty_mem_ptr , ) ( oarg ) ]]$,
+        where $[[ oarg ]] = [[ { sym_init = const ct true , sym_value = inj pval } ]]$.\\[\baselineskip]}
+
+    \assume{%
+        $[[ cdot ; L0 ; N ; nR |- store ( _b , ct , ty_mem_ptr , pval , _mem_order , res_term ) => ret ]]$
+        and $[[ heap ]] = [[ heap' + { pt' & None } ]]$ so $[[ alloct | < h + f ; res_term > ||v < heap' + { pt & None } ; Owned < ct > ( inj ty_mem_ptr , ) > ]]$.\\[\baselineskip]}
+
+    $[[ exists ]] [[ h'' ]] , [[ nR'' ]]$ such that
+    $[[ heap' + { pt & None } ]] = [[ h'' + f ]]$,
+    $[[ alloct |- h' <= nR' ]]$
+    and $[[ cdot ; L0 ; N ; nR'' |- Owned < ct > ( inj ty_mem_ptr , ) => pt ]]$,
+    by \lemmaref{subsec:res_term_red_isolated}.\\[\baselineskip]
+
+    $[[ nR'' ]] = [[ _ : pt ]]$ by lemma~\ref{subsec:non_cond_res_det_ctx_val}
+    and $[[ h'' ]] = [[ { pt & None } ]]$ by lemma~\ref{subsec:norm_ctx_det_heap},
+    hence $[[ heap' ]] = [[ f ]]$.\\
+    \pflet{$[[ h' ]] = [[ { pt' & None } ]]$ and $[[ nR' ]] = [[ _ : pt' ]]$.}
+    This means $[[ heap ]] = [[ h' + f ]]$ and $[[ alloct |- h' <= nR' ]]$ (by \HeapPredOwned).\\[\baselineskip]
+
+    \prove{%
+        $[[ cdot ; L0 ; N ; nR' |- done < Unit , Owned < ct > ( inj ty_mem_ptr , )  > : ret => ret ]]$.\\[\baselineskip]}}}
+
+    \begin{proof}
+
+    \step{<2>1}{$[[ cdot |- Unit => unit ]]$ by \PureValUnit.}
+
+    \step{<2>2}{$[[ cdot ; L0 ; N ; _ : pt' |- Owned < ct > ( inj ty_mem_ptr , ) <= pt' ]]$
+        by \ResSynPred.}
+
+    \step{<2>3}{Prove typing with \ExplSpineRet; \stepref{<2>2} -- \stepref{<2>1} with
+        \ExplSpineRes, \ExplSpineComp{} respectively; \ExplIsTVal{}.}
+
+    \end{proof}
+
+\step{<1>12}{\case{%
+    \ExplIsActionKillStatic.
+}{%
+
+    \assume{%
+        $[[ cdot ; L0 ; N ; nR |- kill ( static ct , ty_mem_ptr , res_term ) => sigma _ : unit . I ]]$
+        and $[[ alloct | < h + f ; res_term > ||v < heap + { pt & None } + { Alloc ( ptrt ,  ) ( oarg ) & None } ; < Owned < ct > ( inj ty_mem_ptr , ) , Alloc ( ptrt ,  ) > > ]]$.\\[\baselineskip]}
+
+    $[[ exists ]] [[ h'' ]] , [[ nR'' ]]$ such that
+    $[[ heap + { pt & None } + { Alloc ( ptrt ,  ) ( oarg ) & None } ]] = [[ h'' + f ]]$,
+    $[[ alloct |- h'' <= nR'' ]]$
+    and $[[ cdot ; L0 ; N ; nR'' |- < Owned < ct > ( inj ty_mem_ptr , ) , Alloc ( ptrt , ) > => pt ]]$,
+    by \lemmaref{subsec:res_term_red_isolated}.\\[\baselineskip]
+
+    $[[ nR'' ]] = [[ _ : pt , _ : Alloc ( ptrt , ) ( oarg ) ]]$ by lemma~\ref{subsec:non_cond_res_det_ctx_val}
+    and $[[ h'' ]] = [[ { pt & None } + { Alloc ( ptrt ,  ) ( oarg ) & None } ]]$ by lemma~\ref{subsec:norm_ctx_det_heap},
+    hence $[[ heap ]] = [[ f ]]$.\\
+    \pflet{$[[ h' ]] = [[ cdot ]]$ and $[[ nR' ]] = [[ cdot ]]$.\\}
+    This means $[[ heap ]] = [[ h' + f ]]$ and $[[ alloct |- h' <= nR' ]]$ (by \HeapEmpty).\\[\baselineskip]
+
+    \prove{%
+        $[[ cdot ; L0 ; N ; cdot |- done < Unit > : sigma _ : unit . I => sigma _ : unit . I ]]$}
+
+    \pf{} By \ExplSpineRet, \PureValUnit, \ExplSpineComp, \ExplIsTVal.}}
+
+\step{<1>13}{\case{%
+    \ExplIsMemopRelBinop.
+}{%
+
+    \assume{%
+      $[[ ret eq sigma y : bool . y = ( to_int mem_addr1 ' rel_binop ' to_int mem_addr2 ) /\ Alloc ( ptrt1 , ) ( oarg1 ) * Alloc ( ptrt2 , ) ( oarg2 ) *o I ]]$
+      $[[ cdot ; L0 ; N ; nR |- res_term | ( @ mem_id1 , mem_addr1 ) rel_binop ( @ mem_id2 , mem_addr2 ) => ret ]]$
+      and $[[ alloct | < h + f ; res_term > ||v < heap + { Alloc ( ptrt1 , ) ( oarg1 ) & None } + { Alloc ( ptrt2 ,  ) ( oarg2 ) & None } ; < Alloc ( ptrt1 , ) , Alloc ( ptrt2 ,  ) > > ]]$.\\[\baselineskip]}
+
+    $[[ exists ]] [[ h' ]] , [[ nR' ]]$ such that
+    $[[ heap + { Alloc ( ptrt1 , ) ( oarg1 ) & None } + { Alloc ( ptrt2 ,  ) ( oarg2 ) & None } ]] = [[ h' + f ]]$,
+    $[[ alloct |- h' <= nR' ]]$
+    and $[[ cdot ; L0 ; N ; nR' |- < Alloc ( ptrt1 , ) , Alloc ( ptrt2 , ) > => Alloc ( ptrt1 , ) ( oarg1 ) * Alloc ( ptrt2 , ) ( oarg2 ) ]]$,
+    by \lemmaref{subsec:res_term_red_isolated}.\\[\baselineskip]
+
+    $[[ nR' ]] = [[ _ : Alloc ( ptrt1, ) ( oarg1 ) , _ : Alloc ( ptrt2 , ) ( oarg2 ) ]]$ by lemma~\ref{subsec:non_cond_res_det_ctx_val}
+    and $[[ h' ]] = [[ { Alloc ( ptrt1, ) ( oarg1 ) & None } + { Alloc ( ptrt2 ,  ) ( oarg2 ) & None } ]]$ by lemma~\ref{subsec:norm_ctx_det_heap}.\\
+    This means $[[ heap ]] = [[ f ]]$ and $[[ alloct |- h' <= nR' ]]$ (by \HeapPredOther, \HeapConcat).\\[\baselineskip]
+
+    \prove{%
+        $[[ cdot ; L0 ; N ; nR' |- done < bool_value , < pred_term1 , pred_term2 > > : ret => ret ]]$}
+
+    \pf{} By \ExplSpineRet, \PureValUnit, \ExplSpineComp, \ExplSpinePhi{} (by construction of $[[ bool_value ]]$), \ExplSpineRes, \ExplIsTVal.}}
+
+\step{<1>14}{\case{%
+    \ExplIsMemopPtrDiffArr, \ExplIsMemopPtrDiff.
+}{%
+    \pf{} Similar to \ExplIsMemopRelBinop, but with only one $[[ Alloc ( ptrt , ) ]]$ resource.}}
+
+\step{<1>15}{\case{%
+    \ExplIsMemopIntFromPtr.
+}{%
+    \pf{} Similar to \ExplIsMemopRelBinop, but with only one $[[ Alloc ( ptrt , ) ]]$ resource.}}
+
+\step{<1>16}{\case{%
+    \ExplIsMemopPtrFromInt.
+}{%
+    \pf{} Similar to \ExplIsMemopIntFromPtr, with resource $[[ Owned < ct > ( ptrt , ) ]]$
+    instead of $[[ Alloc ( ptrt , ) ]]$.
+}}
+
+\step{<1>17}{\case{%
+    \ExplIsMemopPtrValidForDeref, \ExplIsMemopPtrWellAligned.
+}{%
+    \pf{} Similar to \ExplIsMemopIntFromPtr, but with no resources.
+}}
+
+\step{<1>18}{\case{%
+    \ExplIsMemopPtrArrayShift.
+}{%
+    \pf{} Similar to \ExplIsMemopRelBinop, but with only one $[[ Alloc ( ptrt , ) ]]$ resource.}}
+
+\step{<1>19}{\case{%
+    \ExplSeqCCall.
+}{%
+    \assume{%
+        $[[ Symbol_sym : fon eq </ xi // i  /> |-> texpr inEnv Globals ]]$\\
+        $[[ cdot ; L0 ; N ; nR |- </ xi = spine_elemi // i /> :; fon >> subs1 ; ret1 ]]$.\\
+        $[[ alloct <= N ]]$\\
+        $[[ alloct | ccall ( ty_act , Symbol_sym , </ spine_elemi // i /> ) --> subs2 ( texpr ) : ret2 ]]$\\
+        $[[ cdot ; L0 ; N ; nR |- subs1 ( texpr ) <= ret1 ]]$
+        (all top-level functions are well-typed assumption).\\[\baselineskip]}
+
+    \prove{%
+        $[[ cdot ; L0 ; N ; nR' |- subs2 ( texpr ) <= ret2 ]]$.\\[\baselineskip]}
+    
+    \pf{} By \lemmaref{subsec:wt_spine_sub} and $[[ alloct <= N ]]$.}}
+
+\step{<1>20}{\case{%
+    \ExplSeqProc.
+}{%
+    \pf{}  Similar to \ExplSeqCCall.}}
+
+\step{<1>21}{\case{%
+    \ExplIsMemop, \ExplIsAction, \ExplIsNegAction.
+}{%
+    \pf{} By induction.}}
+
+\step{<1>22}{\case{%
+    \ExplTopSeqLetP, \ExplTopSeqLetTP, \ExplTopSeqLet.
+}{%
+    \pf{} See \ExplTopSeqLetT for a more general case and proof.}}
+
+\step{<1>23}{\case{%
+    \ExplTopSeqLetT.
+}{%
+    \assume{%
+        $[[cdot ; L0 ; N ; nR1 , nR2 |- let </ ret_pati // i /> : ret1 = done < </ ret_termi // i /> > in texpr2 <= ret2]]$\\
+        so $[[ cdot ; L0 ; N ; nR1 |- done < </ ret_termi // i /> > <= ret1 ]]$\\
+        and $[[ N |- ret_pat : ret1 ~> C3 ; L3 ; N3 ; R3 ]]$\\
+        and $[[ C3 ; L0 , L3 ; N , N3 ; nR2 , R3 |- texpr2 <= ret2 ]]$ (by inversion).\\[\baselineskip]}
+
+    $[[ alloct |- h <= nR1, nR2 ]]$ so $[[ h ]] = [[ h1 + h2 ]]$ where $[[ alloct |- h1 <= nR1 ]]$ and $[[ alloct |- h2 <= nR2 ]]$
+    by \lemmaref{subsec:norm_ctx_det_heap}.\\
+    $[[ < alloct ; h + f ; let </ ret_pati // i /> : ret1 = done < </ ret_termi // i /> > in texpr > --> < alloct' ; heap ; subs ( texpr ) > ]]$.\\
+    where $[[ < h ; </ ret_pati = ret_termi // i /> > ~> < heap ; subs > ]]$.\\[\baselineskip]
+
+    \prove{$[[ exists ]] [[ N' ]] , [[ h' ]] , [[ nR' ]] [[ . ]]$\\
+        $\quad [[ cdot ; L0 ; N ; cdot [= cdot ; L0 ; N' ; cdot ]]$\\
+        $\quad [[ heap ]] = [[ h' + f ]]$ and $[[ alloct |- h' <= nR' ]]$\\
+        $\quad [[ cdot ; L0 ; N' ; nR' |- subs ( texpr2 ) <= subs ( ret2 ) ]]$.\\[\baselineskip]}
+
+    $[[ exists ]] [[ h1' ]], [[ nR1' ]] [[ . ]] [[ heap ]] = [[ h1' + h2 + f ]]$,
+    $[[ alloct |- h1' <= nR1' ]]$ and $[[ cdot ; L0 ; N ; nR1' |- subs <= ( C3 ; L3 ; R3 ) ]]$\\
+    by \lemmaref{subsec:wt_values_pat_match}.\\[\baselineskip]
+    This means $[[ cdot ; L0 ; [ id ,subs ] ( N , N3 ) ; nR1' , nR2 |- [ id , subs ] <= ( C3 ; L0 , L3 ; nR2 , R3 ) ]]$
+    by \SubsChkConcat{} and \lemmaref{sec:weakening}.\\[\baselineskip]
+
+    \pflet{$[[ N' ]] = [[ N , subs ( N3 ) ]]$, $[[ h' ]] = [[ h1' + h2 ]]$ and $ [[ nR' ]] = [[ nR1' , nR2 ]]$.}
+    By \lemmaref{subsec:sub}, and $[[ subs ( N ) ]] = [[ N ]]$
+    because it is well-formed w.r.t $[[ cdot ]] ; [[ L0 ]]$.}}
+
+\step{<1>24}{\case{%
+    \ExplTopSeqLetT.
+}{%
+    \assume{%
+        $[[ cdot ; L0 ; N ; nR1 , nR2 |- let </ ret_pati // i /> : ret1 = texpr1 in texpr2 <= ret2 ]]$\\
+        so $[[ cdot ; L0 ; N ; nR1 |- texpr1 <= ret1 ]]$\\
+        and $[[ h ]] = [[ h1 + h2 ]]$ where $[[ alloct |- h1 <= nR1 ]]$ and $[[ alloct |- h2 <= nR2 ]]$
+        by \lemmaref{subsec:norm_ctx_det_heap}.\\
+        $[[ < s ; texpr1 > --> < s' ; texpr1' > ]]$.\\[\baselineskip]}
+
+    Proceed by induction, instantiating the frame from the inductive hypothesis
+    with $[[ h2 + f ]]$.\\}}
+
+\step{<1>25}{\case{%
+    \ExplTopSeqCase.
+}{%
+    \assume{%
+        $[[ cdot ; L0 ; N ; nR |- case pval of </ | pati => texpri // i /> end <= ret ]]$\\
+        $[[ indexed </ pati : base_type1 ~> Ci with termi // i /> ]]$\\
+        $[[ indexed </ C , Ci ; L ; N , termi = inj pval ; R |- texpri <= ret // i /> ]]$.\\[\baselineskip]
+
+        $[[ patj = pval ~> subsj ]]$ and
+        $[[ forall i lt j . not ( pati = pval ~> subsi ) ]]$.\\[\baselineskip]}
+
+    \pflet{$[[ N' ]] = [[ N , subsj ( termj = inj pval ) ]]$, $[[ h' ]] = [[ h ]]$ and $[[ nR' ]] = [[ nR ]]$.}
+    $[[ cdot ; L0 ; N' ; nR |- [ id , subsj ] <= ( Cj ; L0 ; nR ) ]]$\\
+    by \lemmaref{subsec:wt_values_pat_match}\\
+    \lemmaref{sec:weakening},
+    and $[[ subsj ( N ) ]] = [[ N ]]$ because it is well-formed w.r.t $[[ cdot ]] ; [[ L0 ]]$.
+
+    Hence $[[ cdot ; L0 ; N ; cdot [= cdot ; L0 ; N' ; cdot ]]$ and
+    $[[ cdot ; L0 ; N' ; nR |- subsj ( texprj ) <= subsj ( ret ) ]]$
+    by \lemmaref{subsec:sub}.}}
+
+\step{<1>26}{\case{%
+    \ExplTopSeqIf.
+}{
+    See \ExplTopSeqCase{} for more general case and proof.}}
+
+\step{<1>27}{\case{%
+    \ExplTopSeqRun.
+}{%
+    \pf{} Similar to \ExplSeqCCall.}}
+
+\step{<1>28}{\case{%
+    \ExplTopSeqBound.
+}{%
+    \pf{} By induction.}}
+
+\step{<1>29}{\case{%
+    \ExplTopIsLetS.
+}{%
+    \pf{} Similar to \ExplTopSeqLetT.}}
+
+\end{proof}
+
+\section{Soundness wrt VIP}
+
+\subsection{Allocation history is partitioned}\label{subsec:alloc_hist_partitioned}
+
+Define an allocation history ($[[ A ]]$ , $[[ alloct ]]$) to be \emph{partitioned}:
+
+$[[ forall ]] i, j [[.]]$ if $[[ i != j ]] [[ /\ ]] [[ A [ i ] = ( ptrt1 , term1 , true ) ]]
+[[/\]] [[ A [ j ] = ( ptrt2 , term2, true ) ]]$ then $[ [[ ptrt1 ]] ,  [[ ptrt1 + term1 ]] ] \cap
+[ [[ ptrt2 ]] , [[ ptrt2 + term2 ]] ] = \emptyset$.
+
+\pfsketch{ Induction over the operational rules. The allocation histories are only extended
+in the \VipAlloc{} and \ActionIsCreate{}, both of which use $\mathtt{newAlloc}$ as defined
+the VIP paper (Lepigre et.~al, 2022) to only allocate new addresses which (amongst other conditions)
+have ranges which are disjoint with allocations so far.}
+
+\subsection{Resource term reduction preserves VIP heap satisfaction}\label{subsec:res_term_red_sat}
+
+\begin{proof}
+
+\pfsketch{ Induction over the predicate operations.\\[\baselineskip]}
+
+% Where the CN heap changes but the VIP one doesn't
+
+\step{<1>1}{\case{%
+    \SubsPatResFold.
+}{%
+    \pfsketch{} We prove by induction that the pattern-matching judgement does
+    not affect heap satisfaction. Base cases for \SubsPatResEmp, \SubsPatResPhi,
+    \SubsPatResVar{} do not change the heap, so do not change satisfaction.
+    Cases for \SubsPatResPair{} and \SubsPatResPack{} proceed by induction
+    straightforwardly.\\[\baselineskip]
+
+    \pf{} For the interesting case of \SubsPatResFold{}, it suffices to note
+    that the in this situation, the satisfaction assumption would be
+    \SatHeapPred, and its sole premise shows that the VIP heap also satisfies
+    the sub-heap.}}
+
+\step{<1>2}{\case{%
+    \ResTResVFold.
+}{%
+    \pfsketch{} By straightforward induction the $[[ footprint_of res_val in h ~> h1 REM h2 ]]$
+    judgement preserves heap satisfaction: if $[[ ( A , M ) |= h ]]$ then there
+    exist VIP heaps such that $[[ ( A , M1 ) |= h1 ]]$ and $[[ ( A , M2 ) |= h2 ]]$,
+    because of \SatHeapConcat.\\[\baselineskip]
+
+    \pf{} And so we prove heap satisfaction of the final result using \SatHeapPred{}
+    and \SatHeapConcat.}}
+
+\step{<1>3}{\case{%
+    \PredOpsResVBreak, \PredOpsResVInj, \PredOpsResVGlue, \ResSynPredOpsChop.
+}{%
+    \pf{} \SatHeapQPred{} quantifies over all indices in $[[ iguard ]]$, and so
+    you prove satisfaction with \SatHeapConcat{} and one of
+    \SatHeapPred{}/\SatHeapOwnedInit{}/\SatHeapOwned{} for break,
+    and \SatHeapQPred{} for glue and inject, and \SatHeapConcat{} for chop.}}
+
+\step{<1>4}{\case{%
+    \PredOpsResVIterate, \PredOpsResVCongeal, \PredOpsResVImplode, \PredOpsResVExplode.
+}{%
+    \pf{} These cases rely on the definition of $[[ abst ( A , ct , M ) ]]$ from
+    the VIP appendix. For iterating arrays, one breaks up the VIP heap into
+    chunks the size of the element type, proves satisfaction for each element using
+    \SatHeapOwnedInit/\SatHeapOwnedInit, and \SatHeapQPred{} overall. For
+    congealing arrays, the inverse applies.\\[\baselineskip]
+
+    For exploding structs, one breaks up the VIP heap into chunks which have the
+    size of the element type \emph{plus any padding bytes}. One then proves
+    satisfaction for each element using \SatHeapOwnedInit/\SatHeapOwnedInit, and
+    \SatHeapConcat{} overall. For imploding structs, the inverse applies.}}
+
+\end{proof}
+
+\subsection{Soundness wrt VIP Statement and Proof}
+
+\begin{proof}
+
+\pfsketch{ Induction over the indeterminately-sequenced expression rules.
+    The core idea is that the CN system only supports integers as plain
+    integers, and not $Loc( [[ ( @ mem_id , mem_addr ) ]] )$. As such all
+    transitions preserve that invariant.\\[\baselineskip]}
+
+\assume{\begin{pfenum}
+    \item $[[ cdot ; L0 ; N ; nR |- is_expr => ret ]]$
+    \item $[[ cdot ; L0 ; N' ; nR' |- is_expr' => ret ]]$
+    \item $[[ alloct ; h <= N ; nR ]]$
+    \item $[[ alloct' ; h' <= N' ; nR' ]]$
+    \item $[[ < alloct ; h ; is_expr > --> < alloct' ; h' ; is_expr' > ]]$
+    \item $[[ ( A , M ) |= h ]]$
+\end{pfenum}\leavevmode\\}
+
+\prove{$[[ exists ]] [[ A' ]] , [[ M' ]] [[ . ]]$
+    \begin{pfenum}
+        \item $[[ ( A , M ) -V>* ( A' , M' )  ]]$
+        \item $[[ ( A' , M' ) |= h' ]]$
+    \end{pfenum}\leavevmode\\[\baselineskip]}
+
+\step{<1>1}{\case{%
+    \ActionIsCreate.
+}{%
+    \pf{} \pflet{ $[[ A' ]] = [[ A [ to_int mem_id ] := ( to_int mem_addr , sizeof ct , true ) ]]$ \\
+    $[[ M' ]] = [[ M [ to_int mem_addr dd to_int mem_addr + sizeof ct - i_one ] ]] :=
+    ( @ \mathsf{empty} , \mathsf{unspec} , \mathsf{none} )$.\\
+    $[[ alloct' ; h' ]] = [[ alloct [ to_int mem_id ] := ( to_int mem_addr , sizeof ct ) ; h + { pt & None } + { Alloc ( inj ty_mem_ptr , ) ( sizeof ct ) & None } ]]$.\\[\baselineskip]}
+
+    The premises of this step satisfy the premises of \VipAlloc{}.\\
+    $[[ alloct' ]]$ is consistent with $[[ A' ]]$ (required by premise 2 of \SatStateDef{}).\\
+    $[[ ( A' , [| |] ) |= { Alloc ( inj ty_mem_ptr , ) ( sizeof ct ) & None } ]]$ by \SatHeapAlloc{}.\\
+    $[[ ( A' , M [ to_int mem_addr dd to_int mem_addr + sizeof ct - i_one ] ) |= { pt & None } ]]$ by \SatHeapOwned{}.\\
+    $[[ ( A , M ) |= h ]]$ by assumption and so \SatHeapConcat{} proves heap satisfation overall.}}
+
+\step{<1>2}{\case{%
+    \ActionIsKillStatic.
+}{%
+    \pf{} Since $[[ h ]] = [[ h1 + { Alloc ( ptrt , ) ( sizeof ct ) & None } + { Owned < ct > ( ptrt , ) ( _t ) & None } ]]$,
+    where $[[ ptrt = ( @ to_int mem_id , to_int mem_addr ) ]]$ and \lemmaref{subsec:res_term_red_sat},
+    we must have $[[ A [ to_int mem_id ] = ( to_int mem_addr , sizeof ct , true ) ]]$.\\[\baselineskip]
+
+    \pflet{ $[[ A' ]] = [[ A [ inj ty_mem_ptr dot id ] := ( inj ty_mem_ptr dot addr , sizeof ct , false ) ]]$.\\[\baselineskip]}
+
+    The premises of this step satisfy the premises of \VipKill{}.\\
+    $[[ alloct ]]$ remains consistent with $[[ A' ]]$ (by premise 2 of \SatStateDef{}).}}
+
+\step{<1>3}{\case{%
+    \MemopIsPtrFromInt.
+}{%
+    \pf{} Since $[[ h' ]] = [[ h1 + { Owned < ct > ( ptrt , ) ( _t ) & None } ]]$,
+    \lemmaref{subsec:res_term_red_sat}, and $[[ alloct ]]$ and $[[ A ]]$ are
+    consistent (by premise 2 of \SatStateDef), we must have
+    $[[ A [ to_int mem_id ] = ( to_int mem_addr , sizeof ct , true ) ]]$.\\[\baselineskip]
+
+    In the CN operational semantics, integers are not $Loc$s, and all resource predicates are indexed by
+    pointers calculable at runtime (syntactic restriction), so we must step with
+    \VipCastIntToPtrInt{} followed by \VipCopyAllocId{} in the VIP semantics.\\[\baselineskip]
+
+    Since $[[ ( A , M ) ]]$ doesn't change, satisfaction is preserved.\\}}
+
+\step{<1>4}{\case{%
+    \MemopIsIntFromPtr.
+}{%
+    \pf{} Since $[[ h' ]] = [[ h1 + { Alloc ( ptrt , ) ( term ) & None } ]]$,
+    \lemmaref{subsec:res_term_red_sat}, and $[[ alloct ]]$ and $[[ A ]]$ are
+    consistent (by premise 2 of \SatStateDef), we must have
+    $[[ A [ to_int mem_id ] = ( to_int mem_addr , term , true ) ]]$ 
+    where $[[ ptrt dot id = to_int mem_id ]]$,
+    and $[[ to_int mem_addr ]] \in \mathsf{value\_rnage([[ ct ]])}$ because
+    $[[ representable ( ct , to_int mem_addr ) ]]$.\\[\baselineskip]
+    
+    
+    Hence we may step with \VipCastPtrToInt{}. However, since in the CN
+    operational semantics, integers are not $Loc$s, we must also step with
+    \VipArithBinOp{} ($ + 0$) to force the VIP value to become a regular integer
+    from the $Loc$ result of the previous step.\\[\baselineskip]
+
+    Since $[[ ( A , M ) ]]$ doesn't change, satisfaction is preserved.}}
+
+\step{<1>5}{\case{%
+    \ActionIsLoad.
+}{%
+    \pf{} Since , $[[ h' ]] = [[ h1 + { ptrt |- init - ct -> inj pval & None } ]]$,
+    \lemmaref{subsec:res_term_red_sat}, and $[[ alloct ]]$ and $[[ A ]]$ are
+    consistent (by premise 2 of \SatStateDef), we must have
+    $[[ A [ ptrt dot id ] = ( to_int mem_addr , term , true ) ]]$,
+    $[[ to_int mem_addr =< ptrt dot addr =< to_int mem_addr + term ]]$.\\[\baselineskip]
+
+    We also know that $[[ sizeof ct =< term ]]$ (by construction in
+    $\mathtt{create}$, preserved via all $[[ pred_ops ]]$),
+    and that $[[ ( inj pval , nil ) = abst ( A , ct , M  [ to_int mem_addr' dd to_int mem_addr' + sizeof ct - to_int mem_one ] ) ]]$ (by \SatHeapOwnedInit).\\[\baselineskip]
+    
+    Hence, step with \VipLoad{}.
+    Since $[[ ( A , M ) ]]$ doesn't change, satisfaction is preserved.}}
+
+\step{<1>6}{\case{%
+    \ActionIsStore.
+}{%
+    \pf{} Like \ActionIsLoad{}, but without the extra condition
+    using $\mathtt{abst}$ (by \SatHeapOwned). Note that since
+    $[[ ( A , M ) |= h1 + { pt & None } ]]$ (by \lemmaref{subsec:res_term_red_sat}),
+    $[[ M = M1 + M2 ]]$ where $[[ ( A , M1 ) |= h1 ]]$ and $[[ ( A , M2 ) |= { pt & None } ]]$.\\[\baselineskip]
+
+    Hence, step with \VipStore{}. We have
+    $[[ ( A , M2' ) |= { inj ty_mem_ptr |- const ct true - ct -> inj pval & None } ]]$
+    where $[[ M2' ]] = [[ M2 [ to_int mem_addr' dd to_int mem_addr' + sizeof ct - to_int mem_one ] ]]
+    :=  \mathtt{repr} ( [[ pval ]] )$ (by \SatHeapOwnedInit{}, since
+    $\mathtt{abst/repr}$ are effectively inverses) and so
+    $[[ ( A , M1 + M2' ) |=  h1 + { inj ty_mem_ptr |- const ct true - ct -> inj pval & None } ]]$.
+    (by \SatHeapConcat{}).}}
+
+% Low priority
+
+\step{<1>7}{\case{%
+    \MemopIsPtrDiff, \MemopIsPtrDiffArr.
+}{%
+    \pf{} Since $[[ h' ]] = [[ h1 + { Alloc ( ptrt , ) ( term ) & None } ]]$,
+    \lemmaref{subsec:res_term_red_sat}, and $[[ alloct ]]$ and $[[ A ]]$ are
+    consistent (by premise 2 of \SatStateDef), we must have
+    $[[ to_int mem_id1 = to_int mem_id2  = ptrt dot id ]]$,
+    $[[ A [ ptrt dot id ] = ( ptrt dot base , term , true ) ]]$,
+    $[[ ptrt dot base =< ( to_int mem_addr1 , to_int mem_addr2 ) =< ptrt dot base + term ]]$,
+    and $[[ to_int ty_mem_int eq ( to_int mem_addr1 - to_int mem_addr2 ) / sizeof ct ]]$.\\[\baselineskip]
+
+    Hence we may step with \VipDiffPtr{}. Since $[[ ( A , M ) ]]$ doesn't
+    change, satisfaction is preserved.}}
+
+\step{<1>8}{\case{%
+    \PETPArrayShift, \MemopIsPtrArrayShift.
+}{%
+    % \PETPArrayShift is not an is_expr but here for sake of completeness wrt VIP.
+
+    In both cases, since $[[ alloct ]]$ and $[[ A ]]$ are consistent (by premise 2 of \SatStateDef),
+    we have $[[ A [ to_int mem_id ] = ( to_int mem_addri , termi , _t ) ]]$.
+    Also, from the premeise of the CN steps, we know
+    $[[ to_int mem_addri =< to_int mem_addr' =< to_int mem_addri + termi ]]$
+    and $[[ inj ty_mem_ptr' eq inj ty_mem_ptr +ptr ( to_int ty_mem_int * sizeof ct ) ]]$
+    where $[[ inj ty_mem_ptr' = ( @ to_int mem_id , to_int mem_addr' ) ]]$ and
+    $[[ inj ty_mem_ptr = ( @ to_int mem_id , to_int mem_addr ) ]]$.\\[\baselineskip]
+
+    Hence we may step with \VipArray{}. Since $[[ ( A , M ) ]]$ doesn't
+    change, satisfaction is preserved.}}
+
+\step{<1>9}{\case{%
+    \PETPMemberShift.
+}{%
+    % \PETPMemberShift is not an is_expr but here for sake of completeness wrt VIP.
+    Similar to \PETPArrayShift, but stepping with \VipMember{} instead.}}
+
+\step{<1>10}{\case{%
+    \MemopIsRelBinop.
+}{%
+    \pf{} Since $[[ h' ]] = [[ h1 + { Alloc ( ptrt1 , ) ( term1 ) & None } + { Alloc ( ptrt2 , ) ( term2 ) & None } ]]$,
+    \lemmaref{subsec:res_term_red_sat}, and \SatHeapAlloc, we must have
+    $[[ A [ ptrt1 dot id ] = ( to_int mem_addr1' , term1 , true ) ]]$,
+    $[[ A [ ptrt2 dot id ] = ( to_int mem_addr1' , term2 , true ) ]]$.
+    From the premise CN step, we also know
+    $[[ to_int mem_id1 = to_int mem_id2 = ptrt1 dot id = ptrt2 dot id2 ]]$,
+    $[[ ptrt1 dot base =< to_int mem_addr1 =< ptrt1 dot base1 + term1 ]]$,
+    and $[[ ptrt2 dot base =< to_int mem_addr2 =< ptrt2 dot base2 + term2 ]]$.
+    $[[ to_int mem_addr =< ptrt dot addr =< to_int mem_addr + term ]]$.\\[\baselineskip]
+
+    Hence we may step with \VipRelOpPtr{}. Since $[[ ( A , M ) ]]$ doesn't
+    change, satisfaction is preserved.}}
+
+\step{<1>11}{\case{%
+    \PETPPtrEq.
+    % \PETPPtrEq is not an is_expr but here for sake of completeness wrt VIP.
+}{%
+    \pf{} Step with \VipEqOpPtr{}; since $[[ ( A , M ) ]]$ doesn't change,
+    satisfaction is preserved.}}
+
+\step{<1>12}{\case{%
+    \PETPRelBinop, \PETPArithBinop.
+    % \PETP{Rel,Arith}Binop are not is_expr but here for sake of completeness wrt VIP.
+}{%
+    \pf{} Step with \VipRelOpInt{} and \VipArithBinOp{}; since $[[ ( A , M ) ]]$
+    doesn't change, satisfaction is preserved.}}
+
+\end{proof}
+
+
+\end{document}
+
+% Typing
+\step{<0>1}{\case{\IGCmpEq}{}}
+\step{<0>2}{\case{\IGCmpLt}{}}
+\step{<0>3}{\case{\IGCmpGt}{}}
+\step{<0>4}{\case{\IGCmpNone}{}}
+\step{<0>5}{\case{\QCmpNameNeq}{}}
+\step{<0>6}{\case{\QCmpPtrStepNeq}{}}
+\step{<0>7}{\case{\QCmpIGNeq}{}}
+\step{<0>8}{\case{\QCmpIArgNeq}{}}
+\step{<0>9}{\case{\QCmpComparable}{}}
+\step{<0>10}{\case{\ReqEqPPNameNeq}{}}
+\step{<0>11}{\case{\ReqEqPPIArgNeq}{}}
+\step{<0>12}{\case{\ReqEqPPEq}{}}
+\step{<0>13}{\case{\ReqEqQQEq}{}}
+\step{<0>14}{\case{\ReqEqQQNeq}{}}
+\step{<0>15}{\case{\ResEqEmp}{}}
+\step{<0>16}{\case{\ResEqPhi}{}}
+\step{<0>17}{\case{\ResEqPred}{}}
+\step{<0>18}{\case{\ResEqQPred}{}}
+\step{<0>19}{\case{\ResEqSepConj}{}}
+\step{<0>20}{\case{\ResEqExists}{}}
+\step{<0>21}{\case{\ResEqOrdDisj}{}}
+\step{<0>22}{\case{\ResSimpRecIfTrue}{}}
+\step{<0>23}{\case{\ResSimpRecIfFalse}{}}
+\step{<0>24}{\case{\ResSimpRecSepConj}{}}
+\step{<0>25}{\case{\ResSimpRecExists}{}}
+\step{<0>26}{\case{\ResSimpRecNoChange}{}}
+\step{<0>27}{\case{\SimpNoSimp}{}}
+\step{<0>28}{\case{\SimpSimp}{}}
+\step{<0>29}{\case{\RetEqEnd}{}}
+\step{<0>30}{\case{\RetEqComp}{}}
+\step{<0>31}{\case{\RetEqLog}{}}
+\step{<0>32}{\case{\RetEqPhi}{}}
+\step{<0>33}{\case{\RetEqRes}{}}
+\step{<0>34}{\case{\PatCompNoSymAnnot}{}}
+\step{<0>35}{\case{\PatCompSymAnnot}{}}
+\step{<0>36}{\case{\PatCompNil}{}}
+\step{<0>37}{\case{\PatCompCons}{}}
+\step{<0>38}{\case{\PatCompTuple}{}}
+\step{<0>39}{\case{\PatCompArray}{}}
+\step{<0>40}{\case{\PatCompSpecified}{}}
+\step{<0>41}{\case{\PatSymOrPatSym}{}}
+\step{<0>42}{\case{\PatSymOrPatPat}{}}
+\step{<0>43}{\case{\PatResMatchEmp}{}}
+\step{<0>44}{\case{\PatResMatchPhi}{}}
+\step{<0>45}{\case{\PatResMatchIfTrue}{}}
+\step{<0>46}{\case{\PatResMatchIfFalse}{}}
+\step{<0>47}{\case{\PatResMatchVar}{}}
+\step{<0>48}{\case{\PatResMatchSepConj}{}}
+\step{<0>49}{\case{\PatResMatchPack}{}}
+\step{<0>50}{\case{\PatResMatchFold}{}}
+\step{<0>51}{\case{\PatRetEmpty}{}}
+\step{<0>52}{\case{\PatRetComp}{}}
+\step{<0>53}{\case{\PatRetLog}{}}
+\step{<0>54}{\case{\PatRetPhi}{}}
+\step{<0>55}{\case{\PatRetRes}{}}
+\step{<0>56}{\case{\PatRetAux}{}}
+\step{<0>57}{\case{\PureValObjInt}{}}
+\step{<0>58}{\case{\PureValObjPtr}{}}
+\step{<0>59}{\case{\PureValObjArr}{}}
+\step{<0>60}{\case{\PureValObjStruct}{}}
+\step{<0>61}{\case{\PureValVar}{}}
+\step{<0>62}{\case{\PureValObj}{}}
+\step{<0>63}{\case{\PureValLoaded}{}}
+\step{<0>64}{\case{\PureValUnit}{}}
+\step{<0>65}{\case{\PureValTrue}{}}
+\step{<0>66}{\case{\PureValFalse}{}}
+\step{<0>67}{\case{\PureValList}{}}
+\step{<0>68}{\case{\PureValTuple}{}}
+\step{<0>69}{\case{\PureValCtorNil}{}}
+\step{<0>70}{\case{\PureValCtorCons}{}}
+\step{<0>71}{\case{\PureValCtorTuple}{}}
+\step{<0>72}{\case{\PureValCtorArray}{}}
+\step{<0>73}{\case{\PureValCtorSpecified}{}}
+\step{<0>74}{\case{\PureValStruct}{}}
+\step{<0>75}{\case{\PureExprVal}{}}
+\step{<0>76}{\case{\PureExprCtorIvXOR}{}}
+\step{<0>77}{\case{\PureExprArrayShift}{}}
+\step{<0>78}{\case{\PureExprMemberShift}{}}
+\step{<0>79}{\case{\PureExprPtrEq}{}}
+\step{<0>80}{\case{\PureExprNot}{}}
+\step{<0>81}{\case{\PureExprArithBinop}{}}
+\step{<0>82}{\case{\PureExprRelBinop}{}}
+\step{<0>83}{\case{\PureExprBoolBinop}{}}
+\step{<0>84}{\case{\PureExprCall}{}}
+\step{<0>85}{\case{\PureExprAssertUndef}{}}
+\step{<0>86}{\case{\PureExprBoolToInteger}{}}
+\step{<0>87}{\case{\PureExprWrapI}{}}
+\step{<0>88}{\case{\PureTopValDone}{}}
+\step{<0>89}{\case{\PureTopValUndef}{}}
+\step{<0>90}{\case{\PureTopValError}{}}
+\step{<0>91}{\case{\PureTopIf}{}}
+\step{<0>92}{\case{\PureTopLet}{}}
+\step{<0>93}{\case{\PureTopLetT}{}}
+\step{<0>94}{\case{\PureTopCase}{}}
+\step{<0>95}{\case{\ResSynPredOpsIterate}{}}
+\step{<0>96}{\case{\ResSynPredOpsCongeal}{}}
+\step{<0>97}{\case{\ResSynPredOpsExplode}{}}
+\step{<0>98}{\case{\ResSynPredOpsImplode}{}}
+\step{<0>99}{\case{\ResSynPredOpsBreak}{}}
+\step{<0>100}{\case{\ResSynPredOpsGlue}{}}
+\step{<0>101}{\case{\ResSynPredOpsInj}{}}
+\step{<0>102}{\case{\ResSynPredOpsChop}{}}
+\step{<0>103}{\case{\ResSynEmp}{}}
+\step{<0>104}{\case{\ResSynVar}{}}
+\step{<0>105}{\case{\ResSynVarSimp}{}}
+\step{<0>106}{\case{\ResSynPred}{}}
+\step{<0>107}{\case{\ResSynFold}{}}
+\step{<0>108}{\case{\ResSynQPred}{}}
+\step{<0>109}{\case{\ResSynPredOps}{}}
+\step{<0>110}{\case{\ResSynSepConj}{}}
+\step{<0>111}{\case{\ResChkPhi}{}}
+\step{<0>112}{\case{\ResChkPack}{}}
+\step{<0>113}{\case{\ResChkSepConj}{}}
+\step{<0>114}{\case{\ResChkIfTrue}{}}
+\step{<0>115}{\case{\ResChkIfFalse}{}}
+\step{<0>116}{\case{\ResChkSwitch}{}}
+\step{<0>117}{\case{\ExplSpineRet}{}}
+\step{<0>118}{\case{\ExplSpineComp}{}}
+\step{<0>119}{\case{\ExplSpineLog}{}}
+\step{<0>120}{\case{\ExplSpinePhi}{}}
+\step{<0>121}{\case{\ExplSpineRes}{}}
+\step{<0>122}{\case{\ExplIsActionCreate}{}}
+\step{<0>123}{\case{\ExplIsActionLoad}{}}
+\step{<0>124}{\case{\ExplIsActionStore}{}}
+\step{<0>125}{\case{\ExplIsActionKillStatic}{}}
+\step{<0>126}{\case{\ExplIsMemopRelBinop}{}}
+\step{<0>127}{\case{\ExplIsMemopPtrDiffArr}{}}
+\step{<0>128}{\case{\ExplIsMemopPtrDiff}{}}
+\step{<0>129}{\case{\ExplIsMemopIntFromPtr}{}}
+\step{<0>130}{\case{\ExplIsMemopPtrFromInt}{}}
+\step{<0>131}{\case{\ExplIsMemopPtrValidForDeref}{}}
+\step{<0>132}{\case{\ExplIsMemopPtrWellAligned}{}}
+\step{<0>133}{\case{\ExplIsMemopPtrArrayShift}{}}
+\step{<0>134}{\case{\ExplIsTVal}{}}
+\step{<0>135}{\case{\ExplIsMemop}{}}
+\step{<0>136}{\case{\ExplIsAction}{}}
+\step{<0>137}{\case{\ExplIsNegAction}{}}
+\step{<0>138}{\case{\ExplSeqCCall}{}}
+\step{<0>139}{\case{\ExplSeqProc}{}}
+\step{<0>140}{\case{\ExplTopValDone}{}}
+\step{<0>141}{\case{\ExplTopValUndef}{}}
+\step{<0>142}{\case{\ExplTopValError}{}}
+\step{<0>143}{\case{\ExplTopSeqVal}{}}
+\step{<0>144}{\case{\ExplTopSeqLetP}{}}
+\step{<0>145}{\case{\ExplTopSeqLetTP}{}}
+\step{<0>146}{\case{\ExplTopSeqLet}{}}
+\step{<0>147}{\case{\ExplTopSeqLetT}{}}
+\step{<0>148}{\case{\ExplTopSeqCase}{}}
+\step{<0>149}{\case{\ExplTopSeqIf}{}}
+\step{<0>150}{\case{\ExplTopSeqRun}{}}
+\step{<0>151}{\case{\ExplTopSeqBound}{}}
+\step{<0>152}{\case{\ExplTopIsLetS}{}}
+\step{<0>153}{\case{\ExplTopIs}{}}
+\step{<0>154}{\case{\ExplTopSeq}{}}
+
+% Inference
+\step{<0>155}{\case{\PinQNameNeq}{}}
+\step{<0>156}{\case{\PinQIGOrIArgNeq}{}}
+\step{<0>157}{\case{\PinQComp}{}}
+\step{<0>158}{\case{\ResDiffIfNone}{}}
+\step{<0>159}{\case{\ResDiffPPNone}{}}
+\step{<0>160}{\case{\ResDiffPPExact}{}}
+\step{<0>161}{\case{\ResDiffPQNone}{}}
+\step{<0>162}{\case{\ResDiffPQRem}{}}
+\step{<0>163}{\case{\ResDiffQPNone}{}}
+\step{<0>164}{\case{\ResDiffQPMore}{}}
+\step{<0>165}{\case{\ResDiffQPLast}{}}
+\step{<0>166}{\case{\ResDiffQQNone}{}}
+\step{<0>167}{\case{\ResDiffQQEq}{}}
+\step{<0>168}{\case{\ResDiffQQLt}{}}
+\step{<0>169}{\case{\ResCombPQ}{}}
+\step{<0>170}{\case{\ReqRej}{}}
+\step{<0>171}{\case{\ReqAccClean}{}}
+\step{<0>172}{\case{\ReqAccRem}{}}
+\step{<0>173}{\case{\ReqAccMore}{}}
+\step{<0>174}{\case{\ReqWfPred}{}}
+\step{<0>175}{\case{\ReqWfQPred}{}}
+\step{<0>176}{\case{\IfAcc}{}}
+\step{<0>177}{\case{\IfRej}{}}
+\step{<0>178}{\case{\OargEmpty}{}}
+\step{<0>179}{\case{\OargReturn}{}}
+\step{<0>180}{\case{\OargEndIfTrue}{}}
+\step{<0>181}{\case{\OargEndIfFalse}{}}
+\step{<0>182}{\case{\OargEndIfUnderDet}{}}
+\step{<0>183}{\case{\OargMiddleIf}{}}
+\step{<0>184}{\case{\OargAssert}{}}
+\step{<0>185}{\case{\OargLetPred}{}}
+\step{<0>186}{\case{\OargLetQPred}{}}
+\step{<0>187}{\case{\ElabIsActionCreate}{}}
+\step{<0>188}{\case{\ElabIsActionLoad}{}}
+\step{<0>189}{\case{\ElabIsActionStore}{}}
+\step{<0>190}{\case{\ElabIsActionKillStatic}{}}
+\step{<0>191}{\case{\ElabIsMemopRest}{}}
+\step{<0>192}{\case{\ElabIsMemop}{}}
+\step{<0>193}{\case{\ElabIsAction}{}}
+\step{<0>194}{\case{\ElabIsNegAction}{}}
+\step{<0>195}{\case{\ElabIsPack}{}}
+\step{<0>196}{\case{\ElabIsUnpack}{}}
+\step{<0>197}{\case{\ElabSpineEmpty}{}}
+\step{<0>198}{\case{\ElabSpineComp}{}}
+\step{<0>199}{\case{\ElabSpineLetPred}{}}
+\step{<0>200}{\case{\ElabSpineLetQPred}{}}
+\step{<0>201}{\case{\ElabSpineMiddleIf}{}}
+\step{<0>202}{\case{\ElabSpinePhi}{}}
+\step{<0>203}{\case{\ElabSeqCCall}{}}
+\step{<0>204}{\case{\ElabSeqProc}{}}
+\step{<0>205}{\case{\ElabResPatEmpty}{}}
+\step{<0>206}{\case{\ElabResPatPhi}{}}
+\step{<0>207}{\case{\ElabResPatIfTrue}{}}
+\step{<0>208}{\case{\ElabResPatIfFalse}{}}
+\step{<0>209}{\case{\ElabResPatVar}{}}
+\step{<0>210}{\case{\ElabResPatSepConj}{}}
+\step{<0>211}{\case{\ElabResPatPack}{}}
+\step{<0>212}{\case{\ElabRetPatI}{}}
+\step{<0>213}{\case{\ElabRetPatRes}{}}
+\step{<0>214}{\case{\ElabRetPatLog}{}}
+\step{<0>215}{\case{\ElabTopIsLetS}{}}
+\step{<0>216}{\case{\ElabTopValDone}{}}
+\step{<0>217}{\case{\ElabTopValUndef}{}}
+\step{<0>218}{\case{\ElabSimpCtxEmpty}{}}
+\step{<0>219}{\case{\ElabSimpCtxSimp}{}}
+\step{<0>220}{\case{\ElabSimpCtxSkip}{}}
+\step{<0>221}{\case{\ElabTopSeqTVal}{}}
+\step{<0>222}{\case{\ElabTopSeqLetP}{}}
+\step{<0>223}{\case{\ElabTopSeqLetTP}{}}
+\step{<0>224}{\case{\ElabTopSeqLet}{}}
+\step{<0>225}{\case{\ElabTopSeqLetT}{}}
+\step{<0>226}{\case{\ElabTopSeqCase}{}}
+\step{<0>227}{\case{\ElabTopSeqIf}{}}
+\step{<0>228}{\case{\ElabTopSeqRun}{}}
+\step{<0>229}{\case{\ElabTopSeqBound}{}}
+\step{<0>230}{\case{\ElabTopSeq}{}}
+\step{<0>231}{\case{\ElabTopIs}{}}
+
+% Operational
+\step{<0>232}{\case{\SubsSMTAlloc}{}}
+\step{<0>233}{\case{\SubsPatValueNoSymAnnot}{}}
+\step{<0>234}{\case{\SubsPatValueSymAnnot}{}}
+\step{<0>235}{\case{\SubsPatValueNil}{}}
+\step{<0>236}{\case{\SubsPatValueCons}{}}
+\step{<0>237}{\case{\SubsPatValueTuple}{}}
+\step{<0>238}{\case{\SubsPatValueArray}{}}
+\step{<0>239}{\case{\SubsPatValueSpecified}{}}
+\step{<0>240}{\case{\SubsPatValueSym}{}}
+\step{<0>241}{\case{\SubsPatValuePat}{}}
+\step{<0>242}{\case{\SubsPatResEmp}{}}
+\step{<0>243}{\case{\SubsPatResPhi}{}}
+\step{<0>244}{\case{\SubsPatResVar}{}}
+\step{<0>245}{\case{\SubsPatResPair}{}}
+\step{<0>246}{\case{\SubsPatResPack}{}}
+\step{<0>247}{\case{\SubsPatResFold}{}}
+\step{<0>248}{\case{\SubsPatRetEmpty}{}}
+\step{<0>249}{\case{\SubsPatRetComp}{}}
+\step{<0>250}{\case{\SubsPatRetLog}{}}
+\step{<0>251}{\case{\SubsPatRetRes}{}}
+\step{<0>252}{\case{\SubsSpineEmpty}{}}
+\step{<0>253}{\case{\SubsSpineComp}{}}
+\step{<0>254}{\case{\SubsSpineLog}{}}
+\step{<0>255}{\case{\SubsSpineRes}{}}
+\step{<0>256}{\case{\SubsSpinePhi}{}}
+\step{<0>257}{\case{\PETPCtorIvXOR}{}}
+\step{<0>258}{\case{\PETPArrayShift}{}}
+\step{<0>259}{\case{\PETPMemberShift}{}}
+\step{<0>260}{\case{\PETPPtrEq}{}}
+\step{<0>261}{\case{\PETPNotTrue}{}}
+\step{<0>262}{\case{\PETPNotFalse}{}}
+\step{<0>263}{\case{\PETPArithBinop}{}}
+\step{<0>264}{\case{\PETPRelBinop}{}}
+\step{<0>265}{\case{\PETPBoolBinop}{}}
+\step{<0>266}{\case{\PETPAssertUndef}{}}
+\step{<0>267}{\case{\PETPBoolToIntegerTrue}{}}
+\step{<0>268}{\case{\PETPBoolToIntegerFalse}{}}
+\step{<0>269}{\case{\PETPWrapI}{}}
+\step{<0>270}{\case{\PETPCall}{}}
+\step{<0>271}{\case{\TPTPCase}{}}
+\step{<0>272}{\case{\TPTPLetSub}{}}
+\step{<0>273}{\case{\TPTPLetLet}{}}
+\step{<0>274}{\case{\TPTPLetLetT}{}}
+\step{<0>275}{\case{\TPTPLetTSub}{}}
+\step{<0>276}{\case{\TPTPLetTLetT}{}}
+\step{<0>277}{\case{\TPTPIfTrue}{}}
+\step{<0>278}{\case{\TPTPIfFalse}{}}
+\step{<0>279}{\case{\PredOpsResVIterate}{}}
+\step{<0>280}{\case{\PredOpsResVCongeal}{}}
+\step{<0>281}{\case{\PredOpsResVExplode}{}}
+\step{<0>282}{\case{\PredOpsResVImplode}{}}
+\step{<0>283}{\case{\PredOpsResVBreak}{}}
+\step{<0>284}{\case{\PredOpsResVGlue}{}}
+\step{<0>285}{\case{\PredOpsResVInj}{}}
+\step{<0>286}{\case{\PredOpsResVChop}{}}
+\step{<0>287}{\case{\FootprintEmp}{}}
+\step{<0>288}{\case{\FootprintTerm}{}}
+\step{<0>289}{\case{\FootprintPred}{}}
+\step{<0>290}{\case{\FootprintQPred}{}}
+\step{<0>291}{\case{\FootprintSepPair}{}}
+\step{<0>292}{\case{\FootprintPack}{}}
+\step{<0>293}{\case{\ResTResVVal}{}}
+\step{<0>294}{\case{\ResTResVSepPair}{}}
+\step{<0>295}{\case{\ResTResVPredOps}{}}
+\step{<0>296}{\case{\ResTResVFold}{}}
+\step{<0>297}{\case{\ResTResVPack}{}}
+\step{<0>298}{\case{\ActionIsCreate}{}}
+\step{<0>299}{\case{\ActionIsLoad}{}}
+\step{<0>300}{\case{\ActionIsStore}{}}
+\step{<0>301}{\case{\ActionIsKillStatic}{}}
+\step{<0>302}{\case{\MemopIsRelBinop}{}}
+\step{<0>303}{\case{\MemopIsPtrDiffArr}{}}
+\step{<0>304}{\case{\MemopIsPtrDiff}{}}
+\step{<0>305}{\case{\MemopIsIntFromPtr}{}}
+\step{<0>306}{\case{\MemopIsPtrFromInt}{}}
+\step{<0>307}{\case{\MemopIsPtrValidForDeref}{}}
+\step{<0>308}{\case{\MemopIsPtrWellAligned}{}}
+\step{<0>309}{\case{\MemopIsPtrArrayShift}{}}
+\step{<0>310}{\case{\IsIsMemop}{}}
+\step{<0>311}{\case{\IsIsAction}{}}
+\step{<0>312}{\case{\IsIsNegAction}{}}
+\step{<0>313}{\case{\SeqTCCall}{}}
+\step{<0>314}{\case{\SeqTProc}{}}
+\step{<0>315}{\case{\TSeqTRun}{}}
+\step{<0>316}{\case{\TSeqTCase}{}}
+\step{<0>317}{\case{\TSeqTLetPSub}{}}
+\step{<0>318}{\case{\TSeqTLetPLetP}{}}
+\step{<0>319}{\case{\TSeqTLetPLetTP}{}}
+\step{<0>320}{\case{\TSeqTLetTPSub}{}}
+\step{<0>321}{\case{\TSeqTLetTPLetTP}{}}
+\step{<0>322}{\case{\TSeqTLetTSub}{}}
+\step{<0>323}{\case{\TSeqTLetLetT}{}}
+\step{<0>324}{\case{\TSeqTLetTLetT}{}}
+\step{<0>325}{\case{\TSeqTIfTrue}{}}
+\step{<0>326}{\case{\TSeqTIfFalse}{}}
+\step{<0>327}{\case{\TSeqTBound}{}}
+\step{<0>328}{\case{\TIsTLetSSub}{}}
+\step{<0>329}{\case{\TIsTLetSLetS}{}}
+\step{<0>330}{\case{\TTTSeqT}{}}
+\step{<0>331}{\case{\TTTIsT}{}}
+
+% Misc
+\step{<0>332}{\case{\WeakEmpty}{}}
+\step{<0>333}{\case{\WeakConsComp}{}}
+\step{<0>334}{\case{\WeakConsLog}{}}
+\step{<0>335}{\case{\WeakConsPhi}{}}
+\step{<0>336}{\case{\WeakConsRes}{}}
+\step{<0>337}{\case{\WeakSkipComp}{}}
+\step{<0>338}{\case{\WeakSkipLog}{}}
+\step{<0>339}{\case{\WeakSkipPhi}{}}
+\step{<0>340}{\case{\SubsChkEmpty}{}}
+\step{<0>341}{\case{\SubsChkComp}{}}
+\step{<0>342}{\case{\SubsChkLog}{}}
+\step{<0>343}{\case{\SubsChkRes}{}}
+\step{<0>344}{\case{\SubsChkConcat}{}}
+\step{<0>345}{\case{\HeapEmpty}{}}
+\step{<0>346}{\case{\HeapPredOwned}{}}
+\step{<0>347}{\case{\HeapPredOther}{}}
+\step{<0>348}{\case{\HeapQPredOwned}{}}
+\step{<0>349}{\case{\HeapQPredOther}{}}
+\step{<0>350}{\case{\HeapConcat}{}}
+\step{<0>351}{\case{\HeapTy}{}}
+\step{<0>352}{\case{\AllocTy}{}}
+\step{<0>353}{\case{\StateTy}{}}
+\step{<0>354}{\case{\RelResEmp}{}}
+\step{<0>355}{\case{\RelResPhi}{}}
+\step{<0>356}{\case{\RelResIf}{}}
+\step{<0>357}{\case{\RelResExists}{}}
+\step{<0>358}{\case{\RelResSepConj}{}}
+\step{<0>359}{\case{\RelResPred}{}}
+\step{<0>360}{\case{\RelResQPred}{}}
+\step{<0>361}{\case{\RelRetI}{}}
+\step{<0>362}{\case{\RelRetComp}{}}
+\step{<0>363}{\case{\RelRetLog}{}}
+\step{<0>364}{\case{\RelRetPhi}{}}
+\step{<0>365}{\case{\RelRetRes}{}}
+\step{<0>366}{\case{\SpecResNone}{}}
+\step{<0>367}{\case{\SpecResReturn}{}}
+\step{<0>368}{\case{\SpecResLetTerm}{}}
+\step{<0>369}{\case{\SpecResAssert}{}}
+\step{<0>370}{\case{\SpecResEndIf}{}}
+\step{<0>371}{\case{\SpecResMiddleIf}{}}
+\step{<0>372}{\case{\SpecResLetPred}{}}
+\step{<0>373}{\case{\SpecResLetQPred}{}}
+\step{<0>374}{\case{\SpecNormRetNone}{}}
+\step{<0>375}{\case{\SpecNormRetLetTerm}{}}
+\step{<0>376}{\case{\SpecNormRetAssert}{}}
+\step{<0>377}{\case{\SpecNormRetIf}{}}
+\step{<0>378}{\case{\SpecNormRetLetPred}{}}
+\step{<0>379}{\case{\SpecNormRetLetQPred}{}}
+\step{<0>380}{\case{\SpecNormArgNone}{}}
+\step{<0>381}{\case{\SpecNormArgLetTerm}{}}
+\step{<0>382}{\case{\SpecNormArgAssert}{}}
+\step{<0>383}{\case{\SpecNormArgIf}{}}
+\step{<0>384}{\case{\SpecNormArgLetPred}{}}
+\step{<0>385}{\case{\SpecNormArgLetQPred}{}}
+\step{<0>386}{\case{\SpecUserDefCFuncBase}{}}
+\step{<0>387}{\case{\SpecUserDefCFuncArg}{}}
+\step{<0>388}{\case{\SpecPredDefPred}{}}
+\step{<0>389}{\case{\SatHeapEmp}{}}
+\step{<0>390}{\case{\SatHeapAlloc}{}}
+\step{<0>391}{\case{\SatHeapOwned}{}}
+\step{<0>392}{\case{\SatHeapOwnedInit}{}}
+\step{<0>393}{\case{\SatHeapPred}{}}
+\step{<0>394}{\case{\SatHeapQPred}{}}
+\step{<0>395}{\case{\SatHeapConcat}{}}
+\step{<0>396}{\case{\SatStateDef}{}}
+

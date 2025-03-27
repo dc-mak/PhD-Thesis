@@ -1,0 +1,475 @@
+grammar
+
+  misc_extra :: 'misc_extra_' ::= {{ com extra judgements for proof-related definitions }}
+    | forall x . iguard => h <= nR           ::  :: forall_x_ig_h   {{ com meta-logical quantification over heap-typing                                    }}
+    | forall term ~ term' . fon ~ ret        ::  :: forall_rel_ret  {{ com meta-logical quantification over related $[[fon]]$ and $[[ ret ]]$              }}
+    | forall term ~ term' . res ~ res'       ::  :: forall_rel_res  {{ com meta-logical quantification over related $[[ res ]]$ and $[[ res' ]]$           }}
+    | term ~ term'                           ::  :: term_term_rel   {{ com omitted/assumed defintion: SMT terms $[[ term ]]$ and $[[ term' ]]$ are related }}
+    | meta term                              ::  :: meta_term       {{ com meta-logical constraint }} {{ tex [[term]]                                      }}
+    | forall i . iguard => ( A , M ) |= heap ::  :: forall_i_ig_vip {{ com meta-logical quantification over VIP-heap-satisfaction                          }}
+    | forall i . term                        ::  :: forall_i_term   {{ com meta-logical quantification over logical-constraint                             }}
+
+defns
+  proof_defns :: '' ::=
+
+  defn CLNR [= CLNRp :: :: Weak :: Weak_
+  {{ com context weakening: $[[CLNR]]$ is stronger than $[[CLNRp]]$ }} by
+
+
+    ------------------------------------------------------ :: Empty
+    cdot ; cdot ; cdot ; cdot [= cdot ; cdot ; cdot ; cdot
+
+
+    C ; L ; N ; R [= C' ; L' ; N' ; R'
+    ------------------------------------------------------------------ :: Cons_Comp
+    C , x : base_type ; L ; N ; R [= C' , x : base_type ; L' ; N' ; R'
+
+
+    C ; L ; N ; R [= C' ; L' ; N' ; R'
+    ----------------------------------------------------------------- :: Cons_Log
+    C ; L , x : base_type ; N ; R [= C' ; L' , x : base_type ; N' ; R'
+
+
+    C ; L ; N ; R [= C' ; L' ; N' ; R'
+    -------------------------------------------------------- :: Cons_Phi
+    C ; L ; N , term ; R [= C' ; L' ; N' , term ; R'
+
+
+    C ; L ; N ; R [= C' ; L' ; N' ; R'
+    ------------------------------------------------------- :: Cons_Res
+    C ; L ; N ; R , x : res [= C' ; L' ; N' ; R' , x : res
+
+
+    C ; L ; N ; R [= C' ; L' ; N' ; R'
+    -------------------------------------------------- :: Skip_Comp
+    C ; L ; N ; R [= C' , x : base_type ; L' ; N' ; R'
+
+
+    C ; L ; N ; R [= C' ; L' ; N' ; R'
+    -------------------------------------------------- :: Skip_Log
+    C ; L ; N ; R [= C' ; L' , x : base_type ; N' ; R'
+
+
+    C ; L ; N ; R [= C' ; L' ; N' ; R'
+    --------------------------------------------- :: Skip_Phi
+    C ; L ; N ; R [= C' ; L' ; N' , term ; R'
+
+
+    % Remember R is a linear environment, so no weakening
+
+
+  % Even though it doesn't bind any variables, you need N for typing res_terms
+  defn CLNR |- subs <= ( C ; L ; R ) :: :: Subs_Chk :: Subs_Chk_
+  {{ com well-typed substitution: given $[[CLNR]]$, $[[subs]]$ checks against type $([[C]] ; [[L]] ; [[R]])$.
+  It is complicated by the fact that substitutions are assumed to be sequential/telescoping. }} by
+
+
+    ------------------------------------------------- :: Empty
+    C ; L ; N ; cdot |- [ ] <= ( cdot ; cdot ; cdot )
+
+
+    C |- pval => base_type
+    ---------------------------------------------------------------------------- :: Comp
+    C ; L ; N ; cdot |- pval / x <= ( x : base_type ; cdot ; cdot )
+
+
+    % C ; L ; N ; R |- pval / x ( subs ) <= ( C2 ; L2 ; pval / x ( R2 ) )
+    % C ; L |- pval => base_type
+    % ------------------------------------------------------------------------------------ :: Comp
+    % C ; L ; N ; R |- [ pval / x , subs ] <= ( x : base_type , C2 ; L2 ; R2 )
+
+
+    C ; L |- term => base_type
+    ---------------------------------------------------------------- :: Log
+    C ; L ; N ; cdot |- term / x <= ( cdot ; x : base_type ; cdot )
+
+
+    % C ; L ; N ; R |- term / x ( subs ) <= ( C2 ; L2 ; term / x ( R2 ) )
+    % C ; L |- term => base_type
+    % -------------------------------------------------------------------------------- :: Log
+    % C ; L ; N ; R |- [ term / x , subs ] <= ( C2 ; x : base_type , L2 ; R2 )
+
+
+    % It is fine if this { x : res } is ill-scoped wrt ( cdot ; cdot ):
+    % (a) the type is only valid under a given context
+    % (b) when it is used, other assumptions will ensure correct scoping.
+    C ; L ; N ; R |- res_term <= res
+    ----------------------------------------------------------- :: Res
+    C ; L ; N ; R |- res_term / x <=  ( cdot ; cdot ; x : res )
+
+
+    % C ; L ; N ; R  |- res_term / x ( subs ) <= ( C2 ; L2 ; res_term / x ( R2 ) )
+    % C ; L ; N ; R1 |- res_term <= res
+    % --------------------------------------------------------------------------- :: Res
+    % C ; L ; N ; R , R1 |- [ res_term / x , subs ] <=  ( C2 ; L2 ; x : res , R2 )
+
+
+    % C ; L ; N ; R3  |- subs1 ( subs2 ( subs3 ) ) <= ( C3 ; L3 ; subs1 ( subs2 ( R3' ) ) )
+    % C ; L ; N ; R2  |- subs1 ( subs2 ) <= ( C2 ; L2 ; subs1 ( R2' ) )
+    % C ; L ; N ; R1  |- subs1 <= ( C1 ; L1 ; R1' )
+    % --------------------------------------------------------------------------- :: Meta_Concat3
+    % C ; L ; N ; R1 , R2 , R3 |- [ subs1 , subs2 , subs3 ] <=  ( C1 , C2 , C3 ; L1 , L2 , L3 ; R1' , R2' , R3' )
+
+    C ; L ; N ; R2  |- psi ( subs ) <= ( C2 ; L2 ; psi ( R2' ) )
+    C ; L ; N ; R1  |- psi <= ( C1 ; L1 ; R1' )
+    --------------------------------------------------------------------------- :: Concat
+    C ; L ; N ; R1 , R2 |- [ psi , subs ] <=  ( C1 , C2 ; L1 , L2 ; R1' , R2' )
+
+
+  defn h <= nR :: :: Heap :: Heap_
+  {{ com heap typing: heap $[[ h ]]$ checks against context/type $[[ nR ]]$ }} by
+
+    ---------------------------- :: Empty
+    cdot <= cdot
+
+
+    cdot |- pred eq pred'
+    pred eq ptrt |- init - ct -> valuet
+    cdot ; cdot |- init => bool_of ( ct )
+    cdot ; cdot |- valuet => to_base ( ct )
+    ----------------------------------- :: Pred_Owned
+    { pred & None } <= _ : pred'
+
+
+    pred_term ( oarg ) eq pred_term' ( oarg' )
+    pred_term eq a ( ptrt , </ iargi // i /> )
+    a != Owned < ct >
+    a eq xp : loc , </ xi : base_typei // i  /> , y : record </ Symbol_identifierj : base_type'j // j /> |-> res inEnv Globals
+    cdot ; cdot ; cdot ; nR |- def <= [ oarg / y , [ </ iargi / xi // i /> ] , ptrt / xp ] ( res )
+    heap <= nR
+    ----------------------------------------------------------- :: Pred_Other
+    { pred_term ( oarg ) & def & heap } <= _ : pred_term' ( oarg' )
+
+
+    qpred eq qpred'
+    qpred eq *S x . iguard => ptrt |- ct -> oarg
+    ------------------------------------------------- :: QPred_Owned
+    { qpred & cdot } <= _ : qpred'
+
+
+    qpred_term ( oarg ) eq qpred_term' ( oarg' )
+    qpred_term' eq { x ; iguard . a ( ptrt + step , iargs ) }
+    a != Owned < ct >
+    forall x . iguard => { a ( ptrt , iargs ) ( oarg [ x ] ) & arr_def_heap [ x ] } <= _ : a ( ptrt , iargs ) ( oarg [ x ] )
+    ----------------------------------------------------------- :: QPred_Other
+    { qpred_term ( oarg ) & arr_def_heap } <= _ : qpred_term' ( oarg' )
+
+
+    h <= nR
+    h' <= nR'
+    ------------------------ :: Concat
+    h + h' <= nR , nR'
+
+  defn alloct |- h <= nR :: :: Heap' :: Heap'_
+  {{ com heap typing: given allocation history $[[alloct]]$, heap $[[h]]$ checks against context/type $[[ nR ]]$ }} by
+
+    alloct / allocv ( h ) <= alloct / allocv ( nR )
+    --------------------------------------------------------------- :: Ty
+    alloct |- h <= nR
+
+  defn alloct <= N :: :: Alloc_ :: Alloc_
+  {{ com well-constrained allocation history: allocation history $[[alloct]]$ is consistent with constraint context $[[N]]$ }} by
+
+    smt ( cdot => /\\ (  </ alloct / allocv ( termi ) // i /> ) )
+    --------------------------------------------------------------- :: Ty
+    alloct <= </ termi // i />
+
+  defn s <= N ; nR :: :: State :: State_
+  {{ com state typing: state $[[s]]$ consists of a well-constrained allocation history wrt $[[N]]$ and a well-typed heap wrt $[[nR]]$ }} by
+
+    alloct <= N
+    alloct |- h <= nR
+    --------------------- :: Ty
+    alloct ; heap <= N ; nR
+
+  defn res ~ res' :: :: Rel_Res :: Rel_Res_ {{ com $[[ res ]]$ is related to $[[ res' ]]$ }} by
+
+    --------- :: Emp
+    emp ~ emp
+
+
+    term ~ term'
+    ------------ :: Phi
+    term ~ term'
+
+
+    term ~ term'
+    res1 ~ res1'
+    res2 ~ res2'
+    ------------------------------------------------------------ :: If
+    if term then res1 else res2 ~ if term' then res1' else res2'
+
+
+    forall term ~ term' . term / y ( res1 ) ~ term' / y' ( res1' )
+    --------------------------------------------------------------- :: Exists
+    exists y : base_type . res1 ~ exists y' : base_type . res1'
+
+
+    res1 ~ res1'
+    res2 ~ res2'
+    ---------------------------  :: SepConj
+    res1 * res2 ~ res1' * res2'
+
+
+    ptrt ~ ptrt'
+    indexed </ iargi ~ iarg'i // i />
+    oarg ~ oarg'
+    ------------------------------------------------------------------------------ :: Pred
+    a ( ptrt , </ iargi // i /> ) ( oarg ) ~ a ( ptrt' , </ iarg'i // i /> ) ( oarg' )
+
+    iguard ~ iguard'
+    ptrt ~ ptrt'
+    indexed </ iargi ~ iarg'i // i />
+    oarg ~ oarg'
+    ---------------------------------------------------------------------------------------------------------------------------------- :: QPred
+    { x ; iguard . a ( ptrt + step , </ iargi // i /> ) } ( oarg ) ~ { x' ; iguard' . a ( ptrt' + step , </ iarg'i // i /> ) } ( oarg' )
+
+
+  defn fon ~ ret :: :: Rel_Ret :: Rel_Ret_ {{ com $[[ fon ]]$ is related to $[[ ret ]]$ }} by
+
+    ------ :: I
+    I ~ I
+
+    forall term ~ inj pval . term / y ( fon ) ~ pval / y' ( ret )
+    ------------------------------------------------------------- :: Comp
+    pi y : base_type . fon ~ sigma y' : base_type . ret
+
+
+    forall oarg ~ oarg' . oarg / y ( fon ) ~ oarg' / y' ( ret )
+    ------------------------------------------------------------- :: Log
+    forall y : base_type . fon ~ exists y' : base_type . ret
+
+
+    term ~ term'
+    fon ~ ret
+    -------------------------- :: Phi
+    term -) fon ~ term' /\ ret
+
+
+    res ~ res'
+    fon ~ ret
+    -------------------------- :: Res
+    res --o fon ~ res' *o ret
+
+defns
+  % rules:
+  % ------
+  % No returns in pre or post conditions
+  % Predicates:
+  %   - returns mandatory
+  %   - if end with if, with return in each branch
+  %   - else no return in if branches, mandatory return afterwards
+  spec_defns :: 'Spec_' ::=
+
+  defn [( spec )] ( opt_ident ) = out_res :: :: Res :: Res_
+  {{ com specification $[[spec]]$ (with optional record $[[opt_ident]]$) represents resource $[[out_res]]$ ($[[opt_ident]]$ is present return when a return is expected, absent when it is not) }}  by
+
+    --------------------------- :: None
+    [( cdot )] ( None ) = emp
+
+    ---------------------------------------------------------------------------------------- :: Return
+    [( return { </ Symbol_identifieri = termi // i />} ; )] ( y ) = ( /\\ ( </  y dot Symbol_identifieri = termi // i /> ) )
+
+
+    [( spec )] ( opt_ident ) = res
+    ------------------------------------------------------------------ :: LetTerm
+    [( let y = term ; spec )] ( opt_ident ) = term / y ( res )
+
+
+    [( spec )] ( opt_ident ) = res
+    ----------------------------------------------------------- :: Assert
+    [( assert ( term ) ; spec )] ( opt_ident ) = term * res
+
+
+    [( spec1 )] ( opt_ident ) = res1
+    [( spec2 )] ( opt_ident ) = res2
+    ------------------------------------------------------------------------------------------------- :: EndIf
+    [( if ( term ) { spec1 } else { spec2 } cdot )] ( opt_ident ) = if term then res1 else res2
+
+
+    [( spec1 )] ( None ) = res1
+    [( spec2 )] ( None ) = res2
+    [( spec3 )] ( opt_ident ) = res3
+    --------------------------------------------------------------------------------------------------------------- :: MiddleIf
+    [( if ( term ) { spec1 } else { spec2 } spec3 )] ( opt_ident ) = ( if term then res1 else res2 ) * res3
+
+
+    % DEFER add well-formedness (predicate arg type-checking) here??
+    a eq _ : loc , </ _ : _bti // i  /> , _ : record </ Symbol_identifierj : base_typej // j /> |-> _res inEnv Globals
+    [( spec )] ( opt_ident ) = res
+    ------------------------------------------------------------------------------------- :: LetPred
+    [( let y = a ( ptrt , iargs ) ; spec )] ( opt_ident ) = exists y : record </ Symbol_identifierj : base_typej // j /> . a ( ptrt , iargs ) ( y ) * res
+
+
+    % DEFER add well-formedness (predicate arg type-checking) here??
+    qpred_term eq { Sym_x ; iguard . a ( ptrt + step , iargs ) }
+    a eq _ : loc , </ _ : _bti // i  /> , _ : record </ Symbol_identifierj : base_typej // j /> |-> _res inEnv Globals
+    [( spec )] ( opt_ident ) = res
+    ------------------------------------------------------------------------------------- :: LetQPred
+    [( let y = qpred_term ; spec )] ( opt_ident ) = exists y : array record </ Symbol_identifierj : base_typej // j /> . { x ; iguard . a ( ptrt + step , iargs ) } ( y ) * res
+
+
+  defn [( spec )] = out_norm_ret :: :: NormRet :: NormRet_
+  {{ com specification $[[spec]]$ represents normalised return type $[[out_norm_ret]]$ }}  by
+
+    --------------- :: None
+    [( cdot )] = I
+
+
+    [( spec )] = norm_ret
+    -------------------------------------------------------- :: LetTerm
+    [( let y = term ; spec )] = term / y ( norm_ret )
+
+
+    [( spec )] = norm_ret
+    --------------------------------------------------------------- :: Assert
+    [( assert ( term ) ; spec )] = term /\ norm_ret
+
+
+    [( if ( term ) { spec1 } else { spec2 } cdot )] ( None ) = norm_res
+    [( spec3 )] = norm_ret
+    ------------------------------------------------------------------------------------------------- :: If
+    [( if ( term ) { spec1 } else { spec2 } spec3 )] = norm_res *o norm_ret
+
+
+    % DEFER add well-formedness (predicate arg type-checking) here??
+    a eq _ : loc , </ _ : _bti // i  /> , _ : record </ Symbol_identifierj : base_typej // j /> |-> _res inEnv Globals
+    [( spec )] = norm_ret
+    ------------------------------------------------------------------------------------- :: LetPred
+    [( let y = a ( ptrt , iargs ) ; spec )] = exists y : record </ Symbol_identifierj : base_typej // j /> . a ( ptrt , iargs ) ( y ) *o norm_ret
+
+
+    % DEFER add well-formedness (predicate arg type-checking) here??
+    qpred_term eq { Sym_x ; iguard . a ( ptrt + step , iargs ) }
+    a eq _ : loc , </ _ : _bti // i  /> , _ : record </ Symbol_identifierj : base_typej // j /> |-> _res inEnv Globals
+    [( spec )] = norm_ret
+    ------------------------------------------------------------------------------------- :: LetQPred
+    [( let y = qpred_term ; spec )] = exists y : array record </ Symbol_identifierj : base_typej // j /> . { x ; iguard . a ( ptrt + step , iargs ) } ( y ) *o norm_ret
+
+
+  defn [( spec | norm_ret )] = out_norm_fun :: :: NormArg :: NormArg_
+  {{ com specification $[[spec]]$ represents normalised argument type $[[out_norm_fun]]$ }}  by
+
+    --------------------------------- :: None
+    [( cdot | norm_ret )] = norm_ret
+
+
+    [( spec | norm_ret )] = norm_fun
+    ---------------------------------------------------------------------- :: LetTerm
+    [( let y = term ; spec | norm_ret )] = term / y ( norm_fun )
+
+
+    [( spec | norm_ret )] = norm_fun
+    --------------------------------------------------- :: Assert
+    [( assert ( term ) ; spec | norm_ret )] = term -) norm_fun
+
+
+    [( if ( term ) { spec1 } else { spec2 } cdot )] ( None ) = norm_res
+    [( spec3 | norm_ret )] = norm_fun
+    -------------------------------------------------------------------------------------- :: If
+    [( if ( term ) { spec1 } else { spec2 } spec3 | norm_ret )] = norm_res --o norm_fun
+
+
+    % DEFER add well-formedness (predicate arg type-checking) here??
+    a eq _ : loc , </ _ : _bti // i  /> , _ : record </ Symbol_identifierj : base_typej // j /> |-> _res inEnv Globals
+    [( spec | norm_ret )] = norm_fun
+    ------------------------------------------------------------------------------------------------------- :: LetPred
+    [( let y = a ( ptrt , iargs ) ; spec | norm_ret )] = forall y : record </ Symbol_identifierj : base_typej // j /> . a ( ptrt , iargs ) ( y ) --o norm_fun
+
+
+    % DEFER add well-formedness (predicate arg type-checking) here??
+    qpred_term eq { Sym_x ; iguard . a ( ptrt + step , iargs ) }
+    a eq _ : loc , </ _ : _bti // i  /> , _ : record </ Symbol_identifierj : base_typej // j /> |-> _res inEnv Globals
+    [( spec | norm_ret )] = norm_fun
+    ------------------------------------------------------------------------------------- :: LetQPred
+    [( let y = qpred_term ; spec | norm_ret )] = forall y : array record </ Symbol_identifierj : base_typej // j /> . { x ; iguard . a ( ptrt + step , iargs ) } ( y ) --o norm_fun
+
+
+  defn [( ct name( </ cti xi // , // i /> ) requires spec1 ensures spec2 )] = out_norm_fun :: :: UserDef :: UserDef_
+  {{ com user-defined C function specification represents normalised argument type $[[out_norm_fun]]$ }}  by
+
+    [( spec2 )] = norm_ret
+    [( spec1 | sigma y : to_base ( ct ) . norm_ret )] = norm_fun
+    ------------------------------------------------------------ :: CFunc_Base
+    [( ct name( ) requires spec1 ensures spec2 )] = norm_fun
+
+
+    [( ct name( </ cti xi // i /> ) requires spec1 ensures spec2 )] = norm_fun
+    ----------------------------------------------------------------------------- :: CFunc_Arg
+    [( ct name( ct1 x1 , </ cti xi // i /> ) requires spec1 ensures spec2 )] = pi x1 : to_base ( ct1 ) . norm_fun
+
+
+  defn [( predicate { </ base_type'j Symbol_identifierj // j /> }  a ( </ base_typei xi // , // i /> ) { spec } )] = a' eq </ rk : base_type''k // , // k /> |-> res :: :: PredDef :: PredDef_
+  {{ com user-defined resource predicate definition represents predicate }}  by
+
+    [( spec )] ( y ) = res
+    ---------------------- :: Pred
+    [( predicate { </ base_type'j Symbol_identifierj // j /> }  a ( loc xp , </ base_typei xi // i /> ) { spec } )] = a eq xp : loc , </ xi : base_typei // i /> , y : record </ Symbol_identifierj : base_type'j // j /> |-> res
+
+
+defns
+  heap_sat :: 'Sat_' ::=
+
+  defn ( A , M ) |= heap :: :: Heap :: Heap_
+  {{ com VIP heap $( [[ A ]] , [[ M ]] )$ satisfies $[[heap]]$ ($[[ M ]]$ disjoint over bytes, $[[ A ]]$ disjoint over live allocations) }}  by
+
+  forall i . A [ i ] = ( _t , _t , false )
+  ------------------------------------------ :: Emp
+  ( A , [| |] ) |= cdot
+
+
+  meta A [ to_int mem_id ] = ( to_int mem_addr , term , true )
+  forall i .  i != to_int mem_id -> A [ i ] = ( _t , _t , false )
+  -------------------------------------------------------------------------- :: Alloc
+  ( A , [| |] ) |= { Alloc ( ( @ to_int mem_id , to_int mem_addr ) , ) ( term ) & None }
+
+
+  meta A [ to_int mem_id ] = ( to_int mem_addr , term , _t )
+  meta to_int mem_addr =< to_int mem_addr' =< to_int mem_addr + term
+  meta M  [ to_int mem_addr' dd to_int mem_addr' + sizeof ct - to_int mem_one ] = _t
+  ------------------------------------------------------------------------------------------- :: Owned
+  ( A , M ) |= { Owned < ct > ( ( @ to_int mem_id , to_int mem_addr' ) , ) ( oarg ) & None }
+
+
+  meta A [ to_int mem_id ] = ( to_int mem_addr , term , _t )
+  meta to_int mem_addr =< to_int mem_addr' =< to_int mem_addr + term
+  meta oarg dot sym_init = const ct true
+  meta ( oarg dot sym_value , nil ) = abst ( A , ct , M  [ to_int mem_addr' dd to_int mem_addr' + sizeof ct - to_int mem_one ] )
+  ------------------------------------------------------------------------------------------- :: Owned_Init
+  ( A , M ) |= { Owned < ct > ( ( @ to_int mem_id , to_int mem_addr' ) , ) ( oarg ) & None }
+
+
+  ( A , M ) |= heap
+  --------------------------------------------------------- :: Pred
+  ( A , M ) |= { a ( ptrt , iargs ) ( oarg ) & def & heap }
+
+
+  meta M = sum i inEnv { x | iguard } . Mi
+  meta A = sum i inEnv { x | iguard } . Ai
+  forall i . [ i / x ] ( iguard ) => ( Ai , Mi ) |= arr_def_heap [ i ] dot i_one
+  --------------------------------------------------------------------------------------- :: QPred
+  ( A , M ) |= { { Sym_x ; iguard . a ( ptrt + step , iargs ) } ( oarg ) & arr_def_heap }
+
+
+  % M1 + M2 = disjoint over bytes
+  % A1 + A2 = disjoint over LIVE allocation ids
+  meta M = M1 + M2
+  meta A = A1 + A2
+  (A1 , M1 ) |= h1
+  (A2 , M2 ) |= h2
+  -------------------- :: Concat
+  ( A , M ) |= h1 + h2
+
+  defn ( A , M ) |= state :: :: State :: State_
+  {{ com VIP heap $( [[ A ]] , [[ M ]] )$ satisfies $[[state]]$ }}  by
+
+  ( A , M ) |= alloct / allocv ( heap )
+  forall i . A [ i ] = ( to_int mem_addr , term , _t ) <-> alloct [ i ] = ( to_int mem_addr , term )
+  ----------------------------------------------------------------------------------- :: Def
+  ( A , M ) |= alloct ; heap
+
+  defn ( A , M ) -V> ( A' , M' ) :: :: VIP_Red :: VIP_Red_
+  {{ com VIP heap $( [[ A ]] , [[ M ]] )$ steps to $( [[ A' ]] , [[ M' ]] )$ }} by
+
+  defn ( A , M ) -V>* ( A' , M' ) :: :: VIP_Reds :: VIP_Reds_
+  {{ com VIP heap $( [[ A ]] , [[ M ]] )$ takes one or more steps to $( [[ A' ]] , [[ M' ]] )$ }} by

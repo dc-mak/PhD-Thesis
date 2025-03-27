@@ -1,0 +1,192 @@
+%! Ott args="-generate_aux_rules false"
+% 'TODO'  - on critical path, current project
+% 'DEFER' - nice to haves, not urgent or on critical path
+% :: X :: - hide from Tex
+
+embed {{ tex-preamble
+% ----------------------------------------------------------------
+% For \Asterisk: mathabx conflicts with other packages sometimes..
+% ----------------------------------------------------------------
+% Setup the mathb font (from mathabx.sty)
+\DeclareFontFamily{U}{mathb}{\hyphenchar\font45}
+\DeclareFontShape{U}{mathb}{m}{n}{
+      <5> <6> <7> <8> <9> <10> gen * mathb
+      <10.95> mathb10 <12> <14.4> <17.28> <20.74> <24.88> mathb12
+      }{}
+\DeclareSymbolFont{mathb}{U}{mathb}{m}{n}
+
+% Define a subset character from that font (from mathabx.dcl)
+% to completely replace the \subset character, you can replace
+% \varsubset with \subset
+
+% Magic "06 obtained from looking at font table
+% \usepackage{fonttable}
+% \fonttable{mathb10}
+\DeclareMathSymbol{\Asterisk}{3}{mathb}{"06}
+% ----------------------------------------------------------------
+
+
+% Cosmetic
+\renewcommand{\[[TEX_NAME_PREFIX]]kw}[1]{ \mathtt{#1} }
+\renewcommand{\[[TEX_NAME_PREFIX]]drule}[4][]{ {\displaystyle\frac{\begin{array}{l}#2\end{array} }{#3}\quad\[[TEX_NAME_PREFIX]]drulename{#4} }\\[\baselineskip] }
+\renewcommand{\[[TEX_NAME_PREFIX]]grammartabular}[1]{ \begin{supertabular}{llcllll}#1\end{supertabular} }
+
+% Grammar production comments on the next line
+\renewcommand{\[[TEX_NAME_PREFIX]]prodline}[6]{%
+& & $#1$ & $#2$ & $#3 #4$ & $#5$ &%
+\ifthenelse{ \equal{}{#6} }%
+{#6}%
+{\\ & & & \multicolumn{4}{p{.5\textwidth} }{#6} } }
+\renewcommand{\[[TEX_NAME_PREFIX]]rulehead}[3]{$#1$ & & $#2$ & \multicolumn{4}{l}{#3} }
+
+% Green comments - can't do colorbox because it doesn't wrap (neither does \usepackage{soul}'s \hl)
+\usepackage[dvipsnames,usenames]{xcolor}
+\definecolor{darkgreen}{rgb}{.0, 0.392, .0}
+\renewcommand{\[[TEX_NAME_PREFIX]]com}[1]{ \textcolor{darkgreen}{ #1 } }
+
+% https://tex.stackexchange.com/questions/33401/a-version-of-colorbox-that-works-inside-math-environments
+\setlength{\fboxsep}{1pt}
+\newcommand{\outpol}[1]{\mathchoice%
+  {\colorbox{red!8}{$\displaystyle      \mathit{ #1 } $} }%
+  {\colorbox{red!8}{$\textstyle         \mathit{ #1 } $} }%
+  {\colorbox{red!8}{$\scriptstyle       \mathit{ #1 } $} }%
+  {\colorbox{red!8}{$\scriptscriptstyle \mathit{ #1 } $} } }%
+\newcommand{\norm}[1]{ \underline{\mathit{#1} } }
+\newcommand{\mathTT}[1]{\mathchoice%
+  {\displaystyle      \texttt{ #1 } }%
+  {\textstyle         \texttt{ #1 } }%
+  {\scriptstyle       \texttt{ #1 } }%
+  {\scriptscriptstyle \texttt{ #1 } } }%
+}}
+
+metavar ident , x , xp {{ tex {x_p} }}, y , yp {{ tex { y_p } }} , yf {{ tex { y_f } }} , _ , abbrev , r , allocv {{ tex { alloc_{\mathrm{var} } } }} ::=
+  {{ com subscripts: p for pointers, f for functions }}
+
+indexvar n , i , j , k ::= {{ com index variables }}
+
+grammar
+
+  % OUT_HACK|x
+  out_x {{ tex \outpol{ x } }}   :: 'Out_hack_' ::=  {{ com Ott-hack, ignore }}
+    | x :: :: x {{ tex \outpol{ [[x]] } }}
+
+grammar
+
+  ty_int {{ tex int }} , _int {{ tex \_ }} , step :: 'Int_' ::=   {{ ocaml int  }} {{ com OCaml fixed-width integer }}
+    | i         ::   :: IndexVar {{ com literal integer }}
+    | i_zero    :: X :: Zero     {{ tex 0               }}
+    | i_one     :: X :: One      {{ tex 1               }}
+    | sizeof ct :: M :: of_Ctype {{ ocaml Memory.size_of_ctype ( [[ct]] ) }}
+                                 {{ tex \mathrm{sizeof}( [[ct]] )         }}
+                                 {{ com size of a C type                  }}
+
+grammar
+
+  Sctypes_t , ct {{ tex \tau }} :: 'Ct_' ::= {{ ocaml Sctypes.t }} {{ com partial/relevant grammar of C types }}
+    | array ty_int ct :: :: ArrayCt {{ com fixed-length array of element type $[[ct]]$ }}
+    | int             :: :: C_Int   {{ com C (signed) integer                          }}
+    | ct *            :: :: Pointer {{ com pointer to type $[[ct]]$                    }}
+    | struct ty_tag   :: :: Struct  {{ com C struct type                               }}
+
+grammar
+
+  ty_tag {{ tex tag }} :: 'Ty_tag' ::= {{ ocaml tag }} {{ com OCaml type for struct/union tag }}
+    | ident :: :: ident
+
+grammar
+
+  base_type {{ tex \beta }} , _bt {{ tex \_ }} :: 'Bt_' ::= {{ com base types }}
+    | unit                                              ::   :: Unit     {{ com unit                        }}
+    | bool                                              ::   :: Bool     {{ com boolean                     }}
+    | integer                                           ::   :: Integer  {{ com integer                     }}
+    | real                                              ::   :: Real     {{ com rational numbers?           }}
+    | loc                                               ::   :: Loc      {{ com location                    }} {{ tex \mathtt{pointer} }}
+    | struct ty_tag                                     ::   :: Struct   {{ com C structs                   }}
+    | record </ Symbol_identifieri : base_typei // i /> ::   :: Record   {{ com res. pred. output arguments }}
+    | map base_type base_type'                          ::   :: Map      {{ com map                         }}
+    | id_map                                            :: M :: IdMap    {{ com allocs to base and length   }} {{ ocaml Map ( Alloc_id , Alloc_id )     }}
+    | array base_type                                   :: M :: Array    {{ com array (integer-indexed map) }} {{ ocaml Map ( Integer , [[base_type]] ) }}
+    | list base_type                                    ::   :: List     {{ com list                        }}
+    | </ base_typei // * // i />                        ::   :: Tuple    {{ com tuple                       }}
+    | set base_type                                     ::   :: Set      {{ com set                         }}
+    | bool_of ( ct )                                    :: M :: Bool_of  {{ com boolean from C type         }}
+                                                                         {{ tex bool_ { [[ ct ]] }          }}
+                                                                         {{ ocaml BOOL_BT_CT ( [[ ct ]] )   }}
+    | to_base ( ct )                                    :: M :: Of_Ctype {{ com of a C type                 }}
+                                                                         {{ tex \beta_{ [[ct]] }            }}
+                                                                         {{ ocaml (BT.of_sct ( [[ct]] ) )   }}
+
+
+grammar
+
+  % OUT_HACK|base_type,\beta
+  out_base_type {{ tex \outpol{ \beta } }}   :: 'Out_hack_' ::=  {{ com Ott-hack, ignore }}
+    | base_type :: :: base_type {{ tex \outpol{ [[base_type]] } }}
+
+grammar
+
+  % Binary operators
+  binop {{ tex \mathbin{ binop } }} :: 'Op' ::= {{ ocaml Core.binop }} {{ com binary operators }}
+    % arithmetic operators (integer -> integer -> integer)
+    | +   :: :: Add   {{ tex \mathbin{ \mathTT{+} } }} {{ com addition       }}
+    | -   :: :: Sub   {{ tex \mathbin{ \mathTT{-} } }} {{ com subtraction    }}
+    | *   :: :: Mul   {{ tex \mathbin{ \mathTT{*} } }} {{ com multiplication }}
+    | /   :: :: Div   {{ tex \mathbin{ \mathTT{/} } }} {{ com division       }}
+    | mod :: :: Rem_t {{ tex \mathbin{ \mathTT{mod} } }} {{ com modulus        }}
+    | REM :: :: Rem_f {{ tex \mathbin{ \mathTT{rem} } }} {{ com remainder    }}
+    | ^   :: :: Exp   {{ tex \mathbin{ \mathTT{\char`\^} } }} {{ com exponentiation }}
+    % relational operators ( ptr/int -> ptr/int -> bool)
+    | =   :: :: Eq    {{ tex \mathbin{ \mathTT{=}  } }} {{ com equality, defined both for integer and C types }}
+    | !=  :: :: Ne    {{ tex \mathbin{ \mathTT{!=} } }} {{ com inequality, similiarly defined                 }}
+    | >   :: :: Gt    {{ tex \mathbin{ \mathTT{>}  } }} {{ com greater than, similarly defined                }}
+    | <   :: :: Lt    {{ tex \mathbin{ \mathTT{<}  } }} {{ com less than, similarly defined                   }}
+    | >=  :: :: Ge    {{ tex \mathbin{ \mathTT{>=} } }} {{ com greater than or equal to, similarly defined    }}
+    | <=  :: :: Le    {{ tex \mathbin{ \mathTT{<=} } }} {{ com less than or equal to, similarly defined       }}
+    % logical connectives ( bool -> bool -> bool)
+    | /\  :: :: And   {{ tex \mathbin{ \mathTT{/\char`\\} } }} {{ com conjucntion }}
+    | \/  :: :: Or    {{ tex \mathbin{ \mathTT{\char`\\/} } }} {{ com disjunction }}
+
+  arith_binop {{ tex \mathbin{ binop_{arith} } }} :: 'Arith_Op' ::= {{ com arithmentic binary operators }}
+    | +   :: :: Add
+    | -   :: :: Sub
+    | *   :: :: Mul
+    | /   :: :: Div
+    | mod :: :: Rem_t
+    | REM :: :: Rem_f
+    | ^   :: :: Exp
+
+  rel_binop {{ tex \mathbin{ binop_{rel} } }} :: 'Rel_Op' ::= {{ com relational binary operators }}
+    | =   :: :: Eq
+    | !=  :: :: Ne
+    | >   :: :: Gt
+    | <   :: :: Lt
+    | >=  :: :: Ge
+    | <=  :: :: Le
+
+  bool_binop {{ tex \mathbin{ binop_{bool} } }} :: 'Bool_Op' ::= {{ com boolean binary operators }}
+    | /\  :: :: And
+    | \/  :: :: Or
+
+  subrules
+    arith_binop <:: binop
+    rel_binop   <:: binop
+    bool_binop  <:: binop
+
+metavar impl_const ::= {{ ocaml Implementation.implementation_constant }}
+  {{ com implementation-defined constant }}
+
+grammar
+
+  tyvar_sym {{ tex ident }} :: 'Tyvar_sym_' ::= {{ ocaml 'sym }} {{ com Ott-hack, ignore }}
+    | ident :: :: ident
+
+grammar
+
+  ty_mem_int {{ tex mem\_int }} , mem_addr {{ tex addr }} , mem_id {{ tex id }} :: 'Ty_mem_int' ::= {{ ocaml Impl_mem.integer_value }} {{ com memory integer value }}
+    | mem_one  :: M :: One  {{ ocaml Memory.integer_ival Z.one  }} {{ tex 1 }}
+    | mem_zero :: M :: Zero {{ ocaml Memory.integer_ival Z.zero }} {{ tex 0 }}
+
+metavar Symbol_identifier {{ tex member }} , id , base , len , addr , sym_init {{ tex init }} , sym_value {{ tex value }} ::=
+  {{ ocaml Symbol.identifier }}
+  {{ com C struct/union member name }}
+

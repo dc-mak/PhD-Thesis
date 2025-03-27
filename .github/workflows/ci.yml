@@ -16,6 +16,9 @@ concurrency:
 jobs:
   build:
     runs-on: ubuntu-22.04
+    strategy:
+      matrix:
+        version: [5.2.0]
 
     permissions:
       contents: write
@@ -33,7 +36,7 @@ jobs:
     - name: System dependencies (Ubuntu)
       run: |
         sudo apt-get update
-        sudo apt-get install fonts-firacode fonts-liberation fonts-lmodern -y
+        sudo apt-get install fonts-firacode fonts-liberation fonts-lmodern opam -y
         pip install pygments latexminted
 
     - name: Download Libertinus Fonts
@@ -49,6 +52,27 @@ jobs:
         sudo cp -r Libertinus-7.051/static/OTF /usr/local/share/fonts
         fc-cache -f -v
 
+    - name: Restore OPAM cache
+      id: cache-opam-restore
+      uses: actions/cache/restore@v4
+      with:
+        path: ~/.opam
+        key: ${{ matrix.version }}
+  
+    - name: Setup OPAM
+      if: steps.cache-opam-restore.outputs.cache-hit != 'true'
+      run: |
+        opam init --yes --disable-sandboxing --no-setup --shell=sh --compiler=${{ matrix.version }}
+        eval $(opam env --switch=${{ matrix.version }})
+        opam install ott --yes
+
+    - name: Save OPAM cache
+      uses: actions/cache/save@v4
+      if: steps.cache-opam-restore.outputs.cache-hit != 'true'
+      with:
+        path: ~/.opam
+        key: ${{ matrix.version }}
+
     - name: Build
       run: |
         cd src
@@ -56,6 +80,8 @@ jobs:
         mv main.tex old_minted.tex && tail -n +2 old_minted.tex > main.tex # hack to build with newer version of minted
         latexmk -quiet || (cat _build/main.log; exit 1)
         texcount -inc main.tex | tee _build/wordcount.tex
+        eval $(opam env --switch=${{ matrix.version }})
+        make
 
     - name: Release
       uses: softprops/action-gh-release@v2
@@ -64,3 +90,5 @@ jobs:
         files: |
           src/_build/main.pdf
           src/_build/wordcount.tex
+          src/_build/defns.pdf
+          src/_build/soudness.pdf

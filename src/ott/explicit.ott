@@ -1,0 +1,1270 @@
+grammar
+
+  C {{ tex \mathcal{C} }} :: Comp_Ctx_ ::= {{ com computational variable context }}
+    | Symbol_sym : BT_t     ::   :: cons   {{ com add to context       }}
+    | </ Ci // , // i />    ::   :: concat {{ com concatenate contexts }}
+    | cdot                  :: M :: empty  {{ com empty context        }}
+
+grammar
+
+  % OUT_HACK|C,\mathcal{C}
+  out_C {{ tex \outpol{ \mathcal{C} } }}   :: 'Out_hack_' ::=  {{ com Ott-hack, ignore }}
+    | C :: :: C {{ tex \outpol{ [[C]] } }}
+
+
+grammar
+
+  L {{ tex \mathcal{L} }} :: Log_Ctx_ ::= {{ com logical variable context }}
+    | Symbol_sym : BT_t     ::   :: cons   {{ com add to context       }}
+    | </ Li // , // i />    ::   :: concat {{ com concatenate contexts }}
+    | cdot                  :: M :: empty  {{ com empty context        }}
+
+
+grammar
+
+  N {{ tex \mathrm{ \Phi } }} :: Phi_Ctx_ ::= {{ com constraints environment }}
+    | term             ::   :: cons   {{ com add to context                                        }}
+    | </ Ni // , // i />   ::   :: concat {{ com concatenate contexts                                  }}
+    | cdot                 :: M :: empty  {{ com empty context                                         }}
+    | subs ( N )           :: M :: subs   {{ com substitute $[[subs]]$ over all constraints in $[[N]]$ }}
+
+
+grammar
+
+  R {{ tex \mathcal{R} }} :: Res_Ctx_ ::= {{ com resource environment }}
+    | Symbol_sym : res     ::   :: cons   {{ com add to context                                                            }}
+    | </ Ri // , // i />   ::   :: concat {{ com concatenate contexts                                                      }}
+    | cdot                 :: M :: empty  {{ com empty context                                                             }}
+    | subs ( R )           :: M :: subs   {{ com substitute $[[subs]]$ over all SMT terms in all resource types in $[[R]]$ }}
+
+
+  nR {{ tex \norm{\mathcal{R} } }} , Rem , Fr :: NormRes_Ctx_ ::= {{ com normalised resource env }}
+    | Symbol_sym : norm_res ::   :: cons   {{ com add to context                                                            }}
+    | </ nRi // , // i />   ::   :: concat {{ com concatenate contexts                                                      }}
+    | cdot                  :: M :: empty  {{ com empty context                                                             }}
+    | subs ( R )             :: M :: subs  {{ com substitute $[[subs]]$ over all SMT terms in all resource types in $[[R]]$ }}
+
+subrules
+  nR <:: R
+
+grammar
+
+  % OUT_HACK|nR,\norm{\mathcal{R} }|nRp,\norm{\mathcal{R} }'|Rem|Fr
+  out_nR {{ tex \outpol{ \norm{\mathcal{R} } } }} , out_nRp {{ tex \outpol{ \norm{\mathcal{R} }' } }} , out_Rem {{ tex \outpol{ Rem } }} , out_Fr {{ tex \outpol{ Fr } }}   :: 'Out_hack_' ::=  {{ com Ott-hack, ignore }}
+    | nR :: :: nR {{ tex \outpol{ [[nR]] } }}
+
+
+grammar
+
+  CLN {{ tex \mathcal{C} ; \mathcal{L} ; \Phi }} :: '' ::= {{ com Ott-hack, ignore }}
+    | C ; L ; N :: :: CLN
+
+  LNR {{ tex \mathcal{L} ; \mathrm{ \Phi } ; \mathcal{R} }} , LNRp {{ tex \mathcal{L}' ; \mathrm{ \Phi' } ; \mathcal{R}' }} :: '' ::= {{ com Ott-hack, ignore }}
+    | L ; N ; R :: :: LNR
+
+  LNnR {{ tex \mathcal{L} ; \mathrm{ \Phi } ; \norm{ mathcal{R} } }} , LNnRp {{ tex \mathcal{L}' ; \mathrm{ \Phi' } ; \norm{\mathcal{R}'} }} :: '' ::= {{ com Ott-hack, ignore }}
+    | L ; N ; nR :: :: LNnR
+
+  % OUT_HACK|LNR,\mathcal{L} ; \mathrm{ \Phi } ; \mathcal{R}|LNRp,\mathcal{L}' ; \mathrm{ \Phi' } ; \mathcal{R}'
+  out_LNR {{ tex \outpol{ \mathcal{L} ; \mathrm{ \Phi } ; \mathcal{R} } }} , out_LNRp {{ tex \outpol{ \mathcal{L}' ; \mathrm{ \Phi' } ; \mathcal{R}' } }}   :: 'Out_hack_' ::=  {{ com Ott-hack, ignore }}
+    | LNR :: :: LNR {{ tex \outpol{ [[LNR]] } }}
+
+
+  % OUT_HACK|LNnR,\mathcal{L} ; \mathrm{ \Phi } ; \norm{ mathcal{R} }|LNnRp,\mathcal{L}' ; \mathrm{ \Phi' } ; \norm{\mathcal{R}'}
+  out_LNnR {{ tex \outpol{ \mathcal{L} ; \mathrm{ \Phi } ; \norm{ mathcal{R} } } }} , out_LNnRp {{ tex \outpol{ \mathcal{L}' ; \mathrm{ \Phi' } ; \norm{\mathcal{R}'} } }}   :: 'Out_hack_' ::=  {{ com Ott-hack, ignore }}
+    | LNnR :: :: LNnR {{ tex \outpol{ [[LNnR]] } }}
+
+  CLNR {{ tex \mathcal{C} ; \mathcal{L} ; \Phi ; \mathcal{R} }} , CLNRp {{ tex \mathcal{C}' ; \mathcal{L}' ; \Phi' ; \mathcal{R}' }} :: '' ::= {{ com Ott-hack, ignore }}
+    | C ; L ; N ; R :: :: CLNR
+
+  CLNnR {{ tex \mathcal{C} ; \mathcal{L} ; \Phi ; \norm{\mathcal{R} } }} :: '' ::= {{ com Ott-hack, ignore }}
+    | C ; L ; N ; nR :: :: CLNnR
+
+
+  % OUT_HACK|CLNR,\mathcal{C} ; \mathcal{L} ; \mathrm{ \Phi } ; \mathcal{R}|CLNRp,\mathcal{C}' ; \mathcal{L}' ; \mathrm{ \Phi' } ; \mathcal{R}'
+  out_CLNR {{ tex \outpol{ \mathcal{C} ; \mathcal{L} ; \mathrm{ \Phi } ; \mathcal{R} } }} , out_CLNRp {{ tex \outpol{ \mathcal{C}' ; \mathcal{L}' ; \mathrm{ \Phi' } ; \mathcal{R}' } }}   :: 'Out_hack_' ::=  {{ com Ott-hack, ignore }}
+    | CLNR :: :: CLNR {{ tex \outpol{ [[CLNR]] } }}
+
+
+grammar
+
+  ty_extra :: 'ty_extra_' ::= {{ com extra judgements for explicit and inference typing systems }}
+    | smt ( N => qterm )                                                     ::  :: smt                     {{ com check if $[[qterm]]$ is SMT-provable in constraint context $[[N]]$     }}
+    | Symbol_sym : out_base_type inEnv C                                     ::  :: x_in_C                  {{ com lookup type of $[[Symbol_sym]]$ in context $[[C]]$                     }}
+    | struct ty_tag & </ out_Sym_idi : out_T_cti // i /> inEnv Globals       ::  :: struct_in_globals       {{ com lookup types of struct $[[ty_tag]]$ fields in $[[Globals]]$            }}
+    | a eq </ out_xi : out_base_typei // , // i /> |-> out_res inEnv Globals ::  :: res_pred_in_globals     {{ com lookup body of resource predicate $[[a]]$ in $[[Globals]]$             }}
+    | C |- ty_mem_value => mem base_type                                     ::  :: indexed_infer_mem_value {{ com dependent on memory object model                                       }}
+                                                                                                            {{ tex [[C]] [[|-]] [[ty_mem_value]] [[=>]] \outpol{[[base_type]]}            }}
+    | C ; L |- term => out_base_type                                         ::  :: term_synth_type         {{ com omitted/assumed definition: $[[ term ]]$ is (a) well-formed (b) annotated with $[[out_base_type]]$ }}
+    | pred_name1 != pred_name2                                               ::  :: pred_name_neq           {{ com check if $[[pred_name1]]$ and $[[pred_name2]]$ are unequal             }}
+
+grammar
+
+  formula :: 'formula_' ::=
+    | judgement                                                             ::   :: judgement
+    | ty_extra                                                              ::   :: ty_extra
+    | opsem_extra                                                           ::   :: opsem_extra
+    | misc_extra                                                            ::   :: misc_extra
+    % both
+    | indexed </ formulai // i />                                           :: X :: indexed
+    | res eq res'                                                           ::   :: abbrev_res                {{ com resource type abbreviation                                           }}
+    | res_term eq res_term'                                                 ::   :: abbrev_res_term           {{ com resource term abbreviation                                           }}
+    | ret eq ret'                                                           ::   :: abbrev_ret                {{ com return type abbreviation                                             }}
+    | term eq term'                                                         ::   :: abbrev_term               {{ com SMT term / constraint abbrevation                                    }}
+    | texpr eq texpr'                                                       ::   :: abbrev_texpr              {{ com top-level expression abbrevation                                     }}
+    | name : out_pure_fun eq </ out_xi // i /> |-> out_tpexpr inEnv Globals ::   :: pure_func_body_in_globals {{ com lookup type and body of pure function $[[name]]$ in $[[Globals]]$ }}
+    | name : out_fon      eq </ out_xi // i /> |-> out_texpr  inEnv Globals ::   :: func_body_in_globals      {{ com lookup type and body of function $[[name]]$ in $[[Globals]]$      }}
+
+
+defns
+  res_judge :: '' ::=
+
+  defn N |- cmp_min ( iguard , iguard' ) ~> out_opt_cmp_term :: :: IG_Cmp :: IG_Cmp_
+  {{ com given constraints $[[N]]$ , $[[iguard]]$ is potentially included in $[[iguard']]$ (or vice-versa) with ordering and minimum $[[out_opt_cmp_term]]$ }} by
+
+
+    smt ( N => forall x . iguard <-> iguard' )
+    ------------------------------------------------------------ :: Eq
+    N |- cmp_min ( iguard , iguard' ) ~> Eq , iguard
+
+
+    smt ( N => forall x . iguard -> iguard' )
+    ------------------------------------------------------------ :: Lt
+    N |- cmp_min ( iguard , iguard' ) ~> Lt , iguard
+
+
+    smt ( N => forall x . iguard' -> iguard )
+    ------------------------------------------------------------ :: Gt
+    N |- cmp_min ( iguard , iguard' ) ~> Gt , iguard'
+
+
+    -------------------------------------------------- :: None
+    N |- cmp_min ( iguard , iguard' ) ~> None
+
+
+  defn N |- qpred_term [=? qpred_term' ~> out_opt_cmp :: :: Q_Cmp :: Q_Cmp_
+  {{ com given constraints $[[N]]$ , $[[qpred_term]]$ is potentially included in $[[qpred_term']]$ (or vice-versa) with ordering $[[out_opt_cmp]]$ }} by
+
+
+    a1 != a2
+    ---------------------------------------------------------------------------------------------- :: Name_Neq
+    N |- { _ ; _t . a2 ( _t + _int , _iargs ) } [=? { _ ; _t . a1 ( _t + _int , _iargs ) } ~> None
+
+
+    term1 eq ( ptrt = ptrt' ) /\ (step = step')
+    smt ( N => neg term1 )
+    --------------------------------------------------------------------------------------- :: PtrStep_Neq
+    N |- { x ; _t . a ( ptrt + step , _iargs ) } [=? { x ; _t . a ( ptrt' + step' , _iargs ) } ~> None
+
+
+    term1 eq ( ptrt = ptrt' ) /\ (step = step')
+    smt ( N => term1 )
+    N |- cmp_min ( iguard , iguard' ) ~> None
+    --------------------------------------------------------------------------------------- :: IG_Neq
+    N |- { x ; iguard . a ( ptrt + step , _iargs ) } [=? { x ; iguard' . a ( ptrt' + step' , _iargs ) } ~> None
+
+
+    term1 eq ( ptrt = ptrt' ) /\ (step = step')
+    smt ( N => term1 )
+    N |- cmp_min ( iguard , iguard' ) ~> cmp , iguard''
+    term2 eq iguard'' -> /\\ ( </ iargi = iarg'i // i /> )
+    smt ( N => exists x . neg term2 )
+    --------------------------------------------------------------------------------------- :: IArg_Neq
+    N |- { x ; iguard . a ( ptrt + step , _iargs ) } [=? { x ; iguard' . a ( ptrt' + step' , _iargs ) } ~> None
+
+
+    term1 eq ( ptrt = ptrt' ) /\ (step = step')
+    smt ( N => term1 )
+    N |- cmp_min ( iguard , iguard' ) ~> cmp , iguard''
+    term2 eq iguard'' -> /\\ ( </ iargi = iarg'i // i /> )
+    smt ( N => forall x . term2 )
+    --------------------------------------------------------------------------------------- :: Comparable
+    N |- { x ; iguard . a ( ptrt + step , _iargs ) } [=? { x ; iguard' . a ( ptrt' + step' , _iargs ) } ~> cmp
+
+
+  defn N |- res_req eq res_req' ~> ty_bool :: :: Req_Eq :: Req_Eq_
+  {{ com resource equality: given constraints $[[N]]$, $[[res_req]]$ and $[[res_req']]$ are equal according to $[[ty_bool]]$ }} by
+
+
+    a1 != a2
+    ------------------------------------------------------ :: PP_Name_Neq
+    N |- a1 ( _t , _iargs ) eq a2 ( _t , _iargs ) ~> false
+
+
+    smt ( N => neg ( ptrt1 = ptrt2 /\ /\\ ( </ iarg1i = iarg2i // i /> ) ) )
+    -------------------------------------------------------------------------------------------------- :: PP_IArg_Neq
+    N |- a ( ptrt1 , </ iarg1i // i /> ) eq a ( ptrt2 , </ iarg2i // i /> ) ~> false
+
+
+    smt ( N => ptrt1 = ptrt2 /\ /\\ ( </ iarg1i = iarg2i // i /> ) )
+    -------------------------------------------------------------------------------------------------- :: PP_Eq
+    N |- a ( ptrt1 , </ iarg1i // i /> ) eq a ( ptrt2 , </ iarg2i // i /> ) ~> true
+
+
+    N |- qpred_term [=? qpred_term' ~> Eq
+    -------------------------------------- :: QQ_Eq
+    N |- qpred_term eq qpred_term' ~> true
+
+
+    N |- qpred_term [=? qpred_term' ~> opt_cmp
+    ------------------------------------------ :: QQ_Neq
+    N |- qpred_term eq qpred_term' ~> false
+
+
+  defn N |- res eq res' :: :: Res_Eq :: Res_Eq_
+  {{ com resource equality: given constraints $[[N]]$, $[[res]]$ is equal to $[[res']]$ }} by
+
+    -------------------- :: Emp
+    N |- emp eq emp
+
+
+    % DEFER weaken this to allow imp / subtyping e.g. Annot can be stronger than what is required
+    smt ( N => term <-> term' )
+    ----------------------------------- :: Phi
+    N |- term eq term'
+
+
+    N |- pred_term eq pred_term' ~> true
+    --------------------------------------- :: Pred
+    N |- pred_term ( _t ) eq pred_term' ( _t )
+
+
+    N |- qpred_term eq qpred_term' ~> true
+    --------------------------------------- :: QPred
+    N |- qpred_term ( _t ) eq qpred_term' ( _t )
+
+
+    N |- res1 eq res'1
+    N |- res2 eq res'2
+    ------------------------------------ :: SepConj
+    N |- res1 * res2 eq res'1 * res'2
+
+
+    N |- res eq res'
+    -------------------------------------------------------------------------------- :: Exists
+    N |- exists Symbol_sym : base_type . res eq exists Symbol_sym : base_type . res'
+
+
+    smt ( N => term1 <-> term2 )
+    N , term1   |- res11 eq res21
+    N , neg term1 |- res21 eq res22
+    ----------------------------------------------------------------------------- :: OrdDisj
+    N |- if term1 then res11 else res12 eq if term2 then res21 else res22
+
+
+  defn N |- simp_rec ( res ) ~> out_res' , out_ty_bool :: :: Res_SimpRec_ :: Res_SimpRec_
+  {{ com partial-simplification of resources: given constraints $[[N]]$, $[[res]]$ partially simplifies (strips ifs) to $[[out_res']]$ }} by
+
+
+    smt ( N => term )
+    N |- simp_rec ( res1 ) ~> res1' , ty_bool
+    -------------------------------------------------------------- :: If_True
+    N |- simp_rec ( if term then res1 else res2 ) ~> res1' , true
+
+
+    smt ( N => neg term )
+    N |- simp_rec ( res2 ) ~> res2' , ty_bool
+    ------------------------------------------------------------- :: If_False
+    N |- simp_rec ( if term then res1 else res2 ) ~> res2' , true
+
+
+    N |- simp_rec ( res1 ) ~> res1' , ty_bool1
+    N |- simp_rec ( res2 ) ~> res2' , ty_bool2
+    ------------------------------------------------------------------ :: SepConj
+    N |- simp_rec ( res1 * res2 ) ~> res1' * res2' , ty_bool1 || ty_bool2
+
+
+    N |- simp_rec ( res ) ~> res' , ty_bool
+    ---------------------------------------------------------------------------------- :: Exists
+    N |- simp_rec ( exists y : base_type . res ) ~> exists y : base_type . res' , ty_bool
+
+
+    ---------------------------------- :: NoChange
+    N |- simp_rec ( res ) ~> res , false
+
+
+  defn N |- simp ( res ) ~> opt_out_res :: :: Simp_ :: Simp_
+  {{ com partial-simplification of resources: given constraints $[[N]]$, $[[res]]$ attempts a partial simplification (strips ifs) to $[[opt_out_res]]$ }} by
+
+
+    N |- simp_rec ( res ) ~> res , false
+    ------------------------------------- :: NoSimp
+    N |- simp ( res ) ~> None
+
+
+    N |- simp_rec ( res ) ~> res' , true
+    -------------------------------------- :: Simp
+    N |- simp ( res ) ~> res'
+
+
+defns
+  ret_judge :: 'Ret_' ::=
+
+  defn N |- ret eq ret' :: :: Eq :: Eq_
+  {{ com return type equality: given constraints $[[N]]$, $[[ret]]$ is equal to $[[ret']]$ }} by
+
+    ----------- :: End
+    N |- I eq I
+
+
+    N |- ret eq ret'
+    ------------------------------------------------------------ :: Comp
+    N |- sigma y : base_type . ret eq sigma y : base_type . ret'
+
+
+    N |- ret eq ret'
+    -------------------------------------------------------------- :: Log
+    N |- exists y : base_type . ret eq exists y : base_type . ret'
+
+
+    smt ( N => term <-> term' )
+    ----------------------------------------- :: Phi
+    N |- term /\ ret eq term' /\ ret'
+
+
+    N |- res eq res'
+    N |- ret eq ret'
+    ------------------------------- :: Res
+    N |- res *o ret eq res' *o ret'
+
+defns
+  pat_judge :: 'Pat_' ::=
+
+  defn pat : base_type ~> PAT out_C with out_term :: :: Comp_ :: Comp_
+  {{ com computational pattern to context: $[[pat]]$ and type $[[base_type]]$ produces context $[[out_C]]$ and constraint $[[out_term]]$ }} by
+
+
+    ---------------------------------------- :: No_Sym_Annot
+    _ : base_type : base_type ~> PAT cdot with _
+
+
+    -------------------------------------------------------- :: Sym_Annot
+    x : base_type : base_type ~> PAT x : base_type with x
+
+
+    --------------------------------------------------------- :: Nil
+    Nil base_type ( ) : list base_type ~> PAT cdot with nil
+
+
+    pat1 : base_type ~> PAT C1 with term1
+    pat2 : list base_type ~> PAT C2 with term2
+    --------------------------------------------------------------------------- :: Cons
+    Cons ( pat1 , pat2 ) : list base_type ~> PAT C1 , C2 with term1 cons term2
+
+
+    indexed pati : base_typei ~> Ci with termi
+    ----------------------------------------------------------------------------------------------------------- :: Tuple
+    Tuple ( </ pati // i /> ) : </ base_typei // i /> ~> PAT </ Ci // i /> with ( </ termi // i /> )
+
+
+    indexed pati : base_type ~> Ci with termi
+    -------------------------------------------------------------------------------------------- :: Array
+    Array ( </ pati // i /> ) : array base_type ~> PAT </ Ci // i /> with [| </ termi // i /> |]
+
+
+    pat : base_type ~> PAT C with term
+    ----------------------------------------------------------- :: Specified
+    Specified ( pat ) : base_type ~> PAT C with term
+
+
+  defn sym_or_pat : base_type ~> out_C with out_term :: :: Sym_Or_Pat :: Sym_Or_Pat_
+  {{ com identifier-or-pattern to context: $[[sym_or_pat]]$ and type $[[base_type]]$ produces context $[[out_C]]$ and constraint $[[out_term]]$ }} by
+
+    ------------------------------------- :: Sym
+    x : base_type ~> x : base_type with x
+
+
+    pat : base_type ~> PAT C with term
+    ------------------------------------------------ :: Pat
+    pat : base_type ~> C with term
+
+
+  defn L ; N |- res_pat : res ~> out_LNRp :: :: Res_Match_ :: Res_Match_
+  {{ com resources pattern to context: given constraints $[[N]]$, $[[res_pat]]$ of type $[[res]]$ produces contexts $[[out_LNRp]]$ }} by
+
+
+    ------------------------------------------------- :: Emp
+    L ; N |- emp : emp ~> cdot ; cdot ; cdot
+
+
+    ----------------------------------------------- :: Phi
+    L ; N |- TERM : term ~> L' ; N' , term ; R'
+
+
+    % This (and If_False) require N |- for the ~ relation
+    smt ( N => term )
+    L ; N |- res_pat : res1 ~> L ; N ; R
+    --------------------------------------------------------------- :: If_True
+    L ; N |- res_pat : if term then res1 else res2 ~> L ; N ; R
+
+
+    % This (and If_True) require N |- for the ~ relation
+    smt ( N => neg term )
+    L ; N |- res_pat : res2 ~> L ; N ; R
+    --------------------------------------------------------------- :: If_False
+    L ; N |- res_pat : if term then res1 else res2 ~> L ; N ; R
+
+
+    {{ (replace res with res_norm for normalised contexts) }}
+    ------------------------------------------------- :: Var
+    L ; N |- r : res ~> cdot ; cdot ; r : res
+
+
+    L ; N |- res_pat1 : res1 ~> L1 ; N1 ; R1
+    L ; N |- res_pat2 : res2 ~> L2 ; N2 ; R2
+    ------------------------------------------------------------------------------------ :: SepConj
+    L ; N |- < res_pat1 , res_pat2 > : res1 * res2 ~> L1 , L2 ; N1 , N2 ; R1 , R2
+
+
+    L , x : base_type ; N |- res_pat : x / y ( res ) ~> L' ; N' ; R'
+    ------------------------------------------------------------------------------------------ :: Pack
+    L ; N |- pack ( x , res_pat ) : exists y : base_type . res ~> L' , x : base_type ; N' ; R'
+
+
+    a != Owned < ct >
+    a eq xp : _bt , </ xi : _bti // i /> , y : _bt  |-> res inEnv Globals
+    L ; N |- res_pat : [ oarg / y , [ </ iargi / xi // i />  ] , ptrt / xp ] ( res ) ~> L' ; N' ; R'
+    --------------------------------------------------------------------------------------------------- :: Fold
+    L ; N |- fold ( res_pat ) : a ( ptrt , iargs ) ( oarg ) ~> L' ; N' ; R'
+
+
+  defn CLN |- ret_pat : ret ~> out_CLNRp :: :: Ret_ :: Ret_
+  {{ com return pattern to context: given context $[[ CLN ]]$, $[[ret_pat]]$ and return type $[[ret]]$ produces contexts $[[out_CLNRp]]$ }} by
+
+
+    ------------------------------------------------- :: Empty
+    C ; L ; N |-  : I ~> cdot ; cdot ; cdot ; cdot
+
+
+    % This is the rule which requires ~ relation
+    sym_or_pat : base_type ~> C1 with term1
+    C , C1 ; L ; N |- ret_pat : term1 / y ( ret ) ~> C2 ; L2 ; N2 ; R2
+    ----------------------------------------------------------------------------------- :: Comp
+    C ; L ; N |- comp sym_or_pat , ret_pat : sigma y : base_type . ret ~> C1, C2 ; L2 ; N2 ; R2
+
+
+    C ; L , x : base_type ; N |- ret_pat : x / y ( ret ) ~> C2 ; L2 ; N2 ; R2
+    -------------------------------------------------------------------------------------- :: Log
+    C ; L ; N |- log x , ret_pat : exists y : base_type . ret ~> C2 ; y : base_type , L2 ; N2 ; R2
+
+
+    C ; L ; N |- ret_pat : ret ~> C' ; L' ; N' ; R'
+    ----------------------------------------------------- :: Phi
+    C ; L ; N |- ret_pat : term /\ ret ~> C' ; L' ; N' , term ; R'
+
+
+    L ; N |- res_pat : res ~> L1 ; N1 ; R1
+    C ; L ; N |- ret_pat : ret ~> C2 ; L2 ; N2 ; R2
+    --------------------------------------------------------------------------- :: Res
+    C ; L ; N |- reso res_pat , ret_pat : res *o ret ~> C2 ; L1, L2 ; N1, N2 ; R1, R2
+
+
+  defn N |- ret_pat : ret ~> out_CLNRp :: :: Ret'_ :: Ret'_
+  {{ com return pattern to context: given constraints $[[ N ]]$, $[[ ret_pat ]]$ and return type $[[ ret ]]$ produces contexts $[[ out_CLNRp ]]$ }} by
+
+
+  cdot ; cdot ; N |- ret_pat : ret ~> CLNRp
+  ----------------------------------------- :: Aux
+  N |- ret_pat : ret ~> CLNRp
+
+
+defns
+  expl_pure :: 'Pure_' ::=
+
+  defn C |- object_value => obj out_base_type :: :: Val_Obj_ :: Val_Obj_
+  {{ com object value synthesises: given $[[C]]$, $[[object_value]]$ synthesises type $[[out_base_type]]$ }} by
+
+
+    ----------------------------- :: Int
+    C |- ty_mem_int => obj integer
+
+
+    -------------------------- :: Ptr
+    C |- ty_mem_ptr => obj loc
+
+
+    indexed </ C |- object_valuei => obj base_type // i />
+    ----------------------------------------------------------------------------------------- :: Arr
+    C |- array ( </ specified object_valuei // i /> ) => obj array base_type
+
+
+    struct ty_tag & </ Symbol_identifieri : cti // i /> inEnv Globals
+    indexed </ C |- ty_mem_valuei => mem to_base ( cti ) // i />
+    -------------------------------------------------------------------------------- :: Struct
+    C |- ( struct ty_tag ) { </ dot Symbol_identifieri : T_cti = ty_mem_valuei //  i /> } => obj struct ty_tag
+
+
+    % DEFER (not implemented): union
+    % UNSUPPORTED: floats
+
+  defn C |- pval => out_base_type :: :: Val :: Val_
+  {{ com pure value synthesises: given $[[C]]$, $[[ pval ]]$ synthesises type $[[out_base_type]]$ }} by
+
+
+    x : base_type inEnv C
+    --------------------------- :: Var
+    C |- x => base_type
+
+
+    % DEFER impl_const (aka globals) needs resources
+
+
+    C |- object_value => obj base_type
+    --------------------------------------------- :: Obj
+    C |- object_value => base_type
+
+
+    C |- object_value => obj base_type
+    --------------------------------------------------- :: Loaded
+    C |- specified object_value => base_type
+
+
+    ------------------------- :: Unit
+    C |- Unit => unit
+
+
+    ------------------------- :: True
+    C |- True => bool
+
+
+    -------------------------- :: False
+    C |- False => bool
+
+
+    indexed </ C |- valuei => base_type // i />
+    ----------------------------------------------------------------- :: List
+    C |- base_type [ </ valuei // i /> ] => list base_type
+
+
+    indexed </ C |- valuei =>  base_typei // i />
+    -------------------------------------------------------------- :: Tuple
+    C |- ( </ valuei // i /> ) => </ base_typei // i />
+
+
+    % DEFER (not implemented) - constrained
+
+
+    ------------------------------------------------ :: Ctor_Nil
+    C |- Nil base_type ( ) => list base_type
+
+
+    C |- pval1 => base_type
+    C |- pval2 => list base_type
+    ---------------------------------------------------------- :: Ctor_Cons
+    C |- Cons ( pval1, pval2 ) => list base_type
+
+
+    indexed C |- pvali => base_typei
+    ------------------------------------------------------------------- :: Ctor_Tuple
+    C |- Tuple ( </ pvali // i /> ) => </ base_typei // i />
+
+
+    % Arrays are guaranteed to be non-empty (§6.7.6.2#1, sentence 3)
+    indexed C |- pvali => base_type
+    ----------------------------------------------------------------------- :: Ctor_Array
+    C |- Array ( </ pvali // i /> ) => array base_type
+
+
+    C |- pval => base_type
+    ----------------------------------------------- :: Ctor_Specified
+    C |- Specified ( pval ) => base_type
+
+
+    struct ty_tag & </ Symbol_identifieri : cti // i /> inEnv Globals
+    indexed C |- pvali => to_base ( cti )
+    ------------------------------------------------------------------------------------------------ :: Struct
+    C |- ( struct ty_tag ) { </ dot Symbol_identifieri = pvali // i /> } => struct ty_tag
+
+
+   % DEFER (not implemented) - union
+
+
+  defn CLN |- pexpr => out_pure_ret :: :: Expr :: Expr_
+  {{ com pure expression synthesises: given $[[CLN]]$, $[[pexpr]]$ synthesises a pure (non-resourceful) return type $[[out_pure_ret]]$ }} by
+
+
+    C |- pval => base_type
+    -------------------------------------------------------------------------- :: Val
+    C ; L ; N |- pval => sigma y : base_type . y = inj pval /\ I
+
+
+    C |- pval1 => integer
+    C |- pval2 => integer
+    -------------------------------------------------------------------------- :: Ctor_IvXOR
+    C ; L ; N |- IvXOR ( pval1, pval2 ) => sigma y : integer . y = xor_uf ( inj pval1 , inj pval2 )  /\ I
+
+    % DEFER (not implemented) - ctor_expr
+    % IvCOMPL     :: :: ivCOMPL     {{ com bitwise complement             }} % : ctype -> integer -> integer
+    % IvAND       :: :: ivAND       {{ com bitwise AND                    }} % : ctype -> integer -> integer -> integer
+    % IvOR        :: :: ivOR        {{ com bitwise OR                     }} % : ctype -> integer -> integer -> integer
+
+    % Unsupported
+    % Fvfromint   :: :: fvfromint   {{ com cast integer to floating value }} % : integer -> floating
+    % Ivfromfloat :: :: ivfromfloat {{ com cast floating to integer value }} % : ctype -> floating -> integer
+
+
+    C |- pval1 => loc
+    C |- pval2 => integer
+    x eq allocv [ inj pval dot id ]
+    smt ( N => x dot base =< inj pval1 dot addr + ( inj pval2 * sizeof ct ) =< x dot base + x dot len )
+    ----------------------------------------------------------------- :: Array_Shift
+    C ; L ; N |- array_shift ( pval1 , ct , pval2 ) => sigma y : loc . y = inj pval1 +ptr ( inj pval2 * sizeof ct ) /\ I
+
+
+    C |- pval => loc
+    x eq allocv [ inj pval dot id ]
+    struct ty_tag & </ Symbol_identifieri : T_cti // i /> inEnv Globals
+    smt ( N => x dot base =< inj pval dot addr + offsetof ty_tag Symbol_identifierj =< x dot base + x dot len )
+    ------------------------------------------------------------ :: Member_Shift
+    C ; L ; N |- member_shift ( pval , ty_tag , Symbol_identifierj ) => sigma y : loc . y = inj pval +ptr offsetof ty_tag Symbol_identifierj /\ I
+
+
+    C |- pval1 => loc
+    C |- pval2 => loc
+    smt ( N => inj pval1 dot addr = inj pval2 dot addr )
+    ----------------------------------------------------------------- :: Ptr_Eq
+    C ; L ; N |- pval1 = pval2 => sigma y : loc . y = ( inj pval1 dot addr = inj pval2 dot addr ) /\ I
+
+
+    C |- pval => bool
+    -------------------------------- :: Not
+    C ; L ; N |- not ( pval ) => sigma y : bool . y = neg inj pval /\ I
+
+
+    % DEFER - few checks to use uninterpreted functions for non-linear arithmetic appropriately
+    C |- pval1 => integer
+    C |- pval2 => integer
+    ------------------------------------ :: Arith_Binop
+    C ; L ; N |- pval1 arith_binop pval2 => sigma y : integer . y = ( inj pval1 ' arith_binop ' inj pval2 ) /\ I
+
+
+    % DEFER - few checks to use uninterpreted functions for non-linear arithmetic appropriately
+    C |- pval1 => integer
+    C |- pval2 => integer
+    ------------------------------------ :: Rel_Binop
+    C ; L ; N |- pval1 rel_binop pval2 => sigma y : bool . y = ( inj pval1 ' rel_binop ' inj pval2 ) /\ I
+
+
+    % DEFER - few checks to use uninterpreted functions for non-linear arithmetic appropriately
+    C |- pval1 => bool
+    C |- pval2 => bool
+    --------------------------------- :: Bool_Binop
+    C ; L ; N |- pval1 bool_binop pval2 => sigma y : bool . y = ( inj pval1 ' bool_binop ' inj pval2 ) /\ I
+
+
+    name : pure_fun eq </ xi // i /> |-> tpexpr inEnv Globals
+    C ; L ; N ; cdot |- </ xi = pvali // i /> :; pure_fun >> subs ; pure_ret
+    ------------------------------------------------------------------------ :: Call
+    C ; L ; N |- name ( </ pvali // i /> ) => pure_ret
+
+
+    % DEFER (not implemented) memberof ( Symbol_sym , Symbol_identifier , pval )
+
+
+    % DEFER conv_int -- complicated
+    % conv_int ( ty_act , pval )
+
+
+    C |- pval => bool
+    smt ( N => inj pval )
+    -------------------------------- :: Assert_Undef
+    C ; L ; N |- assert_undef ( pval , ty_loc UB_name ) => sigma y : unit . y = unit /\ I
+
+
+    C |- pval => bool
+    -------------------------------- :: Bool_To_Integer
+    C ; L ; N |- bool_to_integer ( pval ) => sigma y : integer . y = if inj pval then z_one else z_zero /\ I
+
+
+    C |- pval => integer
+    abbrev1 eq max_int ct - min_int ct + z_one
+    abbrev2 eq inj pval REM abbrev1
+    ------------------------------------------- :: WrapI
+    C ; L ; N |- wrapI ( ct , pval ) => sigma y : integer . y = if abbrev2 =< max_int ct then abbrev2 else abbrev2 - abbrev1 /\ I
+
+
+  defn CLN |- tpval <= pure_ret :: :: Top_Val :: Top_Val_
+  {{ com pure top-level value checks: given $[[ CLN ]]$, $[[ tpval ]]$ checks against $[[ pure_ret ]]$ }} by
+
+    C |- pval => base_type
+    smt ( N => pval / y ( term ) )
+    -------------------------------------------- :: Done
+    C ; L ; N |- done pval <= sigma y : base_type . term /\ I
+
+
+    smt ( N => false )
+    ------------------- :: Undef
+    C ; L ; N |- undef ty_loc UB_name <= sigma _ : _bt . _t /\ I
+
+
+    smt ( N => false )
+    ------------------ :: Error
+    C ; L ; N |- error ( ty_string , pval ) <= sigma _ : _bt . _t /\ I
+
+
+  defn CLN |- tpexpr <= pure_ret :: :: Top :: Top_
+  {{ com pure top-level expression checks: given $[[CLN]]$, $[[tpexpr]]$ checks against $[[pure_ret]]$ }} by
+
+
+    % No need for propogating constraints
+    C |- pval => bool
+    C ; L ; N , inj pval = true  |- tpexpr1 <= sigma y : base_type . term /\ I
+    C ; L ; N , inj pval = false |- tpexpr2 <= sigma y : base_type . term /\ I
+    -------------------------------------------------------------------------------------------- :: If
+    C ; L ; N |- if pval then tpexpr1 else tpexpr2 <= sigma y : base_type . term /\ I
+
+
+    C ; L ; N |- pexpr => sigma y1 : base_type1 . term1 /\ I
+    sym_or_pat : base_type1 ~> C1 with term
+    C , C1 ; L ; N , term / y1 ( term1 ) |- tpexpr <= sigma y2 : base_type2 . term2 /\ I
+    -------------------------------------------------------------------------------------------- :: Let
+    C ; L ; N |- let sym_or_pat = pexpr in tpexpr <= sigma y2 : base_type2 . term2 /\ I
+
+
+    C ; L ; N |- tpexpr1 <= sigma y1 : base_type1 . term1 /\ I
+    sym_or_pat : base_type1 ~> C1 with term
+    C , C1 ; L ; N , term / y1 ( term1 ) |- tpexpr <= sigma y2 : base_type2 . term2 /\ I
+    --------------------------------------------------------------------------------------------------------------------- :: LetT
+    C ; L ; N |- let sym_or_pat : pure_ret = tpexpr1 in tpexpr2 <= sigma y2 : base_type2 . term2 /\ I
+
+
+    C |- pval => base_type1
+    indexed </ pati : base_type1 ~> Ci with termi // i />
+    indexed </ C , Ci ; L ; N , termi = inj pval |- tpexpri <= sigma y2 : base_type2 . term2 /\ I // i />
+    ---------------------------------------------------------------------------------------------------------------- :: Case
+    C ; L ; N |- case pval of </ | pati => tpexpri // i /> end <= sigma y2 : base_type2 . term2 /\ I
+
+
+defns
+  expl_res :: '' ::=
+
+  defn CLNR |- pred_ops => ops out_res :: :: Res_Syn_PredOps :: Res_Syn_PredOps_
+  {{ com resource (q)predicate operation term synthesis: given $[[CLNR]]$, $[[pred_ops]]$ synthesises resource $[[out_res]]$ }} by
+
+
+    C ; L ; N ; R |- res_term => ptrt |- init - array n ct -> valuet
+    oarg [ x ] dot sym_init eq init [ x ]
+    oarg [ x ] dot sym_value eq valuet [ x ]
+    ----------------------------------------------------------------- :: Iterate
+    C ; L ; N ; R |- iterate ( res_term , n ) => ops ( *S x . z_zero =< x =< n - z_one => ptrt |- ct -> oarg )
+
+
+    C ; L ; N ; R |- res_term => ( *S x . iguard => ptrt |- ct -> oarg  )
+    smt ( N => forall x . iguard <-> ( z_zero =< x =< n - z_one ) )
+    y1 eq allocv [ ptrt dot id ]
+    smt ( N => y1 dot base =< ptrt dot addr /\ ptrt dot addr + sizeof ct * n  =< y1 dot base + y1 dot len )
+    init [ y2 ]  eq oarg [ y2 ] dot sym_init
+    valuet [ y2 ] eq oarg [ y2 ] dot sym_value
+    --------------------------------------------------------------------------------------- :: Congeal
+    C ; L ; N ; R |- congeal ( res_term , n ) => ops  ptrt |- init - array n ct -> valuet
+
+
+    C ; L ; N ; R |- res_term => ptrt |- init - struct ty_tag -> valuet
+    struct ty_tag & </ Symbol_identifieri : cti // i /> inEnv Globals
+    ------------------------------------------------------------------------ :: Explode
+    C ; L ; N ; R |- explode ( res_term ) => ops *S ( </ ptrt +ptr offsetof ty_tag Symbol_identifieri |- ty_tag init dot Symbol_identifieri - cti -> ty_tag valuet dot Symbol_identifieri // i /> )
+
+
+    C ; L ; N ; R |- res_term => *S ( </ ptrti |- initi - cti -> valueti // i /> )
+    struct ty_tag & </ Symbol_identifieri : cti // i /> inEnv Globals
+    term eq ptrt0 dot addr - offsetof ty_tag Symbol_identifier0
+    smt ( N => /\\ ( </ term = ptrti dot addr - offsetof ty_tag Symbol_identifieri /\ ptrt0 dot id = ptrti dot id // i /> ) )
+    x eq allocv [ ptrt0 dot id ]
+    smt ( N => x dot base =< term /\ term + sizeof struct ty_tag =< x dot base + x dot len )
+    indexed </ ty_tag init dot Symbol_identifieri eq initi // i />
+    indexed </ ty_tag valuet dot Symbol_identifieri eq valueti // i />
+    ----------------------------------------------------------------------------------------------- :: Implode
+    C ; L ; N ; R |- implode ( res_term , ty_tag ) => ops ( @ ptrt0 dot id , term ) |- init - struct ty_tag -> valuet
+
+
+    C ; L |- term => integer
+    C ; L ; N ; R |- res_term => { x ; iguard . a ( ptrt + step , iargs ) } ( oarg )
+    smt ( N => term / x ( iguard ) )
+    qpred eq { x ; iguard /\ ( x != term ) . a ( ptrt + step , iargs ) } ( oarg )
+    pred eq a ( ptrt + ( term * step ) , term / x ( iargs ) ) ( oarg [ term ] )
+    --------------------------------------------------------------------------------- :: Break
+    C ; L ; N ; R |- break ( res_term , term ) => ops qpred * pred
+
+
+    C ; L ; N ; R |- res_term => { x ; iguard . a ( ptrt1 + step , </ iarg1i // i /> ) } ( oarg1 ) * a ( ptrt2 , </ iarg2i // i /> ) ( oarg2 )
+    term eq ( ptrt2 dot base - ptrt1 dot base ) / step
+    smt ( N => ptrt1 dot id = ptrt2 dot id /\ ( ptrt2 dot addr = ptrt1 dot addr + term * step ) )
+    smt ( N => /\\ ( </ ( term / x ( iarg1i ) ) = iarg2i // i /> ) )
+    x eq allocv [ ptrt1 dot id ]
+    smt ( N => x dot base =< ptrt2 dot addr /\ ptrt2 dot addr + step =< x dot base + x dot len )
+    ----------------------------------------------------------------- :: Glue
+    C ; L ; N ; R |- glue ( res_term ) => ops { x ; iguard \/ x = term . a ( ptrt1 + step , </ iarg1i // i /> ) } ( oarg1 [ term ] := oarg2 )
+
+
+    C ; L ; N ; R |- res_term => a ( ptrt2 , </ iarg2i // i /> ) ( oarg )
+    term eq ( ptrt2 dot addr - ptrt1 dot addr ) / step
+    smt ( N => ptrt1 dot id = ptrt2 dot id /\ ( ptrt2 dot addr = ptrt1 dot addr + term * step ) )
+    smt ( N => /\\ ( </ ( term / x ( iarg1i ) ) = iarg2i // i /> ) )
+    x eq allocv [ ptrt1 dot id ]
+    smt ( N => x dot base =< ptrt1 dot addr /\ ptrt2 dot addr + step =< x dot base + x dot len )
+    C ; L |- oarg => base_type
+    ----------------------------------------------------------------- :: Inj
+    C ; L ; N ; R |- inj ( res_term , ptrt1 , step , x . </ iarg1 // i /> ) => ops { x ; x = term . a ( ptrt1 + step , </ iarg1i // i /> ) } ( const oarg )
+
+
+    C ; L ; N ; R |- res_term => { x ; iguard' . a ( ptrt + step , iargs ) } ( oarg )
+    smt ( N => forall x. iguard -> iguard' )
+    iguard2 eq iguard' /\ neg iguard
+    --------------------------------------------------------------------------------- :: Chop
+    C ; L ; N ; R |- chop ( res_term , iguard ) => ops { x ; iguard . a ( ptrt + step , iargs ) } ( oarg ) * { x ; iguard2 . a ( ptrt + step , iargs ) } ( oarg )
+
+    % Implementation does not support un-chopping (array merging requires quantifiers).
+    % split and join reserved for regions of dynamically allocvated memory.
+
+
+  defn CLNR |- res_term => out_res :: :: Res_Syn :: Res_Syn_
+  {{ com resource term synthesises: given $[[CLNR]]$, $[[res_term]]$ synthesises resource $[[out_res]]$ }} by
+
+
+    ------------------------------ :: Emp
+    C ; L ; N ; cdot |- emp => emp
+
+    N |- simp ( res ) ~> None
+    --------------------------------- :: Var
+    C ; L ; N ; r : res |- r => res
+
+
+    N |- simp ( res ) ~> res'
+    -------------------------------- :: VarSimp
+    C ; L ; N ; r : res |- r => res'
+
+
+    pred_term' eq a ( ptrt' , </ iarg'i // i /> )
+    a eq _ : loc , </ _ : base_typei // i  /> |-> _res inEnv Globals
+    C ; L |- ptrt' => loc
+    indexed </ C ; L |- iarg'i => base_typei // i />
+    N |- pred_term eq pred_term' ~> true
+    -------------------------------------------------------------------- :: Pred
+    C ; L ; N ; _ : pred_term ( oarg ) |- pred_term' => pred_term ( oarg )
+
+
+    pred_term eq a ( ptrt , </ iargi // i /> )
+    a != Owned < ct >
+    a eq xp : loc , </ xi : base_typei // i  /> , y : record </ Symbol_identifierj : base_type'j // j /> |-> res inEnv Globals
+    C ; L |- ptrt => loc
+    indexed </ C ; L |- iargi => base_typei // i />
+    C ; L |- oarg => record </ Symbol_identifierj : base_type'j // j />
+    C ; L ; N ; R |- res_term <= [ oarg / y , [ </ iargi / xi // i /> ] , ptrt / xp ] ( res )
+    ----------------------------------------------------------------------------------------- :: Fold
+    C ; L ; N ; R |- fold res_term : pred_term ( oarg ) => pred_term ( oarg )
+
+
+    qpred_term' eq { x ; iguard' . a ( ptrt' + step , </ iarg'i // i /> ) }
+    a eq _ : loc , </ _ : base_typei // i  /> |-> _res inEnv Globals
+    C ; L |- ptrt' => loc
+    indexed </ C ; L |- iarg'i => base_typei // i />
+    N |- qpred_term eq qpred_term' ~> true
+    ------------------------------------------------------------------------------ :: QPred
+    C ; L ; N ; _ : qpred_term ( oarg ) |-  qpred_term' => qpred_term ( oarg )
+
+
+    C ; L ; N ; R |- pred_ops => ops res
+    -----------------------------------------:: PredOps
+    C ; L ; N ; R |- pred_ops => res
+
+
+    C ; L ; N ; R1 |- res_term1 => res1
+    C ; L ; N ; R2 |- res_term2 => res2
+    ------------------------------------------------------------------ :: SepConj
+    C ; L ; N ; R1 , R2 |- < res_term1 , res_term2 > => res1 * res2
+
+
+  defn CLNR |- res_term <= res :: :: Res_Chk :: Res_Chk_
+  {{ com resource term checks: given $[[CLNR]]$, $[[res_term]]$ checks against resource $[[res]]$ }} by
+
+    smt ( N => term )
+    ------------------------------------- :: Phi
+    C ; L ; N ; cdot |- TERM <= term
+
+
+    % Has to be checking or annotated - consider type of pack (1 , l |-> 1 , 1)
+    % exists y : integer . l |-> (y,y or y,1 or 1,y or 1,1)
+    C ; L |- oarg => base_type
+    C ; L ; N ; R |- res_term <= oarg / y ( res )
+    ---------------------------------------------------------------------------- :: Pack
+    C ; L ; N ; R |- pack ( oarg , res_term ) <= exists y : base_type . res
+
+
+    C ; L ; N ; R1 |- res_term1 <= res1
+    C ; L ; N ; R2 |- res_term2 <= res2
+    ------------------------------------------------------------------ :: SepConj
+    C ; L ; N ; R1 , R2 |- < res_term1 , res_term2 > <= res1 * res2
+
+
+    % RULE LOOPS if condition is under-determined because
+    % strip_ifs allows res' == ( if .. then .. else .. )
+    % N |- strip_ifs ( if term then res1 else res2 ) ~> res'
+    % C ; L ; N ; R |- res_term <= res'
+    % ------------------------------------------------------------ :: If
+    % C ; L ; N ; R |- res_term <= if term then res1 else res2
+
+
+    smt ( N => term )
+    C ; L ; N ; R |- res_term <= res1
+    ------------------------------------------------------------ :: If_True
+    C ; L ; N ; R |- res_term <= if term then res1 else res2
+
+
+    smt ( N => neg term )
+    C ; L ; N ; R |- res_term <= res2
+    -------------------------------------------------------- :: If_False
+    C ; L ; N ; R |- res_term <= if term then res1 else res2
+
+
+    C ; L ; N ; R |- res_term => res
+    N |- res eq res'
+    --------------------------------- :: Switch
+    C ; L ; N ; R |- res_term <= res'
+
+defns
+  expl_spine :: 'Expl_' ::=
+
+  defn CLNR |- param_spine :; fon >> out_subs ; out_ret :: :: Spine :: Spine_
+  {{ com function call spine checks: given $[[ CLNR ]]$, and $[[ param_spine ]]$ for function of type $[[ fon ]]$, produce
+    term-substitution $[[ out_subs ]]$ and result type $[[ out_ret ]]$ }} by
+
+    ---------------------------------------- :: Ret
+    C ; L ; N ; cdot |- :; ret >> cdot ; ret
+
+
+    C |- pval => base_type
+    C ; L ; N ; R |- param_spine :; pval / x ( fon ) >> subs ; ret
+    ------------------------------------------------------------------------------------- :: Comp
+    C ; L ; N ; R |-  x = pval , param_spine :; pi x : base_type . fon >> [ pval / x , subs ] ; ret
+
+
+    C ; L |- oarg => base_type
+    C ; L ; N ; R |- param_spine :; oarg / x ( fon ) >> subs ; ret
+    ---------------------------------------------------------------------------------------- :: Log
+    C ; L ; N ; R |- x = oarg , param_spine :; forall x : base_type . fon >> [ oarg / x , subs ] ; ret
+
+
+    smt ( N => term )
+    C ; L ; N ; R |- param_spine :; fon >> subs ; ret
+    ---------------------------------------------------- :: Phi
+    C ; L ; N ; R |- param_spine :; term -) fon >> subs ; ret
+
+
+    C ; L ; N ; R1 |- res_term <= res
+    C ; L ; N ; R2 |- param_spine :; fon >> subs ; ret
+    ---------------------------------------------------------------------- :: Res
+    C ; L ; N ; R1 , R2 |- x = res_term , param_spine :; res --o fon >> [ res_term / x , subs ] ; ret
+
+defns
+  expl_is_expr :: 'Expl_' ::=
+
+  defn CLNR |- action => out_ret :: :: Is_Action :: Is_Action_
+  {{ com memory action synthesises: given $[[CLNR]]$, $[[action]]$ synthesises return type $[[out_ret]]$ }} by
+
+
+    C |- pval => integer
+    term eq representable ( ct * , yp ) /\ alignedI ( inj pval , yp ) /\ allocv [ yp dot id ] = ( yp dot base , sizeof ct )
+    ret eq ( yp |- const ct false - ct -> x ) *o Alloc ( yp , ) ( sizeof ct ) *o I
+    ------------------------------------------------------------------------- :: Create
+    C ; L ; N ; cdot |- create ( pval , ct ) Symbol_prefix => sigma yp : loc . term /\ exists x : to_base ( ct ) .  ret
+
+
+    % DEFER (not implemented)
+    % C ; L ; N ; cdot |-> create_readonly ( vp , ct , v ) Symbol_prefix <= ??
+
+
+    % DEFER relax this rule - loading a (partially) undefined struct is fine
+    % DEFER (not implemented) - memory order
+    C |- pval0 => loc
+    C ; L ; N ; R |- res_term => ptrt |- init - ct -> valuet
+    smt ( N => ( ptrt = inj pval0 ) /\ ( init = const ct true ) )
+    ------------------------------------------------------------------------------ :: Load
+    C ; L ; N ; R |- load ( ct , pval0 , _mem_order , res_term ) => sigma y : to_base ( ct ) . y = valuet /\ ( inj pval0 |- const ct true - ct -> valuet ) *o I
+
+
+    % DEFER relax this rule - storing (partially) undefined struct preserves init
+    C |- pval0 => loc
+    C |- pval1 => to_base ( ct )
+    % DEFER (not implemented) - locking boolean
+    smt ( N => representable ( ct , inj pval1 ) )
+    C ; L ; N ; R |- res_term => ptrt |- _init - ct -> _t
+    smt ( N => ptrt = inj pval0 )
+    --------------------------------------------------------------- :: Store
+    C ; L ; N ; R |- store ( _b , ct , pval0 , pval1 , _mem_order , res_term ) => sigma _ : unit . ( inj pval0 |- const ct true - ct -> inj pval1 ) *o I
+
+
+    C |- pval => loc
+    C ; L ; N ; R |- res_term => ptrt |- _init - ct -> _t * Alloc ( ptrt' , ) ( term )
+    smt ( N =>  ptrt = ptrt' = inj pval /\ sizeof ct = term )
+    ---------------------------------------------------------------------------- :: Kill_Static
+    C ; L ; N ; R |-  kill ( static ct , pval , res_term ) => sigma _ : unit . I
+
+
+    % DEFER (not implemented)
+    % C ; L ; N ; ?? |- kill ( dynamic , v ) => ??
+
+
+    % action {{ tex mem\_action }} :: 'M_' ::= {{ aux ty_loc _ }} {{ auxparam 'TY }} {{ com memory actions }}
+    %   | alloc ( ty_asym1 , ty_asym2 ) Symbol_prefix                                                         :: :: Alloc
+    %   | load ( ty_act , ty_asym , Cmm_memory_order )                                                        :: :: Load
+    %   | rmw ( ty_act ,  ty_asym1 , ty_asym2 , ty_asym3 , Cmm_memory_order1 , Cmm_memory_order2 )            :: :: RMW
+    %   | fence ( Cmm_memory_order )                                                                          :: :: Fence
+    %   | cmp_exch_strong ( ty_act , ty_asym1 , ty_asym2 , ty_asym3 , Cmm_memory_order1 , Cmm_memory_order2 ) :: :: CompareExchangeStrong
+    %   | cmp_exch_weak ( ty_act , ty_asym1 , ty_asym2 , ty_asym3 , Cmm_memory_order1 , Cmm_memory_order2 )   :: :: CompareExchangeWeak
+    %   | linux_fence ( Linux_linux_memory_order )                                                            :: :: LinuxFence
+    %   | linux_load ( ty_act , ty_asym , Linux_linux_memory_order )                                          :: :: LinuxLoad
+    %   | linux_store ( ty_act , ty_asym1 , ty_asym2 , Linux_linux_memory_order )                             :: :: LinuxStore
+    %   | linux_rmw ( ty_act , ty_asym1 , ty_asym2 , Linux_linux_memory_order )                               :: :: LinuxRMW
+
+  defn CLNR |- memop => out_ret :: :: Is_Memop :: Is_Memop_
+  {{ com memory operation synthesises: given $[[CLNR]]$, $[[memop]]$ synthesises return type $[[out_ret]]$ }} by
+
+    C |- pval1 => loc
+    C |- pval2 => loc
+    C ; L ; N ; R |- res_term => res
+    res eq Alloc ( ptrt1 , ) ( term1 ) * Alloc ( ptrt2 , ) ( term2 )
+    smt ( N => inj pval1 dot id = inj pval2 dot id = ptrt1 dot id = ptrt2 dot id )
+    smt ( N => ptrt1 dot base =< inj pval1 dot addr =< ptrt1 dot base + term1 )
+    smt ( N => ptrt2 dot base =< inj pval2 dot addr =< ptrt2 dot base + term2 )
+    ----------------------------------------------------------------------------- :: Rel_Binop
+    C ; L ; N ; R |- res_term | pval1 rel_binop pval2 => sigma y : bool . y = ( inj pval1 dot addr ' rel_binop ' inj pval2 dot addr ) /\ res *o I
+
+
+    % DEFER ask Kayvan when/how Ptrdiff can be called with an ct = array n ct'
+    C |- pval1 => loc
+    C |- pval2 => loc
+    res eq Alloc ( ptrt , ) ( term )
+    C ; L ; N ; R |- res_term => res
+    smt ( N => ptrt dot id = inj pval1 dot id = inj pval2 dot id ) 
+    smt ( N => ptrt dot base =< ( inj pval1 dot addr , inj pval2 dot addr ) =< ptrt dot base + term )
+    -------------------------------- :: PtrDiff_Arr
+    C ; L ; N ; R |- res_term | pval1 - array n ct - pval2 => sigma y : integer . y = ( x1 - x2 ) / sizeof ct /\ res *o I
+
+
+    C |- pval1 => loc
+    C |- pval2 => loc
+    res eq Alloc ( ptrt , ) ( term )
+    C ; L ; N ; R |- res_term => res
+    smt ( N => ptrt dot id = inj pval1 dot id = inj pval2 dot id )
+    smt ( N => ptrt dot base =< ( inj pval1 dot addr , inj pval2 dot addr ) =< ptrt dot base + term )
+    -------------------------------- :: PtrDiff
+    C ; L ; N ; R |- res_term | pval1 - ct - pval2 => sigma y : integer . y = ( x1 - x2 ) / sizeof ct /\ res *o I
+
+
+    % Doesn't require a bounds check in VIP
+    C |- pval => loc
+    C ; L ; N ; R |- res_term => Alloc ( ptrt , ) ( _t )
+    smt ( N => inj pval dot id = ptrt dot id /\ representable ( ct2 , inj pval dot addr ) )
+    ----------------------------------------------------------------------------------------------------- :: IntFromPtr
+    C ; L ; N ; R |- intFromPtr ( res_term | ct1 , ct2 , pval ) => sigma y : integer . y = inj pval dot addr /\ res *o I
+
+
+    % This rule requires an Owned rather than an Alloc because copy_alloc_id is
+    % NOT a ghost operation, and Owned only takes computational arguments for
+    % its input - thus forcing an appropriate pointer to be in the context.
+    C |- pval => integer
+    C ; L ; N ; R |- res_term => ptrt |- init - ct1 -> valuet
+    x eq allocv [ ptrt dot id ]
+    smt ( N => x dot base =< inj pval =< x dot base + x dot len  )
+    ----------------------------------- :: PtrFromInt
+    C ; L ; N ; R |- ptrFromInt ( res_term | ct1 , ct2 , pval ) => sigma y : loc . y = ( @ ptrt dot id , inj pval ) /\ res *o I
+
+
+    % The implementation over-approximates the behaviour of PtrValidForDeref. It
+    % doesn't check the resource context (for the resource & the init) - which
+    % is fine because any subsequent loads will have to do so anyways.
+    % Also this is part of the Cerberus memory interface, not pointer-operations
+    % part of the C standard and so is not subject to pointer-liveness constraints.
+    C |- pval => loc
+    ---------------- :: PtrValidForDeref
+    C ; L ; N ; cdot |- ptrValidForDeref ( ct , pval ) => sigma y : bool . y = aligned ( ct , inj pval ) /\ I
+
+
+    % Similar to PtrValidForDeref.
+    C |- pval => loc
+    ----------------- :: PtrWellAligned
+    C ; L ; N ; cdot |- ptrWellAligned ( ct , pval ) => sigma y : bool . y = aligned ( ct , inj pval ) /\ I
+
+
+    C |- pval1 => loc
+    C |- pval2 => integer
+    C ; L ; N ; R |- res_term => Alloc ( ptrt ,  ) ( term )
+    smt ( N => inj pval dot id = ptrt dot id  /\ ptrt dot base =< inj pval1 dot addr + ( inj pval2 * sizeof ct ) =< ptrt dot base + term )
+    ----------------------------------------------------------------------------- :: PtrArrayShift
+    C ; L ; N ; R |- ptrArrayShift ( res_term | pval1 ,  ct , pval2 ) => sigma y : loc . y = inj pval1 +ptr ( inj pval2 * sizeof ct ) /\ res *o I
+
+
+  defn CLNR |- is_expr => out_ret :: :: Is :: Is_
+  {{ com indet. seq. expression synthesises: given $[[CLNR]]$, $[[is_expr]]$ synthesises return type $[[out_ret]]$ }} by
+
+
+    % DEFER (not implemented)
+    % memcpy ( pval1 , pval2 , pval3 )
+    % memcmp ( pval1 , pval2 , pval3 )
+    % realloc ( pval1 , pval2 , pval3 )
+    % va_start ( pval1 , pval2 )
+    % va_copy ( pval )
+    % va_arg ( pval , ty_act )
+    % va_end ( pval )
+
+    C ; L ; N ; R |- tval <= ret
+    ----------------------------------------- :: TVal
+    C ; L ; N ; R |- tval : ret => out_ret
+
+
+    C ; L ; N ; R |- memop => ret
+    ------------------------------------------ :: Memop
+    C ; L ; N ; R |- MEMOP ( memop ) => ret
+
+
+    C ; L ; N ; R |- action => ret
+    ------------------------------------- :: Action
+    C ; L ; N ; R |- Pos action => ret
+
+
+    C ; L ; N ; R |- action => ret
+    ------------------------------------- :: Neg_Action
+    C ; L ; N ; R |- Neg action => ret
+
+
+    % TODO add unseq rules
+    % </ C ; L ; N ; Ri |- texpri <= reti // i />
+    % -------------------------------------------------------------------------------------------- :: Unseq
+    % C ; L ; N ; </ Ri // i /> |- unseq ( </ texpri : reti // i /> ) => concat </ reti // i />
+
+
+defns
+  expl_seq_expr :: 'Expl_' ::=
+
+  defn CLNR |- seq_expr => out_ret :: :: Seq :: Seq_
+  {{ com seq. expression synthesises: given $[[CLNR]]$, $[[seq_expr]]$ synthesises return type $[[out_ret]]$ }} by
+
+
+    Symbol_sym :  fon eq </ xi // i /> |-> texpr  inEnv Globals
+    C ; L ; N ; R |- </ xi = spine_elemi // i /> :; fon >> subs ; ret
+    ------------------------------------------------------------------------------ :: CCall
+    C ; L ; N ; R |- ccall ( ty_act , Symbol_sym , </ spine_elemi // i /> ) => ret
+
+
+    name :  fon eq </ xi // i /> |-> texpr  inEnv Globals
+    C ; L ; N ; R |- </ xi = spine_elemi // i /> :; fon >> subs ; ret
+    ------------------------------------------------------------------ :: Proc
+    C ; L ; N ; R |- pcall ( name , </ spine_elemi // i /> ) => ret
+
+
+defns
+  expl_top :: 'Expl_' ::=
+
+  defn CLNR |- tval <= ret :: :: Top_Val :: Top_Val_
+  {{ com top-level value checks: given $[[CLNR]]$, $[[tval]]$ checks against return type $[[ret]]$ }} by
+
+    C ; L ; N ; R |- to_param ret_terms :; to_fun ret >> subs ; I
+    -------------------------------------------- :: Done
+    C ; L ; N ; R |- done < ret_terms > <= ret
+
+
+    smt ( N => false )
+    ----------------------------------------------- :: Undef
+    C ; L ; N ; cdot |- undef ty_loc UB_name <= ret
+
+
+    smt ( N => false )
+    ------------------------------------------------------------- :: Error
+    C ; L ; N ; cdot |- error ( ty_string , pval ) <= ret
+
+
+  defn CLNR |- seq_texpr <= ret :: :: Top_Seq :: Top_Seq_
+  {{ com top-level seq. expression checks: given $[[CLNR]]$, $[[seq_texpr]]$ checks against return type $[[ret]]$ }} by
+
+
+    C ; L ; N ; R |- tval <= ret
+    -------------------------------- :: Val
+    C ; L ; N ; R |- tval <= ret
+
+
+    C ; L ; N |- pexpr => sigma y : base_type . term /\ I
+    sym_or_pat : base_type ~> C1 with term1
+    C , C1 ; L ; N , term1 / y ( term ) ; R |- texpr <= ret
+    ---------------------------------------------------------- :: LetP
+    C ; L ; N ; R |- let sym_or_pat = pexpr in texpr <= ret
+
+
+    C ; L ; N |- tpexpr <= pure_ret
+    sym_or_pat : base_type ~> C1 with term1
+    C , C1 ; L ; N , term1 / y ( term ) ; R |- texpr <= ret
+    -------------------------------------------------------------------- :: LetTP
+    C ; L ; N ; R |- let sym_or_pat : pure_ret = tpexpr in texpr <= ret
+
+
+    C ; L ; N ; R' |- seq_expr => ret1
+    N |- ret_pat : ret1 ~> C1 ; L1 ; N1 ; R1
+    C , C1 ; L , L1 ; N , N1 ; R , R1 |- texpr <= ret2
+    --------------------------------------------------------------- :: Let
+    C ; L ; N ; R' , R |- let ret_pat = seq_expr in texpr <= ret2
+
+
+    C ; L ; N ; R' |- texpr1 <= ret1
+    N |- ret_pat : ret1 ~> C1 ; L1 ; N1 ; R1
+    C , C1 ; L , L1 ; N , N1 ; R , R1 |- texpr2 <= ret2
+    -------------------------------------------------------------------- :: LetT
+    C ; L ; N ; R' , R |- let ret_pat : ret1 = texpr1 in texpr2 <= ret2
+
+
+    C |- pval => base_type1
+    indexed </ pati : base_type1 ~> Ci with termi // i />
+    indexed </ C , Ci ; L ; N , termi = inj pval ; R |- texpri <= ret // i />
+    -------------------------------------------------------------------------- :: Case
+    C ; L ; N ; R |- case pval of </ | pati => texpri // i /> end <= ret
+
+
+    C |- pval => bool
+    C ; L ; N , inj pval = true  ; R |- texpr1 <= ret
+    C ; L ; N , inj pval = false ; R |- texpr2 <= ret
+    -------------------------------------------------------- :: If
+    C ; L ; N ; R |- if pval then texpr1 else texpr2 <= ret
+
+
+    Symbol_sym :  fon eq </ xi // i /> |-> texpr  inEnv Globals
+    C ; L ; N ; cdot |- </ xi = pvali // i /> :; fon >> subs ; false /\ I
+    ----------------------------------------------------------------- :: Run
+    C ; L ; N ; cdot |- run Symbol_sym </ pvali // i /> <= false /\ I
+
+
+    C ; L ; N ; R |- is_texpr <= ret
+    ----------------------------------------------------- :: Bound
+    C ; L ; N ; R |- bound [ ty_int ] ( is_texpr ) <= ret
+
+
+  defn CLNR |- is_texpr <= ret :: :: Top_Is :: Top_Is_
+  {{ com top-level indet. seq. expression checks: given $[[CLNR]]$, $[[is_texpr]]$ checks against return type $[[ret]]$ }} by
+
+
+    % % TODO let weak rules
+    % C ; L ; N ; R |- is_expr => ret1
+    % N |- ret_pat : ret1 ~> C1 ; L1 ; N1 ; R1
+    % C , C1 ; L , L1 ; N , N1 ; R , R1 |- texpr <= ret2
+    % --------------------------------------------------------------------------------------- :: LetW
+    % C ; L ; N ; R |- let weak ret_pat = is_expr in texpr <= ret2
+
+
+    % DEFER (not implemented) - memory events
+    C ; L ; N ; R' |- is_expr => ret1
+    N |- ret_pat : ret1 ~> C1 ; L1 ; N1 ; R1
+    C , C1 ; L , L1 ; N , N1 ; R , R1 |- texpr <= ret2
+    --------------------------------------------------------------------------------- :: LetS
+    C ; L ; N ; R' , R |- let strong ret_pat = is_expr in texpr <= ret2
+
+
+    % impl does Ret orFalse, for checking the body of a label (to ensure it doesn't return)
+  defn CLNR |- texpr <= ret :: :: Top :: Top_
+  {{ com top-level expression checks: given $[[CLNR]]$, $[[texpr]]$ checks against return type $[[ret]]$ }} by
+
+
+    C ; L ; N ; R |- is_texpr <= ret
+    --------------------------------------- :: Is
+    C ; L ; N ; R |- is_texpr <= ret
+
+
+    C ; L ; N ; R |- seq_texpr <= ret
+    ---------------------------------------- :: Seq
+    C ; L ; N ; R |- seq_texpr <= ret
