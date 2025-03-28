@@ -555,21 +555,21 @@ grammar
   pred , points_to , pt :: '' ::=  {{ com \emph{precise} seperation-logic predicates }}
   {{ ocaml type resource = res_req * term }}
     % Omitting rational/perm until fractional permissions are used (2021-06)
-    | pred_term ( out_oarg )                 :: :: P {{ com a predicate-type is simply the term with an output argument }} {{ ocaml ( pred_term ,  [[out_oarg]] ) }}
-    | ptrt |- out_init - ct -> out_value :: S :: Pt
-      {{ com pretty-printing for points-to predicate $\mathtt{Owned} \langle [[ ct ]] \rangle ( [[ ptrt ]] , ) \& \{ [[ out_init ]] , [[ out_value ]] \}$ }}
-      {{ tex \smash{ [[ ptrt ]] } \mathbin{ \overset{\scriptstyle [[ out_init ]] }{ {\mapsto}_{ [[ ct ]] } } } \smash{ [[ out_value ]] } }}
-      {{ ocaml ( { name = Owned [[ ct ]] ; pointer = [[ ptrt ]] ; permission = IT.bool_ true ; iargs = [ [[ ptrt ]] ] } ,  PT_RECORD_OF [[ out_init ]] [[ out_value ]] ) }}
+    | pred_term ( oarg )                 :: :: P {{ com a predicate-type is simply the term with an output argument }} {{ ocaml ( pred_term ,  [[oarg]] ) }}
+    | ptrt |- init - ct -> valuet :: S :: Pt
+      {{ com pretty-printing for points-to predicate $\mathtt{Owned} \langle [[ ct ]] \rangle ( [[ ptrt ]] , ) \& \{ [[ init ]] , [[ valuet ]] \}$ }}
+      {{ tex \smash{ [[ ptrt ]] } \mathbin{ \overset{\scriptstyle [[ init ]] }{ {\mapsto}_{ [[ ct ]] } } } \smash{ [[ valuet ]] } }}
+      {{ ocaml ( { name = Owned [[ ct ]] ; pointer = [[ ptrt ]] ; permission = IT.bool_ true ; iargs = [ [[ ptrt ]] ] } ,  PT_RECORD_OF [[ init ]] [[ valuet ]] ) }}
 
   qpred , qpoints_to , qpt :: '' ::= {{ com quantified (integer-indexed) seperation logic predicate }}
   {{ ocaml type qpredicate = { name : predicate_name; pointer: IT.t; q: Sym.t; step: int; permission: IT.t; iargs: IT.t list; oargs: O.t list; } }}
-    | qpred_term ( out_oarg )                               ::   :: Q {{ com a qpredicate-type is simply the term with an array output argument }}
-      {{ ocaml ( [[qpred_term]] ,  [[out_oarg]] ) }}
+    | qpred_term ( oarg )                               ::   :: Q {{ com a qpredicate-type is simply the term with an array output argument }}
+      {{ ocaml ( [[qpred_term]] ,  [[oarg]] ) }}
 
-    | *S Sym_x . iguard => ptrt |- ct -> out_oarg   :: S :: Qpt
-      {{ com pretty-printing for quantified points-to predicate $[[*S]] [[Sym_x]] [[.]] [[iguard]] [[=>]] \mathtt{Owned} \langle [[ ct ]] \rangle ( [[ ptrt ]] +_{ \mathrm{ ptr } } [[ Sym_x ]] {\times} \mathrm{sizeof}( [[ ct ]] ) , [[ out_oarg ]] [ [[ Sym_x ]] ] )$ }}
-      {{ tex [[ *S ]] [[ Sym_x ]] [[ . ]] [[ iguard ]] [[ => ]] [[ ptrt ]] + [[ Sym_x ]] {\times} \mathrm{sizeof}( [[ ct ]] ) \mathbin{ \overset{ [[ out_oarg ]] [ [[ Sym_x ]] ] . init }{ {\mapsto}_{ [[ ct ]] } } } { [[ out_oarg ]] [ [[ Sym_x ]] ] . value } }}
-      {{ ocaml ( { name = Owned [[ ct ]] ; pointer = [[ ptrt ]] ; q = [[ Sym_x ]] ; step = CT_TO_INT [[ ct ]] ; permission = [[ iguard ]] ; iargs = [ ] } , [[ out_oarg ]] ) }}
+    | *S Sym_x . iguard => ptrt |- ct -> oarg   :: S :: Qpt
+      {{ com pretty-printing for quantified points-to predicate $[[*S]] [[Sym_x]] [[.]] [[iguard]] [[=>]] \mathtt{Owned} \langle [[ ct ]] \rangle ( [[ ptrt ]] +_{ \mathrm{ ptr } } [[ Sym_x ]] {\times} \mathrm{sizeof}( [[ ct ]] ) , [[ oarg ]] [ [[ Sym_x ]] ] )$ }}
+      {{ tex [[ *S ]] [[ Sym_x ]] [[ . ]] [[ iguard ]] [[ => ]] [[ ptrt ]] + [[ Sym_x ]] {\times} \mathrm{sizeof}( [[ ct ]] ) \mathbin{ \overset{ [[ oarg ]] [ [[ Sym_x ]] ] . init }{ {\mapsto}_{ [[ ct ]] } } } { [[ oarg ]] [ [[ Sym_x ]] ] . value } }}
+      {{ ocaml ( { name = Owned [[ ct ]] ; pointer = [[ ptrt ]] ; q = [[ Sym_x ]] ; step = CT_TO_INT [[ ct ]] ; permission = [[ iguard ]] ; iargs = [ ] } , [[ oarg ]] ) }}
 
 grammar
 
