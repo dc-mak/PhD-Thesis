@@ -9,7 +9,7 @@ endif
 
 BUILD := _build
 
-GEN := $(BUILD)/_gen
+GEN := gen
 
 CACHE := $(BUILD)/ott.cache
 
@@ -18,39 +18,39 @@ OTTS := $(addprefix ott/, $(OTTS))
 
 PDFS := $(BUILD)/defns.pdf $(BUILD)/soundness.pdf
 
-all: $(BUILD)/main.pdf $(PDFS) $(GEN)/mucore.ml
+all: $(BUILD)/main.pdf $(PDFS) mucore.$(GEN).ml
 
 .PHONY: all
 
 .SECONDEXPANSION:
-$(PDFS):$(BUILD)/%.pdf: $(GEN)/$$*.tex \
-    $(GEN)/$(PREFIX)_included.tex \
-    $(GEN)/$(PREFIX)_override.tex \
-    $(GEN)/$(PREFIX)_drulenames.tex | $(BUILD)
+$(PDFS):$(BUILD)/%.pdf: $$*.$(GEN).tex \
+    $(PREFIX)_included.$(GEN).tex \
+    $(PREFIX)_override.$(GEN).tex \
+    $(PREFIX)_drulenames.$(GEN).tex | $(BUILD)
 ifeq ($(CAT_ON_FAIL),y)
-	latexmk $< $(FLAGS) || (cat $(BUILD)/$(basename $(notdir $<)).log; exit 1)
+	latexmk $< $(FLAGS) -jobname=$(basename $(notdir $@)) || (cat $(BUILD)/$(basename $(notdir $<)).log; exit 1)
 else
-	latexmk $< $(FLAGS)
+	latexmk $< $(FLAGS) -jobname=$(basename $(notdir $@))
 endif
 
-$(BUILD)/main.pdf: $(GEN)/formal-statics.tex \
-    $(GEN)/$(PREFIX)_included.tex \
-    $(GEN)/$(PREFIX)_override.tex \
-    $(GEN)/$(PREFIX)_drulenames.tex | $(BUILD)
+$(BUILD)/main.pdf: formal-statics.$(GEN).tex \
+    $(PREFIX)_included.$(GEN).tex \
+    $(PREFIX)_override.$(GEN).tex \
+    $(PREFIX)_drulenames.$(GEN).tex | $(BUILD)
 ifeq ($(CAT_ON_FAIL),y)
 	latexmk $(FLAGS) || (cat $(BUILD)/main.log; exit 1)
 else
 	latexmk $(FLAGS)
 endif
 
-$(GEN)/formal-statics.tex: formal-statics.mng $(CACHE) | check_rule_diff $(GEN)
+formal-statics.$(GEN).tex: formal-statics.mng $(CACHE) | check_rule_diff
 	ott -readsys $(CACHE) -tex_name_prefix $(PREFIX) -tex_filter $< $@ | tac
 
-$(GEN)/soundness.tex: ott/soundness.mng $(CACHE) | check_rule_diff $(GEN)
+soundness.$(GEN).tex: ott/soundness.mng $(CACHE) | check_rule_diff
 	ott -readsys $(CACHE) -tex_name_prefix $(PREFIX) -tex_filter $< $@ | tac
 
 # Subs\_Pat\_Value'\_Sym turns |-> \newcommand{\SubsPatValueSym}{\textsc{\Subs\_\allowbreak{}Pat\_\allowbreak{}Value'\_\allowbreak{}Sym}}
-$(GEN)/$(PREFIX)_drulenames.tex: $(GEN)/defns.drulenames | $(GEN)
+$(PREFIX)_drulenames.$(GEN).tex: defns.$(GEN).drulenames
 	@echo "Generating $@"
 	@awk '{ x=$$0; gsub(/[^a-zA-Z]/, ""); gsub(/_/, "_\\allowbreak{}", x); print "\\newcommand{\\" $$0 "}{\\textsc{" x "}}"; }' $^ > $@
 
@@ -58,7 +58,7 @@ $(GEN)/$(PREFIX)_drulenames.tex: $(GEN)/defns.drulenames | $(GEN)
 
 # Subs\_Pat\_Value'\_Sym                    |-> {\SubsPatValueSym}{}}
 # \step{<0>\d\+}{\case{\SubsPatValueSym}{}} |-> {\SubsPatValueSym}{}}
-check_rule_diff: $(GEN)/defns.drulenames | $(GEN)
+check_rule_diff: defns.$(GEN).drulenames
 ifneq ($(SKIP_CHECK),y)
 	@echo "Checking for rule differences (run 'make SKIP_CHECK=y <args>' to skip) "
 	@awk '{ gsub(/[^a-zA-Z]/, ""); print "{\\" $$0 "}{}}"; }' $^ > $@
@@ -69,7 +69,7 @@ endif
 .PHONY: append_rule_cases
 
 # Subs\_Pat\_Value'\_Sym |-> \step{<0>\d\+}{\case{\SubsPatValueSym}{}}
-append_rule_cases: $(GEN)/defns.drulenames | $(GEN)
+append_rule_cases: defns.$(GEN).drulenames
 	@if [ ! -z "$$( git status ott/soundness.mng --porcelain )" ]; then echo "save/stash ott/soundness.mng first"; exit 1; fi
 	@echo 'Appending \step{<0>$$RULE_NUM}{\case{$$RULE}{}}'
 	@awk '{ gsub(/[^a-zA-Z]/, ""); print "\\step{<0>" NR "}{\\case" "{\\" $$0 "}{}}"; }' $^ > $@
@@ -78,27 +78,27 @@ append_rule_cases: $(GEN)/defns.drulenames | $(GEN)
 	@cat $@ >> ott/soundness.mng && rm $@
 
 # {\cndrulename{Subs\_Pat\_Value'\_Sym}}{} |-> Subs\_Pat\_Value'\_Sym
-$(GEN)/defns.drulenames: $(GEN)/$(PREFIX)_included.tex | $(GEN)
+defns.$(GEN).drulenames: $(PREFIX)_included.$(GEN).tex
 	@echo "Generating $@"
 	@sed -n 's/^{\\$(PREFIX)drulename{\(.*\)}}{}%/\1/p' $^ > $@
 
-$(GEN)/$(PREFIX)_override.tex: ott/override.tex | $(GEN)
+$(PREFIX)_override.$(GEN).tex: ott/override.tex
 	touch empty.ott
 	ott -tex_wrap false -signal_parse_errors true \
 	    -tex_name_prefix $(PREFIX) -tex_filter $< $@ empty.ott
 	rm empty.ott
 
-$(GEN)/mucore.ml: ott/mucore.ott | $(GEN)
+mucore.$(GEN).ml: ott/mucore.ott
 	patch -p1 < ott/ocaml_gen.patch
 	ott -o $@ $^
 	patch -p1 -R < ott/ocaml_gen.patch
 
-$(GEN)/defns.tex: ott/defns.tex $(CACHE) | check_defns_diff $(GEN)
+defns.$(GEN).tex: ott/defns.tex $(CACHE) | check_defns_diff
 	ott -readsys $(CACHE) -tex_name_prefix $(PREFIX) -tex_filter $< $@
 
 .PHONY: check_defns_diff
 
-check_defns_diff: $(GEN)/$(PREFIX)_included.tex
+check_defns_diff: $(PREFIX)_included.$(GEN).tex
 	@echo "Checking for definitions differences"
 	@grep -o '^\\$(PREFIX)defns[a-zA-Z]\+' $^ | sed '$$d' > $@
 	@grep -o '^\\$(PREFIX)defns[a-zA-Z]\+' ott/defns.tex | diff -u --color - $@
@@ -109,7 +109,7 @@ out_hack: $(OTTS)
 	sed -i".tmp" '/% OUT_HACK.*/{n;N;N;d;}' $(OTTS)
 	for i in $(OTTS); do ./out_hack.awk -i inplace $$i; done
 
-$(GEN)/$(PREFIX)_included.tex: $(CACHE) | $(GEN)
+$(PREFIX)_included.$(GEN).tex: $(CACHE)
 	ott -readsys $(CACHE) \
 	    -o $@ \
 	    -tex_wrap false \
@@ -124,7 +124,7 @@ $(GEN)/$(PREFIX)_included.tex: $(CACHE) | $(GEN)
 $(CACHE): %: $(OTTS) | $(BUILD)
 	ott -signal_parse_errors true -generate_aux_rules false $(addprefix -i , $^) -writesys $@ | tac
 
-$(BUILD) $(GEN): %:
+$(BUILD): %:
 	mkdir -p $@
 
 .PHONY: clean
