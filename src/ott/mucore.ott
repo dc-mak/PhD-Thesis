@@ -770,21 +770,21 @@ grammar
 
 grammar
 
-  action :: 'M_' ::= {{ aux ty_loc _ }} {{ auxparam 'TY }} {{ com memory actions }}
+  action :: 'M_' ::= {{ com memory actions }}
     | create ( pval , ty_act ) Symbol_prefix                                                     ::  :: Create
-    | create_readonly ( pval1 , ty_act , pval2 ) Symbol_prefix                                   ::  :: CreateReadOnly
     | alloc ( pval1 , pval2 ) Symbol_prefix                                                      ::  :: Alloc
     | kill ( m_kill_kind , pval , res_term )                                                     ::  :: Kill
     | store ( ty_bool , ty_act , pval1 , pval2 , Cmm_memory_order , res_term )                   ::  :: Store {{ com true means store is locking }}
     | load ( ty_act , pval , Cmm_memory_order , res_term )                                       ::  :: Load
-    | rmw ( ty_act ,  pval1 , pval2 , pval3 , Cmm_memory_order1 , Cmm_memory_order2 )            ::  :: RMW
-    | fence ( Cmm_memory_order )                                                                 ::  :: Fence
-    | cmp_exch_strong ( ty_act , pval1 , pval2 , pval3 , Cmm_memory_order1 , Cmm_memory_order2 ) ::  :: CompareExchangeStrong
-    | cmp_exch_weak ( ty_act , pval1 , pval2 , pval3 , Cmm_memory_order1 , Cmm_memory_order2 )   ::  :: CompareExchangeWeak
-    | linux_fence ( Linux_linux_memory_order )                                                   ::  :: LinuxFence
-    | linux_load ( ty_act , pval , Linux_linux_memory_order )                                    ::  :: LinuxLoad
-    | linux_store ( ty_act , pval1 , pval2 , Linux_linux_memory_order )                          ::  :: LinuxStore
-    | linux_rmw ( ty_act , pval1 , pval2 , Linux_linux_memory_order )                            ::  :: LinuxRMW
+
+  % Factor out res_term proof for all of these (just use emp for create)
+  res_action :: 'RA_' ::= {{ com memory actions which require resource terms }}
+    | kill ( m_kill_kind , pval , res_term )                                                     ::  :: Kill
+    | store ( ty_bool , ty_act , pval1 , pval2 , Cmm_memory_order , res_term )                   ::  :: Store {{ com true means store is locking }}
+    | load ( ty_act , pval , Cmm_memory_order , res_term )                                       ::  :: Load
+
+subrules
+    res_action <:: action
 
 grammar
 
@@ -797,6 +797,7 @@ grammar
 
 grammar
 
+  % Factor out res_term proof for all of these (just use emp for the pure ones)
   memop :: 'M_' ::=  {{ auxparam 'TY }} {{ com operations involving the memory state}}
     | res_term | pval1 rel_binop pval2                     :: :: PtrRelBinop      {{ com pointer relational binary operations                 }}
     | res_term | pval1 - ty_act - pval2                    :: :: PtrDiff          {{ order [[ty_act]] [[ pval1 ]] [[ pval2 ]]                 }}
@@ -807,13 +808,8 @@ grammar
     | ptrValidForDeref ( ty_act , pval )                   :: :: PtrValidForDeref {{ com check pointer is valid for dereferencing             }}
     | ptrWellAligned ( ty_act , pval )                     :: :: PtrWellAligned   {{ com check pointer is aligned for the type $[[ ty_act ]]$ }}
     | ptrArrayShift ( res_term | pval1 ,  ty_act , pval2 ) :: :: PtrArrayShift    {{ com pointer-arithmetic for indexing arrays               }}
-    | memcpy ( pval1 , pval2 , pval3 )                     :: :: Memcpy
-    | memcmp ( pval1 , pval2 , pval3 )                     :: :: Memcmp
-    | realloc ( pval1 , pval2 , pval3 )                    :: :: Realloc
-    | va_start ( pval1 , pval2 )                           :: :: Va_start
-    | va_copy ( pval )                                     :: :: Va_copy
-    | va_arg ( pval , ty_act )                             :: :: Va_arg
-    | va_end ( pval )                                      :: :: Va_end
+    | memcpy ( res_term | pval1 , pval2 , pval3 )          :: :: Memcpy
+    | memcmp ( res_term | pval1 , pval2 , pval3 )          :: :: Memcmp
 
 grammar
 
