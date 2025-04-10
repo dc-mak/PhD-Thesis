@@ -33,6 +33,7 @@ else
 	latexmk $< $(FLAGS) -jobname=$(basename $(notdir $@))
 endif
 
+.PHONY: $(BUILD)/main.pdf
 $(BUILD)/main.pdf: formal-statics.$(GEN).tex \
     $(PREFIX)_included.$(GEN).tex \
     $(PREFIX)_override.$(GEN).tex \
