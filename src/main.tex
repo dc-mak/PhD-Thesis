@@ -42,7 +42,7 @@
 \usepackage{styles/alectryon-minted}
 
 \includeonly{header,intro,formal-intro,formal-kernel,formal-statics.gen,formal-discussion,mem-model-intro,mem-model-cn,eng-intro,eng-usable,conclusion}
-%\includeonly{formal-kernel}
+%\includeonly{formal-statics.gen}
 
 \graphicspath{{./figures/}} % Paths where images are looked for
 
@@ -64,6 +64,34 @@
 % Hide bind specs
 \renewcommand{\cnbindspecprodline}[6]{}
 \ottstyledefaults{numberpremises=yes,premisenamelayout=topright,rulelayout=nobreaks}
+% Initially I wanted to pass in a list of macro invocations as the first
+% argument, but I could not make that work (couldn't figure out how to split
+% \detokenized{#1} by comma, such that I could lookup the \detokenized{##1} to
+% the renewed \cnusedrule in that split list).
+% Then I tried numbers, and this also I could not make work with a flag of some
+% sort set inside the \foreach loop (it would set the flag, and then reset it
+% after exiting the loop). So now it just prints like this, and duplicate numbers
+% are simpy a call-site error.
+\newcommand{\FilterUsedRules}[2]{%
+  \begingroup
+  \def\allowedNs{#1}%
+  \newcount\nthcall%
+  \nthcall=0
+
+  \NewCommandCopy{\origcnusedrule}{\cnusedrule}
+
+  \renewcommand{\cnusedrule}[1]{%
+    \advance\nthcall by 1% chktex 1
+    \foreach\n in \allowedNs{%
+      \ifnum\nthcall=\n%
+        \origcnusedrule{##1}
+      \fi%
+    }
+  }
+
+  #2
+  \endgroup
+}
 %TC:endignore
 
 %\makeindex[columns=3, title=Alphabetical Index, intoc] % Make LaTeX produce the files required to compile the index
