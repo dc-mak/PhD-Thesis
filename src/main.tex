@@ -64,34 +64,38 @@
 % Hide bind specs
 \renewcommand{\cnbindspecprodline}[6]{}
 \ottstyledefaults{numberpremises=yes,premisenamelayout=topright,rulelayout=nobreaks}
-% Initially I wanted to pass in a list of macro invocations as the first
-% argument, but I could not make that work (couldn't figure out how to split
-% \detokenized{#1} by comma, such that I could lookup the \detokenized{##1} to
-% the renewed \cnusedrule in that split list).
-% Then I tried numbers, and this also I could not make work with a flag of some
-% sort set inside the \foreach loop (it would set the flag, and then reset it
-% after exiting the loop). So now it just prints like this, and duplicate numbers
-% are simpy a call-site error.
-\newcommand{\FilterUsedRules}[2]{%
-  \begingroup
-  \def\allowedNs{#1}%
-  \newcount\nthcall%
-  \nthcall=0
+\ExplSyntaxOn%
+% argument #1 calls \cnusedrule{\cmdX{}} with different \cmdX{}, and we want it
+% to only have an effect if \cmdX{} is in the list #2.
+\NewDocumentCommand{\onlyUseRules}{mm}
+{
+  \group_begin:%
+  % split #2 on comma (clist = comma list) and put each element in a sequence
+  \seq_clear:N \l_tmpa_seq
+  \clist_map_inline:nn {#2}
+  {
+    \seq_gput_right:Nn \l_tmpa_seq {##1}
+  }%
 
-  \NewCommandCopy{\origcnusedrule}{\cnusedrule}
+  %\typeout{Sequence}%
+  %\seq_show:N \l_tmpa_seq {}%
 
+  % save the original command
+  \NewCommandCopy{\origcnusedrule}{\cnusedrule}%
+
+  % intercept \cnusedrule to check if its argument is in the sequence,
+  % and only call the original if so (otherwise do nothing)
   \renewcommand{\cnusedrule}[1]{%
-    \advance\nthcall by 1% chktex 1
-    \foreach\n in \allowedNs{%
-      \ifnum\nthcall=\n%
-        \origcnusedrule{##1}
-      \fi%
-    }
+    \seq_if_in:NnT \l_tmpa_seq {##1}
+      {%
+        %\typeout{Found!}
+        \origcnusedrule{##1}%
+      }%
   }
-
-  #2
-  \endgroup
+  #1
+  \group_end:%
 }
+\ExplSyntaxOff%
 %TC:endignore
 
 %\makeindex[columns=3, title=Alphabetical Index, intoc] % Make LaTeX produce the files required to compile the index
