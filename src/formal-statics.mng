@@ -41,11 +41,11 @@ used.\sidenote{\href{https://github.com/rems-project/cerberus/commit/7c2c0a364a4
 
 \section{Contexts}
 
-The contexts for the static semantics consist of four parts: (1) $\mathcal{C}$
-containing the computational variables from the Core program; (2) $\mathcal{L}$
-containing purely logical variables mentioned in specifications; (3) $\Phi$,
+The contexts for the static semantics consist of four parts: (1) $[[ C ]]$
+containing the computational variables from the Core program; (2) $[[ L ]]$
+containing purely logical variables mentioned in specifications; (3) $[[ N ]]$,
 the constraint context, containing a list of (non-quantified) SMT constraints;
-and (4) $\mathcal{R}$ a \emph{linear} context containing the resources
+and (4) $[[R]]$ a \emph{linear} context containing the resources
 available at that point during type-checking. I assume a constraint context of
 only non-quantified constraints because users are required to manually
 instantiate quantified constraints to use them.
@@ -53,15 +53,15 @@ instantiate quantified constraints to use them.
 \section{Pure values and expressions}
 
 \kl{ResCore} programs have both computational and logical (ghost) terms.
-Every such term, computational or ghost, has a \kl{base type} $\beta$,
+Every such term, computational or ghost, has a \kl{base type} $[[ base_type ]]$, % chktex 25
 which are things like unit, booleans, (mathematical) integers,\sidenote{After the formalisation was completed,
 \kl{CN} switched from using mathematical unbounded integers to bit vectors
 (\href{https://github.com/rems-project/cerberus/commit/8fdd4198750446de3b44d00f9e8f185db9610fab}{around
 commit 8fdd41987}) to better support common bit-twiddling idioms, used heavily
 in the buddy allocator in pKVM, without resorting to lots of lemmas about
 uninterpreted functions.} locations, and records and user-defined algebraic datatypes of
-other base types. Each C type $\tau$ is mapped to a corresponding base type $\beta_\tau$
-\textemdash{} for example, $\beta_{\mathtt{int*}} = \mathsf{loc}$.
+other base types. Each C type $[[ ct ]]$ is mapped to a corresponding base type $[[ to_base ( ct ) ]]$ % chktex 25
+\textemdash{} for example, $[[ to_base ( int * ) ]] = [[ loc ]]$. % chktex 25
 
 Logical terms are variously referred to as ${term}$, ${iguard}$ (for boolean
 index guards of iterated predicates), ${ptr}$ (for pointers), ${init}$ (for
@@ -76,18 +76,17 @@ factors out the precise representation of memory objects such as integers,
 pointers, arrays and structs, so I have followed a similar factorising in
 the structure of the typing judgements, and left the representation of these
 values abstract.} are very simple pure value synthesis judgements of the form
-$\mathcal{C} \vdash \mathit{pval} \Rightarrow \colorbox{red!8}{$\symit{\beta}$}$;
-given computational context and a pure value, synthesise a base type.
+$[[ C |- pval => base_type ]]$;  given computational context and % chktex 25
+a pure value, synthesise a base type.
 
 Building on top of this (in the same figure), the pure expression synthesis judgement
-is not that much more complicated: $\mathcal{C}; \mathcal{L}; \Phi
-\vdash \mathit{pexpr} \Rightarrow \outpol{pure\_ret}$. Given a computational
-context, a logical context, a constraint context and a pure expression,
+is not that much more complicated: $[[ C ; L ; N |- pexpr => pure_ret ]]$. % chktex 25
+Given a computational context, a logical context, a constraint context and a pure expression,
 synthesise a \emph{pure} return type (a return type without any resources or
 logical variables). The use of return types starts to introduce a few more of
-the refinement type features gestured at earlier. The type $\Sigma y {:}
-\beta.\ \phi(y) \wedge{} I$ is simply the usual refinement type $\{ \, y \in
-\beta \mid\phi(y) \, \}$, translated over to the grammar of types in \kl{Kernel
+the refinement type features gestured at earlier. The type
+$[[ sigma y : base_type . term /\ I ]]$ is simply the usual refinement type % chktex 25
+$\left\{ \, y \in \beta \mid \mathit{ term } \, \right\}$, translated over to the grammar of types in \kl{Kernel
 CN}. Recall that $\Sigma$ is used to bind a computational value in a
 \emph{return} type, so these types are simply expressing, symbolically, in
 constraints, that these expressions will evaluate to a value. Pure values are
@@ -139,10 +138,9 @@ computation.
 Whilst the rules for typing \emph{top-level} pure values and pure expressions
 share the same context as typing pure values and expressions, they differ in
 that they are \emph{checking} judgements instead of synthesising ones, of the
-form $\mathcal{C}; \mathcal{L}; \Phi \vdash \mathit{tpexpr} \Leftarrow
-\mathit{pure\_ret}$ (and similarly for $\mathit{tpexpr}$). Given the
-computational, logical and constraint contexts, check the top-level value (or
-expression) satisfies this type.
+form $[[ C ; L ; N |- tpval <= pure_ret ]]$ (and similarly for $[[ tpexpr ]]$). % chktex 25
+Given the computational, logical and constraint contexts, check the top-level
+value (or expression) satisfies this type.
 
 Here we start to see the let-normalisation (\cref{sec:rescore}) and the
 bidirectional (\cref{sec:bidir-subtyping}) approaches pay off. A top-level pure
@@ -189,7 +187,7 @@ assume all patterns are complete.
 \end{figure*}
 
 Typing resource terms requires the addition of an extra \emph{linear} context
-$\mathcal{R}$ of resources. I will start with the synthesising judgements first,
+$[[ R ]]$ of resources. I will start with the synthesising judgements first,
 and move on to checking judgements after.
 
 \subsection{Synthesis for resource terms}\label{subsec:synth-res-term}
@@ -314,10 +312,8 @@ structurally equal, modulo SMT provability (\cref{fig:typing-res-term-check}).
 \section{Memory actions and pointer operations}\label{sec:kernel-mem-action-ops}
 
 As with resource terms, memory actions require all the contexts (computational,
-logical, constraint and resource). The judgement $\mathcal{C} ; \mathcal{L} ;
-\Phi ; \mathcal{R} \vdash \mathrm{mem\_action} \Rightarrow
-\outpol{\mathrm{ret}}$ means that given the contexts and a memory action,
-it synthesises a return type.
+logical, constraint and resource). The judgement $[[ C ; L ; N ; R |- action => ret ]]$ % chktex 25
+means that given the contexts and a memory action, it synthesises a return type.
 
 The rule for \coreinline{create()} is a bit busy because of % chktex 36
 constraints on allocations required by the C standard (in premise 2), which I
@@ -392,11 +388,10 @@ rules (\cref{fig:typing-spine}).
         spines.}\label{fig:typing-spine}
 \end{figure*}
 
-The judgement for typing spines is $\mathcal{C}; \mathcal{L}; \Phi ;
-\mathcal{R} \vdash \mathit{param\_spine} \mathrel{{:}{:}} \mathit{fun} >\!\!>
-\outpol{\sigma}; \outpol{ret}$, which means that given the contexts, a spine of
-matched-up parameters and arguments and a function type, produce a substitution
-$\sigma$ and a return type $\mathit{ret}$.
+The judgement for typing spines is $[[ C ; L ; N ; R |- param_spine :; fon >> subs ; ret ]]$, % chktex 25
+which means that given the contexts, a spine of matched-up parameters and
+arguments and a function type, produce a substitution $[[ subs ]]$ and a return
+type $[[ ret ]]$.
 
 Function types are dependent over computational and logical (ghost) variables.
 For notational convenience, I assume that the variables are the same as the
@@ -419,16 +414,16 @@ The spine typing is used in the rules for calling elaborated C function
 \coreinline{ccall()}, and effectful Core procedures % chktex 36
 \coreinline{pcall()}, in \cref{fig:typing-seq-expr-tval}. Both are % chktex 36
 syntactically effectful sequenced expressions, typed with a judgement of the
-form $\mathcal{C}; \mathcal{L}; \Phi; \mathcal{R} \vdash \mathit{seq\_expr}
-\Rightarrow \outpol{ret}$, which says that given the contexts and an effectful
+form $[[ C ; L ; N ; R |- seq_expr => ret ]]$, % chktex 25 
+which says that given the contexts and an effectful
 sequenced expression, synthesise a return type. Both lookup a function type for
 the called function/procedure,\sidenote{\kl{CN} does not support
 computed/indirect function calls, so I assume the callee has already been
 resolved.} and simply produce the return type synthesised by the spine
 judgement. This is also basically identical to how the top-level value
-\coreinline{done<_>} is typed, with the main difference that (a) the judgement
-$\mathcal{C}; \mathcal{L}; \Phi; \mathcal{R} \vdash \mathit{tval} \Leftarrow
-\mathit{ret}$ is checking and (b) the return type must be mapped to its dual
+$[[ done _ ]]$ is typed, with the main difference that (a) the judgement
+$[[ C ; L ; N ; R |- tval <= ret ]]$
+is checking and (b) the return type must be mapped to its dual
 function type before using the spine judgement. Similar to the pure case, the
 \coreinline{undef()} and \coreinline{error()} constructs % chktex 36 check
 against any type if the constraint context is inconsistent.
@@ -447,8 +442,7 @@ against any type if the constraint context is inconsistent.
 Pattern matching is a surprisingly important crux of \kl{kernel CN}'s type
 system because it \emph{is} the canal which directs a rich the grammar of
 resource and return types into contexts. The judgement for this is
-$\mathcal{C}; \mathcal{L}; \Phi \vdash \mathit{ret\_pat} {:} \mathit{ret}
-\rightsquigarrow \outpol{\mathcal{C}'; \mathcal{L}'; \Phi'; \mathcal{R}'}$,
+$[[ C ; L ; N |- ret_pat : ret ~> C' ; L' ; N' ; R' ]]$, % chktex 25
 which says that given the contexts, a return pattern and a return type,
 synthesise computational, logical, constraint and resource contexts.
 
@@ -467,10 +461,10 @@ have their own patterns (\cref{fig:typing-tpval-tpexpr}).
 
 If both the head of the type and pattern are computational, the
 \textsc{Pat\_Ret\_Comp} rule first uses the heads to synthesise a computational
-context $\mathcal{C}_1$ and a represenative $\mathit{term}_1$ of the expected
+context $[[ C1 ]]$ and a represenative $[[ term1 ]]$ of the expected
 shape. The former extends the input context, and the latter is substituted into
 the the rest of the return type. After the remainder of the pattern is
-converted into contexts, it is extended with $\mathcal{C}_1$.\sidenote{Similar
+converted into contexts, it is extended with $[[ C1 ]]$.\sidenote{Similar
 to what I mentioned in note~\ref{sn:tail-rec-sub} about substitution, I build
 the contexts this way, rather than `tail-recursively', to make it easier to
 prove properties about it by induction (\cref{sec:sub-ctxts}).}
@@ -490,12 +484,12 @@ matching for resources similarly synthesises contexts from both the
 resource type and pattern, and the rest of the return type and patterns.
 
 This brings us on to how resource patterns synthesise contexts
-(\cref{fig:typing-res-pat}). The judgement for this is $\mathcal{L}; \Phi
-\vdash \mathit{res\_pat}{:}\mathit{res} \rightsquigarrow \outpol{\mathcal{L}';
-\Phi'; \mathcal{R}'}$, which means that given contexts,\sidenote{I abuse the
-notation slightly and omit the computational context $\mathcal{C}$ because it
-remains the same in all the rules.} a resource pattern and a type, synthesise
-logical, constraint and resource contexts.
+(\cref{fig:typing-res-pat}). The judgement for this is
+$[[ L ; N |- res_pat : res ~> L' ; N' ; R' ]]$, which means that % chktex 25
+given contexts,\sidenote{I abuse the notation slightly and omit the
+    computational context $[[ C ]]$ because it remains the same in all the
+rules.} a resource pattern and a type, synthesise logical, constraint and
+resource contexts.
 
 \begin{figure*}[tp]
     \small
@@ -572,11 +566,12 @@ implementation (\cref{sec:restriction-branching}).
 I shall only present a small slice of the elaboration to highlight the key
 concepts, leaving the rest of the large system to the appendix. The main
 judgement for synthesising a resource term and an instantiation for a logical
-quantifier is $\Phi; \underline{\mathcal{R}} \vdash \mathtt{calc}\; y \;
-\mathtt{using}\; \mathit{res} \rightsquigarrow \mathtt{bind}\;
-\outpol{res\_bind}\; \mathtt{for} \outpol{res\_term} \; \mathtt{and} \;
-\outpol{oarg} \dashv \outpol{\underline{\mathcal{R}'}}$
-(\cref{fig:elab-res-oarg}). Given a constraint context, a resource context, an
+quantifier is as below and in \cref{fig:elab-res-oarg}.
+\[
+    \small
+    [[ N ; nR |- calc y using res ~> bind res_bind for res_term and oarg -| nR' ]] % chktex 25
+\]
+Given a constraint context, a resource context, an
 output parameter, and a resource type, synthesise a series of bindings for an
 output argument and resource term and which will result in the updated resource
 context.
@@ -604,7 +599,7 @@ context.
 
 One of the key restrictions I place to allow inference to be specified
 relatively simply is that of a \intro{normalised} resource context, signified
-with an underlined $\underline{\mathcal{R}}$, containing only normalised
+with an underlined $[[ nR ]]$, containing only normalised
 resources types. A normalised resource is either an (iterated) predicate, or an
 under-determined conditional resource. I call it normalised because (with the
 appropriate terms and pattern-matching), any resource context can be
@@ -667,9 +662,9 @@ constant integer. Given these, inferring an index (for either
 \coreinline{break}ing or \emph{glue}ing) reduced to $i = (p' - p) /
 \mathit{step}$ where $p'$ is the pointer in the first argument of the request
 predicate. This is made precise in \cref{fig:res-diff-break}.\sidenote{This
-allows for empty iterated remainder: change it?}  The judgement $\Phi \vdash
-\mathit{ident}{:}\underline{\mathit{res}} \mathbin{{-}?} \mathit{res\_req}
-\rightsquigarrow \outpol{res\_diff}$ says that given constraint context, a
+allows for empty iterated remainder: change it?}  The judgement
+$[[ N |- ident : norm_res -? res_req ~> res_diff ]]$ % chktex 25
+says that given constraint context, a
 \kl{normalised} resource,\sidenote{Predicate (iterated) or an under-determined
 ordered-disjunction.} and a request for a predicate (iterated), synthesise the
 `difference' between the two. As shown in \cref{fig:res-diff-def}, the
@@ -795,8 +790,8 @@ substitutions may be telescoping, so need not commute). Hence, the
 \textsc{Sub\_Chk\_Concat} rule checks not only the first half $\psi$ of the
 substitution against half the context, but checks the second half
 \emph{substituted} against second half of the context \emph{substituted}, to
-eliminate any mention of variables from $\mathcal{C}_1$ and $\mathcal{L}_1$ in
-$\mathcal{R}'_2$.
+eliminate any mention of variables from $[[ C1 ]]$ and $[[ L1 ]]$ in
+$[[ R'2 ]]$.
 
 \begin{figure*}[tp]
     \small
