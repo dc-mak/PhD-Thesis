@@ -79,11 +79,10 @@ grammar
     | dec    ::  :: decrement {{ com decrement a number by 1 }}
 
 
-  ty_int {{ tex int }} , _int {{ tex \_ }} , step :: 'Int_' ::=    {{ com OCaml fixed-width integer }}
+  int , _int {{ tex \_ }} , step :: 'Int_' ::=    {{ com integer }}
     | n                ::   :: IndexVar    {{ com literal integer }}
     | 1                :: X :: One
-    | sizeof ct        :: M :: of_Ctype
-                                           {{ tex \symrm{sizeof}( [[ct]] )         }}
+    | sizeof ct        :: M :: of_Ctype    {{ tex \symrm{sizeof}( [[ct]] )         }}
                                            {{ com size of a C type                  }}
    | stackdepth ( S )  :: M :: stackdepth  {{ tex \mathrm{stackdepth}([[S]]) }}
    | incdec ( n )      :: M :: incdec      {{ tex [[incdec]]([[n]]) }}
@@ -92,7 +91,7 @@ grammar
 grammar
 
   Sctypes_t , ct {{ tex \tau }} :: 'Ct_' ::=  {{ com partial/relevant grammar of C types }}
-    | array ty_int ct :: :: ArrayCt {{ com fixed-length array of element type $[[ct]]$ }}
+    | array int ct :: :: ArrayCt {{ com fixed-length array of element type $[[ct]]$ }}
     | int             :: :: C_Int   {{ com C (signed) integer                          }}
     | ct *            :: :: Pointer {{ com pointer to type $[[ct]]$                    }}
     | struct ty_tag   :: :: Struct  {{ com C struct type                               }}
@@ -370,7 +369,7 @@ grammar
     | z_zero                      :: X M :: Zero      {{ tex 0                     }}
     | i                           :: M :: of_index
                                                      {{ com literal integer                          }}
-    | ty_int                      :: M :: of_int
+    | int                      :: M :: of_int
     | to_int ty_mem_int           :: M :: of_mem_int
                                                      {{ tex [[ty_mem_int]] }} {{ com convert $[[ty_mem_int]]$ to an integer }}
     | offsetof ty_tag member :: M :: of_Member
@@ -443,7 +442,7 @@ grammar
 
   tuple_op :: '' ::= {{ auxparam 'bt }} {{ com SMT term tuple constructor and projections }}
     | ( </ termi // , // i /> ) :: :: Tuple
-    | ty_int th_t term          :: :: NthTuple   {{ tex [[term]]^{([[ty_int]])}       }}
+    | int th_t term          :: :: NthTuple   {{ tex [[term]]^{([[int]])}       }}
 
   struct_op :: '' ::= {{ auxparam 'bt }} {{ com SMT term for struct member-projection }}
     % DEFER struct construction and update
@@ -463,8 +462,8 @@ grammar
     | nil              ::  :: Nil
     | term1 cons term2 ::  :: Cons    {{ tex [[term1]] :: [[term2]] }}
     | tl term          ::  :: Tail
-    | ty_int th_l term ::  :: NthList {{ order [[ty_int]] [[term]]   }}
-                                      {{ tex [[term]]^{([[ty_int]])} }}
+    | int th_l term ::  :: NthList {{ order [[int]] [[term]]   }}
+                                      {{ tex [[term]]^{([[int]])} }}
 
   ct_pred :: '' ::= {{ auxparam 'bt }} {{ com SMT predicates for C-types }}
     | representable ( ct , term ) :: :: Representable
@@ -725,8 +724,8 @@ grammar
   % (c) makes `{ _ : qpred_term' & oarg } |- qpred_term => qpred_term' & oarg' nicely consistent
   % (d) avoids the need to invent default-valued arrays in the SMT terms.
   pred_ops :: 'ResOps_' ::= {{ com (q)points-to operation terms }}
-    | iterate ( res_term , ty_int )                  :: :: Iterate {{ com transform points-to-array into quantified points-to }}
-    | congeal ( res_term , ty_int )                  :: :: Congeal {{ com transform quantified points-to into points-to-array }}
+    | iterate ( res_term , int )                  :: :: Iterate {{ com transform points-to-array into quantified points-to }}
+    | congeal ( res_term , int )                  :: :: Congeal {{ com transform quantified points-to into points-to-array }}
     | explode ( res_term )                           :: :: Explode {{ com transform points-to-struct into member points-tos   }}
     | implode ( res_term , ty_tag )                  :: :: Implode {{ com transform member points-tos into points-to-struct   }}
     | break ( res_term , term )                      :: :: Break   {{ com break a qpred into a qpred and a pred               }}
@@ -897,7 +896,6 @@ grammar
                                                                            {{ com annotated bind return pats                               }}
     | case pval of </ | texpr_case_branchi // i /> end :: :: case          {{ com pat matching                                             }}
     | if pval then texpr1 else texpr2                  :: :: if            {{ com conditional                                              }}
-    | bound [ ty_int ] ( is_texpr )                    :: :: bound         {{ com limit scope of indet seq behaviour, absent at runtime    }}
     | insert_lets ( res_bind , seq_texpr )             :: M :: Insert_lets {{ com insert let expressions for binding resources             }}
 
 
