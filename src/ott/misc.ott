@@ -134,7 +134,7 @@ defns
     pred_term ( oarg ) eq pred_term' ( oarg' )
     pred_term eq a ( ptrt , </ iargi // i /> )
     a != Owned < ct >
-    a eq xp : loc , </ xi : base_typei // i  /> , y : record </ Symbol_identifierj : base_type'j // j /> |-> res inEnv Globals
+    a eq xp : loc , </ xi : base_typei // i  /> , y : base_type |-> res inEnv Globals
     cdot ; cdot ; cdot ; nR |- def <= [ oarg / y , [ </ iargi / xi // i /> ] , ptrt / xp ] ( res )
     heap <= nR
     ----------------------------------------------------------- :: Pred_Other
@@ -262,13 +262,13 @@ defns
   spec_defns :: 'Spec_' ::=
 
   defn [( spec )] ( opt_ident ) = out_res :: :: Res :: Res_
-  {{ com specification $[[spec]]$ (with optional record $[[opt_ident]]$) represents resource $[[out_res]]$ ($[[opt_ident]]$ is present return when a return is expected, absent when it is not) }}  by
+  {{ com specification $[[spec]]$ (with optional $[[opt_ident]]$) represents resource $[[out_res]]$ ($[[opt_ident]]$ is present return when a return is expected, absent when it is not) }}  by
 
     --------------------------- :: None
     [( cdot )] ( None ) = emp
 
-    ---------------------------------------------------------------------------------------- :: Return
-    [( return { </ Symbol_identifieri = termi // i />} ; )] ( y ) = ( /\\ ( </  y dot Symbol_identifieri = termi // i /> ) )
+    ----------------------------------------- :: Return
+    [( return term ; )] ( y ) = (  y = term )
 
 
     [( spec )] ( opt_ident ) = res
@@ -295,18 +295,18 @@ defns
 
 
     % DEFER add well-formedness (predicate arg type-checking) here??
-    a eq _ : loc , </ _ : _bti // i  /> , _ : record </ Symbol_identifierj : base_typej // j /> |-> _res inEnv Globals
+    a eq _ : loc , </ _ : _bti // i  /> , _ : base_type |-> _res inEnv Globals
     [( spec )] ( opt_ident ) = res
-    ------------------------------------------------------------------------------------- :: LetPred
-    [( let y = a ( ptrt , iargs ) ; spec )] ( opt_ident ) = exists y : record </ Symbol_identifierj : base_typej // j /> . a ( ptrt , iargs ) ( y ) * res
+    ------------------------------------------------------------------------------------- :: TakePred
+    [( take y = a ( ptrt , iargs ) ; spec )] ( opt_ident ) = exists y : base_type . a ( ptrt , iargs ) ( y ) * res
 
 
     % DEFER add well-formedness (predicate arg type-checking) here??
     qpred_term eq { Sym_x ; iguard . a ( ptrt + step , iargs ) }
-    a eq _ : loc , </ _ : _bti // i  /> , _ : record </ Symbol_identifierj : base_typej // j /> |-> _res inEnv Globals
+    a eq _ : loc , </ _ : _bti // i  /> , _ : base_type |-> _res inEnv Globals
     [( spec )] ( opt_ident ) = res
-    ------------------------------------------------------------------------------------- :: LetQPred
-    [( let y = qpred_term ; spec )] ( opt_ident ) = exists y : array record </ Symbol_identifierj : base_typej // j /> . { x ; iguard . a ( ptrt + step , iargs ) } ( y ) * res
+    ------------------------------------------------------------------------------------- :: TakeQPred
+    [( take y = qpred_term ; spec )] ( opt_ident ) = exists y : array base_type . { x ; iguard . a ( ptrt + step , iargs ) } ( y ) * res
 
 
   defn [( spec )] = out_norm_ret :: :: NormRet :: NormRet_
@@ -333,18 +333,18 @@ defns
 
 
     % DEFER add well-formedness (predicate arg type-checking) here??
-    a eq _ : loc , </ _ : _bti // i  /> , _ : record </ Symbol_identifierj : base_typej // j /> |-> _res inEnv Globals
+    a eq _ : loc , </ _ : _bti // i  /> , _ : base_type |-> _res inEnv Globals
     [( spec )] = norm_ret
-    ------------------------------------------------------------------------------------- :: LetPred
-    [( let y = a ( ptrt , iargs ) ; spec )] = exists y : record </ Symbol_identifierj : base_typej // j /> . a ( ptrt , iargs ) ( y ) *o norm_ret
+    ------------------------------------------------------------------------------------- :: TakePred
+    [( take y = a ( ptrt , iargs ) ; spec )] = exists y : base_type . a ( ptrt , iargs ) ( y ) *o norm_ret
 
 
     % DEFER add well-formedness (predicate arg type-checking) here??
     qpred_term eq { Sym_x ; iguard . a ( ptrt + step , iargs ) }
-    a eq _ : loc , </ _ : _bti // i  /> , _ : record </ Symbol_identifierj : base_typej // j /> |-> _res inEnv Globals
+    a eq _ : loc , </ _ : _bti // i  /> , _ : base_type |-> _res inEnv Globals
     [( spec )] = norm_ret
-    ------------------------------------------------------------------------------------- :: LetQPred
-    [( let y = qpred_term ; spec )] = exists y : array record </ Symbol_identifierj : base_typej // j /> . { x ; iguard . a ( ptrt + step , iargs ) } ( y ) *o norm_ret
+    ------------------------------------------------------------------------------------- :: TakeQPred
+    [( take y = qpred_term ; spec )] = exists y : array base_type . { x ; iguard . a ( ptrt + step , iargs ) } ( y ) *o norm_ret
 
 
   defn [( spec | norm_ret )] = out_norm_fun :: :: NormArg :: NormArg_
@@ -371,18 +371,18 @@ defns
 
 
     % DEFER add well-formedness (predicate arg type-checking) here??
-    a eq _ : loc , </ _ : _bti // i  /> , _ : record </ Symbol_identifierj : base_typej // j /> |-> _res inEnv Globals
+    a eq _ : loc , </ _ : _bti // i  /> , _ : base_type |-> _res inEnv Globals
     [( spec | norm_ret )] = norm_fun
-    ------------------------------------------------------------------------------------------------------- :: LetPred
-    [( let y = a ( ptrt , iargs ) ; spec | norm_ret )] = forall y : record </ Symbol_identifierj : base_typej // j /> . a ( ptrt , iargs ) ( y ) --o norm_fun
+    ------------------------------------------------------------------------------------------------------- :: TakePred
+    [( take y = a ( ptrt , iargs ) ; spec | norm_ret )] = forall y : base_type . a ( ptrt , iargs ) ( y ) --o norm_fun
 
 
     % DEFER add well-formedness (predicate arg type-checking) here??
     qpred_term eq { Sym_x ; iguard . a ( ptrt + step , iargs ) }
-    a eq _ : loc , </ _ : _bti // i  /> , _ : record </ Symbol_identifierj : base_typej // j /> |-> _res inEnv Globals
+    a eq _ : loc , </ _ : _bti // i  /> , _ : base_type |-> _res inEnv Globals
     [( spec | norm_ret )] = norm_fun
-    ------------------------------------------------------------------------------------- :: LetQPred
-    [( let y = qpred_term ; spec | norm_ret )] = forall y : array record </ Symbol_identifierj : base_typej // j /> . { x ; iguard . a ( ptrt + step , iargs ) } ( y ) --o norm_fun
+    ------------------------------------------------------------------------------------- :: TakeQPred
+    [( take y = qpred_term ; spec | norm_ret )] = forall y : array base_type . { x ; iguard . a ( ptrt + step , iargs ) } ( y ) --o norm_fun
 
 
   defn [( ct name( </ cti xi // , // i /> ) requires spec1 ensures spec2 )] = out_norm_fun :: :: UserDef :: UserDef_
@@ -404,7 +404,7 @@ defns
 
     [( spec )] ( y ) = res
     ---------------------- :: Pred
-    [( predicate { </ base_type'j Symbol_identifierj // j /> }  a ( loc xp , </ base_typei xi // i /> ) { spec } )] = a eq xp : loc , </ xi : base_typei // i /> , y : record </ Symbol_identifierj : base_type'j // j /> |-> res
+    [( predicate { </ base_type'j Symbol_identifierj // j /> }  a ( loc xp , </ base_typei xi // i /> ) { spec } )] = a eq xp : loc , </ xi : base_typei // i /> , y : base_type |-> res
 
 
 defns

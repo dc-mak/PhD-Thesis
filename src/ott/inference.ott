@@ -159,8 +159,8 @@ defns
   {{ com combining $[[Symbol_sym1]] [[:]] [[norm_res]]$, $[[res_term2]] [[:]] [[res_req]] \& [[oarg2]]$, results in $[[out_res_term]]$ $[[out_oarg3]]$ }} by
 
     N |- pred_term in? qpred_term ~> term
-    C ; L |- oarg1 => record </ Symbol_identifieri : base_typei // i />
-    C ; L |- oarg2 => array record </ Symbol_identifieri : base_typei // i />
+    C ; L |- oarg1 => base_type
+    C ; L |- oarg2 => array base_type
     ---------------------------------------------------------- :: PQ
     N |- r : pred_term ( oarg1 ) +? res_term : qpred_term & oarg2 ~> glue( < res_term , r > ) and oarg2 [ term ] := oarg1
 
@@ -195,7 +195,7 @@ defns
   defn N ; nR |- res_req ~> bind out_res_bind for out_res_term and out_oarg -| out_nRp :: :: Req_Wf_ :: Req_Wf_
   {{ com $[[N]] ; [[nR]]$ (check well-formedness of and then) fulfil request $[[res_req]]$ (via $[[out_res_bind]]$) for answer $[[out_res_term]]$ and $[[out_oarg]]$, with $[[out_nRp]]$ leftover }} by
 
-    a eq _ : loc , </ _i : base_typei // i  /> , y' : record </ Symbol_identifierj : base_type'j // j /> |-> res inEnv Globals
+    a eq _ : loc , </ _i : base_typei // i  /> , y' : base_type |-> res inEnv Globals
     C ; L |- ptrt => loc
     indexed </ C ; L |- iargi => base_typei // i />
     N ; nR |- wf a ( ptrt , </ iargi // i /> ) ~> bind res_bind for res_term and oarg -| nR'
@@ -203,7 +203,7 @@ defns
     N ; nR |- a ( ptrt , </ iargi // i /> ) ~> bind res_bind for res_term and oarg -| nR'
 
 
-    a eq _ : loc , </ _i : base_typei // i  /> , y' : record </ Symbol_identifierj : base_type'j // j /> |-> res inEnv Globals
+    a eq _ : loc , </ _i : base_typei // i  /> , y' : base_type |-> res inEnv Globals
     C ; L |- ptrt => loc
     indexed </ C ; L |- iargi => base_typei // i />
     N ; nR |- wf { x ; iguard . a ( ptrt + step , </ iargi // i /> ) } ~> bind res_bind for res_term and oarg -| nR'
@@ -269,15 +269,15 @@ defns
     N ; nR |- pred_term ~> bind res_bind1 for res_term1 and oarg' -| nR'
     N ; nR' |- calc y using oarg' / y' ( res ) ~> bind res_bind2 for res_term2 and oarg -| nR''
     res_term eq pack ( oarg' , < res_term1 , res_term2 > )
-    -------------------------------------------------------------------------------------------------------------- :: LetPred
-    N ; nR |- calc y using exists y' : record </ Symbol_identifierj : base_type'j // j />.  pred_term ( y' ) * res ~> bind res_bind1 , res_bind2 for res_term and oarg  -| nR''
+    -------------------------------------------------------------------------------------------------------------- :: TakePred
+    N ; nR |- calc y using exists y' : base_type.  pred_term ( y' ) * res ~> bind res_bind1 , res_bind2 for res_term and oarg  -| nR''
 
 
     N ; nR |- qpred_term ~> bind res_bind1 for res_term1 and oarg' -| nR'
     N ; nR' |- calc y using oarg' / y' ( res ) ~> bind res_bind2 for res_term2 and oarg -| nR''
     res_term eq pack ( oarg' , < res_term1 , res_term2 > )
-    -------------------------------------------------------------------------------------------------------------- :: LetQPred
-    N ; nR |- calc y using exists y' : array record </ Symbol_identifierj : base_type'j // j /> . qpred_term ( y' ) * res ~> bind res_bind1 , res_bind2 for res_term and oarg  -| nR''
+    -------------------------------------------------------------------------------------------------------------- :: TakeQPred
+    N ; nR |- calc y using exists y' : array base_type . qpred_term ( y' ) * res ~> bind res_bind1 , res_bind2 for res_term and oarg  -| nR''
 
 
 defns
@@ -435,7 +435,7 @@ defns
     C ; L ; N ; nR |- Neg action ~> bind res_bind for ( Neg action' ) : norm_ret -| nR'
 
 
-    a eq xp : loc , </ xi : base_typei // i  /> , y : record </ Symbol_identifierj : base_type'j // j /> |-> res inEnv Globals
+    a eq xp : loc , </ xi : base_typei // i  /> , y : base_type |-> res inEnv Globals
     C |- pval => loc
     indexed </ C |- pvali => base_typei // i />
     N ; nR |- calc y using [ [ </ pvali / xi // i /> ] , pval / xp ] ( res ) ~> bind res_bind for res_term and oarg -| nR'
@@ -444,7 +444,7 @@ defns
     C ; L ; N ; nR |- pack a ( pval , </ pvali // i /> ) ~> bind res_bind for ( done < Unit , fold res_term : a ( inj pval , </ inj pvali // i /> ) ( oarg ) > : ret ) : ret -| nR'
 
 
-    a eq xp : loc , </ xi : base_typei // i  /> , y : record </ Symbol_identifierj : base_type'j // j /> |-> res inEnv Globals
+    a eq xp : loc , </ xi : base_typei // i  /> , y : base_type |-> res inEnv Globals
     C |- pval => loc
     indexed </ C |- pvali => base_typei // i />
     N ; nR |- a ( inj pval , inj </ pvali // i /> ) ~> bind res_bind for res_term and oarg -| nR'
@@ -478,14 +478,14 @@ defns
     % Could infer a pack here
     N ; nR |- pred_term ~> bind res_bind for res_term and oarg -| nR'
     C ; L ; N ; nR' |- spine :; norm_fun ~> bind res_bind' for spine' and norm_ret -| nR''
-    ------------------------------------------------------------------------------------------- :: LetPred
-    C ; L ; N ; nR |- spine :; forall y : record </ Symbol_identifierj : base_typej // j /> . pred_term ( y ) --o norm_fun ~> bind res_bind , res_bind' for oarg , res_term , spine' and norm_ret -| nR''
+    ------------------------------------------------------------------------------------------- :: TakePred
+    C ; L ; N ; nR |- spine :; forall y : base_type . pred_term ( y ) --o norm_fun ~> bind res_bind , res_bind' for oarg , res_term , spine' and norm_ret -| nR''
 
 
     N ; nR |- qpred_term ~> bind res_bind for res_term and oarg -| nR'
     C ; L ; N ; nR' |- spine :; oarg / y ( norm_fun ) ~> bind res_bind' for spine' and norm_ret' -| nR''
-    --------------------------------------------------------------------------------------------------------------- :: LetQPred
-    C ; L ; N ; nR |- spine :; forall y : array record </ Symbol_identifierj : base_typej // j /> . qpred_term ( y ) --o norm_fun ~> bind res_bind , res_bind' for oarg , res_term , spine' and norm_ret -| nR''
+    --------------------------------------------------------------------------------------------------------------- :: TakeQPred
+    C ; L ; N ; nR |- spine :; forall y : array base_type . qpred_term ( y ) --o norm_fun ~> bind res_bind , res_bind' for oarg , res_term , spine' and norm_ret -| nR''
 
 
     N ; nR |- calc _ using if term then res1 else res2 ~> bind res_bind for res_term and unit -| nR'

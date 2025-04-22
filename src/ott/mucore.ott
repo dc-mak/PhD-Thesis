@@ -74,13 +74,21 @@ grammar
 
 grammar
 
+  incdec :: 'IoD_' ::= {{ com increment or decrement }}
+    | inc    ::  :: increment {{ com increment a number by 1 }}
+    | dec    ::  :: decrement {{ com decrement a number by 1 }}
+
+
   ty_int {{ tex int }} , _int {{ tex \_ }} , step :: 'Int_' ::=   {{ ocaml int  }} {{ com OCaml fixed-width integer }}
-    | i         ::   :: IndexVar {{ com literal integer }}
-    | i_zero    :: X :: Zero     {{ tex 0               }}
-    | i_one     :: X :: One      {{ tex 1               }}
-    | sizeof ct :: M :: of_Ctype {{ ocaml Memory.size_of_ctype ( [[ct]] ) }}
-                                 {{ tex \symrm{sizeof}( [[ct]] )         }}
-                                 {{ com size of a C type                  }}
+    | i                ::   :: IndexVar    {{ com literal integer }}
+    | i_zero           :: X :: Zero        {{ tex 0               }}
+    | i_one            :: X :: One         {{ tex 1               }}
+    | sizeof ct        :: M :: of_Ctype    {{ ocaml Memory.size_of_ctype ( [[ct]] ) }}
+                                           {{ tex \symrm{sizeof}( [[ct]] )         }}
+                                           {{ com size of a C type                  }}
+   | stackdepth ( S )  :: M :: stackdepth  {{ tex \mathrm{stackdepth}([[S]]) }} {{ ocaml DELETE_ME }}
+   | incdec ( n )      :: M :: incdec      {{ tex [[incdec]]([[n]]) }}          {{ ocaml DELETE_ME }}
+
 
 grammar
 
@@ -1071,18 +1079,16 @@ grammar
     | None       :: :: None
     | Symbol_sym :: :: Some
 
-  spec_expr :: 'Spec_Expr_' ::= {{ com expressions for specifications }}
-    | term   :: :: Term
-    | pred_term  :: :: Pred
-    | qpred_term :: :: QPred
-
   spec :: 'Spec_' ::= {{ com alternative, C-programmer friendly syntax for defining predicates and writing specifications }}
-    | cdot                                               ::  :: Empty  {{ com empty specification                                              }}
-    | return { </ Symbol_identifieri = termi // i /> } ; ::  :: Ret    {{ com specify output arguments                                         }}
-    | let Symbol_sym = spec_expr ; spec                  ::  :: Let    {{ com bind either terms, or output arguments of resource (q)predicates }}
-    | assert ( term ) ; spec                             ::  :: Assert {{ com assert specification                                             }}
-    | if ( term ) { spec1 } else { spec2 } spec3         ::  :: If     {{ com conditional specification                                        }}
+    | cdot                                        ::  :: Empty  {{ com empty specification                             }}
+    | return term ;                               ::  :: Ret    {{ com specify output arguments                        }}
+    | let Symbol_sym = term ; spec                ::  :: Let    {{ com bind (pure) term                                }}
+    | take Symbol_sym = res_req ; spec            ::  :: Take   {{ com bind output arguments of resource (q)predicates }}
+    | assert ( term ) ; spec                      ::  :: Assert {{ com assert specification                            }}
+    | if ( term ) { spec1 } else { spec2 } spec3  ::  :: If     {{ com conditional specification                       }}
+
+spec_predicate_def :: 'SP_' ::=
+    | predicate base_type a ( </ base_typei xi // i /> ) { spec } :: :: Pred
 
   user_def :: 'UserDef_' ::= {{ com syntax for user-defined predicates and function specifications (pre- and post-conditions) }}
-    | predicate { </ base_type'j Symbol_identifierj // j /> }  a ( </ base_typei xi // i /> ) { spec } :: :: Pred
     | ct name( </ cti xi // , // i /> ) requires spec1 ensures spec2                     :: :: CFunc
