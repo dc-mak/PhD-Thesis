@@ -18,7 +18,7 @@ OTTS := $(addprefix ott/, $(OTTS))
 
 PDFS := $(BUILD)/defns.pdf $(BUILD)/soundness.pdf
 
-all: $(BUILD)/main.pdf $(PDFS) mucore.$(GEN).ml
+all: $(BUILD)/main.pdf $(PDFS)
 
 .PHONY: all
 
@@ -88,11 +88,6 @@ $(PREFIX)_override.$(GEN).tex: ott/override.tex
 	ott -tex_wrap false -signal_parse_errors true \
 	    -tex_name_prefix $(PREFIX) -tex_filter $< $@ empty.ott
 	rm empty.ott
-
-mucore.$(GEN).ml: ott/mucore.ott
-	patch -p1 < ott/ocaml_gen.patch
-	ott -o $@ $^
-	patch -p1 -R < ott/ocaml_gen.patch
 
 defns.$(GEN).tex: ott/defns.tex $(CACHE) | check_defns_diff
 	ott -readsys $(CACHE) -tex_name_prefix $(PREFIX) -tex_filter $< $@

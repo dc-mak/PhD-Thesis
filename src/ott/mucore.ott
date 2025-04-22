@@ -79,20 +79,20 @@ grammar
     | dec    ::  :: decrement {{ com decrement a number by 1 }}
 
 
-  ty_int {{ tex int }} , _int {{ tex \_ }} , step :: 'Int_' ::=   {{ ocaml int  }} {{ com OCaml fixed-width integer }}
+  ty_int {{ tex int }} , _int {{ tex \_ }} , step :: 'Int_' ::=    {{ com OCaml fixed-width integer }}
     | i                ::   :: IndexVar    {{ com literal integer }}
     | i_zero           :: X :: Zero        {{ tex 0               }}
     | i_one            :: X :: One         {{ tex 1               }}
-    | sizeof ct        :: M :: of_Ctype    {{ ocaml Memory.size_of_ctype ( [[ct]] ) }}
+    | sizeof ct        :: M :: of_Ctype
                                            {{ tex \symrm{sizeof}( [[ct]] )         }}
                                            {{ com size of a C type                  }}
-   | stackdepth ( S )  :: M :: stackdepth  {{ tex \mathrm{stackdepth}([[S]]) }} {{ ocaml DELETE_ME }}
-   | incdec ( n )      :: M :: incdec      {{ tex [[incdec]]([[n]]) }}          {{ ocaml DELETE_ME }}
+   | stackdepth ( S )  :: M :: stackdepth  {{ tex \mathrm{stackdepth}([[S]]) }}
+   | incdec ( n )      :: M :: incdec      {{ tex [[incdec]]([[n]]) }}
 
 
 grammar
 
-  Sctypes_t , ct {{ tex \tau }} :: 'Ct_' ::= {{ ocaml Sctypes.t }} {{ com partial/relevant grammar of C types }}
+  Sctypes_t , ct {{ tex \tau }} :: 'Ct_' ::=  {{ com partial/relevant grammar of C types }}
     | array ty_int ct :: :: ArrayCt {{ com fixed-length array of element type $[[ct]]$ }}
     | int             :: :: C_Int   {{ com C (signed) integer                          }}
     | ct *            :: :: Pointer {{ com pointer to type $[[ct]]$                    }}
@@ -100,7 +100,7 @@ grammar
 
 grammar
 
-  ty_tag {{ tex tag }} :: 'Ty_tag' ::= {{ ocaml tag }} {{ com OCaml type for struct/union tag }}
+  ty_tag {{ tex tag }} :: 'Ty_tag' ::=  {{ com OCaml type for struct/union tag }}
     | ident :: :: ident
 
 grammar
@@ -114,17 +114,17 @@ grammar
     | struct ty_tag                                     ::   :: Struct   {{ com C structs                   }}
     | record </ Symbol_identifieri : base_typei // i /> ::   :: Record   {{ com res. pred. output arguments }}
     | map base_type base_type'                          ::   :: Map      {{ com map                         }}
-    | id_map                                            :: M :: IdMap    {{ com allocs to base and length   }} {{ ocaml Map ( Alloc_id , Alloc_id )     }}
-    | array base_type                                   :: M :: Array    {{ com array (integer-indexed map) }} {{ ocaml Map ( Integer , [[base_type]] ) }}
+    | id_map                                            :: M :: IdMap    {{ com allocs to base and length   }}
+    | array base_type                                   :: M :: Array    {{ com array (integer-indexed map) }}
     | list base_type                                    ::   :: List     {{ com list                        }}
     | </ base_typei // * // i />                        ::   :: Tuple    {{ com tuple                       }}
     | set base_type                                     ::   :: Set      {{ com set                         }}
     | bool_of ( ct )                                    :: M :: Bool_of  {{ com boolean from C type         }}
                                                                          {{ tex bool_ { [[ ct ]] }          }}
-                                                                         {{ ocaml BOOL_BT_CT ( [[ ct ]] )   }}
+
     | to_base ( ct )                                    :: M :: Of_Ctype {{ com of a C type                 }}
                                                                          {{ tex \beta_{ [[ct]] }            }}
-                                                                         {{ ocaml (BT.of_sct ( [[ct]] ) )   }}
+
 
 
 grammar
@@ -136,7 +136,7 @@ grammar
 grammar
 
   % Binary operators
-  binop {{ tex \mathbin{ binop } }} :: 'Op' ::= {{ ocaml Core.binop }} {{ com binary operators }}
+  binop {{ tex \mathbin{ binop } }} :: 'Op' ::=  {{ com binary operators }}
     % arithmetic operators (integer -> integer -> integer)
     | +   :: :: Add   {{ tex \mathbin{ \mathTT{+} } }} {{ com addition       }}
     | -   :: :: Sub   {{ tex \mathbin{ \mathTT{-} } }} {{ com subtraction    }}
@@ -182,22 +182,22 @@ grammar
     rel_binop   <:: binop
     bool_binop  <:: binop
 
-metavar impl_const ::= {{ ocaml Implementation.implementation_constant }}
+metavar impl_const ::=
   {{ com implementation-defined constant }}
 
 grammar
 
-  tyvar_sym {{ tex ident }} :: 'Tyvar_sym_' ::= {{ ocaml 'sym }} {{ com Ott-hack, ignore }}
+  tyvar_sym {{ tex ident }} :: 'Tyvar_sym_' ::=  {{ com Ott-hack, ignore }}
     | ident :: :: ident
 
 grammar
 
-  ty_mem_int {{ tex mem\_int }} , mem_addr {{ tex addr }} , mem_id {{ tex id }} :: 'Ty_mem_int' ::= {{ ocaml Impl_mem.integer_value }} {{ com memory integer value }}
-    | mem_one  :: M :: One  {{ ocaml Memory.integer_ival Z.one  }} {{ tex 1 }}
-    | mem_zero :: M :: Zero {{ ocaml Memory.integer_ival Z.zero }} {{ tex 0 }}
+  ty_mem_int {{ tex mem\_int }} , mem_addr {{ tex addr }} , mem_id {{ tex id }} :: 'Ty_mem_int' ::=  {{ com memory integer value }}
+    | mem_one  :: M :: One   {{ tex 1 }}
+    | mem_zero :: M :: Zero  {{ tex 0 }}
 
 metavar Symbol_identifier {{ tex member }} , id , base , len , addr , sym_init {{ tex init }} , sym_value {{ tex value }} ::=
-  {{ ocaml Symbol.identifier }}
+
   {{ com C struct/union member name }}
 
 grammar
@@ -206,25 +206,25 @@ grammar
   out_Symbol_identifier {{ tex \outpol{ member } }} , out_Sym_id {{ tex \outpol{ member } }}   :: 'Out_hack_' ::=  {{ com Ott-hack, ignore }}
     | Symbol_identifier :: :: Symbol_identifier {{ tex \outpol{ [[Symbol_identifier]] } }}
 
-metavar annots {{ tex }} ::= {{ ocaml annot list }}
+metavar annots {{ tex }} ::=
   {{ com Ott-hack, ignore (annotations) }}
 
-metavar ty_nat {{ tex nat }} ::= {{ ocaml Nat_big_num.num }}
+metavar ty_nat {{ tex nat }} ::=
   {{ com OCaml arbitrary-width natural number }}
 
 grammar
-  ty_mem_ptr {{ tex mem\_ptr }} :: 'Ty_mem_ptr_' ::= {{ ocaml Impl_mem.pointer_value }} {{ com pointer above VIP model }}
+  ty_mem_ptr {{ tex mem\_ptr }} :: 'Ty_mem_ptr_' ::=  {{ com pointer above VIP model }}
     | ( @ ty_mem_int , ty_mem_int' ) :: :: PVloc     {{ com pointer with provenance (allocation id) }}
 % Not worth extra complication of rules
 %   | NULL                           :: :: PVnull    {{ com null pointer                            }}
 %   | Symbol_sym                     :: :: PVfunptr  {{ com function pointer                        }}
 
-metavar ty_mem_value {{ tex mem\_val }} ::= {{ ocaml Impl_mem.mem_value }}
+metavar ty_mem_value {{ tex mem\_val }} ::=
     {{ com abstract memory value }}
 
 grammar
 
-  T_ct {{ tex \tau }} :: 'T_ct_of_' ::= {{ ocaml T.ct }} {{ com Ott-hack, ignore }}
+  T_ct {{ tex \tau }} :: 'T_ct_of_' ::=  {{ com Ott-hack, ignore }}
     | ct :: :: ct
 
   % OUT_HACK|T_ct,\tau
@@ -233,7 +233,7 @@ grammar
 
 grammar
 
-  Symbol_sym {{ tex ident }} , Sym_x {{ tex x }} :: '' ::= {{ ocaml Symbol.sym }} {{ com Ott-hack, ignore }}
+  Symbol_sym {{ tex ident }} , Sym_x {{ tex x }} :: '' ::=  {{ com Ott-hack, ignore }}
     | ident  :: :: ident
     | ty_tag :: :: ty_tag {{ com hack for struct typing rules }}
 
@@ -257,7 +257,7 @@ grammar
 
 grammar
 
-  T_bt {{ tex \beta }} :: 'T_bt_' ::= {{ ocaml T.bt }} {{ com Ott-hack, ignore }}
+  T_bt {{ tex \beta }} :: 'T_bt_' ::=  {{ com Ott-hack, ignore }}
     | base_type :: :: BaseType
 
 grammar
@@ -295,29 +295,29 @@ grammar
     | Fvfromint   :: :: fvfromint   {{ com cast integer to floating value }} % : integer -> floating
     | Ivfromfloat :: :: ivfromfloat {{ com cast floating to integer value }} % : ctype -> floating -> integer
 
-metavar ty_loc {{ tex }} ::= {{ ocaml Location_ocaml.t }}
+metavar ty_loc {{ tex }} ::=
   {{ com Ott-hack, ignore (locations) }}
 
-metavar Mem_mem_iv_constraint {{ tex mem\_iv\_c }} ::= {{ ocaml Mem.mem_iv_constraint }}
+metavar Mem_mem_iv_constraint {{ tex mem\_iv\_c }} ::=
   {{ com OCaml type for memory constraints on integer values }}
 
-metavar UB_name ::= {{ ocaml Undefined.undefined_behaviour }}
+metavar UB_name ::=
  {{ com undefined behaviour }}
 
-metavar ty_string {{ tex string }} , List {{ tex \symrm{List} }} ::= {{ ocaml string }}
+metavar ty_string {{ tex string }} , List {{ tex \symrm{List} }} ::=
   {{ com OCaml string }}
 
-metavar tyvar_TY {{ tex }} ::= {{ ocaml 'TY }}
+metavar tyvar_TY {{ tex }} ::=
   {{ com Ott-hack, ignore (OCaml type variable TY) }}
 
 grammar
 
-  ty_act {{ tex \tau }} :: 'Ty_act_of' ::= {{ ocaml 'TY act }} {{ com Ott-hack, ignore }}
+  ty_act {{ tex \tau }} :: 'Ty_act_of' ::=  {{ com Ott-hack, ignore }}
     | ct :: :: ct
 
 grammar
 
-  name :: 'Name_' ::= {{ ocaml Symbol.sym Core.generic_name }}
+  name :: 'Name_' ::=
     | Symbol_sym :: :: Sym   {{ com Core identifier                 }}
     | impl_const :: :: ImplC {{ com implementation-defined constant }}
 
@@ -331,11 +331,11 @@ grammar
     | ctor_val ( </ pvali // , // i /> )                                       ::   :: ctor        {{ com data constructor application              }}
     | ( struct Symbol_sym ) { </ dot Symbol_identifieri = pvali // , // i /> } ::   :: struct      {{ com C struct expression                       }}
     | ( union Symbol_sym ) { dot Symbol_identifier = pval }                    ::   :: union       {{ com C union expression                        }}
-    | subs ( pval )                                                            :: M :: val_subs    {{ com substitution for pure values }} {{ ocaml PVAL_SUBS [[subs]] [[pval]] }}
+    | subs ( pval )                                                            :: M :: val_subs    {{ com substitution for pure values }}
 
   pvals :: '' ::= {{ auxparam 'TY }} {{ com list of pure values }}
     | </ pvali // , // i /> ::   :: pvals
-    | subs ( pvals )        :: M :: Subspvals {{ ocaml SUBS_PVALS [[subs]] [[pvals]] }}
+    | subs ( pvals )        :: M :: Subspvals
 
   subrules
     name <:: pval
@@ -349,9 +349,9 @@ grammar
 
 grammar
 
-  ty_sym_opt_T_bt {{ tex ident\_opt\_\beta }} :: '' ::= {{ ocaml ( Symbol.sym option * T.bt ) }} {{ com type annotated optional identifier }}
-    | _ : T_bt          ::   :: No_sym (+ binders = {}         +) {{ ocaml ( None , [[T_bt]] ) }}
-    | Symbol_sym : T_bt ::   :: Just   (+ binders = Symbol_sym +) {{ ocaml ( Some [[Symbol_sym]] , [[T_bt]] ) }}
+  ty_sym_opt_T_bt {{ tex ident\_opt\_\beta }} :: '' ::=  {{ com type annotated optional identifier }}
+    | _ : T_bt          ::   :: No_sym (+ binders = {}         +)
+    | Symbol_sym : T_bt ::   :: Just   (+ binders = Symbol_sym +)
 
 grammar
 
@@ -367,36 +367,36 @@ grammar
 
 grammar
 
-  Z_t {{ tex z }} :: 'Z_' ::= {{ ocaml Z.t }} {{ com OCaml arbitrary-width integer }}
-    | z_one                       :: X M :: One      {{ ocaml Z.one  }} {{ tex 1                     }}
-    | z_zero                      :: X M :: Zero     {{ ocaml Z.zero }} {{ tex 0                     }}
-    | i                           :: M :: of_index   {{ ocaml OF_INDEX [[i]]                         }}
+  Z_t {{ tex z }} :: 'Z_' ::=  {{ com OCaml arbitrary-width integer }}
+    | z_one                       :: X M :: One       {{ tex 1                     }}
+    | z_zero                      :: X M :: Zero      {{ tex 0                     }}
+    | i                           :: M :: of_index
                                                      {{ com literal integer                          }}
-    | ty_int                      :: M :: of_int     {{ ocaml Z.of_int [[ty_int]]                    }}
-    | to_int ty_mem_int           :: M :: of_mem_int {{ ocaml Memory.z_of_ival [[ty_mem_int]]        }}
+    | ty_int                      :: M :: of_int
+    | to_int ty_mem_int           :: M :: of_mem_int
                                                      {{ tex [[ty_mem_int]] }} {{ com convert $[[ty_mem_int]]$ to an integer }}
     | offsetof ty_tag Symbol_identifier :: M :: of_Member
-      {{ ocaml z_ ( Memory.member_offset ( (??) [[ty_tag]] ) ( [[Symbol_identifier]] ) ) }}
+
       {{ tex \symrm{offset\_of}_{ [[ty_tag]] }( [[Symbol_identifier]] )                 }}
       {{ com offset of a struct member                                                   }}
-    | ptr_size                    :: M :: Ptr_size   {{ ocaml Memory.size_of_pointer                 }}
+    | ptr_size                    :: M :: Ptr_size
                                                      {{ com size of a pointer                        }}
-    | max_int ct                  :: M :: of_Max_Int {{ ocaml z_ ( Memory.max_integer_type ( [[ct]] ) ) }}
+    | max_int ct                  :: M :: of_Max_Int
                                                      {{ tex \symrm{max\_int}_{ [[ct]] }                }}
                                                      {{ com maximum value of int of type $[[ct]]$       }}
-    | min_int ct                  :: M :: of_Min_Int {{ ocaml z_ ( Memory.min_integer_type ( [[ct]] ) ) }}
+    | min_int ct                  :: M :: of_Min_Int
                                                      {{ tex \symrm{min\_int}_{ [[ct]] }                }}
                                                      {{ com minimum value of int of type $[[ct]]$       }}
 
-metavar rational {{ tex \symbb{Q} }} ::= {{ ocaml Q.t }}
+metavar rational {{ tex \symbb{Q} }} ::=
   {{ com OCaml type for rational numbers }}
 
 grammar
 
-  ty_bool {{ tex bool }} , _b {{ tex \_ }} :: '' ::= {{ ocaml bool  }} {{ com OCaml booleans }}
-    | true                  ::   :: True  {{ ocaml true  }}
-    | false                 ::   :: False {{ ocaml false }}
-    | ty_bool || ty_bool'   :: M :: bOr  {{ ocaml ( [[ty_bool]] || [[ty_bool']] ) }}
+  ty_bool {{ tex bool }} , _b {{ tex \_ }} :: '' ::=  {{ com OCaml booleans }}
+    | true                  ::   :: True
+    | false                 ::   :: False
+    | ty_bool || ty_bool'   :: M :: bOr
 
   % OUT_HACK|ty_bool,bool
   out_ty_bool {{ tex \outpol{ bool } }}   :: 'Out_hack_' ::=  {{ com Ott-hack, ignore }}
@@ -426,22 +426,22 @@ grammar
     | xor_uf ( term1 , term2 )    ::    :: Xor_Uf
     | term1 ' arith_binop ' term2 :: M :: Arith_binop
       {{ tex [[term1]] [[arith_binop]] [[term2]] }}
-      {{ ocaml ARITH_BINOP_TO_ARITH_OP [[term1]] [[arith_binop]] [[term2]] }}
+
 
   bool_op :: '' ::= {{ auxparam 'bt }} {{ com SMT term boolean operations }}
     | /\\ ( </ termi // , // i />    ) ::     :: And
     | \// ( </ termi // , // i />    ) ::     :: Or
     | term1 -> term2                   ::     :: Impl
-    | term1 <-> term2                  :: M   :: BiImp {{ ocaml And ( [ Impl ( [[ term1]] , [[term2]] ) , Impl ( [[term2]] , [[term1]] ) ] ) }}
+    | term1 <-> term2                  :: M   :: BiImp
     | neg term                         ::     :: Not
     | if term1 then term2 else term3   ::     :: ITE
     | term1 = term2                    ::     :: Eq
-    | term1 != term2                   :: M   :: Neq        {{ ocaml Neg ( Eq ( [[term1]] , [[term2]] ) ) }}
-    | term1 /\ term2                   :: X M :: And_Binary {{ ocaml And ( [ [[term1]] , [[term2]] ] )    }}
-    | term1 \/ term2                   :: X M :: Or_Binary  {{ ocaml Or ( [ [[term1]] , [[term2]] ] )     }}
+    | term1 != term2                   :: M   :: Neq
+    | term1 /\ term2                   :: X M :: And_Binary
+    | term1 \/ term2                   :: X M :: Or_Binary
     | term1 ' bool_binop ' term2       :: M   :: Bool_binop
       {{ tex [[term1]] [[bool_binop]] [[term2]] }}
-      {{ ocaml BOOL_BINOP_TO_BOOL_OP [[term1]] [[bool_binop]] [[term2]] }}
+
 
   tuple_op :: '' ::= {{ auxparam 'bt }} {{ com SMT term tuple constructor and projections }}
     | ( </ termi // , // i /> ) :: :: Tuple
@@ -479,13 +479,13 @@ grammar
     | term1 =< term2            ::   :: LE
     | term1 ' rel_binop ' term2 :: M :: Rel_binop
       {{ tex [[term1]] [[rel_binop]] [[term2]] }}
-      {{ ocaml REL_BINOP_TO_CMP_OP [[term1]] [[rel_binop]] [[term2]] }}
 
-  BT_t {{ tex \beta }} :: '' ::= {{ ocaml BT.t }} {{ com Ott-hack, ignore }}
+
+  BT_t {{ tex \beta }} :: '' ::=  {{ com Ott-hack, ignore }}
     | base_type :: :: Base_type
 
   map_op :: '' ::= {{ auxparam 'bt }} {{ com SMT term map operations }}
-    | [ | </ termi // , // i /> |]  :: M :: ArrayLit {{ com array literal }} {{ ocaml ARRAY_OF_TERMS [[ </ termi // i /> ]] }}
+    | [ | </ termi // , // i /> |]  :: M :: ArrayLit {{ com array literal }}
     | term1 [ term2 ]               ::   :: Get
     | term1 [ term2 dd term3 ]      ::  :: Range
     | const term                    ::   :: Const
@@ -508,24 +508,24 @@ grammar
     | ct_pred                          ::   :: CT_pred
     | map_op                           ::   :: Map_op
     | ty_string ( term1 , .. , termn ) ::   :: Pred
-    | ( term )                         :: S :: Paren   {{ ocaml [[term]] }} {{ com parentheses                             }}
-    | subs ( term )                    :: M :: Subs    {{ ocaml INDEX_TERM_SUBS [[subs]] [[term]]                          }}
+    | ( term )                         :: S :: Paren    {{ com parentheses                             }}
+    | subs ( term )                    :: M :: Subs
                                                        {{ com substitute $[[subs]]$ in $[[term]]$                          }}
-    | inj pvals                        :: M :: Of_pval {{ tex [[pvals]] }} {{ ocaml TERM_OF_PVALS [[pvals]]                }}
+    | inj pvals                        :: M :: Of_pval {{ tex [[pvals]] }}
                                                        {{ com tranlate pure values $[[pvals]]$ into corresponding SMT term }}
     | const ct ty_bool                 :: M :: Of_ct   {{ tex [[const]]_{[[ct]]} [[ty_bool]]                               }}
-                                                       {{ ocaml TERM_OF_CT_BOOL [[ct]] [[ty_bool]]                         }}
+
                                                        {{ com term with structure corresponding to $[[ct]]$                }}
 
   iargs , _iargs {{ tex \_ }} :: '' ::= {{ auxparam 'bt }} {{ com list of terms (predicate input-arguments) }}
     | </ iargi // , // i />     ::   :: Iargs
-    | subs ( iargs )            :: M :: SubsIarg {{ ocaml IARGS_SUBS [[subs]] [[iargs]] }}
+    | subs ( iargs )            :: M :: SubsIarg
 
   qterm :: 'QTerm_' ::= {{ com quantified SMT terms }}
     | term                     ::   :: Term   {{ com unquantified SMT term                  }}
     | forall Symbol_sym . term ::   :: Forall {{ com universally quantified SMT term        }}
     | exists Symbol_sym . term ::   :: Exists {{ com existentially quantified SMT term      }}
-    | subs < qterm >           :: M :: Subs   {{ ocaml QTERM_SUBS [[subs]] [[qterm]]        }} {{ tex [[subs]] ( [[qterm]] ) }}
+    | subs < qterm >           :: M :: Subs    {{ tex [[subs]] ( [[qterm]] ) }}
                                               {{ com substitute $[[subs]]$ into $[[qterm]]$ }}
 
 grammar
@@ -542,17 +542,17 @@ grammar
     | ty_string     :: :: PName {{ com user-defined name                                 }}
 
   pred_term :: '' ::= {{ com predicate term/request }}
-  {{ ocaml { name : predicate_name; pointer: IT.t; permission: IT.t; iargs: IT.t list; } }}
+
     | a ( ptrt , iargs ) :: :: PredT {{ com first parameter must be a pointer }}
       {{ tex [[ a ]] ( [[ ptrt ]] \ifthenelse{\equal{ \, }{ [[ iargs ]] } }{}{ [[,]] [[ iargs ]] } ) }}
-      {{ ocaml { name = [[a]] ; pointer = [[ptrt]] ; permission = IT.bool_ true ; iargs = [[iargs]] } }}
+
 
   qpred_term :: '' ::= {{ com quantifed predicate term/request }}
-  {{ ocaml { name : predicate_name; pointer: IT.t; q: Sym.t; step: int; permission: IT.t; iargs: IT.t list; oargs: O.t list; } }}
+
     | { Sym_x ; iguard . a ( ptrt + step , iargs ) } ::  :: QPredT (+ bind Sym_x in iguard +) (+ bind Sym_x in iargs +)
       {{ com $[[iguard]]$ , $[[ptrt]]$ and $[[step]]$ must be specified }}
       {{ tex ( [[Sym_x]] [[;]] [[iguard]] ) \{ [[a]] [[(]] [[ptrt]] +_{ \symrm{ ptr } } [[Sym_x]] {\times} [[step]] \ifthenelse{ \equal{ \, }{ [[ iargs ]] } }{}{ [[,]] [[iargs]] } [[)]] \} }}
-    | each qpred_term                                        :: S :: EachT {{ ocaml [[qpred_term]] }}
+    | each qpred_term                                        :: S :: EachT
 
   res_req :: 'ResReq_' ::= {{ com resource request }}
     | pred_term  :: :: Pred  {{ com request a resource predicate            }}
@@ -563,23 +563,23 @@ grammar
     | res_req :: :: res_req {{ tex \outpol{ [[res_req]] } }}
 
   pred , points_to , pt :: '' ::=  {{ com \emph{precise} seperation-logic predicates }}
-  {{ ocaml type resource = res_req * term }}
+
     % Omitting rational/perm until fractional permissions are used (2021-06)
-    | pred_term ( oarg )                 :: :: P {{ com a predicate-type is simply the term with an output argument }} {{ ocaml ( pred_term ,  [[oarg]] ) }}
+    | pred_term ( oarg )                 :: :: P {{ com a predicate-type is simply the term with an output argument }}
     | ptrt |- init - ct -> valuet :: S :: Pt
       {{ com pretty-printing for points-to predicate $\symtt{Owned} \langle [[ ct ]] \rangle ( [[ ptrt ]] , ) \& \{ [[ init ]] , [[ valuet ]] \}$ }}
       {{ tex \smash{ [[ ptrt ]] } \mathbin{ \overset{\scriptstyle [[ init ]] }{ {\mapsto}_{ [[ ct ]] } } } \smash{ [[ valuet ]] } }}
-      {{ ocaml ( { name = Owned [[ ct ]] ; pointer = [[ ptrt ]] ; permission = IT.bool_ true ; iargs = [ [[ ptrt ]] ] } ,  PT_RECORD_OF [[ init ]] [[ valuet ]] ) }}
+
 
   qpred , qpoints_to , qpt :: '' ::= {{ com quantified (integer-indexed) seperation logic predicate }}
-  {{ ocaml type qpredicate = { name : predicate_name; pointer: IT.t; q: Sym.t; step: int; permission: IT.t; iargs: IT.t list; oargs: O.t list; } }}
+
     | qpred_term ( oarg )                               ::   :: Q {{ com a qpredicate-type is simply the term with an array output argument }}
-      {{ ocaml ( [[qpred_term]] ,  [[oarg]] ) }}
+
 
     | *S Sym_x . iguard => ptrt |- ct -> oarg   :: S :: Qpt
       {{ com pretty-printing for quantified points-to predicate $[[*S]] [[Sym_x]] [[.]] [[iguard]] [[=>]] \symtt{Owned} \langle [[ ct ]] \rangle ( [[ ptrt ]] +_{ \symrm{ ptr } } [[ Sym_x ]] {\times} \symrm{sizeof}( [[ ct ]] ) , [[ oarg ]] [ [[ Sym_x ]] ] )$ }}
       {{ tex [[ *S ]] [[ Sym_x ]] [[ . ]] [[ iguard ]] [[ => ]] [[ ptrt ]] + [[ Sym_x ]] {\times} \symrm{sizeof}( [[ ct ]] ) \mathbin{ \overset{ [[ oarg ]] [ [[ Sym_x ]] ] . init }{ {\mapsto}_{ [[ ct ]] } } } { [[ oarg ]] [ [[ Sym_x ]] ] . value } }}
-      {{ ocaml ( { name = Owned [[ ct ]] ; pointer = [[ ptrt ]] ; q = [[ Sym_x ]] ; step = CT_TO_INT [[ ct ]] ; permission = [[ iguard ]] ; iargs = [ ] } , [[ oarg ]] ) }}
+
 
 grammar
 
@@ -590,18 +590,18 @@ grammar
     | qpred                               ::     :: QPred   {{ com quantified (integer-indexed) heap predicate }}
     | res1 * res2                         ::     :: SepConj {{ com seperating conjunction                      }}
     | *S ( </ resi // , // i /> )         :: M   :: BigConj {{ com notation for nested sep. conj.              }}
-                                                            {{ ocaml RES_SEP_CONJ_LIST [[ </ resi // i /> ]]   }}
+
     | exists Symbol_sym : base_type . res ::     :: Exists  {{ com existential                                 }}
     | if term then res1 else res2         ::     :: If      {{ com conditional resource / ordered disjuction   }}
-    | ( res )                             :: X S :: Paren   {{ com parentheses }} {{ ocaml [[ res ]]           }}
-    | subs ( res )                        :: M   :: Subs    {{ ocaml RES_SUBS [[subs]] [[res]]                 }}
+    | ( res )                             :: X S :: Paren   {{ com parentheses }}
+    | subs ( res )                        :: M   :: Subs
                                                             {{ com substitute $[[subs]]$ in $[[res]]$          }}
 
   norm_res {{ tex \norm{res} }} , rem :: 'Norm_res_' ::= {{ com normalised resources }}
     | if term then res1 else res2 ::     :: If    {{ com conditional resource / ordered disjuction   }}
     | pred                        ::     :: Pred  {{ com heap predicate                              }}
     | qpred                       ::     :: QPred {{ com quantified (integer-indexed) heap predicate }}
-    | ( norm_res )                :: X S :: Paren {{ com parentheses }} {{ ocaml [[ norm_res ]]      }}
+    | ( norm_res )                :: X S :: Paren {{ com parentheses }}
 
 subrules
   norm_res <:: res
@@ -628,14 +628,14 @@ grammar
     | res *o ret                         :: :: Res    {{ com return a resource                       }}
     | term /\ ret                        :: :: Phi    {{ com guarantee a constraint (post-condition) }}
     | I                                  :: :: I      {{ com end return list                         }}
-    | subs ( ret )                       :: M :: Subs {{ ocaml RET_SUBS [[subs]] [[ret]]             }}
+    | subs ( ret )                       :: M :: Subs
                                                       {{ com substitute $[[subs]]$ in $[[ret]]$      }}
 
   pure_ret :: Pure_RetTy_ ::= {{ com pure return types }}
     | sigma tyvar_sym : base_type . pure_ret :: :: Comp
     | term /\ pure_ret                       :: :: Phi
     | I                                      :: :: I
-    | subs ( pure_ret )                      :: M :: Subs {{ ocaml RET_SUBS [[subs]] [[pure_ret]]          }}
+    | subs ( pure_ret )                      :: M :: Subs
                                                           {{ com substitute $[[subs]]$ in $[[pure_ret]]$   }}
 
   norm_ret {{ tex \norm{ret} }} :: Norm_RetTy_ ::= {{ com normalised return types }}
@@ -644,7 +644,7 @@ grammar
     | norm_res *o norm_ret                    :: :: NormRes
     | term /\ norm_ret                        :: :: Phi
     | I                                       :: :: I
-    | subs ( norm_ret )                       :: M :: Subs {{ ocaml RET_SUBS [[subs]] [[norm_ret]] }}
+    | subs ( norm_ret )                       :: M :: Subs
 
 subrules
     pure_ret <:: ret
@@ -680,7 +680,7 @@ grammar
     | conv_int ( ty_act , pval )                             ::   :: conv_int        {{ com convert between different integer types          }}
     | wrapI ( ty_act , pval )                                ::   :: wrapI           {{ com wrap integer                                     }}
     | subs ( pexpr )                                         :: M :: expr_subs       {{ com substitution for pure expressions                }}
-                                                                                     {{ ocaml PEXPR_SUBS [[subs]] [[pexpr]]                  }}
+
 
   tpexpr :: 'M_TPE' ::= {{ aux ty_loc annots tyvar_TY _ }} {{ auxparam 'TY }} {{ com top-level pure expressions }}
     | tpval                                             ::   :: tpval {{ com top-level pure values                 }}
@@ -690,13 +690,13 @@ grammar
     | let sym_or_pat : pure_ret = tpexpr1 in tpexpr2    ::   :: letT  (+ bind binders( sym_or_pat ) in tpexpr2 +)
                                                                       {{ com annoted pure let                      }}
     | if pval then tpexpr1 else tpexpr2                 ::   :: if    {{ com pure if                               }}
-    | subs ( tpexpr )                                   :: M :: subs  {{ ocaml TPEXPR_SUBS [[subs]] [[tpexpr]]     }}
+    | subs ( tpexpr )                                   :: M :: subs
                                                                        {{ com substitute $[[subs]]$ in $[[tpexpr]]$ }}
 
-  tpexpr_case_branch :: 'M_TPE_Case_' ::= {{ auxparam 'TY }} {{ com pure top-level case expression branch }} {{ ocaml ( pat * 'TY tpexpr ) }}
+  tpexpr_case_branch :: 'M_TPE_Case_' ::= {{ auxparam 'TY }} {{ com pure top-level case expression branch }}
     | pat => tpexpr :: :: branch (+ bind binders( pat ) in tpexpr    +)
                                      {{ com top-level case expression branch }}
-                                     {{ ocaml ( [[pat]] , [[tpexpr]] )   }}
+
 
 grammar
 
@@ -710,13 +710,13 @@ grammar
     | dynamic     :: :: Dynamic
     | static T_ct :: :: Static
 
-metavar Symbol_prefix {{ tex }} ::= {{ ocaml Symbol.prefix }}
+metavar Symbol_prefix {{ tex }} ::=
   {{ com Ott-hack, ignore (OCaml Symbol.prefix) }}
 
-metavar Cmm_memory_order {{ tex mem\_order }} , _mem_order {{ tex \_ }} ::= {{ ocaml Cmm_csem.memory_order }}
+metavar Cmm_memory_order {{ tex mem\_order }} , _mem_order {{ tex \_ }} ::=
   {{ com OCaml type for memory order }}
 
-metavar Linux_linux_memory_order {{ tex linux\_mem\_order }} ::= {{ ocaml Linux.linux_memory_order }}
+metavar Linux_linux_memory_order {{ tex linux\_mem\_order }} ::=
   {{ com OCaml type for Linux memory order }}
 
 grammar
@@ -752,9 +752,9 @@ grammar
     | pack ( oarg , res_term )      ::   :: Pack    {{ com packing for existentials                    }}
     | fold res_term : pred          ::   :: Fold    {{ com fold into recursive res. pred.              }}
     | pred_ops                      ::   :: PredOps {{ com (q)predicate operation terms                }}
-    | ( res_term )                  :: S :: Paren   {{ com parentheses }} {{ ocaml [[res_term]]        }}
+    | ( res_term )                  :: S :: Paren   {{ com parentheses }}
     | subs ( res_term )             :: M :: Subs    {{ com substitution for resource terms             }}
-                                                    {{ ocaml RES_TERM_SUBS [[subs]] [[res_term]]       }}
+
 
   res_val , def {{ tex \mathit{ def } }} :: 'ResT_Val' ::= {{ com resource terms values }}
     | emp                          ::   :: Empty   {{ com empty heap                                  }}
@@ -763,9 +763,9 @@ grammar
     | qpred_term                   ::   :: QPred   {{ com quanitfied (integer-indexed) heap predicate }}
     | < </ res_vali // , // i /> > ::   :: SepPair {{ com (nested) seperating-conjunction pair        }}
     | pack ( oarg , res_val )      ::   :: Pack    {{ com packing for existentials                    }}
-    | ( res_val )                  :: S :: Paren   {{ com parentheses }} {{ ocaml [[res_val]]         }}
+    | ( res_val )                  :: S :: Paren   {{ com parentheses }}
     | subs ( res_val )             :: M :: Subs    {{ com substitution for resource terms             }}
-                                                   {{ ocaml RES_TERM_SUBS [[subs]] [[res_val]]        }}
+
 
 subrules
   res_val <:: res_term
@@ -796,7 +796,7 @@ subrules
 
 grammar
 
-  polarity :: '' ::= {{ ocaml Core.polarity }} {{ com polarities for memory actions }}
+  polarity :: '' ::=  {{ com polarities for memory actions }}
     | Pos :: :: Pos {{ com (pos) sequenced by $\cnkw{let\ weak}$ and $\cnkw{let\ strong}$ }} {{ tex              }}
     | Neg :: :: Neg {{ com only sequenced by $\cnkw{let\ strong}$                         }} {{ tex \symtt{neg} }}
 
@@ -826,16 +826,16 @@ grammar
     | oarg              ::   :: term     {{ com logical value                                   }}
     | res_term          ::   :: res_term {{ com resource term                                   }}
     | subs ( ret_term ) :: M :: subs     {{ com substitution for return values / spine elements }}
-                                         {{ ocaml RET_TERM_SUBS [[subs]] [[ret_term]]           }}
 
-  ret_terms , spine :: RetTerms_ ::= {{ ocaml 'TY ret_term list }} {{ com return values / spine }}
-    | ret_term , ret_terms       :: M :: cons  {{ ocaml ( [[ret_term]] :: [[ret_terms]] ) }}
+
+  ret_terms , spine :: RetTerms_ ::=  {{ com return values / spine }}
+    | ret_term , ret_terms       :: M :: cons
     | </ ret_termi // , // i />  ::   :: elems
 
-  param_spine :: ParamSpine_ ::= {{ ocaml ( Symbol.sym * 'TY ret_term ) list }} {{ com spine assigned to formal parameters }}
-    | x = spine_elem , param_spine       :: M :: cons  {{ ocaml ( ( [[x]]  , [[spine_elem]] ) :: [[param_spine]] ) }}
+  param_spine :: ParamSpine_ ::=  {{ com spine assigned to formal parameters }}
+    | x = spine_elem , param_spine       :: M :: cons
     | </ xi = spine_elemi // , // i />   ::   :: elems
-    | to_param spine                     :: M :: cast  {{ tex [[ spine ]] }} {{ ocaml ( SPINE_TO_PARAM_SPINE ( [[ spine ]] ) ) }}
+    | to_param spine                     :: M :: cast  {{ tex [[ spine ]] }}
 
 grammar
 
@@ -844,7 +844,7 @@ grammar
     | undef ty_loc UB_name       ::   :: undef    {{ com undefined behaviour               }}
     | error ( ty_string , pval ) ::   :: error    {{ com impl-defined static error         }}
     | subs ( tval )              :: M :: val_subs {{ com substitution for top-level values }}
-                                                  {{ ocaml TVAL_SUBS [[subs]] [[tval]]     }}
+
 
 grammar
 
@@ -882,7 +882,7 @@ grammar
   seq_expr :: 'M_Seq_E' ::= {{ aux ty_loc annots _ }} {{ auxparam 'TY }} {{ com sequential (effectful) expressions }}
     | ccall ( ty_act , Symbol_sym , spine ) ::   :: ccall {{ com C function call                       }}
     | pcall ( name , spine )                ::   :: proc  {{ com procedure call                        }}
-    | subs ( seq_expr )                     :: M :: subs  {{ ocaml SEQ_EXPR_SUBS [[subs]] [[seq_expr]] }}
+    | subs ( seq_expr )                     :: M :: subs
 
   % nd() is only used in the elab of if/loops for the case where the condiditional expression evaluates to unspecified()
   % We don't have unspecified() so we won't have nd()
@@ -901,12 +901,12 @@ grammar
     | if pval then texpr1 else texpr2                  :: :: if            {{ com conditional                                              }}
     | bound [ ty_int ] ( is_texpr )                    :: :: bound         {{ com limit scope of indet seq behaviour, absent at runtime    }}
     | insert_lets ( res_bind , seq_texpr )             :: M :: Insert_lets {{ com insert let expressions for binding resources             }}
-                                                                           {{ ocaml INSERT_LETS_SEQ_TEXPR ( [[res_bind]] , [[seq_texpr]] ) }}
 
-  texpr_case_branch :: 'M_Seq_TE_Case_' ::= {{ auxparam 'TY }} {{ ocaml ( pat * 'TY texpr ) }} {{ com top-level case expression branch }}
+
+  texpr_case_branch :: 'M_Seq_TE_Case_' ::= {{ auxparam 'TY }}  {{ com top-level case expression branch }}
     | pat => texpr :: :: branch (+ bind binders( pat ) in texpr     +)
                                 {{ com top-level case expression branch }}
-                                {{ ocaml ( [[pat]] , [[texpr]] )    }}
+
 
   is_expr :: 'M_Is_E' ::= {{ aux ty_loc annots _ }} {{ auxparam 'TY }} {{ com indet seq (effectful) expressions }}
     | tval : ret                         ::  :: tval   {{ com (effectful) top-level values }}
@@ -923,8 +923,8 @@ grammar
   texpr :: 'M_TE' ::= {{ auxparam 'TY }} {{ com top-level (effectful) expressions }}
     | seq_texpr                        ::   :: Seq         {{ com sequential (effectful) expressions           }}
     | is_texpr                         ::   :: Is          {{ com indet seq (effectful) expressions            }}
-    | insert_lets ( res_bind , texpr ) :: M :: Insert_lets {{ com insert let expressions for binding resources }} {{ ocaml INSERT_LETS_TEXPR ( [[res_bind]] , [[texpr]] ) }}
-    | subs ( texpr )                   :: M :: Subs        {{ com substitute $[[subs]]$ in $[[texpr]]$         }} {{ ocaml TEXPR_SUBS [[subs]] [[texpr]] }}
+    | insert_lets ( res_bind , texpr ) :: M :: Insert_lets {{ com insert let expressions for binding resources }}
+    | subs ( texpr )                   :: M :: Subs        {{ com substitute $[[subs]]$ in $[[texpr]]$         }}
 
 % DEFER generate substitutions
 
@@ -1004,7 +1004,7 @@ grammar
     | |=      :: :: models    {{ tex \models                          }}
     | dd      :: :: twodot    {{ tex \mathbin{ {.} {.} }              }}
 
-metavar ty_bt {{ tex }} ::= {{ ocaml 'bt }}
+metavar ty_bt {{ tex }} ::=
   {{ com Ott-hack, ignore (OCaml type variable bt) }}
 
 grammar
@@ -1016,9 +1016,9 @@ grammar
     | term -) fon                        ::   :: Phi     {{ com assume a constraint (pre-condition) }}
     | ret                                ::   :: Ret     {{ com return a value of type $[[ret]]$    }}
     | to_fun ret                         :: M :: OfRet   {{ com change a return to an arugment type }}
-                                                         {{ ocaml FUN_OF_RET [[ret]]                }}
-    | ( fon  )                           :: X S :: Paren {{ ocaml [[fon]]                           }}
-    | subs ( fon )                       :: M :: Subs    {{ ocaml FUN_SUB [[subs]] [[fon]]          }}
+
+    | ( fon  )                           :: X S :: Paren
+    | subs ( fon )                       :: M :: Subs
                                                          {{ com substitute $[[subs]]$ in $[[fon]]$  }}
 
   pure_fun :: Pure_FunTy_ ::= {{ com pure function types }}
@@ -1033,9 +1033,9 @@ grammar
     | term -) norm_fun                        ::   :: Phi     {{ com assume a constraint (pre-condition)          }}
     | norm_ret                                ::   :: Ret     {{ com return a value of type $[[norm_ret]]$        }}
     | to_fun norm_ret                         :: M :: OfRet   {{ com change a return to an arugment type          }}
-                                                              {{ ocaml NORM_FUN_OF_RET [[norm_ret]]               }}
-    | ( norm_fun  )                           :: X S :: Paren {{ tex [[norm_fun]] }} {{ ocaml [[norm_fun]]        }}
-    | subs ( norm_fun )                       :: M :: Subs    {{ ocaml NORM_FUN_SUB [[subs]] [[norm_fun]]         }}
+
+    | ( norm_fun  )                           :: X S :: Paren {{ tex [[norm_fun]] }}
+    | subs ( norm_fun )                       :: M :: Subs
                                                               {{ com substitute $[[subs]]$ in $[[norm_fun]]$      }}
 
   subrules
@@ -1062,10 +1062,10 @@ grammar
   subs {{ tex \sigma }} , psi {{ tex \psi }} :: Subs_ ::= {{ com substitutions }}
     | ret_term / Symbol_sym     ::   :: cons_ret_term {{ com sub $[[ret_term]]$ for $[[Symbol_sym]]$       }}
     | [ </ subsi // , // i /> ] ::   :: concat        {{ com sequential substitutions                      }}
-    | cdot                      :: M :: empty         {{ com empty substitution                            }} {{ ocaml [ ] }}
-    | id                        :: X M :: id          {{ com identity substitution                         }} {{ tex \symrm{id} }} {{ ocaml [ ] }}
+    | cdot                      :: M :: empty         {{ com empty substitution                            }}
+    | id                        :: X M :: id          {{ com identity substitution                         }} {{ tex \symrm{id} }}
     | subs ( psi )              :: M :: subs          {{ com apply $[[subs]]$ to all elements in $[[psi]]$ }}
-                                                      {{ ocaml SUBS_SUBS [[subs]] [[psi]] }}
+
 
 grammar
 
