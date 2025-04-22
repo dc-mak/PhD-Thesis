@@ -111,7 +111,7 @@ grammar
     | real                                              ::   :: Real     {{ com rational numbers?           }}
     | loc                                               ::   :: Loc      {{ com location                    }} {{ tex \symtt{pointer} }}
     | struct ty_tag                                     ::   :: Struct   {{ com C structs                   }}
-    | record </ Symbol_identifieri : base_typei // i /> ::   :: Record   {{ com res. pred. output arguments }}
+    | record </ memberi : base_typei // i /> ::   :: Record   {{ com res. pred. output arguments }}
     | map base_type base_type'                          ::   :: Map      {{ com map                         }}
     | id_map                                            :: M :: IdMap    {{ com allocs to base and length   }}
     | array base_type                                   :: M :: Array    {{ com array (integer-indexed map) }}
@@ -195,15 +195,14 @@ grammar
     | mem_one  :: M :: One   {{ tex 1 }}
     | mem_zero :: M :: Zero  {{ tex 0 }}
 
-metavar Symbol_identifier {{ tex member }} , id , base , len , addr , sym_init {{ tex init }} , sym_value {{ tex value }} ::=
-
+metavar member , alloc_id , base , len , addr , sym_init {{ tex init }} , sym_value {{ tex value }} ::=
   {{ com C struct/union member name }}
 
 grammar
 
-  % OUT_HACK|Symbol_identifier,member|Sym_id,member
-  out_Symbol_identifier {{ tex \outpol{ member } }} , out_Sym_id {{ tex \outpol{ member } }}   :: 'Out_hack_' ::=  {{ com Ott-hack, ignore }}
-    | Symbol_identifier :: :: Symbol_identifier {{ tex \outpol{ [[Symbol_identifier]] } }}
+  % OUT_HACK|member
+  out_member {{ tex \outpol{ member } }}   :: 'Out_hack_' ::=  {{ com Ott-hack, ignore }}
+    | member :: :: member {{ tex \outpol{ [[member]] } }}
 
 metavar annots {{ tex }} ::=
   {{ com Ott-hack, ignore (annotations) }}
@@ -248,8 +247,8 @@ grammar
     | ty_mem_int                                                                                :: :: integer {{ com integer value  }}
     | ty_mem_ptr                                                                                :: :: pointer {{ com pointer value  }}
     | array ( </ loaded_valuei // , // i /> )                                                   :: :: array   {{ com C array value  }}
-    | ( struct Symbol_sym ) { </ dot Symbol_identifieri : T_cti = ty_mem_valuei // , // i /> }  :: :: struct  {{ com C struct value }}
-    | ( union Symbol_sym ) { dot Symbol_identifier = ty_mem_value }                             :: :: union   {{ com C union value  }}
+    | ( struct Symbol_sym ) { </ dot memberi : T_cti = ty_mem_valuei // , // i /> }  :: :: struct  {{ com C struct value }}
+    | ( union Symbol_sym ) { dot member = ty_mem_value }                             :: :: union   {{ com C union value  }}
 
   loaded_value :: 'M_LV' ::= {{ auxparam 'TY }} {{ com potentially unspecified C object values }}
     | specified object_value :: :: specified {{ com specified loaded value }}
@@ -328,8 +327,8 @@ grammar
     | value                                                                    ::   :: val         {{ com Core values                               }}
     | constrained ( </ Mem_mem_iv_constrainti , pvali // , // i /> )           ::   :: constrained {{ com constrained value                         }}
     | ctor_val ( </ pvali // , // i /> )                                       ::   :: ctor        {{ com data constructor application              }}
-    | ( struct Symbol_sym ) { </ dot Symbol_identifieri = pvali // , // i /> } ::   :: struct      {{ com C struct expression                       }}
-    | ( union Symbol_sym ) { dot Symbol_identifier = pval }                    ::   :: union       {{ com C union expression                        }}
+    | ( struct Symbol_sym ) { </ dot memberi : T_cti = pvali // , // i /> } ::   :: struct      {{ com C struct expression                       }}
+    | ( union Symbol_sym ) { dot member = pval }                    ::   :: union       {{ com C union expression                        }}
     | subs ( pval )                                                            :: M :: val_subs    {{ com substitution for pure values }}
 
   pvals :: '' ::= {{ auxparam 'TY }} {{ com list of pure values }}
@@ -374,9 +373,9 @@ grammar
     | ty_int                      :: M :: of_int
     | to_int ty_mem_int           :: M :: of_mem_int
                                                      {{ tex [[ty_mem_int]] }} {{ com convert $[[ty_mem_int]]$ to an integer }}
-    | offsetof ty_tag Symbol_identifier :: M :: of_Member
+    | offsetof ty_tag member :: M :: of_Member
 
-      {{ tex \symrm{offset\_of}_{ [[ty_tag]] }( [[Symbol_identifier]] )                 }}
+      {{ tex \symrm{offset\_of}_{ [[ty_tag]] }( [[member]] )                 }}
       {{ com offset of a struct member                                                   }}
     | ptr_size                    :: M :: Ptr_size
                                                      {{ com size of a pointer                        }}
@@ -446,14 +445,14 @@ grammar
     | ( </ termi // , // i /> ) :: :: Tuple
     | ty_int th_t term          :: :: NthTuple   {{ tex [[term]]^{([[ty_int]])}       }}
 
-  struct_op :: '' ::= {{ auxparam 'bt }} {{ com SMT term for struct field-projection }}
+  struct_op :: '' ::= {{ auxparam 'bt }} {{ com SMT term for struct member-projection }}
     % DEFER struct construction and update
-    | ty_tag term dot Symbol_identifier :: :: StructMember {{ tex [[term]] \, [[dot]] \, [[Symbol_identifier]] }}
+    | ty_tag term dot member :: :: StructMember {{ tex [[term]] \, [[dot]] \, [[member]] }}
 
   record_op :: '' ::= {{ auxparam 'bt }} {{ com SMT term for record operations }}
     % DEFER record update
-    | { </ Symbol_identifieri = termi // , // i /> } :: :: RecordValue
-    | term dot Symbol_identifier              :: :: RecordMember
+    | { </ memberi = termi // , // i /> } :: :: RecordValue
+    | term dot member              :: :: RecordMember
 
   pointer_op :: '' ::= {{ auxparam 'bt }} {{ com SMT term pointer operations }}
     | ( @ term , term' )   :: :: Pointer
@@ -669,10 +668,10 @@ grammar
     | pval                                                   ::   :: pval            {{ com pure values                                      }}
     | ctor_expr ( </ pvali // , // i /> )                    ::   :: ctor            {{ com data constructor application                     }}
     | array_shift ( pval1 , T_ct , pval2 )                   ::   :: array_shift     {{ com pointer array shift                              }}
-    | member_shift ( pval , Symbol_sym , Symbol_identifier ) ::   :: member_shift    {{ com pointer struct/union member shift                }}
+    | member_shift ( pval , Symbol_sym , member ) ::   :: member_shift    {{ com pointer struct/union member shift                }}
     | not ( pval )                                           ::   :: not             {{ com boolean not                                      }}
     | pval1 binop pval2                                      ::   :: op              {{ order [[binop]] [[ pval1 ]] [[ pval2 ]]              }} {{ com binary operations }}
-    | memberof  ( Symbol_sym , Symbol_identifier , pval )    ::   :: memberof        {{ com C struct/union member access                     }}
+    | memberof  ( Symbol_sym , member , pval )    ::   :: memberof        {{ com C struct/union member access                     }}
     | name ( </ pvali // , // i /> )                         ::   :: call            {{ com pure function call                               }}
     | assert_undef ( pval , ty_loc UB_name )                 ::   :: assert_undef    {{ com if $[[ pval ]]$ then UB for reason $[[UB_name]]$ }}
     | bool_to_integer ( pval )                               ::   :: bool_to_integer {{ com convert boolean $[[ pval ]]$ to integer          }}

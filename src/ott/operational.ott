@@ -200,11 +200,11 @@ defns
 
 
     x eq alloct [ to_int mem_id ]
-    inj ty_mem_ptr' eq inj ty_mem_ptr +ptr offsetof ty_tag Symbol_identifier
+    inj ty_mem_ptr' eq inj ty_mem_ptr +ptr offsetof ty_tag member
     alloct |- smt ( x dot base =< inj ty_mem_ptr' dot addr =< x dot base + x dot len )
-    pure_ret eq sigma y : loc . y = inj ty_mem_ptr +ptr offsetof ty_tag Symbol_identifier /\ I
+    pure_ret eq sigma y : loc . y = inj ty_mem_ptr +ptr offsetof ty_tag member /\ I
     --------------------------------------------------------------------- :: Member_Shift
-    alloct | < member_shift ( ty_mem_ptr , ty_tag , Symbol_identifier ) > --> < done ty_mem_ptr' : pure_ret >
+    alloct | < member_shift ( ty_mem_ptr , ty_tag , member ) > --> < done ty_mem_ptr' : pure_ret >
 
 
     inj bool_value eq inj ty_mem_ptr1 dot addr = inj ty_mem_ptr2 dot addr
@@ -239,7 +239,7 @@ defns
     _ | < bool_value1 bool_binop bool_value2 > --> < done bool_value : pure_ret >
 
 
-    % DEFER (not implemented) memberof ( Symbol_sym , Symbol_identifier , pval )
+    % DEFER (not implemented) memberof ( Symbol_sym , member , pval )
 
 
     ------------------------------------------------------------------- :: Assert_Undef
@@ -329,7 +329,7 @@ defns
    alloct | < h ; res_term > ||v < h' + { qpred_term ( oarg ) & cdot } ; qpred_term >
    qpred_term eq { x ; iguard . Owned < ct > ( ptrt + sizeof ct , ) }
    alloct |- smt ( forall x. iguard <-> ( z_zero =< x =< n - z_one ) )
-   x eq alloct [ ptrt dot id ]
+   x eq alloct [ ptrt dot alloc_id ]
    alloct |- smt ( x dot base =< ptrt dot addr /\ ptrt dot addr + sizeof ct * n  =< x dot base + x dot len )
    pred_term eq Owned < array n ct > ( ptrt , )
    oarg' dot sym_init  [ x ] eq oarg [ x ] dot sym_init
@@ -340,25 +340,25 @@ defns
 
    alloct | < h ; res_term > ||v < h' + { pred & None } ; pred_term >
    pred eq Owned < struct ty_tag > ( ptrt , ) ( oarg )
-   struct ty_tag & </ Symbol_identifieri : cti // i /> inEnv Globals
-   indexed </ ptrti eq ptrt +ptr offsetof ty_tag Symbol_identifieri // i />
+   struct ty_tag & </ memberi : cti // i /> inEnv Globals
+   indexed </ ptrti eq ptrt +ptr offsetof ty_tag memberi // i />
    indexed </ pred_termi eq Owned < cti > ( ptrti , ) // i />
-   indexed </ oargi dot sym_init  eq ty_tag oarg dot sym_init  dot Symbol_identifieri // i />
-   indexed </ oargi dot sym_value eq ty_tag oarg dot sym_value dot Symbol_identifieri // i />
+   indexed </ oargi dot sym_init  eq ty_tag oarg dot sym_init  dot memberi // i />
+   indexed </ oargi dot sym_value eq ty_tag oarg dot sym_value dot memberi // i />
    -------------------------------------------------------------------------- :: Explode
    alloct | < h ; explode ( res_term ) > ||v < h' + </ { pred_termi ( oargi ) & None } // i /> ; < </ pred_termi // i /> > >
 
 
    alloct | < h ;  res_term > ||v < h' + </ { pred_termi ( oargi ) & None } // i /> ; < </ pred_termi // i /> > >
-   struct ty_tag & </ Symbol_identifieri : cti // i /> inEnv Globals
+   struct ty_tag & </ memberi : cti // i /> inEnv Globals
    indexed pred_termi eq Owned < cti > ( ptrti , )
-   term eq ptrt0 dot addr - offsetof ty_tag Symbol_identifier0
-   alloct |- smt ( /\\ ( </ term = ptrti dot addr - offsetof ty_tag Symbol_identifieri /\ ptrt0 dot id = ptrti dot id // i /> ) )
-   x eq alloct [ ptrt0 dot id ]
+   term eq ptrt0 dot addr - offsetof ty_tag member0
+   alloct |- smt ( /\\ ( </ term = ptrti dot addr - offsetof ty_tag memberi /\ ptrt0 dot alloc_id = ptrti dot alloc_id // i /> ) )
+   x eq alloct [ ptrt0 dot alloc_id ]
    alloct |- smt ( x dot base =< ptrt dot addr /\ ptrt dot addr + sizeof struct ty_tag =< x dot base + x dot len )
-   pred_term eq Owned < struct ty_tag > ( ( ptrt0 dot id , term ) , )
-   indexed ty_tag oarg dot sym_init  dot Symbol_identifieri eq oargi dot sym_init
-   indexed ty_tag oarg dot sym_value dot Symbol_identifieri eq oargi dot sym_value
+   pred_term eq Owned < struct ty_tag > ( ( ptrt0 dot alloc_id , term ) , )
+   indexed ty_tag oarg dot sym_init  dot memberi eq oargi dot sym_init
+   indexed ty_tag oarg dot sym_value dot memberi eq oargi dot sym_value
    ---------------------------------------------------------------------------------------- :: Implode
    alloct | < h ; implode ( res_term , ty_tag ) > ||v < h' + { pred_term ( oarg ) & None } ; pred_term >
 
@@ -379,9 +379,9 @@ defns
    qpred_term eq { x ; iguard . a ( ptrt1 + step , </ iarg1i // i /> ) }
    pred_term eq a ( ptrt2  , </ iarg2i // i /> )
    term eq ( ptrt2 dot addr - ptrt1 dot addr ) / step
-   alloct |- smt ( ptrt1 dot id = ptrt2 dot id /\ ( ptrt2 dot addr2 = ptrt1 dot addr + term * step ) )
+   alloct |- smt ( ptrt1 dot alloc_id = ptrt2 dot alloc_id /\ ( ptrt2 dot addr2 = ptrt1 dot addr + term * step ) )
    alloct |- smt ( /\\ ( </ term / x ( iarg1i ) = iarg2i // i /> ) )
-   x eq alloct [ ptrt1 dot id ]
+   x eq alloct [ ptrt1 dot alloc_id ]
    alloct |- smt ( x dot base =< ptrt1 dot addr /\ ptrt2 dot addr + step =< x dot base + x dot len )
    qpred_term' eq { x ; iguard \/ x = term . a ( ptrt1 + step , </ iarg1i // i /> ) }
    ---------------------------------------------------------------------------------------------------------------------------- :: Glue
@@ -391,9 +391,9 @@ defns
    alloct | < h ; res_term > ||v < h' + { pred_term ( oarg ) & opt_def_heap } ; pred_term >
    pred_term eq a ( ptrt2 , </ iarg2i // i /> )
    term eq ( ptrt1 dot addr - ptrt2 dot addr ) / step
-   alloct |- smt ( ptrt1 dot id = ptrt2 dot id /\ ( ptrt2 dot addr2 = ptrt1 dot addr + term * step ) ) 
+   alloct |- smt ( ptrt1 dot alloc_id = ptrt2 dot alloc_id /\ ( ptrt2 dot addr2 = ptrt1 dot addr + term * step ) ) 
    alloct |- smt ( /\\ ( </ term / x ( iarg1i ) = iarg2i // i /> ) )
-   x eq alloct [ ptrt1 dot id ]
+   x eq alloct [ ptrt1 dot alloc_id ]
    alloct |- smt ( x dot base =< ptrt1 dot addr /\ ptrt2 dot addr + step =< x dot base + x dot len )
    qpred_term eq { x ; x = term . a ( ptrt1 + step , </ iarg1i // i /> ) }
    cdot ; cdot |- oarg => base_type
@@ -512,7 +512,7 @@ defns
     alloct | < h ; res_term > ||v < h1 + h2 ;  < pred_term1 , pred_term2 > >
     h2 eq </ { pred_termi ( termi ) & None } // i />
     indexed </ pred_termi eq Alloc ( ptrti , ) // i />
-    alloct |- smt ( to_int mem_id1 = to_int mem_id2 = ptrt1 dot id = ptrt2 dot id2 )
+    alloct |- smt ( to_int mem_id1 = to_int mem_id2 = ptrt1 dot alloc_id = ptrt2 dot alloc_id2 )
     alloct |- smt ( ptrt1 dot base =< to_int mem_addr1 =< ptrt1 dot base1 + term1 )
     alloct |- smt ( ptrt2 dot base =< to_int mem_addr2 =< ptrt2 dot base2 + term2 )
     inj bool_value eq to_int mem_addr1 ' rel_binop ' to_int mem_addr2
@@ -523,7 +523,7 @@ defns
 
     alloct | < h ; res_term > ||v < h1 + { pred_term ( term ) & None } ;  pred_term >
     pred_term eq Alloc ( ptrt , )
-    alloct |- smt ( to_int mem_id1 = to_int mem_id2 = ptrt dot id )
+    alloct |- smt ( to_int mem_id1 = to_int mem_id2 = ptrt dot alloc_id )
     alloct |- smt ( ptrt dot base =< ( to_int mem_addr1 , to_int mem_addr2 ) =< ptrt dot base + term )
     to_int ty_mem_int eq ( to_int mem_addr1 - to_int mem_addr2 ) / sizeof ct
     ret eq sigma y : integer . y = ( to_int mem_addr1 - to_int mem_addr2 ) / sizeof ct /\ res *o I
@@ -533,7 +533,7 @@ defns
 
     alloct | < h ; res_term > ||v < h1 + { pred_term ( term ) & None } ;  pred_term >
     pred_term eq Alloc ( ptrt , )
-    alloct |- smt ( to_int mem_id1 = to_int mem_id2 = ptrt dot id )
+    alloct |- smt ( to_int mem_id1 = to_int mem_id2 = ptrt dot alloc_id )
     alloct |- smt ( ptrt dot base =< ( to_int mem_addr1 , to_int mem_addr2 ) =< ptrt dot base + term )
     to_int ty_mem_int eq ( to_int mem_addr1 - to_int mem_addr2 ) / sizeof ct
     ret eq sigma y : integer . y = ( to_int mem_addr1 - to_int mem_addr2 ) / sizeof ct /\ res *o I
@@ -543,7 +543,7 @@ defns
 
     alloct | < h ; res_term > ||v < h' + { pred_term ( _t ) & None } ; pred_term >
     pred_term eq Alloc ( ptrt , )
-    alloct |- smt ( to_int mem_id = ptrt dot id /\ representable ( ct2 , to_int mem_addr ) )
+    alloct |- smt ( to_int mem_id = ptrt dot alloc_id /\ representable ( ct2 , to_int mem_addr ) )
     ret eq sigma y : integer . y = to_int mem_addr /\ pred_term ( _t ) *o I
     ---------------------------------------------------------------------------------- :: IntFromPtr
     _ | < h ; intFromPtr ( res_term | ct1 , ct2 , ( @ mem_id , mem_addr ) ) > --> < h' + { pred_term ( _t ) & None } ; done < mem_addr , pred_term > : ret >
@@ -551,10 +551,10 @@ defns
 
     alloct | < h ; res_term > ||v < h' + { pred_term ( oarg ) & None } ; pred_term >
     pred_term eq Owned < ct > ( ptrt , )
-    x eq alloct [ ptrt dot id ]
+    x eq alloct [ ptrt dot alloc_id ]
     alloct |- smt ( x dot base =< to_int mem_addr =< x dot base + x dot len )
-    inj ty_mem_ptr eq ( @ ptrt dot id , to_int mem_addr )
-    ret eq sigma y : loc . y = ( @ ptrt dot id , to_int mem_addr ) /\ pred_term ( oarg ) *o I
+    inj ty_mem_ptr eq ( @ ptrt dot alloc_id , to_int mem_addr )
+    ret eq sigma y : loc . y = ( @ ptrt dot alloc_id , to_int mem_addr ) /\ pred_term ( oarg ) *o I
     ---------------------------------------------------------------------------------------- :: PtrFromInt
     alloct | < h ; ptrFromInt ( res_term | ct1 , ct2 , mem_addr ) > --> < h' + { pred_term ( oarg ) & None } ; done < ty_mem_ptr , pred_term > : ret >
 
@@ -574,7 +574,7 @@ defns
     alloct | < h ; res_term > ||v < h' + { pred_term ( term ) & None } ; pred_term >
     pred_term eq Alloc ( ptrt , )
     inj ty_mem_ptr' eq inj ty_mem_ptr +ptr ( to_int ty_mem_int * sizeof ct )
-    alloct |- smt ( to_int mem_id = ptrt dot id /\ ptrt dot base =< inj ty_mem_ptr' dot addr =< ptrt dot base + term )
+    alloct |- smt ( to_int mem_id = ptrt dot alloc_id /\ ptrt dot base =< inj ty_mem_ptr' dot addr =< ptrt dot base + term )
     ret eq sigma y : loc . y = inj ty_mem_ptr +ptr ( to_int ty_mem_int * sizeof ct ) /\ pred_term ( term ) *o I
     --------------------------------------------------------------------------------------------- :: PtrArrayShift
     alloct | < h ; ptrArrayShift ( res_term | ty_mem_ptr ,  ct , ty_mem_int ) > --> < h ; done < ty_mem_ptr' , pred_term > : ret >

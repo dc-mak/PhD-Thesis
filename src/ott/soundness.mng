@@ -988,7 +988,7 @@ predicates in pattern-matching.\\[\baselineskip]
     \pf{} Like \ResSynPredOpsIterate, but with:\\
     $[[ res_term ]]= [[ explode ( res_term' ) ]]$\\
     $[[ res ]]     = [[ *S ( </ pred_termi ( oargi ) // i /> ) ]]$
-    where $[[ pred_termi ]] = [[ Owned < cti > ( ptrt +ptr offsetof ty_tag Symbol_identifieri , ) ]]$\\[\baselineskip]
+    where $[[ pred_termi ]] = [[ Owned < cti > ( ptrt +ptr offsetof ty_tag memberi , ) ]]$\\[\baselineskip]
 
     $[[ res' ]]    = [[ pred_term ( oarg ) ]]$
     where $[[ pred_term ]] = [[ Owned< struct ty_tag > ( ptrt , ) ]]$\\
@@ -1010,7 +1010,7 @@ predicates in pattern-matching.\\[\baselineskip]
     where $[[ pred_term ]] = [[ Owned < struct ty_tag > ( ptrt , ) ]]$\\[\baselineskip]
 
     $[[ res' ]] = [[ *S ( </ pred_termi ( oargi ) // i /> ) ]]$
-    where $[[ pred_termi ]] = [[ Owned < cti > ( ptrt +ptr offsetof ty_tag Symbol_identifieri , ) ]]$\\
+    where $[[ pred_termi ]] = [[ Owned < cti > ( ptrt +ptr offsetof ty_tag memberi , ) ]]$\\
     $[[ res_val' ]] = [[ </ pred_termi // i /> ]]$
     and $[[ nR'' ]] = [[ </ _ : pred_termi ( oargi ) // i /> ]]$,
     by lemma~\ref{subsec:non_cond_res_det_ctx_val}\\[\baselineskip]
@@ -1525,7 +1525,7 @@ arbitrary (not normalised).
 
         \step{<3>2}{$[[ exists ]] [[ nR1' ]] [[ . ]]$
         \begin{pfenum}
-            \item $[[ a eq xp : loc , </ xi : base_typei // i  /> , y : record </ Symbol_identifierj : base_type'j // j /> |-> res'' inEnv Globals ]]$
+            \item $[[ a eq xp : loc , </ xi : base_typei // i  /> , y : base_type |-> res'' inEnv Globals ]]$
             \item $[[ cdot ; cdot ; cdot ; nR1' |- def <= [ oarg / y , [ </ iarg / xi // i /> ] , ptrt / xp ] ( res'' ) ]]$
             \item $[[ alloct |- heap <= nR1' ]]$
         \end{pfenum}
@@ -1677,7 +1677,7 @@ arbitrary (not normalised).
         \pf{} By inversion on the typing assumption and \PureValObjPtr and \PureValObjInt.}
     
     \step{<2>2}{%
-        $[[ alloct |- smt ( x dot base =< inj ty_mem_ptr' =< x dot base + x dot len ) ]]$ for $[[x eq alloct [ inj ty_mem_ptr dot id ] ]]$.\\
+        $[[ alloct |- smt ( x dot base =< inj ty_mem_ptr' =< x dot base + x dot len ) ]]$ for $[[x eq alloct [ inj ty_mem_ptr dot alloc_id ] ]]$.\\
         \pf{} By inversion on the typing assumption and $[[ alloct <= N ]]$.}
 
     \step{<2>3}{%
@@ -1917,7 +1917,7 @@ arbitrary (not normalised).
         \pf{} By inversion on the typing assumption.}
 
     \step{<2>3}{%
-        $[[ alloct |- smt ( to_int mem_id1 = to_int mem_id2 = ptrt1 dot id = ptrt2 dot id2 ) ]]$\\
+        $[[ alloct |- smt ( to_int mem_id1 = to_int mem_id2 = ptrt1 dot alloc_id = ptrt2 dot alloc_id2 ) ]]$\\
         $[[ alloct |- smt ( ptrt1 dot base =< to_int mem_addr1 =< ptrt1 dot base1 + term1 ) ]]$\\
         $[[ alloct |- smt ( ptrt2 dot base =< to_int mem_addr2 =< ptrt2 dot base2 + term2 ) ]]$.\\
         \pf{} By inversion on the typing assumption and $[[ alloct <= N ]]$.}
@@ -1968,7 +1968,7 @@ arbitrary (not normalised).
         \pf{} By inversion on the typing assumption.}
 
     \step{<2>3}{%
-        $[[ alloct |- smt ( x dot base =< to_int mem_addr =< x dot base + x dot len ) ]]$ for $[[ x eq alloct [ ptrt dot id ] ]]$.\\
+        $[[ alloct |- smt ( x dot base =< to_int mem_addr =< x dot base + x dot len ) ]]$ for $[[ x eq alloct [ ptrt dot alloc_id ] ]]$.\\
         \pf{} By inversion on the typing assumption and $[[ alloct <= N ]]$.}
 
     \step{<2>4}{%
@@ -2630,7 +2630,7 @@ have ranges which are disjoint with allocations so far.}
     where $[[ ptrt = ( @ to_int mem_id , to_int mem_addr ) ]]$ and \lemmaref{subsec:res_term_red_sat},
     we must have $[[ A [ to_int mem_id ] = ( to_int mem_addr , sizeof ct , true ) ]]$.\\[\baselineskip]
 
-    \pflet{ $[[ A' ]] = [[ A [ inj ty_mem_ptr dot id ] := ( inj ty_mem_ptr dot addr , sizeof ct , false ) ]]$.\\[\baselineskip]}
+    \pflet{ $[[ A' ]] = [[ A [ inj ty_mem_ptr dot alloc_id ] := ( inj ty_mem_ptr dot addr , sizeof ct , false ) ]]$.\\[\baselineskip]}
 
     The premises of this step satisfy the premises of \VipKill{}.\\
     $[[ alloct ]]$ remains consistent with $[[ A' ]]$ (by premise 2 of \SatStateDef{}).}}
@@ -2656,7 +2656,7 @@ have ranges which are disjoint with allocations so far.}
     \lemmaref{subsec:res_term_red_sat}, and $[[ alloct ]]$ and $[[ A ]]$ are
     consistent (by premise 2 of \SatStateDef), we must have
     $[[ A [ to_int mem_id ] = ( to_int mem_addr , term , true ) ]]$ 
-    where $[[ ptrt dot id = to_int mem_id ]]$,
+    where $[[ ptrt dot alloc_id = to_int mem_id ]]$,
     and $[[ to_int mem_addr ]] \in \mathsf{value\_rnage([[ ct ]])}$ because
     $[[ representable ( ct , to_int mem_addr ) ]]$.\\[\baselineskip]
     
@@ -2674,7 +2674,7 @@ have ranges which are disjoint with allocations so far.}
     \pf{} Since , $[[ h' ]] = [[ h1 + { ptrt |- init - ct -> inj pval & None } ]]$,
     \lemmaref{subsec:res_term_red_sat}, and $[[ alloct ]]$ and $[[ A ]]$ are
     consistent (by premise 2 of \SatStateDef), we must have
-    $[[ A [ ptrt dot id ] = ( to_int mem_addr , term , true ) ]]$,
+    $[[ A [ ptrt dot alloc_id ] = ( to_int mem_addr , term , true ) ]]$,
     $[[ to_int mem_addr =< ptrt dot addr =< to_int mem_addr + term ]]$.\\[\baselineskip]
 
     We also know that $[[ sizeof ct =< term ]]$ (by construction in
@@ -2708,8 +2708,8 @@ have ranges which are disjoint with allocations so far.}
     \pf{} Since $[[ h' ]] = [[ h1 + { Alloc ( ptrt , ) ( term ) & None } ]]$,
     \lemmaref{subsec:res_term_red_sat}, and $[[ alloct ]]$ and $[[ A ]]$ are
     consistent (by premise 2 of \SatStateDef), we must have
-    $[[ to_int mem_id1 = to_int mem_id2  = ptrt dot id ]]$,
-    $[[ A [ ptrt dot id ] = ( ptrt dot base , term , true ) ]]$,
+    $[[ to_int mem_id1 = to_int mem_id2  = ptrt dot alloc_id ]]$,
+    $[[ A [ ptrt dot alloc_id ] = ( ptrt dot base , term , true ) ]]$,
     $[[ ptrt dot base =< ( to_int mem_addr1 , to_int mem_addr2 ) =< ptrt dot base + term ]]$,
     and $[[ to_int ty_mem_int eq ( to_int mem_addr1 - to_int mem_addr2 ) / sizeof ct ]]$.\\[\baselineskip]
 
@@ -2743,10 +2743,10 @@ have ranges which are disjoint with allocations so far.}
 }{%
     \pf{} Since $[[ h' ]] = [[ h1 + { Alloc ( ptrt1 , ) ( term1 ) & None } + { Alloc ( ptrt2 , ) ( term2 ) & None } ]]$,
     \lemmaref{subsec:res_term_red_sat}, and \SatHeapAlloc, we must have
-    $[[ A [ ptrt1 dot id ] = ( to_int mem_addr1' , term1 , true ) ]]$,
-    $[[ A [ ptrt2 dot id ] = ( to_int mem_addr1' , term2 , true ) ]]$.
+    $[[ A [ ptrt1 dot alloc_id ] = ( to_int mem_addr1' , term1 , true ) ]]$,
+    $[[ A [ ptrt2 dot alloc_id ] = ( to_int mem_addr1' , term2 , true ) ]]$.
     From the premise CN step, we also know
-    $[[ to_int mem_id1 = to_int mem_id2 = ptrt1 dot id = ptrt2 dot id2 ]]$,
+    $[[ to_int mem_id1 = to_int mem_id2 = ptrt1 dot alloc_id = ptrt2 dot alloc_id2 ]]$,
     $[[ ptrt1 dot base =< to_int mem_addr1 =< ptrt1 dot base1 + term1 ]]$,
     and $[[ ptrt2 dot base =< to_int mem_addr2 =< ptrt2 dot base2 + term2 ]]$.
     $[[ to_int mem_addr =< ptrt dot addr =< to_int mem_addr + term ]]$.\\[\baselineskip]

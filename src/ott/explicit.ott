@@ -91,7 +91,7 @@ grammar
   ty_extra :: 'ty_extra_' ::= {{ com extra judgements for explicit and inference typing systems }}
     | smt ( N => qterm )                                                     ::  :: smt                     {{ com check if $[[qterm]]$ is SMT-provable in constraint context $[[N]]$     }}
     | Symbol_sym : out_base_type inEnv C                                     ::  :: x_in_C                  {{ com lookup type of $[[Symbol_sym]]$ in context $[[C]]$                     }}
-    | struct ty_tag & </ out_Sym_idi : out_T_cti // i /> inEnv Globals       ::  :: struct_in_globals       {{ com lookup types of struct $[[ty_tag]]$ fields in $[[Globals]]$            }}
+    | struct ty_tag & </ out_memberi : out_T_cti // i /> inEnv Globals       ::  :: struct_in_globals       {{ com lookup types of struct $[[ty_tag]]$ members in $[[Globals]]$            }}
     | a eq </ out_xi : out_base_typei // , // i /> |-> out_res inEnv Globals ::  :: res_pred_in_globals     {{ com lookup body of resource predicate $[[a]]$ in $[[Globals]]$             }}
     | C |- ty_mem_value => mem base_type                                     ::  :: indexed_infer_mem_value {{ com dependent on memory object model                                       }}
                                                                                                             {{ tex [[C]] [[|-]] [[ty_mem_value]] [[=>]] \outpol{[[base_type]]}            }}
@@ -488,10 +488,10 @@ defns
     C |- array ( </ specified object_valuei // i /> ) => obj array base_type
 
 
-    struct ty_tag & </ Symbol_identifieri : cti // i /> inEnv Globals
+    struct ty_tag & </ memberi : cti // i /> inEnv Globals
     indexed </ C |- ty_mem_valuei => mem to_base ( cti ) // i />
     -------------------------------------------------------------------------------- :: Struct
-    C |- ( struct ty_tag ) { </ dot Symbol_identifieri : T_cti = ty_mem_valuei //  i /> } => obj struct ty_tag
+    C |- ( struct ty_tag ) { </ dot memberi : T_cti = ty_mem_valuei //  i /> } => obj struct ty_tag
 
 
     % DEFER (not implemented): union
@@ -570,10 +570,10 @@ defns
     C |- Specified ( pval ) => base_type
 
 
-    struct ty_tag & </ Symbol_identifieri : cti // i /> inEnv Globals
+    struct ty_tag & </ memberi : cti // i /> inEnv Globals
     indexed C |- pvali => to_base ( cti )
-    ------------------------------------------------------------------------------------------------ :: Struct
-    C |- ( struct ty_tag ) { </ dot Symbol_identifieri = pvali // i /> } => struct ty_tag
+    -------------------------------------------------------------------------------- :: Struct
+    C |- ( struct ty_tag ) { </ dot memberi : cti = pvali // i /> } => struct ty_tag
 
 
    % DEFER (not implemented) - union
@@ -605,18 +605,18 @@ defns
 
     C |- pval1 => loc
     C |- pval2 => integer
-    x eq allocv [ inj pval dot id ]
+    x eq allocv [ inj pval dot alloc_id ]
     smt ( N => x dot base =< inj pval1 dot addr + ( inj pval2 * sizeof ct ) =< x dot base + x dot len )
     ----------------------------------------------------------------- :: Array_Shift
     C ; L ; N |- array_shift ( pval1 , ct , pval2 ) => sigma y : loc . y = inj pval1 +ptr ( inj pval2 * sizeof ct ) /\ I
 
 
     C |- pval => loc
-    x eq allocv [ inj pval dot id ]
-    struct ty_tag & </ Symbol_identifieri : T_cti // i /> inEnv Globals
-    smt ( N => x dot base =< inj pval dot addr + offsetof ty_tag Symbol_identifierj =< x dot base + x dot len )
+    x eq allocv [ inj pval dot alloc_id ]
+    struct ty_tag & </ memberi : T_cti // i /> inEnv Globals
+    smt ( N => x dot base =< inj pval dot addr + offsetof ty_tag memberj =< x dot base + x dot len )
     ------------------------------------------------------------ :: Member_Shift
-    C ; L ; N |- member_shift ( pval , ty_tag , Symbol_identifierj ) => sigma y : loc . y = inj pval +ptr offsetof ty_tag Symbol_identifierj /\ I
+    C ; L ; N |- member_shift ( pval , ty_tag , memberj ) => sigma y : loc . y = inj pval +ptr offsetof ty_tag memberj /\ I
 
 
     C |- pval1 => loc
@@ -658,7 +658,7 @@ defns
     C ; L ; N |- name ( </ pvali // i /> ) => pure_ret
 
 
-    % DEFER (not implemented) memberof ( Symbol_sym , Symbol_identifier , pval )
+    % DEFER (not implemented) memberof ( Symbol_sym , member , pval )
 
 
     % DEFER conv_int -- complicated
@@ -751,7 +751,7 @@ defns
 
     C ; L ; N ; R |- res_term => ( *S x . iguard => ptrt |- ct -> oarg  )
     smt ( N => forall x . iguard <-> ( z_zero =< x =< n - z_one ) )
-    y1 eq allocv [ ptrt dot id ]
+    y1 eq allocv [ ptrt dot alloc_id ]
     smt ( N => y1 dot base =< ptrt dot addr /\ ptrt dot addr + sizeof ct * n  =< y1 dot base + y1 dot len )
     init [ y2 ]  eq oarg [ y2 ] dot sym_init
     valuet [ y2 ] eq oarg [ y2 ] dot sym_value
@@ -760,21 +760,21 @@ defns
 
 
     C ; L ; N ; R |- res_term => ptrt |- init - struct ty_tag -> valuet
-    struct ty_tag & </ Symbol_identifieri : cti // i /> inEnv Globals
+    struct ty_tag & </ memberi : cti // i /> inEnv Globals
     ------------------------------------------------------------------------ :: Explode
-    C ; L ; N ; R |- explode ( res_term ) => ops *S ( </ ptrt +ptr offsetof ty_tag Symbol_identifieri |- ty_tag init dot Symbol_identifieri - cti -> ty_tag valuet dot Symbol_identifieri // i /> )
+    C ; L ; N ; R |- explode ( res_term ) => ops *S ( </ ptrt +ptr offsetof ty_tag memberi |- ty_tag init dot memberi - cti -> ty_tag valuet dot memberi // i /> )
 
 
     C ; L ; N ; R |- res_term => *S ( </ ptrti |- initi - cti -> valueti // i /> )
-    struct ty_tag & </ Symbol_identifieri : cti // i /> inEnv Globals
-    term eq ptrt0 dot addr - offsetof ty_tag Symbol_identifier0
-    smt ( N => /\\ ( </ term = ptrti dot addr - offsetof ty_tag Symbol_identifieri /\ ptrt0 dot id = ptrti dot id // i /> ) )
-    x eq allocv [ ptrt0 dot id ]
+    struct ty_tag & </ memberi : cti // i /> inEnv Globals
+    term eq ptrt0 dot addr - offsetof ty_tag member0
+    smt ( N => /\\ ( </ term = ptrti dot addr - offsetof ty_tag memberi /\ ptrt0 dot alloc_id = ptrti dot alloc_id // i /> ) )
+    x eq allocv [ ptrt0 dot alloc_id ]
     smt ( N => x dot base =< term /\ term + sizeof struct ty_tag =< x dot base + x dot len )
-    indexed </ ty_tag init dot Symbol_identifieri eq initi // i />
-    indexed </ ty_tag valuet dot Symbol_identifieri eq valueti // i />
+    indexed </ ty_tag init dot memberi eq initi // i />
+    indexed </ ty_tag valuet dot memberi eq valueti // i />
     ----------------------------------------------------------------------------------------------- :: Implode
-    C ; L ; N ; R |- implode ( res_term , ty_tag ) => ops ( @ ptrt0 dot id , term ) |- init - struct ty_tag -> valuet
+    C ; L ; N ; R |- implode ( res_term , ty_tag ) => ops ( @ ptrt0 dot alloc_id , term ) |- init - struct ty_tag -> valuet
 
 
     C ; L |- term => integer
@@ -788,9 +788,9 @@ defns
 
     C ; L ; N ; R |- res_term => { x ; iguard . a ( ptrt1 + step , </ iarg1i // i /> ) } ( oarg1 ) * a ( ptrt2 , </ iarg2i // i /> ) ( oarg2 )
     term eq ( ptrt2 dot base - ptrt1 dot base ) / step
-    smt ( N => ptrt1 dot id = ptrt2 dot id /\ ( ptrt2 dot addr = ptrt1 dot addr + term * step ) )
+    smt ( N => ptrt1 dot alloc_id = ptrt2 dot alloc_id /\ ( ptrt2 dot addr = ptrt1 dot addr + term * step ) )
     smt ( N => /\\ ( </ ( term / x ( iarg1i ) ) = iarg2i // i /> ) )
-    x eq allocv [ ptrt1 dot id ]
+    x eq allocv [ ptrt1 dot alloc_id ]
     smt ( N => x dot base =< ptrt2 dot addr /\ ptrt2 dot addr + step =< x dot base + x dot len )
     ----------------------------------------------------------------- :: Glue
     C ; L ; N ; R |- glue ( res_term ) => ops { x ; iguard \/ x = term . a ( ptrt1 + step , </ iarg1i // i /> ) } ( oarg1 [ term ] := oarg2 )
@@ -798,9 +798,9 @@ defns
 
     C ; L ; N ; R |- res_term => a ( ptrt2 , </ iarg2i // i /> ) ( oarg )
     term eq ( ptrt2 dot addr - ptrt1 dot addr ) / step
-    smt ( N => ptrt1 dot id = ptrt2 dot id /\ ( ptrt2 dot addr = ptrt1 dot addr + term * step ) )
+    smt ( N => ptrt1 dot alloc_id = ptrt2 dot alloc_id /\ ( ptrt2 dot addr = ptrt1 dot addr + term * step ) )
     smt ( N => /\\ ( </ ( term / x ( iarg1i ) ) = iarg2i // i /> ) )
-    x eq allocv [ ptrt1 dot id ]
+    x eq allocv [ ptrt1 dot alloc_id ]
     smt ( N => x dot base =< ptrt1 dot addr /\ ptrt2 dot addr + step =< x dot base + x dot len )
     C ; L |- oarg => base_type
     ----------------------------------------------------------------- :: Inj
@@ -845,10 +845,10 @@ defns
 
     pred_term eq a ( ptrt , </ iargi // i /> )
     a != Owned < ct >
-    a eq xp : loc , </ xi : base_typei // i  /> , y : record </ Symbol_identifierj : base_type'j // j /> |-> res inEnv Globals
+    a eq xp : loc , </ xi : base_typei // i  /> , y : base_type |-> res inEnv Globals
     C ; L |- ptrt => loc
     indexed </ C ; L |- iargi => base_typei // i />
-    C ; L |- oarg => record </ Symbol_identifierj : base_type'j // j />
+    C ; L |- oarg => base_type
     C ; L ; N ; R |- res_term <= [ oarg / y , [ </ iargi / xi // i /> ] , ptrt / xp ] ( res )
     ----------------------------------------------------------------------------------------- :: Fold
     C ; L ; N ; R |- fold res_term : pred_term ( oarg ) => pred_term ( oarg )
@@ -963,7 +963,7 @@ defns
 
 
     C |- pval => integer
-    term eq representable ( ct * , yp ) /\ alignedI ( inj pval , yp ) /\ allocv [ yp dot id ] = ( yp dot base , sizeof ct )
+    term eq representable ( ct * , yp ) /\ alignedI ( inj pval , yp ) /\ allocv [ yp dot alloc_id ] = ( yp dot base , sizeof ct )
     ret eq ( yp |- const ct false - ct -> x ) *o Alloc ( yp , ) ( sizeof ct ) *o I
     ------------------------------------------------------------------------- :: Create
     C ; L ; N ; cdot |- create ( pval , ct ) Symbol_prefix => sigma yp : loc . term /\ exists x : to_base ( ct ) .  ret
@@ -1023,7 +1023,7 @@ defns
     C |- pval2 => loc
     C ; L ; N ; R |- res_term => res
     res eq Alloc ( ptrt1 , ) ( term1 ) * Alloc ( ptrt2 , ) ( term2 )
-    smt ( N => inj pval1 dot id = inj pval2 dot id = ptrt1 dot id = ptrt2 dot id )
+    smt ( N => inj pval1 dot alloc_id = inj pval2 dot alloc_id = ptrt1 dot alloc_id = ptrt2 dot alloc_id )
     smt ( N => ptrt1 dot base =< inj pval1 dot addr =< ptrt1 dot base + term1 )
     smt ( N => ptrt2 dot base =< inj pval2 dot addr =< ptrt2 dot base + term2 )
     ----------------------------------------------------------------------------- :: Rel_Binop
@@ -1035,7 +1035,7 @@ defns
     C |- pval2 => loc
     res eq Alloc ( ptrt , ) ( term )
     C ; L ; N ; R |- res_term => res
-    smt ( N => ptrt dot id = inj pval1 dot id = inj pval2 dot id ) 
+    smt ( N => ptrt dot alloc_id = inj pval1 dot alloc_id = inj pval2 dot alloc_id ) 
     smt ( N => ptrt dot base =< ( inj pval1 dot addr , inj pval2 dot addr ) =< ptrt dot base + term )
     -------------------------------- :: PtrDiff_Arr
     C ; L ; N ; R |- res_term | pval1 - array n ct - pval2 => sigma y : integer . y = ( x1 - x2 ) / sizeof ct /\ res *o I
@@ -1045,7 +1045,7 @@ defns
     C |- pval2 => loc
     res eq Alloc ( ptrt , ) ( term )
     C ; L ; N ; R |- res_term => res
-    smt ( N => ptrt dot id = inj pval1 dot id = inj pval2 dot id )
+    smt ( N => ptrt dot alloc_id = inj pval1 dot alloc_id = inj pval2 dot alloc_id )
     smt ( N => ptrt dot base =< ( inj pval1 dot addr , inj pval2 dot addr ) =< ptrt dot base + term )
     -------------------------------- :: PtrDiff
     C ; L ; N ; R |- res_term | pval1 - ct - pval2 => sigma y : integer . y = ( x1 - x2 ) / sizeof ct /\ res *o I
@@ -1054,7 +1054,7 @@ defns
     % Doesn't require a bounds check in VIP
     C |- pval => loc
     C ; L ; N ; R |- res_term => Alloc ( ptrt , ) ( _t )
-    smt ( N => inj pval dot id = ptrt dot id /\ representable ( ct2 , inj pval dot addr ) )
+    smt ( N => inj pval dot alloc_id = ptrt dot alloc_id /\ representable ( ct2 , inj pval dot addr ) )
     ----------------------------------------------------------------------------------------------------- :: IntFromPtr
     C ; L ; N ; R |- intFromPtr ( res_term | ct1 , ct2 , pval ) => sigma y : integer . y = inj pval dot addr /\ res *o I
 
@@ -1064,10 +1064,10 @@ defns
     % its input - thus forcing an appropriate pointer to be in the context.
     C |- pval => integer
     C ; L ; N ; R |- res_term => ptrt |- init - ct1 -> valuet
-    x eq allocv [ ptrt dot id ]
+    x eq allocv [ ptrt dot alloc_id ]
     smt ( N => x dot base =< inj pval =< x dot base + x dot len  )
     ----------------------------------- :: PtrFromInt
-    C ; L ; N ; R |- ptrFromInt ( res_term | ct1 , ct2 , pval ) => sigma y : loc . y = ( @ ptrt dot id , inj pval ) /\ res *o I
+    C ; L ; N ; R |- ptrFromInt ( res_term | ct1 , ct2 , pval ) => sigma y : loc . y = ( @ ptrt dot alloc_id , inj pval ) /\ res *o I
 
 
     % The implementation over-approximates the behaviour of PtrValidForDeref. It
@@ -1089,7 +1089,7 @@ defns
     C |- pval1 => loc
     C |- pval2 => integer
     C ; L ; N ; R |- res_term => Alloc ( ptrt ,  ) ( term )
-    smt ( N => inj pval dot id = ptrt dot id  /\ ptrt dot base =< inj pval1 dot addr + ( inj pval2 * sizeof ct ) =< ptrt dot base + term )
+    smt ( N => inj pval dot alloc_id = ptrt dot alloc_id  /\ ptrt dot base =< inj pval1 dot addr + ( inj pval2 * sizeof ct ) =< ptrt dot base + term )
     ----------------------------------------------------------------------------- :: PtrArrayShift
     C ; L ; N ; R |- ptrArrayShift ( res_term | pval1 ,  ct , pval2 ) => sigma y : loc . y = inj pval1 +ptr ( inj pval2 * sizeof ct ) /\ res *o I
 
