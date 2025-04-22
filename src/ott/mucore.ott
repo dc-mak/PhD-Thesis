@@ -179,11 +179,6 @@ metavar impl_const ::=
 
 grammar
 
-  tyvar_sym {{ tex id }} :: 'Tyvar_sym_' ::=  {{ com Ott-hack, ignore }}
-    | id :: :: id
-
-grammar
-
   ty_mem_int {{ tex mem\_int }} , mem_addr {{ tex addr }} , mem_id {{ tex id }} :: 'Ty_mem_int' ::=  {{ com memory integer value }}
     | mem_one  :: M :: One   {{ tex 1 }}
     | mem_zero :: M :: Zero  {{ tex 0 }}
@@ -614,8 +609,8 @@ grammar
 grammar
 
   ret , _r {{ tex \_ }} :: RetTy_ ::= {{ com return types }}
-    | sigma tyvar_sym : base_type . ret  :: :: Comp   {{ com return a computational value            }}
-    | exists tyvar_sym : base_type . ret :: :: Log    {{ com return a logical (output) value         }}
+    | sigma id : base_type . ret  :: :: Comp   {{ com return a computational value            }}
+    | exists id : base_type . ret :: :: Log    {{ com return a logical (output) value         }}
     | res *o ret                         :: :: Res    {{ com return a resource                       }}
     | term /\ ret                        :: :: Phi    {{ com guarantee a constraint (post-condition) }}
     | I                                  :: :: I      {{ com end return list                         }}
@@ -623,15 +618,15 @@ grammar
                                                       {{ com substitute $[[subs]]$ in $[[ret]]$      }}
 
   pure_ret :: Pure_RetTy_ ::= {{ com pure return types }}
-    | sigma tyvar_sym : base_type . pure_ret :: :: Comp
+    | sigma id : base_type . pure_ret :: :: Comp
     | term /\ pure_ret                       :: :: Phi
     | I                                      :: :: I
     | subs ( pure_ret )                      :: M :: Subs
                                                           {{ com substitute $[[subs]]$ in $[[pure_ret]]$   }}
 
   norm_ret {{ tex \norm{ret} }} :: Norm_RetTy_ ::= {{ com normalised return types }}
-    | sigma tyvar_sym : base_type . norm_ret  :: :: Comp
-    | exists tyvar_sym : base_type . norm_ret :: :: Log
+    | sigma id : base_type . norm_ret  :: :: Comp
+    | exists id : base_type . norm_ret :: :: Log
     | norm_res *o norm_ret                    :: :: NormRes
     | term /\ norm_ret                        :: :: Phi
     | I                                       :: :: I
@@ -1001,8 +996,8 @@ metavar ty_bt {{ tex }} ::=
 grammar
 
   fon {{ tex \mathit{fun} }} :: FunTy_ ::= {{ com function types }}
-    | pi tyvar_sym : base_type . fon     ::   :: Comp    {{ com assume a computational value        }}
-    | forall tyvar_sym : base_type . fon ::   :: Log     {{ com assume a logical value              }}
+    | pi id : base_type . fon     ::   :: Comp    {{ com assume a computational value        }}
+    | forall id : base_type . fon ::   :: Log     {{ com assume a logical value              }}
     | res --o fon                        ::   :: Res     {{ com assume a resource                   }}
     | term -) fon                        ::   :: Phi     {{ com assume a constraint (pre-condition) }}
     | ret                                ::   :: Ret     {{ com return a value of type $[[ret]]$    }}
@@ -1013,13 +1008,13 @@ grammar
                                                          {{ com substitute $[[subs]]$ in $[[fon]]$  }}
 
   pure_fun :: Pure_FunTy_ ::= {{ com pure function types }}
-    | pi tyvar_sym : base_type . pure_fun :: :: Comp
+    | pi id : base_type . pure_fun :: :: Comp
     | term -) pure_fun                    :: :: Phi
     | pure_ret                            :: :: Ret
 
   norm_fun {{ tex \norm{fun} }} :: NormFunTy_ ::= {{ com normalised function types }}
-    | pi tyvar_sym : base_type . norm_fun     ::   :: Comp    {{ com assume a computational value                 }}
-    | forall tyvar_sym : base_type . norm_fun ::   :: Log     {{ com assume a logical value                       }}
+    | pi id : base_type . norm_fun     ::   :: Comp    {{ com assume a computational value                 }}
+    | forall id : base_type . norm_fun ::   :: Log     {{ com assume a logical value                       }}
     | norm_res --o norm_fun                   ::   :: Res     {{ com assume a resource                            }}
     | term -) norm_fun                        ::   :: Phi     {{ com assume a constraint (pre-condition)          }}
     | norm_ret                                ::   :: Ret     {{ com return a value of type $[[norm_ret]]$        }}
