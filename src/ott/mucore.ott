@@ -119,8 +119,8 @@ grammar
     | unit                                   ::   :: Unit     {{ com unit                        }}
     | bool                                   ::   :: Bool     {{ com boolean                     }}
     | integer                                ::   :: Integer  {{ com integer                     }}
-    | loc                                    ::   :: Loc      {{ com pointers (record of allocation ID and integer address) }} {{ tex \mathTT{pointer} }}
-    | alloc_id                               ::   :: Alloc_id {{ com allocation IDs (integers)   }} {{ tex \mathTT{alloc\_id} }}
+    | loc                                    ::   :: Loc      {{ com pointers (record of allocation ID and integer address) }} {{ tex \mathtt{pointer} }}
+    | alloc_id                               ::   :: Alloc_id {{ com allocation IDs (integers)   }} {{ tex \mathtt{alloc\_id} }}
     | struct tag                             ::   :: Struct   {{ com C structs                   }}
     | record </ memberi : base_typei // i /> ::   :: Record   {{ com res. pred. output arguments }}
     | id_map                                 :: M :: IdMap    {{ com allocs to base and length   }}
@@ -202,14 +202,10 @@ grammar
 
 grammar
 
-  T_ct {{ tex \tau }} :: 'T_ct_of_' ::=  {{ com Ott-hack, ignore }}
-    | ct :: :: ct
+  % OUT_HACK|ct,\tau
+  out_ct {{ tex \outpol{ \tau } }}   :: 'Out_hack_' ::=  {{ com Ott-hack, ignore }}
+    | ct :: :: ct {{ tex \outpol{ [[ct]] } }}
 
-  % OUT_HACK|T_ct,\tau
-  out_T_ct {{ tex \outpol{ \tau } }}   :: 'Out_hack_' ::=  {{ com Ott-hack, ignore }}
-    | T_ct :: :: T_ct {{ tex \outpol{ [[T_ct]] } }}
-
-grammar
 
   Symbol_sym {{ tex id }} , Sym_x {{ tex x }} :: '' ::=  {{ com Ott-hack, ignore }}
     | id  :: :: id
@@ -224,11 +220,11 @@ grammar
 grammar
 
   object_value :: 'M_OV' ::=  {{ auxparam 'TY }} {{ com C object values (inhabitants of object types), which can be read/stored }}
-    | int                                                                    :: :: integer {{ com integer value  }}
-    | ptr                                                                    :: :: pointer {{ com pointer value  }}
-    | array ( </ object_valuei // , // i /> )                                :: :: array   {{ com C array value  }}
-    | ( struct Symbol_sym ) { </ dot memberi : T_cti = object_valuei // , // i /> } :: :: struct  {{ com C struct value }}
-    | ( union Symbol_sym ) { dot member = object_value }                            :: :: union   {{ com C union value  }}
+    | int                                                            :: :: integer {{ com integer value  }}
+    | ptr                                                            :: :: pointer {{ com pointer value  }}
+    | array ( </ object_valuei // , // i /> )                        :: :: array   {{ com C array value  }}
+    | ( struct tag ) { </ dot memberi = object_valuei // , // i /> } :: :: struct  {{ com C struct value }}
+    | ( union tag ) { dot member = object_value }                    :: :: union   {{ com C union value  }}
 
 
   T_bt {{ tex \beta }} :: 'T_bt_' ::=  {{ com Ott-hack, ignore }}
@@ -295,14 +291,14 @@ grammar
 grammar
 
   pval :: 'M_PV' ::= {{ aux ty_loc annots tyvar_TY _ }} {{ auxparam 'TY }} {{ com pure values }}
-    | Symbol_sym                                                               ::   :: Sym         {{ com Core identifier                           }}
-    | impl_const                                                               ::   :: ImplC       {{ com implementation-defined constant           }}
-    | value                                                                    ::   :: val         {{ com Core values                               }}
-    | constrained ( </ Mem_mem_iv_constrainti , pvali // , // i /> )           ::   :: constrained {{ com constrained value                         }}
-    | ctor_val ( </ pvali // , // i /> )                                       ::   :: ctor        {{ com data constructor application              }}
-    | ( struct Symbol_sym ) { </ dot memberi : T_cti = pvali // , // i /> } ::   :: struct      {{ com C struct expression                       }}
-    | ( union Symbol_sym ) { dot member = pval }                    ::   :: union       {{ com C union expression                        }}
-    | subs ( pval )                                                            :: M :: val_subs    {{ com substitution for pure values }}
+    | Symbol_sym                                                     ::   :: Sym         {{ com Core identifier                           }}
+    | impl_const                                                     ::   :: ImplC       {{ com implementation-defined constant           }}
+    | value                                                          ::   :: val         {{ com Core values                               }}
+    | constrained ( </ Mem_mem_iv_constrainti , pvali // , // i /> ) ::   :: constrained {{ com constrained value                         }}
+    | ctor_val ( </ pvali // , // i /> )                             ::   :: ctor        {{ com data constructor application              }}
+    | ( struct tag ) { </ dot memberi = pvali // , // i /> }         ::   :: struct      {{ com C struct expression                       }}
+    | ( union tag ) { dot member = pval }                            ::   :: union       {{ com C union expression                        }}
+    | subs ( pval )                                                  :: M :: val_subs    {{ com substitution for pure values }}
 
   pvals :: '' ::= {{ auxparam 'TY }} {{ com list of pure values }}
     | </ pvali // , // i /> ::   :: pvals
@@ -638,7 +634,7 @@ grammar
   pexpr :: 'M_PE' ::= {{ aux ty_loc annots tyvar_TY _ }} {{ auxparam 'TY }} {{ com pure expressions }}
     | pval                                                   ::   :: pval            {{ com pure values                                      }}
     | ctor_expr ( </ pvali // , // i /> )                    ::   :: ctor            {{ com data constructor application                     }}
-    | array_shift ( pval1 , T_ct , pval2 )                   ::   :: array_shift     {{ com pointer array shift                              }}
+    | array_shift ( pval1 ,   ct , pval2 )                   ::   :: array_shift     {{ com pointer array shift                              }}
     | member_shift ( pval , Symbol_sym , member ) ::   :: member_shift    {{ com pointer struct/union member shift                }}
     | not ( pval )                                           ::   :: not             {{ com boolean not                                      }}
     | pval1 binop pval2                                      ::   :: op              {{ order [[binop]] [[ pval1 ]] [[ pval2 ]]              }} {{ com binary operations }}
@@ -677,7 +673,7 @@ grammar
 
   m_kill_kind :: 'M_' ::=
     | dynamic     :: :: Dynamic
-    | static T_ct :: :: Static
+    | static   ct :: :: Static
 
 metavar Symbol_prefix {{ tex }} ::=
   {{ com Ott-hack, ignore (OCaml Symbol.prefix) }}

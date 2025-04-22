@@ -91,7 +91,7 @@ grammar
   ty_extra :: 'ty_extra_' ::= {{ com extra judgements for explicit and inference typing systems }}
     | smt ( N => qterm )                                                     ::  :: smt                     {{ com check if $[[qterm]]$ is SMT-provable in constraint context $[[N]]$     }}
     | Symbol_sym : out_base_type inEnv C                                     ::  :: x_in_C                  {{ com lookup type of $[[Symbol_sym]]$ in context $[[C]]$                     }}
-    | struct tag & </ out_memberi : out_T_cti // i /> inEnv Globals       ::  :: struct_in_globals       {{ com lookup types of struct $[[tag]]$ members in $[[Globals]]$            }}
+    | struct tag & </ out_memberi : out_cti // i /> inEnv Globals            ::  :: struct_in_globals       {{ com lookup types of struct $[[tag]]$ members in $[[Globals]]$            }}
     | a eq </ out_xi : out_base_typei // , // i /> |-> out_res inEnv Globals ::  :: res_pred_in_globals     {{ com lookup body of resource predicate $[[a]]$ in $[[Globals]]$             }}
     | C ; L |- term => out_base_type                                         ::  :: term_synth_type         {{ com omitted/assumed definition: $[[ term ]]$ is (a) well-formed (b) annotated with $[[out_base_type]]$ }}
     | pred_name1 != pred_name2                                               ::  :: pred_name_neq           {{ com check if $[[pred_name1]]$ and $[[pred_name2]]$ are unequal             }}
@@ -484,7 +484,7 @@ defns
     struct tag & </ memberi : cti // i /> inEnv Globals
     indexed </ C |- valuei => to_base ( cti ) // i />
     -------------------------------------------------------------------------------- :: Struct
-    C |- ( struct tag ) { </ dot memberi : T_cti = object_valuei //  i /> } => obj struct tag
+    C |- ( struct tag ) { </ dot memberi = object_valuei //  i /> } => obj struct tag
 
 
     % DEFER (not implemented): union
@@ -556,7 +556,7 @@ defns
     struct tag & </ memberi : cti // i /> inEnv Globals
     indexed C |- pvali => to_base ( cti )
     -------------------------------------------------------------------------------- :: Struct
-    C |- ( struct tag ) { </ dot memberi : cti = pvali // i /> } => struct tag
+    C |- ( struct tag ) { </ dot memberi = pvali // i /> } => struct tag
 
 
    % DEFER (not implemented) - union
@@ -596,7 +596,7 @@ defns
 
     C |- pval => loc
     x eq allocv [ inj pval dot alloc_id ]
-    struct tag & </ memberi : T_cti // i /> inEnv Globals
+    struct tag & </ memberi : cti // i /> inEnv Globals
     smt ( N => x dot base =< inj pval dot addr + offsetof tag memberj =< x dot base + x dot len )
     ------------------------------------------------------------ :: Member_Shift
     C ; L ; N |- member_shift ( pval , tag , memberj ) => sigma y : loc . y = inj pval +ptr offsetof tag memberj /\ I
