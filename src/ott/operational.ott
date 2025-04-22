@@ -22,8 +22,8 @@ grammar
 
   opsem_extra :: 'opsem_extra_' ::= {{ com extra judgements for operational semantics }}
     | forall i lt j . not ( pati = pval ~> subsi )     ::   :: forall_i_lt_j_not_decons {{ com all patterns prior to $[[j]]$ failed to match/deconstruct        }}
-    | ty_mem_int notIn dom ( alloct )                  ::   :: fresh_alloc_id           {{ com $ @ [[ty_mem_int]]$ is a fresh allocation id                     }}
-    | ty_mem_int inEnv newAlloc ( heap , pval , term ) ::   :: newAlloc                 {{ com set of new addresses for an allocation                           }}
+    | int notIn dom ( alloct )                  ::   :: fresh_alloc_id           {{ com $ @ [[int]]$ is a fresh allocation id                     }}
+    | int inEnv newAlloc ( heap , pval , term ) ::   :: newAlloc                 {{ com set of new addresses for an allocation                           }}
     | heap eq heap'                                    ::   :: heap_abbrev              {{ com heap abbreviations                                               }}
 
 defns
@@ -183,23 +183,23 @@ defns
 
   defn term | < pexpr > --> < tpexpr : pure_ret > :: :: PE_TP :: PE_TP_ by
 
-    to_int ty_mem_int eq xor_uf ( to_int ty_mem_int1 , to_int ty_mem_int2 )
-    pure_ret eq sigma y : integer . y = xor_uf ( to_int ty_mem_int1 , to_int ty_mem_int2 )  /\ I
+    int eq xor_uf ( int1 , int2 )
+    pure_ret eq sigma y : integer . y = xor_uf ( int1 , int2 )  /\ I
     -------------------------------------------------------------------------- :: Ctor_IvXOR
-    _ | < ctor_expr ( ty_mem_int1 , ty_mem_int2 ) > --> < done ty_mem_int : pure_ret >
+    _ | < ctor_expr ( int1 , int2 ) > --> < done int : pure_ret >
 
     % DEFER (not implemented) other ctor_expr
     % ctor_expr ( </ pvali // , // i /> )
 
-    x eq alloct [ to_int mem_id ]
-    inj ty_mem_ptr' eq inj ty_mem_ptr +ptr ( to_int ty_mem_int * sizeof ct )
+    x eq alloct [ alloc_id ]
+    inj ty_mem_ptr' eq inj ty_mem_ptr +ptr ( int * sizeof ct )
     alloct |- smt ( x dot base =< inj ty_mem_ptr' =< x dot base + x dot len )
-    pure_ret eq sigma y : loc . y = inj ty_mem_ptr +ptr ( to_int ty_mem_int * sizeof ct ) /\ I
+    pure_ret eq sigma y : loc . y = inj ty_mem_ptr +ptr ( int * sizeof ct ) /\ I
     --------------------------------------------------------------------------- :: Array_Shift
-    alloct | < array_shift ( ty_mem_ptr , T_ct , ty_mem_int ) > --> < done ty_mem_ptr' : pure_ret >
+    alloct | < array_shift ( ty_mem_ptr , T_ct , int ) > --> < done ty_mem_ptr' : pure_ret >
 
 
-    x eq alloct [ to_int mem_id ]
+    x eq alloct [ alloc_id ]
     inj ty_mem_ptr' eq inj ty_mem_ptr +ptr offsetof tag member
     alloct |- smt ( x dot base =< inj ty_mem_ptr' dot addr =< x dot base + x dot len )
     pure_ret eq sigma y : loc . y = inj ty_mem_ptr +ptr offsetof tag member /\ I
@@ -221,16 +221,16 @@ defns
     _ | < not ( False ) > --> < done True : sigma y : bool . y = neg inj False /\ I >
 
 
-    to_int ty_mem_int eq to_int ty_mem_int1 ' arith_binop ' to_int ty_mem_int2
-    pure_ret eq sigma y : integer . y = to_int ty_mem_int1 ' arith_binop ' to_int ty_mem_int2 /\ I
+    int eq int1 ' arith_binop ' int2
+    pure_ret eq sigma y : integer . y = int1 ' arith_binop ' int2 /\ I
     ----------------------------------------------------------------- :: Arith_Binop
-    _ | < ty_mem_int1 arith_binop ty_mem_int2 > --> < done ty_mem_int : pure_ret >
+    _ | < int1 arith_binop int2 > --> < done int : pure_ret >
 
 
-    inj bool_value eq to_int ty_mem_int1 ' rel_binop ' to_int ty_mem_int2
-    pure_ret eq sigma y : bool . y = to_int ty_mem_int1 ' rel_binop ' to_int ty_mem_int2 /\ I
+    inj bool_value eq int1 ' rel_binop ' int2
+    pure_ret eq sigma y : bool . y = int1 ' rel_binop ' int2 /\ I
     ------------------------------------------------------------------ :: Rel_Binop
-    _ | < ty_mem_int1 rel_binop ty_mem_int2 > --> < done bool_value : pure_ret >
+    _ | < int1 rel_binop int2 > --> < done bool_value : pure_ret >
 
 
     inj bool_value eq inj bool_value1 ' bool_binop ' inj bool_value2
@@ -247,20 +247,20 @@ defns
 
 
     ---------------------------------------------------- :: Bool_To_Integer_True
-    _ | < bool_to_integer ( True ) > --> < done mem_one : sigma y : integer . y = to_int mem_one /\ I >
+    _ | < bool_to_integer ( True ) > --> < done 1 : sigma y : integer . y = 1 /\ I >
 
 
     ---------------------------------------------------- :: Bool_To_Integer_False
-    _ | < bool_to_integer ( False ) > --> < done mem_zero : sigma y : integer . y = to_int mem_zero /\ I >
+    _ | < bool_to_integer ( False ) > --> < done 0 : sigma y : integer . y = 0 /\ I >
 
     % DEFER conv_int ( ty_act , pval )
 
     abbrev1 eq max_int ct - min_int ct + z_one
     abbrev2 eq inj pval REM abbrev1
-    to_int ty_mem_int' eq if abbrev2 =< max_int ct then abbrev2 else abbrev2 - abbrev1
-    pure_ret eq sigma y : integer . y = to_int ty_mem_int' /\ I
+    int' eq if abbrev2 =< max_int ct then abbrev2 else abbrev2 - abbrev1
+    pure_ret eq sigma y : integer . y = int' /\ I
     ------------------------------------------------------------------------------- :: WrapI
-    _ | < wrapI ( ty_act , ty_mem_int ) > --> < done ty_mem_int' : pure_ret >
+    _ | < wrapI ( ty_act , int ) > --> < done int' : pure_ret >
 
 
     name : pure_fun eq </ xi // i /> |-> tpexpr inEnv Globals
@@ -467,16 +467,16 @@ defns
   defn < s ; action  > --> < s' ; is_expr > :: :: Action_Is :: Action_Is_ by
 
 
-    mem_addr inEnv newAlloc ( h , pval , sizeof ct )
-    mem_id notIn dom ( alloct )
-    inj ty_mem_ptr eq ( @ to_int mem_id , to_int mem_addr )
+    addr inEnv newAlloc ( h , pval , sizeof ct )
+    alloc_id notIn dom ( alloct )
+    inj ty_mem_ptr eq ( @ alloc_id , addr )
     pt eq inj ty_mem_ptr |- const ct false - ct -> default to_base ( ct )
     ret eq sigma yp : loc . term /\ exists x : to_base ( ct ) . ( yp |- const ct false - ct -> x ) *o Alloc ( yp , ) ( sizeof ct ) *o I
-    term eq representable ( ct * , inj ty_mem_ptr ) /\ alignedI ( to_int ty_mem_int , inj ty_mem_ptr ) /\ allocv [ to_int mem_id ] = ( to_int mem_addr , sizeof ct )
+    term eq representable ( ct * , inj ty_mem_ptr ) /\ alignedI ( int , inj ty_mem_ptr ) /\ allocv [ alloc_id ] = ( addr , sizeof ct )
     alloct |- smt ( term )
     h' eq h + { pt & None } + { Alloc ( inj ty_mem_ptr , ) ( sizeof ct ) & None }
     ------------------------------------------------------------------------- :: Create
-    < alloct ; h ; create ( ty_mem_int , ct ) Symbol_prefix > --> < alloct [ to_int mem_id ] := ( to_int mem_addr , sizeof ct ) ;  h' ; done < ty_mem_ptr , default to_base ( ct ), Owned < ct > ( inj ty_mem_ptr , ) , Alloc ( inj ty_mem_ptr , ) > : ret >
+    < alloct ; h ; create ( int , ct ) Symbol_prefix > --> < alloct [ alloc_id ] := ( addr , sizeof ct ) ;  h' ; done < ty_mem_ptr , default to_base ( ct ), Owned < ct > ( inj ty_mem_ptr , ) , Alloc ( inj ty_mem_ptr , ) > : ret >
 
 
     % DEFER relax this rule - loading a (partially) undefined struct is fine
@@ -512,51 +512,51 @@ defns
     alloct | < h ; res_term > ||v < h1 + h2 ;  < pred_term1 , pred_term2 > >
     h2 eq </ { pred_termi ( termi ) & None } // i />
     indexed </ pred_termi eq Alloc ( ptrti , ) // i />
-    alloct |- smt ( to_int mem_id1 = to_int mem_id2 = ptrt1 dot alloc_id = ptrt2 dot alloc_id2 )
-    alloct |- smt ( ptrt1 dot base =< to_int mem_addr1 =< ptrt1 dot base1 + term1 )
-    alloct |- smt ( ptrt2 dot base =< to_int mem_addr2 =< ptrt2 dot base2 + term2 )
-    inj bool_value eq to_int mem_addr1 ' rel_binop ' to_int mem_addr2
-    ret eq sigma y : bool . y = ( to_int mem_addr1 ' rel_binop ' to_int mem_addr2 ) /\ pred_term1 ( term1 ) * pred_term2 ( term2 ) *o I
+    alloct |- smt ( alloc_id1 = alloc_id2 = ptrt1 dot alloc_id = ptrt2 dot alloc_id2 )
+    alloct |- smt ( ptrt1 dot base =< addr1 =< ptrt1 dot base + term1 )
+    alloct |- smt ( ptrt2 dot base =< addr2 =< ptrt2 dot base + term2 )
+    inj bool_value eq addr1 ' rel_binop ' addr2
+    ret eq sigma y : bool . y = ( addr1 ' rel_binop ' addr2 ) /\ pred_term1 ( term1 ) * pred_term2 ( term2 ) *o I
     -------------------------------------------------------------------------------------------------------------- :: Rel_Binop
-    alloct | < h ; res_term | ( @ mem_id1 , mem_addr1 ) rel_binop ( @ mem_id2 , mem_addr2 ) > --> < h1 + h2 ; done < bool_value , < pred_term1 , pred_term2 > > : ret >
+    alloct | < h ; res_term | ( @ alloc_id1 , addr1 ) rel_binop ( @ alloc_id2 , addr2 ) > --> < h1 + h2 ; done < bool_value , < pred_term1 , pred_term2 > > : ret >
 
 
     alloct | < h ; res_term > ||v < h1 + { pred_term ( term ) & None } ;  pred_term >
     pred_term eq Alloc ( ptrt , )
-    alloct |- smt ( to_int mem_id1 = to_int mem_id2 = ptrt dot alloc_id )
-    alloct |- smt ( ptrt dot base =< ( to_int mem_addr1 , to_int mem_addr2 ) =< ptrt dot base + term )
-    to_int ty_mem_int eq ( to_int mem_addr1 - to_int mem_addr2 ) / sizeof ct
-    ret eq sigma y : integer . y = ( to_int mem_addr1 - to_int mem_addr2 ) / sizeof ct /\ res *o I
+    alloct |- smt ( alloc_id1 = alloc_id2 = ptrt dot alloc_id )
+    alloct |- smt ( ptrt dot base =< ( addr1 , addr2 ) =< ptrt dot base + term )
+    int eq ( addr1 - addr2 ) / sizeof ct
+    ret eq sigma y : integer . y = ( addr1 - addr2 ) / sizeof ct /\ res *o I
     -------------------------------------------------------------------------------------------------------------- :: PtrDiff_Arr
-    alloct | < h ; res_term | ( @ mem_id1 , mem_addr1 ) - array n ct - ( @ mem_id2 , mem_addr2 ) > --> < h1 + { pred_term ( term ) & None } ; done < ty_mem_int , pred_term > : ret >
+    alloct | < h ; res_term | ( @ alloc_id1 , addr1 ) - array n ct - ( @ alloc_id2 , addr2 ) > --> < h1 + { pred_term ( term ) & None } ; done < int , pred_term > : ret >
 
 
     alloct | < h ; res_term > ||v < h1 + { pred_term ( term ) & None } ;  pred_term >
     pred_term eq Alloc ( ptrt , )
-    alloct |- smt ( to_int mem_id1 = to_int mem_id2 = ptrt dot alloc_id )
-    alloct |- smt ( ptrt dot base =< ( to_int mem_addr1 , to_int mem_addr2 ) =< ptrt dot base + term )
-    to_int ty_mem_int eq ( to_int mem_addr1 - to_int mem_addr2 ) / sizeof ct
-    ret eq sigma y : integer . y = ( to_int mem_addr1 - to_int mem_addr2 ) / sizeof ct /\ res *o I
+    alloct |- smt ( alloc_id1 = alloc_id2 = ptrt dot alloc_id )
+    alloct |- smt ( ptrt dot base =< ( addr1 , addr2 ) =< ptrt dot base + term )
+    int eq ( addr1 - addr2 ) / sizeof ct
+    ret eq sigma y : integer . y = ( addr1 - addr2 ) / sizeof ct /\ res *o I
     -------------------------------------------------------------------------------------------------------------- :: PtrDiff
-    alloct | < h ; res_term | ( @ mem_id1 , mem_addr1 ) - ct - ( @ mem_id2 , mem_addr2 ) > --> < h1 + { pred_term ( term ) & None } ; done < ty_mem_int , pred_term > : ret >
+    alloct | < h ; res_term | ( @ alloc_id1 , addr1 ) - ct - ( @ alloc_id2 , addr2 ) > --> < h1 + { pred_term ( term ) & None } ; done < int , pred_term > : ret >
 
 
     alloct | < h ; res_term > ||v < h' + { pred_term ( _t ) & None } ; pred_term >
     pred_term eq Alloc ( ptrt , )
-    alloct |- smt ( to_int mem_id = ptrt dot alloc_id /\ representable ( ct2 , to_int mem_addr ) )
-    ret eq sigma y : integer . y = to_int mem_addr /\ pred_term ( _t ) *o I
+    alloct |- smt ( alloc_id = ptrt dot alloc_id /\ representable ( ct2 , addr ) )
+    ret eq sigma y : integer . y = addr /\ pred_term ( _t ) *o I
     ---------------------------------------------------------------------------------- :: IntFromPtr
-    _ | < h ; intFromPtr ( res_term | ct1 , ct2 , ( @ mem_id , mem_addr ) ) > --> < h' + { pred_term ( _t ) & None } ; done < mem_addr , pred_term > : ret >
+    _ | < h ; intFromPtr ( res_term | ct1 , ct2 , ( @ alloc_id , addr ) ) > --> < h' + { pred_term ( _t ) & None } ; done < addr , pred_term > : ret >
 
 
     alloct | < h ; res_term > ||v < h' + { pred_term ( oarg ) & None } ; pred_term >
     pred_term eq Owned < ct > ( ptrt , )
     x eq alloct [ ptrt dot alloc_id ]
-    alloct |- smt ( x dot base =< to_int mem_addr =< x dot base + x dot len )
-    inj ty_mem_ptr eq ( @ ptrt dot alloc_id , to_int mem_addr )
-    ret eq sigma y : loc . y = ( @ ptrt dot alloc_id , to_int mem_addr ) /\ pred_term ( oarg ) *o I
+    alloct |- smt ( x dot base =< addr =< x dot base + x dot len )
+    inj ty_mem_ptr eq ( @ ptrt dot alloc_id , addr )
+    ret eq sigma y : loc . y = ( @ ptrt dot alloc_id , addr ) /\ pred_term ( oarg ) *o I
     ---------------------------------------------------------------------------------------- :: PtrFromInt
-    alloct | < h ; ptrFromInt ( res_term | ct1 , ct2 , mem_addr ) > --> < h' + { pred_term ( oarg ) & None } ; done < ty_mem_ptr , pred_term > : ret >
+    alloct | < h ; ptrFromInt ( res_term | ct1 , ct2 , addr ) > --> < h' + { pred_term ( oarg ) & None } ; done < ty_mem_ptr , pred_term > : ret >
 
 
     inj bool_value eq aligned ( ct , inj ty_mem_ptr )
@@ -573,11 +573,11 @@ defns
 
     alloct | < h ; res_term > ||v < h' + { pred_term ( term ) & None } ; pred_term >
     pred_term eq Alloc ( ptrt , )
-    inj ty_mem_ptr' eq inj ty_mem_ptr +ptr ( to_int ty_mem_int * sizeof ct )
-    alloct |- smt ( to_int mem_id = ptrt dot alloc_id /\ ptrt dot base =< inj ty_mem_ptr' dot addr =< ptrt dot base + term )
-    ret eq sigma y : loc . y = inj ty_mem_ptr +ptr ( to_int ty_mem_int * sizeof ct ) /\ pred_term ( term ) *o I
+    inj ty_mem_ptr' eq inj ty_mem_ptr +ptr ( int * sizeof ct )
+    alloct |- smt ( alloc_id = ptrt dot alloc_id /\ ptrt dot base =< inj ty_mem_ptr' dot addr =< ptrt dot base + term )
+    ret eq sigma y : loc . y = inj ty_mem_ptr +ptr ( int * sizeof ct ) /\ pred_term ( term ) *o I
     --------------------------------------------------------------------------------------------- :: PtrArrayShift
-    alloct | < h ; ptrArrayShift ( res_term | ty_mem_ptr ,  ct , ty_mem_int ) > --> < h ; done < ty_mem_ptr' , pred_term > : ret >
+    alloct | < h ; ptrArrayShift ( res_term | ty_mem_ptr ,  ct , int ) > --> < h ; done < ty_mem_ptr' , pred_term > : ret >
 
 
   defn < s ; is_expr  > --> < s' ; is_expr' > :: :: Is_Is :: Is_Is_ by

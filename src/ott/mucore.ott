@@ -79,13 +79,14 @@ grammar
     | dec    ::  :: decrement {{ com decrement a number by 1 }}
 
 
-  int , _int {{ tex \_ }} , step :: 'Int_' ::=    {{ com integer }}
+  int , _int {{ tex \_ }} , step , addr , alloc_id :: 'Int_' ::=    {{ com integer }}
     | n                ::   :: IndexVar    {{ com literal integer }}
     | 1                :: X :: One
+    | 0                :: X :: Zero
     | sizeof ct        :: M :: of_Ctype    {{ tex \symrm{sizeof}( [[ct]] )         }}
                                            {{ com size of a C type                  }}
-   | stackdepth ( S )  :: M :: stackdepth  {{ tex \mathrm{stackdepth}([[S]]) }}
-   | incdec ( n )      :: M :: incdec      {{ tex [[incdec]]([[n]]) }}
+    | stackdepth ( S ) :: M :: stackdepth  {{ tex \mathrm{stackdepth}([[S]]) }}
+    | incdec ( n )     :: M :: incdec      {{ tex [[incdec]]([[n]]) }}
 
 
 grammar
@@ -99,6 +100,20 @@ grammar
 metavar tag ::=  {{ com unique identifier for struct/union type }}
 
 grammar
+
+  member :: 'Member_' ::= {{ com record or C struct/union member name }}
+    | alloc_id  :: :: Alloc_id {{ tex \mathrm{alloc\_id} }}
+    | addr      :: :: Addr     {{ tex \mathrm{addr} }}
+    | base      :: :: Base     {{ tex \mathrm{base} }}
+    | len       :: :: Len      {{ tex \mathrm{len} }}
+    | sym_init  :: :: Init     {{ tex \mathrm{init} }}
+    | sym_value :: :: value    {{ tex \mathrm{value} }}
+
+
+  % OUT_HACK|member
+  out_member {{ tex \outpol{ member } }}   :: 'Out_hack_' ::=  {{ com Ott-hack, ignore }}
+    | member :: :: member {{ tex \outpol{ [[member]] } }}
+
 
   base_type {{ tex \beta }} , _bt {{ tex \_ }} :: 'Bt_' ::= {{ com base types }}
     | unit                                   ::   :: Unit     {{ com unit                        }}
@@ -177,21 +192,6 @@ grammar
 metavar impl_const ::=
   {{ com implementation-defined constant }}
 
-grammar
-
-  ty_mem_int {{ tex mem\_int }} , mem_addr {{ tex addr }} , mem_id {{ tex id }} :: 'Ty_mem_int' ::=  {{ com memory integer value }}
-    | mem_one  :: M :: One   {{ tex 1 }}
-    | mem_zero :: M :: Zero  {{ tex 0 }}
-
-metavar member , alloc_id , base , len , addr , sym_init {{ tex init }} , sym_value {{ tex value }} ::=
-  {{ com C struct/union member name }}
-
-grammar
-
-  % OUT_HACK|member
-  out_member {{ tex \outpol{ member } }}   :: 'Out_hack_' ::=  {{ com Ott-hack, ignore }}
-    | member :: :: member {{ tex \outpol{ [[member]] } }}
-
 metavar annots {{ tex }} ::=
   {{ com Ott-hack, ignore (annotations) }}
 
@@ -199,10 +199,11 @@ metavar ty_nat {{ tex nat }} ::=
   {{ com OCaml arbitrary-width natural number }}
 
 grammar
+
   ty_mem_ptr {{ tex mem\_ptr }} :: 'Ty_mem_ptr_' ::=  {{ com pointer above VIP model }}
-    | ( @ ty_mem_int , ty_mem_int' ) :: :: PVloc     {{ com pointer with provenance (allocation id) }}
+    | ( @ int , int' ) :: :: PVloc     {{ com pointer with provenance (allocation id) }}
+    | NULL             :: :: PVnull    {{ com null pointer                            }}
 % Not worth extra complication of rules
-%   | NULL                           :: :: PVnull    {{ com null pointer                            }}
 %   | Symbol_sym                     :: :: PVfunptr  {{ com function pointer                        }}
 
 metavar ty_mem_value {{ tex mem\_val }} ::=
@@ -232,7 +233,7 @@ grammar
 grammar
 
   object_value :: 'M_OV' ::=  {{ auxparam 'TY }} {{ com C object values (inhabitants of object types), which can be read/stored }}
-    | ty_mem_int                                                                                :: :: integer {{ com integer value  }}
+    | int                                                                                :: :: integer {{ com integer value  }}
     | ty_mem_ptr                                                                                :: :: pointer {{ com pointer value  }}
     | array ( </ loaded_valuei // , // i /> )                                                   :: :: array   {{ com C array value  }}
     | ( struct Symbol_sym ) { </ dot memberi : T_cti = ty_mem_valuei // , // i /> }  :: :: struct  {{ com C struct value }}
@@ -359,8 +360,6 @@ grammar
     | i                           :: M :: of_index
                                                      {{ com literal integer                          }}
     | int                      :: M :: of_int
-    | to_int ty_mem_int           :: M :: of_mem_int
-                                                     {{ tex [[ty_mem_int]] }} {{ com convert $[[ty_mem_int]]$ to an integer }}
     | offsetof tag member :: M :: of_Member
 
       {{ tex \symrm{offset\_of}_{ [[tag]] }( [[member]] )                 }}
@@ -989,6 +988,7 @@ grammar
     | |=      :: :: models    {{ tex \models                          }}
     | dd      :: :: twodot    {{ tex \mathbin{ {.} {.} }              }}
     | 1       :: :: one
+    | 0       :: :: zero
 
 metavar ty_bt {{ tex }} ::=
   {{ com Ott-hack, ignore (OCaml type variable bt) }}

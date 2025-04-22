@@ -418,25 +418,25 @@ defns
   ( A , [| |] ) |= cdot
 
 
-  meta A [ to_int mem_id ] = ( to_int mem_addr , term , true )
-  forall i .  i != to_int mem_id -> A [ i ] = ( _t , _t , false )
+  meta A [ alloc_id ] = ( addr , term , true )
+  forall i .  i != alloc_id -> A [ i ] = ( _t , _t , false )
   -------------------------------------------------------------------------- :: Alloc
-  ( A , [| |] ) |= { Alloc ( ( @ to_int mem_id , to_int mem_addr ) , ) ( term ) & None }
+  ( A , [| |] ) |= { Alloc ( ( @ alloc_id , addr ) , ) ( term ) & None }
 
 
-  meta A [ to_int mem_id ] = ( to_int mem_addr , term , _t )
-  meta to_int mem_addr =< to_int mem_addr' =< to_int mem_addr + term
-  meta M  [ to_int mem_addr' dd to_int mem_addr' + sizeof ct - to_int mem_one ] = _t
+  meta A [ alloc_id ] = ( addr , term , _t )
+  meta addr =< addr' =< addr + term
+  meta M  [ addr' dd addr' + sizeof ct - 1 ] = _t
   ------------------------------------------------------------------------------------------- :: Owned
-  ( A , M ) |= { Owned < ct > ( ( @ to_int mem_id , to_int mem_addr' ) , ) ( oarg ) & None }
+  ( A , M ) |= { Owned < ct > ( ( @ alloc_id , addr' ) , ) ( oarg ) & None }
 
 
-  meta A [ to_int mem_id ] = ( to_int mem_addr , term , _t )
-  meta to_int mem_addr =< to_int mem_addr' =< to_int mem_addr + term
+  meta A [ alloc_id ] = ( addr , term , _t )
+  meta addr =< addr' =< addr + term
   meta oarg dot sym_init = const ct true
-  meta ( oarg dot sym_value , nil ) = abst ( A , ct , M  [ to_int mem_addr' dd to_int mem_addr' + sizeof ct - to_int mem_one ] )
+  meta ( oarg dot sym_value , nil ) = abst ( A , ct , M  [ addr' dd addr' + sizeof ct - 1 ] )
   ------------------------------------------------------------------------------------------- :: Owned_Init
-  ( A , M ) |= { Owned < ct > ( ( @ to_int mem_id , to_int mem_addr' ) , ) ( oarg ) & None }
+  ( A , M ) |= { Owned < ct > ( ( @ alloc_id , addr' ) , ) ( oarg ) & None }
 
 
   ( A , M ) |= heap
@@ -464,7 +464,7 @@ defns
   {{ com VIP heap $( [[ A ]] , [[ M ]] )$ satisfies $[[state]]$ }}  by
 
   ( A , M ) |= alloct / allocv ( heap )
-  forall i . A [ i ] = ( to_int mem_addr , term , _t ) <-> alloct [ i ] = ( to_int mem_addr , term )
+  forall i . A [ i ] = ( addr , term , _t ) <-> alloct [ i ] = ( addr , term )
   ----------------------------------------------------------------------------------- :: Def
   ( A , M ) |= alloct ; heap
 

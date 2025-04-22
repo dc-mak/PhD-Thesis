@@ -1664,8 +1664,8 @@ arbitrary (not normalised).
     \PureExprCtorIvXOR.
 }{%
     \pf{} By inversion on $[[ cdot |- pval1 => integer]]$,
-    $[[pval1]]$ must be a $[[ty_mem_int1]]$ (\PureValObjInt).
-    Similarly $[[pval2]]$ must be a $[[ty_mem_int2]]$,
+    $[[pval1]]$ must be a $[[int1]]$ (\PureValObjInt).
+    Similarly $[[pval2]]$ must be a $[[int2]]$,
     so step with \PETPCtorIvXOR.}}
 
 \step{<1>4}{\case{\PureExprArrayShift.}{}}
@@ -1673,7 +1673,7 @@ arbitrary (not normalised).
     \begin{proof}
 
     \step{<2>1}{%
-        $[[pval1]]$ must be a $[[ty_mem_ptr]]$; $[[pval2]]$ must be a $[[ty_mem_int]]$.\\
+        $[[pval1]]$ must be a $[[ty_mem_ptr]]$; $[[pval2]]$ must be a $[[int]]$.\\
         \pf{} By inversion on the typing assumption and \PureValObjPtr and \PureValObjInt.}
     
     \step{<2>2}{%
@@ -1707,7 +1707,7 @@ arbitrary (not normalised).
 \step{<1>8}{\case{%
     \PureExprArithBinop, \PureExprRelBinop.
 }{%
-    \pf{} $[[ pval1 ]]$ and $[[ pval2 ]]$ must be $[[ ty_mem_int ]]$s,
+    \pf{} $[[ pval1 ]]$ and $[[ pval2 ]]$ must be $[[ int ]]$s,
     so step with \PETPArithBinop{} or \PETPRelBinop{} respectively.}}
 
 \step{<1>9}{\case{%
@@ -1766,7 +1766,7 @@ arbitrary (not normalised).
 \step{<1>13}{\case{%
     \PureExprWrapI.
 }{%
-    \pf{} $[[ pval ]]$ must be a $[[ ty_mem_int ]]$ (\PureValObjPtr) and so
+    \pf{} $[[ pval ]]$ must be a $[[ int ]]$ (\PureValObjPtr) and so
     step with \PETPWrapI.}}
 
 \step{<1>14}{\case{%
@@ -1780,7 +1780,7 @@ arbitrary (not normalised).
     \begin{proof}
 
     \step{<2>1}{%
-        $[[ pval ]]$ must be a $[[ ty_mem_int ]]$.\\
+        $[[ pval ]]$ must be a $[[ int ]]$.\\
         \pf{} By \PureValObjPtr.}
 
     \step{<2>2}{%
@@ -1789,8 +1789,8 @@ arbitrary (not normalised).
 
     \step{<2>3}{%
         Step with \ActionIsCreate.\\
-        \pf{} Since we assume all allocations succeed, $[[ mem_addr ]]$ is
-        constructible.  $[[ mem_id ]]$ is simply a fresh allocation ID, and so
+        \pf{} Since we assume all allocations succeed, $[[ addr ]]$ is
+        constructible.  $[[ alloc_id ]]$ is simply a fresh allocation ID, and so
         $[[ ty_mem_ptr ]]$ can be constructed to satisfy the requirements.}
 
     \end{proof}
@@ -1908,8 +1908,8 @@ arbitrary (not normalised).
     \begin{proof}
 
     \step{<2>1}{%
-        $[[pval1]]$ must be a $[[ ty_mem_ptr1 ]] = [[ ( @ mem_id1 , mem_addr1 ) ]]$.\\
-        $[[pval2]]$ must be a $[[ ty_mem_ptr2 ]] = [[ ( @ mem_id2 , mem_addr2 ) ]]$.\\
+        $[[pval1]]$ must be a $[[ ty_mem_ptr1 ]] = [[ ( @ alloc_id1 , addr1 ) ]]$.\\
+        $[[pval2]]$ must be a $[[ ty_mem_ptr2 ]] = [[ ( @ alloc_id2 , addr2 ) ]]$.\\
         \pf{} By on the typing assumption and \PureValObjPtr.}
 
     \step{<2>2}{%
@@ -1917,9 +1917,9 @@ arbitrary (not normalised).
         \pf{} By inversion on the typing assumption.}
 
     \step{<2>3}{%
-        $[[ alloct |- smt ( to_int mem_id1 = to_int mem_id2 = ptrt1 dot alloc_id = ptrt2 dot alloc_id2 ) ]]$\\
-        $[[ alloct |- smt ( ptrt1 dot base =< to_int mem_addr1 =< ptrt1 dot base1 + term1 ) ]]$\\
-        $[[ alloct |- smt ( ptrt2 dot base =< to_int mem_addr2 =< ptrt2 dot base2 + term2 ) ]]$.\\
+        $[[ alloct |- smt ( alloc_id1 = alloc_id2 = ptrt1 dot alloc_id = ptrt2 dot alloc_id2 ) ]]$\\
+        $[[ alloct |- smt ( ptrt1 dot base =< addr1 =< ptrt1 dot base + term1 ) ]]$\\
+        $[[ alloct |- smt ( ptrt2 dot base =< addr2 =< ptrt2 dot base + term2 ) ]]$.\\
         \pf{} By inversion on the typing assumption and $[[ alloct <= N ]]$.}
 
     \step{<2>4}{%
@@ -1960,7 +1960,7 @@ arbitrary (not normalised).
     \begin{proof}
 
     \step{<2>1}{%
-        $[[pval]]$ must be a $[[ ty_mem_int ]] = [[ mem_addr ]]$.\\
+        $[[pval]]$ must be a $[[ int ]] = [[ addr ]]$.\\
         \pf{} By inversion on the typing assumption and \PureValObjInt.}
 
     \step{<2>2}{%
@@ -1968,7 +1968,7 @@ arbitrary (not normalised).
         \pf{} By inversion on the typing assumption.}
 
     \step{<2>3}{%
-        $[[ alloct |- smt ( x dot base =< to_int mem_addr =< x dot base + x dot len ) ]]$ for $[[ x eq alloct [ ptrt dot alloc_id ] ]]$.\\
+        $[[ alloct |- smt ( x dot base =< addr =< x dot base + x dot len ) ]]$ for $[[ x eq alloct [ ptrt dot alloc_id ] ]]$.\\
         \pf{} By inversion on the typing assumption and $[[ alloct <= N ]]$.}
 
     \step{<2>4}{%
@@ -2147,8 +2147,8 @@ to deduce that $[[ nR' ]]$ can only be what you would have supplied anyways.
     \pflet{$[[ h' ]] = [[ cdot ]]$ and $[[ nR' ]] = [[ cdot ]]$,
         so $[[ heap ]] = [[ h' + f ]]$ trivially and $[[ alloct |- cdot <= cdot ]]$ (by \HeapEmpty).}
 
-    $[[ ret ]] = [[ sigma y : integer . y = xor_uf ( to_int ty_mem_int1 , to_int ty_mem_int2 ) /\ I ]]$\\[\baselineskip]
-    \pf{} By \PureTopValDone, suffices to show $[[ cdot |- ty_mem_int => integer ]]$
+    $[[ ret ]] = [[ sigma y : integer . y = xor_uf ( int1 , int2 ) /\ I ]]$\\[\baselineskip]
+    \pf{} By \PureTopValDone, suffices to show $[[ cdot |- int => integer ]]$
     (true by \PureValObjInt).}}
 
 \step{<1>2}{\case{%
@@ -2159,10 +2159,10 @@ to deduce that $[[ nR' ]]$ can only be what you would have supplied anyways.
     \pflet{$[[ h' ]] = [[ cdot ]]$ and $[[ nR' ]] = [[ cdot ]]$,
         so $[[ heap ]] = [[ h' + f ]]$ trivially and $[[ alloct |- cdot <= cdot ]]$ (by \HeapEmpty).}
 
-    $[[ ret ]] = [[ sigma y : loc . y = inj ty_mem_ptr +ptr ( to_int ty_mem_int * sizeof ct ) /\ I ]]$\\[\baselineskip]
+    $[[ ret ]] = [[ sigma y : loc . y = inj ty_mem_ptr +ptr ( int * sizeof ct ) /\ I ]]$\\[\baselineskip]
     \pf{} By \PureTopValDone, suffices to show $[[ cdot |- ty_mem_ptr' => loc ]]$
     (true by \PureValObjPtr) and
-    $[[ smt ( N => inj ty_mem_ptr' = inj ty_mem_ptr +ptr ( to_int ty_mem_int * sizeof ct ) ) ]]$
+    $[[ smt ( N => inj ty_mem_ptr' = inj ty_mem_ptr +ptr ( int * sizeof ct ) ) ]]$
     (true by definition of \PETPArrayShift).}}
 
 \step{<1>3}{\case{%
@@ -2202,20 +2202,20 @@ to deduce that $[[ nR' ]]$ can only be what you would have supplied anyways.
 }{%
     \pflet{%
         $[[ ret ]] = [[ sigma yp : loc . term /\ exists x : to_base ( ct ) . ( yp |- const ct false - ct -> x ) *o I  ]]$\\
-        where $[[ term ]] = [[ representable ( ct * , yp ) /\ alignedI ( to_int ty_mem_int , yp )  /\ allocv [ to_int mem_id ] = ( to_int mem_addr , sizeof ct ) ]]$.\\
+        where $[[ term ]] = [[ representable ( ct * , yp ) /\ alignedI ( int , yp )  /\ allocv [ alloc_id ] = ( addr , sizeof ct ) ]]$.\\
         $[[ pt ]] = [[ Owned < ct > ( inj ty_mem_ptr , ) ( oarg ) ]]$
         where $[[ oarg ]] = [[ { sym_init = const ct false , sym_value = default to_base ( ct ) } ]]$.\\[\baselineskip]}
 
     \assume{%
-        $[[ cdot ; L0 ; N ; cdot |- create ( ty_mem_int , ct ) Symbol_prefix => ret ]]$
+        $[[ cdot ; L0 ; N ; cdot |- create ( int , ct ) Symbol_prefix => ret ]]$
         and so $[[ h ]] = [[ cdot ]]$ (by inversion, \HeapEmpty)
         and $[[ heap ]] = [[ f + { pt & None } + { Alloc ( inj ty_mem_ptr , ) ( sizeof ct ) & None } ]]$.\\}
 
     \pflet{%
         $[[ h' ]] = [[ { pt & None } + { Alloc ( inj ty_mem_ptr , ) ( sizeof ct ) & None } ]]$,
         $[[ nR' ]] = [[ _ : pt , _ : Alloc ( inj ty_mem_ptr , ) ( sizeof ct ) ]]$,
-        $[[ alloct' ]] = ( [[ alloct [ to_int mem_id ] := ( to_int mem_addr , sizeof ct ) ]])$,
-        $[[ N' ]] = [[ N , allocv [ to_int mem_id ] = ( to_int mem_addr , sizeof ct )  ]]$.}}
+        $[[ alloct' ]] = ( [[ alloct [ alloc_id ] := ( addr , sizeof ct ) ]])$,
+        $[[ N' ]] = [[ N , allocv [ alloc_id ] = ( addr , sizeof ct )  ]]$.}}
     This means $[[ heap ]] = [[ h' + f ]]$ (trivially).
     Also, $[[ alloct' <= N' ]]$ from since $[[ alloct <= N ]]$ (by expanding definitions).
     Hence $[[ alloct' ; h' <= N' ; nR' ]]$
@@ -2347,8 +2347,8 @@ to deduce that $[[ nR' ]]$ can only be what you would have supplied anyways.
 }{%
 
     \assume{%
-      $[[ ret eq sigma y : bool . y = ( to_int mem_addr1 ' rel_binop ' to_int mem_addr2 ) /\ Alloc ( ptrt1 , ) ( oarg1 ) * Alloc ( ptrt2 , ) ( oarg2 ) *o I ]]$
-      $[[ cdot ; L0 ; N ; nR |- res_term | ( @ mem_id1 , mem_addr1 ) rel_binop ( @ mem_id2 , mem_addr2 ) => ret ]]$
+      $[[ ret eq sigma y : bool . y = ( addr1 ' rel_binop ' addr2 ) /\ Alloc ( ptrt1 , ) ( oarg1 ) * Alloc ( ptrt2 , ) ( oarg2 ) *o I ]]$
+      $[[ cdot ; L0 ; N ; nR |- res_term | ( @ alloc_id1 , addr1 ) rel_binop ( @ alloc_id2 , addr2 ) => ret ]]$
       and $[[ alloct | < h + f ; res_term > ||v < heap + { Alloc ( ptrt1 , ) ( oarg1 ) & None } + { Alloc ( ptrt2 ,  ) ( oarg2 ) & None } ; < Alloc ( ptrt1 , ) , Alloc ( ptrt2 ,  ) > > ]]$.\\[\baselineskip]}
 
     $[[ exists ]] [[ h' ]] , [[ nR' ]]$ such that
@@ -2583,7 +2583,7 @@ have ranges which are disjoint with allocations so far.}
 
 \pfsketch{ Induction over the indeterminately-sequenced expression rules.
     The core idea is that the CN system only supports integers as plain
-    integers, and not $Loc( [[ ( @ mem_id , mem_addr ) ]] )$. As such all
+    integers, and not $Loc( [[ ( @ alloc_id , addr ) ]] )$. As such all
     transitions preserve that invariant.\\[\baselineskip]}
 
 \assume{\begin{pfenum}
@@ -2604,23 +2604,23 @@ have ranges which are disjoint with allocations so far.}
 \step{<1>1}{\case{%
     \ActionIsCreate.
 }{%
-    \pf{} \pflet{ $[[ A' ]] = [[ A [ to_int mem_id ] := ( to_int mem_addr , sizeof ct , true ) ]]$ \\
-    $[[ M' ]] = [[ M [ to_int mem_addr dd to_int mem_addr + sizeof ct - 1 ] ]] :=
+    \pf{} \pflet{ $[[ A' ]] = [[ A [ alloc_id ] := ( addr , sizeof ct , true ) ]]$ \\
+    $[[ M' ]] = [[ M [ addr dd addr + sizeof ct - 1 ] ]] :=
     ( @ \mathsf{empty} , \mathsf{unspec} , \mathsf{none} )$.\\
-    $[[ alloct' ; h' ]] = [[ alloct [ to_int mem_id ] := ( to_int mem_addr , sizeof ct ) ; h + { pt & None } + { Alloc ( inj ty_mem_ptr , ) ( sizeof ct ) & None } ]]$.\\[\baselineskip]}
+    $[[ alloct' ; h' ]] = [[ alloct [ alloc_id ] := ( addr , sizeof ct ) ; h + { pt & None } + { Alloc ( inj ty_mem_ptr , ) ( sizeof ct ) & None } ]]$.\\[\baselineskip]}
 
     The premises of this step satisfy the premises of \VipAlloc{}.\\
     $[[ alloct' ]]$ is consistent with $[[ A' ]]$ (required by premise 2 of \SatStateDef{}).\\
     $[[ ( A' , [| |] ) |= { Alloc ( inj ty_mem_ptr , ) ( sizeof ct ) & None } ]]$ by \SatHeapAlloc{}.\\
-    $[[ ( A' , M [ to_int mem_addr dd to_int mem_addr + sizeof ct - 1 ] ) |= { pt & None } ]]$ by \SatHeapOwned{}.\\
+    $[[ ( A' , M [ addr dd addr + sizeof ct - 1 ] ) |= { pt & None } ]]$ by \SatHeapOwned{}.\\
     $[[ ( A , M ) |= h ]]$ by assumption and so \SatHeapConcat{} proves heap satisfation overall.}}
 
 \step{<1>2}{\case{%
     \ActionIsKillStatic.
 }{%
     \pf{} Since $[[ h ]] = [[ h1 + { Alloc ( ptrt , ) ( sizeof ct ) & None } + { Owned < ct > ( ptrt , ) ( _t ) & None } ]]$,
-    where $[[ ptrt = ( @ to_int mem_id , to_int mem_addr ) ]]$ and \lemmaref{subsec:res_term_red_sat},
-    we must have $[[ A [ to_int mem_id ] = ( to_int mem_addr , sizeof ct , true ) ]]$.\\[\baselineskip]
+    where $[[ ptrt = ( @ alloc_id , addr ) ]]$ and \lemmaref{subsec:res_term_red_sat},
+    we must have $[[ A [ alloc_id ] = ( addr , sizeof ct , true ) ]]$.\\[\baselineskip]
 
     \pflet{ $[[ A' ]] = [[ A [ inj ty_mem_ptr dot alloc_id ] := ( inj ty_mem_ptr dot addr , sizeof ct , false ) ]]$.\\[\baselineskip]}
 
@@ -2633,7 +2633,7 @@ have ranges which are disjoint with allocations so far.}
     \pf{} Since $[[ h' ]] = [[ h1 + { Owned < ct > ( ptrt , ) ( _t ) & None } ]]$,
     \lemmaref{subsec:res_term_red_sat}, and $[[ alloct ]]$ and $[[ A ]]$ are
     consistent (by premise 2 of \SatStateDef), we must have
-    $[[ A [ to_int mem_id ] = ( to_int mem_addr , sizeof ct , true ) ]]$.\\[\baselineskip]
+    $[[ A [ alloc_id ] = ( addr , sizeof ct , true ) ]]$.\\[\baselineskip]
 
     In the CN operational semantics, integers are not $Loc$s, and all resource predicates are indexed by
     pointers calculable at runtime (syntactic restriction), so we must step with
@@ -2647,10 +2647,10 @@ have ranges which are disjoint with allocations so far.}
     \pf{} Since $[[ h' ]] = [[ h1 + { Alloc ( ptrt , ) ( term ) & None } ]]$,
     \lemmaref{subsec:res_term_red_sat}, and $[[ alloct ]]$ and $[[ A ]]$ are
     consistent (by premise 2 of \SatStateDef), we must have
-    $[[ A [ to_int mem_id ] = ( to_int mem_addr , term , true ) ]]$ 
-    where $[[ ptrt dot alloc_id = to_int mem_id ]]$,
-    and $[[ to_int mem_addr ]] \in \mathsf{value\_rnage([[ ct ]])}$ because
-    $[[ representable ( ct , to_int mem_addr ) ]]$.\\[\baselineskip]
+    $[[ A [ alloc_id ] = ( addr , term , true ) ]]$ 
+    where $[[ ptrt dot alloc_id = alloc_id ]]$,
+    and $[[ addr ]] \in \mathsf{value\_rnage([[ ct ]])}$ because
+    $[[ representable ( ct , addr ) ]]$.\\[\baselineskip]
     
     
     Hence we may step with \VipCastPtrToInt{}. However, since in the CN
@@ -2666,12 +2666,12 @@ have ranges which are disjoint with allocations so far.}
     \pf{} Since , $[[ h' ]] = [[ h1 + { ptrt |- init - ct -> inj pval & None } ]]$,
     \lemmaref{subsec:res_term_red_sat}, and $[[ alloct ]]$ and $[[ A ]]$ are
     consistent (by premise 2 of \SatStateDef), we must have
-    $[[ A [ ptrt dot alloc_id ] = ( to_int mem_addr , term , true ) ]]$,
-    $[[ to_int mem_addr =< ptrt dot addr =< to_int mem_addr + term ]]$.\\[\baselineskip]
+    $[[ A [ ptrt dot alloc_id ] = ( addr , term , true ) ]]$,
+    $[[ addr =< ptrt dot addr =< addr + term ]]$.\\[\baselineskip]
 
     We also know that $[[ sizeof ct =< term ]]$ (by construction in
     $\mathtt{create}$, preserved via all $[[ pred_ops ]]$),
-    and that $[[ ( inj pval , nil ) = abst ( A , ct , M  [ to_int mem_addr' dd to_int mem_addr' + sizeof ct - to_int mem_one ] ) ]]$ (by \SatHeapOwnedInit).\\[\baselineskip]
+    and that $[[ ( inj pval , nil ) = abst ( A , ct , M  [ addr' dd addr' + sizeof ct - 1 ] ) ]]$ (by \SatHeapOwnedInit).\\[\baselineskip]
     
     Hence, step with \VipLoad{}.
     Since $[[ ( A , M ) ]]$ doesn't change, satisfaction is preserved.}}
@@ -2686,7 +2686,7 @@ have ranges which are disjoint with allocations so far.}
 
     Hence, step with \VipStore{}. We have
     $[[ ( A , M2' ) |= { inj ty_mem_ptr |- const ct true - ct -> inj pval & None } ]]$
-    where $[[ M2' ]] = [[ M2 [ to_int mem_addr' dd to_int mem_addr' + sizeof ct - to_int mem_one ] ]]
+    where $[[ M2' ]] = [[ M2 [ addr' dd addr' + sizeof ct - 1 ] ]]
     :=  \mathtt{repr} ( [[ pval ]] )$ (by \SatHeapOwnedInit{}, since
     $\mathtt{abst/repr}$ are effectively inverses) and so
     $[[ ( A , M1 + M2' ) |=  h1 + { inj ty_mem_ptr |- const ct true - ct -> inj pval & None } ]]$.
@@ -2700,10 +2700,10 @@ have ranges which are disjoint with allocations so far.}
     \pf{} Since $[[ h' ]] = [[ h1 + { Alloc ( ptrt , ) ( term ) & None } ]]$,
     \lemmaref{subsec:res_term_red_sat}, and $[[ alloct ]]$ and $[[ A ]]$ are
     consistent (by premise 2 of \SatStateDef), we must have
-    $[[ to_int mem_id1 = to_int mem_id2  = ptrt dot alloc_id ]]$,
+    $[[ alloc_id1 = alloc_id2  = ptrt dot alloc_id ]]$,
     $[[ A [ ptrt dot alloc_id ] = ( ptrt dot base , term , true ) ]]$,
-    $[[ ptrt dot base =< ( to_int mem_addr1 , to_int mem_addr2 ) =< ptrt dot base + term ]]$,
-    and $[[ to_int ty_mem_int eq ( to_int mem_addr1 - to_int mem_addr2 ) / sizeof ct ]]$.\\[\baselineskip]
+    $[[ ptrt dot base =< ( addr1 , addr2 ) =< ptrt dot base + term ]]$,
+    and $[[ int eq ( addr1 - addr2 ) / sizeof ct ]]$.\\[\baselineskip]
 
     Hence we may step with \VipDiffPtr{}. Since $[[ ( A , M ) ]]$ doesn't
     change, satisfaction is preserved.}}
@@ -2714,12 +2714,12 @@ have ranges which are disjoint with allocations so far.}
     % \PETPArrayShift is not an is_expr but here for sake of completeness wrt VIP.
 
     In both cases, since $[[ alloct ]]$ and $[[ A ]]$ are consistent (by premise 2 of \SatStateDef),
-    we have $[[ A [ to_int mem_id ] = ( to_int mem_addri , termi , _t ) ]]$.
+    we have $[[ A [ alloc_id ] = ( addri , termi , _t ) ]]$.
     Also, from the premeise of the CN steps, we know
-    $[[ to_int mem_addri =< to_int mem_addr' =< to_int mem_addri + termi ]]$
-    and $[[ inj ty_mem_ptr' eq inj ty_mem_ptr +ptr ( to_int ty_mem_int * sizeof ct ) ]]$
-    where $[[ inj ty_mem_ptr' = ( @ to_int mem_id , to_int mem_addr' ) ]]$ and
-    $[[ inj ty_mem_ptr = ( @ to_int mem_id , to_int mem_addr ) ]]$.\\[\baselineskip]
+    $[[ addri =< addr' =< addri + termi ]]$
+    and $[[ inj ty_mem_ptr' eq inj ty_mem_ptr +ptr ( int * sizeof ct ) ]]$
+    where $[[ inj ty_mem_ptr' = ( @ alloc_id , addr' ) ]]$ and
+    $[[ inj ty_mem_ptr = ( @ alloc_id , addr ) ]]$.\\[\baselineskip]
 
     Hence we may step with \VipArray{}. Since $[[ ( A , M ) ]]$ doesn't
     change, satisfaction is preserved.}}
@@ -2735,13 +2735,13 @@ have ranges which are disjoint with allocations so far.}
 }{%
     \pf{} Since $[[ h' ]] = [[ h1 + { Alloc ( ptrt1 , ) ( term1 ) & None } + { Alloc ( ptrt2 , ) ( term2 ) & None } ]]$,
     \lemmaref{subsec:res_term_red_sat}, and \SatHeapAlloc, we must have
-    $[[ A [ ptrt1 dot alloc_id ] = ( to_int mem_addr1' , term1 , true ) ]]$,
-    $[[ A [ ptrt2 dot alloc_id ] = ( to_int mem_addr1' , term2 , true ) ]]$.
+    $[[ A [ ptrt1 dot alloc_id ] = ( addr1' , term1 , true ) ]]$,
+    $[[ A [ ptrt2 dot alloc_id ] = ( addr1' , term2 , true ) ]]$.
     From the premise CN step, we also know
-    $[[ to_int mem_id1 = to_int mem_id2 = ptrt1 dot alloc_id = ptrt2 dot alloc_id2 ]]$,
-    $[[ ptrt1 dot base =< to_int mem_addr1 =< ptrt1 dot base1 + term1 ]]$,
-    and $[[ ptrt2 dot base =< to_int mem_addr2 =< ptrt2 dot base2 + term2 ]]$.
-    $[[ to_int mem_addr =< ptrt dot addr =< to_int mem_addr + term ]]$.\\[\baselineskip]
+    $[[ alloc_id1 = alloc_id2 = ptrt1 dot alloc_id = ptrt2 dot alloc_id2 ]]$,
+    $[[ ptrt1 dot base =< addr1 =< ptrt1 dot base + term1 ]]$,
+    and $[[ ptrt2 dot base =< addr2 =< ptrt2 dot base + term2 ]]$.
+    $[[ addr =< ptrt dot addr =< addr + term ]]$.\\[\baselineskip]
 
     Hence we may step with \VipRelOpPtr{}. Since $[[ ( A , M ) ]]$ doesn't
     change, satisfaction is preserved.}}
