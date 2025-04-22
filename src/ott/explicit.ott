@@ -91,7 +91,7 @@ grammar
   ty_extra :: 'ty_extra_' ::= {{ com extra judgements for explicit and inference typing systems }}
     | smt ( N => qterm )                                                     ::  :: smt                     {{ com check if $[[qterm]]$ is SMT-provable in constraint context $[[N]]$     }}
     | Symbol_sym : out_base_type inEnv C                                     ::  :: x_in_C                  {{ com lookup type of $[[Symbol_sym]]$ in context $[[C]]$                     }}
-    | struct ty_tag & </ out_memberi : out_T_cti // i /> inEnv Globals       ::  :: struct_in_globals       {{ com lookup types of struct $[[ty_tag]]$ members in $[[Globals]]$            }}
+    | struct tag & </ out_memberi : out_T_cti // i /> inEnv Globals       ::  :: struct_in_globals       {{ com lookup types of struct $[[tag]]$ members in $[[Globals]]$            }}
     | a eq </ out_xi : out_base_typei // , // i /> |-> out_res inEnv Globals ::  :: res_pred_in_globals     {{ com lookup body of resource predicate $[[a]]$ in $[[Globals]]$             }}
     | C |- ty_mem_value => mem base_type                                     ::  :: indexed_infer_mem_value {{ com dependent on memory object model                                       }}
                                                                                                             {{ tex [[C]] [[|-]] [[ty_mem_value]] [[=>]] \outpol{[[base_type]]}            }}
@@ -488,10 +488,10 @@ defns
     C |- array ( </ specified object_valuei // i /> ) => obj array base_type
 
 
-    struct ty_tag & </ memberi : cti // i /> inEnv Globals
+    struct tag & </ memberi : cti // i /> inEnv Globals
     indexed </ C |- ty_mem_valuei => mem to_base ( cti ) // i />
     -------------------------------------------------------------------------------- :: Struct
-    C |- ( struct ty_tag ) { </ dot memberi : T_cti = ty_mem_valuei //  i /> } => obj struct ty_tag
+    C |- ( struct tag ) { </ dot memberi : T_cti = ty_mem_valuei //  i /> } => obj struct tag
 
 
     % DEFER (not implemented): union
@@ -570,10 +570,10 @@ defns
     C |- Specified ( pval ) => base_type
 
 
-    struct ty_tag & </ memberi : cti // i /> inEnv Globals
+    struct tag & </ memberi : cti // i /> inEnv Globals
     indexed C |- pvali => to_base ( cti )
     -------------------------------------------------------------------------------- :: Struct
-    C |- ( struct ty_tag ) { </ dot memberi : cti = pvali // i /> } => struct ty_tag
+    C |- ( struct tag ) { </ dot memberi : cti = pvali // i /> } => struct tag
 
 
    % DEFER (not implemented) - union
@@ -613,10 +613,10 @@ defns
 
     C |- pval => loc
     x eq allocv [ inj pval dot alloc_id ]
-    struct ty_tag & </ memberi : T_cti // i /> inEnv Globals
-    smt ( N => x dot base =< inj pval dot addr + offsetof ty_tag memberj =< x dot base + x dot len )
+    struct tag & </ memberi : T_cti // i /> inEnv Globals
+    smt ( N => x dot base =< inj pval dot addr + offsetof tag memberj =< x dot base + x dot len )
     ------------------------------------------------------------ :: Member_Shift
-    C ; L ; N |- member_shift ( pval , ty_tag , memberj ) => sigma y : loc . y = inj pval +ptr offsetof ty_tag memberj /\ I
+    C ; L ; N |- member_shift ( pval , tag , memberj ) => sigma y : loc . y = inj pval +ptr offsetof tag memberj /\ I
 
 
     C |- pval1 => loc
@@ -759,22 +759,22 @@ defns
     C ; L ; N ; R |- congeal ( res_term , n ) => ops  ptrt |- init - array n ct -> valuet
 
 
-    C ; L ; N ; R |- res_term => ptrt |- init - struct ty_tag -> valuet
-    struct ty_tag & </ memberi : cti // i /> inEnv Globals
+    C ; L ; N ; R |- res_term => ptrt |- init - struct tag -> valuet
+    struct tag & </ memberi : cti // i /> inEnv Globals
     ------------------------------------------------------------------------ :: Explode
-    C ; L ; N ; R |- explode ( res_term ) => ops *S ( </ ptrt +ptr offsetof ty_tag memberi |- ty_tag init dot memberi - cti -> ty_tag valuet dot memberi // i /> )
+    C ; L ; N ; R |- explode ( res_term ) => ops *S ( </ ptrt +ptr offsetof tag memberi |- tag init dot memberi - cti -> tag valuet dot memberi // i /> )
 
 
     C ; L ; N ; R |- res_term => *S ( </ ptrti |- initi - cti -> valueti // i /> )
-    struct ty_tag & </ memberi : cti // i /> inEnv Globals
-    term eq ptrt0 dot addr - offsetof ty_tag member0
-    smt ( N => /\\ ( </ term = ptrti dot addr - offsetof ty_tag memberi /\ ptrt0 dot alloc_id = ptrti dot alloc_id // i /> ) )
+    struct tag & </ memberi : cti // i /> inEnv Globals
+    term eq ptrt0 dot addr - offsetof tag member0
+    smt ( N => /\\ ( </ term = ptrti dot addr - offsetof tag memberi /\ ptrt0 dot alloc_id = ptrti dot alloc_id // i /> ) )
     x eq allocv [ ptrt0 dot alloc_id ]
-    smt ( N => x dot base =< term /\ term + sizeof struct ty_tag =< x dot base + x dot len )
-    indexed </ ty_tag init dot memberi eq initi // i />
-    indexed </ ty_tag valuet dot memberi eq valueti // i />
+    smt ( N => x dot base =< term /\ term + sizeof struct tag =< x dot base + x dot len )
+    indexed </ tag init dot memberi eq initi // i />
+    indexed </ tag valuet dot memberi eq valueti // i />
     ----------------------------------------------------------------------------------------------- :: Implode
-    C ; L ; N ; R |- implode ( res_term , ty_tag ) => ops ( @ ptrt0 dot alloc_id , term ) |- init - struct ty_tag -> valuet
+    C ; L ; N ; R |- implode ( res_term , tag ) => ops ( @ ptrt0 dot alloc_id , term ) |- init - struct tag -> valuet
 
 
     C ; L |- term => integer

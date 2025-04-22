@@ -200,11 +200,11 @@ defns
 
 
     x eq alloct [ to_int mem_id ]
-    inj ty_mem_ptr' eq inj ty_mem_ptr +ptr offsetof ty_tag member
+    inj ty_mem_ptr' eq inj ty_mem_ptr +ptr offsetof tag member
     alloct |- smt ( x dot base =< inj ty_mem_ptr' dot addr =< x dot base + x dot len )
-    pure_ret eq sigma y : loc . y = inj ty_mem_ptr +ptr offsetof ty_tag member /\ I
+    pure_ret eq sigma y : loc . y = inj ty_mem_ptr +ptr offsetof tag member /\ I
     --------------------------------------------------------------------- :: Member_Shift
-    alloct | < member_shift ( ty_mem_ptr , ty_tag , member ) > --> < done ty_mem_ptr' : pure_ret >
+    alloct | < member_shift ( ty_mem_ptr , tag , member ) > --> < done ty_mem_ptr' : pure_ret >
 
 
     inj bool_value eq inj ty_mem_ptr1 dot addr = inj ty_mem_ptr2 dot addr
@@ -339,28 +339,28 @@ defns
 
 
    alloct | < h ; res_term > ||v < h' + { pred & None } ; pred_term >
-   pred eq Owned < struct ty_tag > ( ptrt , ) ( oarg )
-   struct ty_tag & </ memberi : cti // i /> inEnv Globals
-   indexed </ ptrti eq ptrt +ptr offsetof ty_tag memberi // i />
+   pred eq Owned < struct tag > ( ptrt , ) ( oarg )
+   struct tag & </ memberi : cti // i /> inEnv Globals
+   indexed </ ptrti eq ptrt +ptr offsetof tag memberi // i />
    indexed </ pred_termi eq Owned < cti > ( ptrti , ) // i />
-   indexed </ oargi dot sym_init  eq ty_tag oarg dot sym_init  dot memberi // i />
-   indexed </ oargi dot sym_value eq ty_tag oarg dot sym_value dot memberi // i />
+   indexed </ oargi dot sym_init  eq tag oarg dot sym_init  dot memberi // i />
+   indexed </ oargi dot sym_value eq tag oarg dot sym_value dot memberi // i />
    -------------------------------------------------------------------------- :: Explode
    alloct | < h ; explode ( res_term ) > ||v < h' + </ { pred_termi ( oargi ) & None } // i /> ; < </ pred_termi // i /> > >
 
 
    alloct | < h ;  res_term > ||v < h' + </ { pred_termi ( oargi ) & None } // i /> ; < </ pred_termi // i /> > >
-   struct ty_tag & </ memberi : cti // i /> inEnv Globals
+   struct tag & </ memberi : cti // i /> inEnv Globals
    indexed pred_termi eq Owned < cti > ( ptrti , )
-   term eq ptrt0 dot addr - offsetof ty_tag member0
-   alloct |- smt ( /\\ ( </ term = ptrti dot addr - offsetof ty_tag memberi /\ ptrt0 dot alloc_id = ptrti dot alloc_id // i /> ) )
+   term eq ptrt0 dot addr - offsetof tag member0
+   alloct |- smt ( /\\ ( </ term = ptrti dot addr - offsetof tag memberi /\ ptrt0 dot alloc_id = ptrti dot alloc_id // i /> ) )
    x eq alloct [ ptrt0 dot alloc_id ]
-   alloct |- smt ( x dot base =< ptrt dot addr /\ ptrt dot addr + sizeof struct ty_tag =< x dot base + x dot len )
-   pred_term eq Owned < struct ty_tag > ( ( ptrt0 dot alloc_id , term ) , )
-   indexed ty_tag oarg dot sym_init  dot memberi eq oargi dot sym_init
-   indexed ty_tag oarg dot sym_value dot memberi eq oargi dot sym_value
+   alloct |- smt ( x dot base =< ptrt dot addr /\ ptrt dot addr + sizeof struct tag =< x dot base + x dot len )
+   pred_term eq Owned < struct tag > ( ( ptrt0 dot alloc_id , term ) , )
+   indexed tag oarg dot sym_init  dot memberi eq oargi dot sym_init
+   indexed tag oarg dot sym_value dot memberi eq oargi dot sym_value
    ---------------------------------------------------------------------------------------- :: Implode
-   alloct | < h ; implode ( res_term , ty_tag ) > ||v < h' + { pred_term ( oarg ) & None } ; pred_term >
+   alloct | < h ; implode ( res_term , tag ) > ||v < h' + { pred_term ( oarg ) & None } ; pred_term >
 
 
    alloct | < h ; res_term > ||v < h' + { qpred_term ( oarg ) & arr_def_heap } ; qpred_term >

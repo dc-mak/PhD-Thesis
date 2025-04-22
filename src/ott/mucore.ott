@@ -90,39 +90,33 @@ grammar
 
 grammar
 
-  Sctypes_t , ct {{ tex \tau }} :: 'Ct_' ::=  {{ com partial/relevant grammar of C types }}
+  ct {{ tex \tau }} :: 'Ct_' ::=  {{ com partial/relevant grammar of C types }}
     | array int ct :: :: ArrayCt {{ com fixed-length array of element type $[[ct]]$ }}
     | int             :: :: C_Int   {{ com C (signed) integer                          }}
     | ct *            :: :: Pointer {{ com pointer to type $[[ct]]$                    }}
-    | struct ty_tag   :: :: Struct  {{ com C struct type                               }}
+    | struct tag   :: :: Struct  {{ com C struct type                               }}
 
-grammar
-
-  ty_tag {{ tex tag }} :: 'Ty_tag' ::=  {{ com OCaml type for struct/union tag }}
-    | id :: :: id
+metavar tag ::=  {{ com unique identifier for struct/union type }}
 
 grammar
 
   base_type {{ tex \beta }} , _bt {{ tex \_ }} :: 'Bt_' ::= {{ com base types }}
-    | unit                                              ::   :: Unit     {{ com unit                        }}
-    | bool                                              ::   :: Bool     {{ com boolean                     }}
-    | integer                                           ::   :: Integer  {{ com integer                     }}
-    | real                                              ::   :: Real     {{ com rational numbers?           }}
-    | loc                                               ::   :: Loc      {{ com location                    }} {{ tex \symtt{pointer} }}
-    | struct ty_tag                                     ::   :: Struct   {{ com C structs                   }}
+    | unit                                   ::   :: Unit     {{ com unit                        }}
+    | bool                                   ::   :: Bool     {{ com boolean                     }}
+    | integer                                ::   :: Integer  {{ com integer                     }}
+    | loc                                    ::   :: Loc      {{ com pointers (record of allocation ID and integer address) }} {{ tex \mathTT{pointer} }}
+    | alloc_id                               ::   :: Alloc_id {{ com allocation IDs (integers)   }} {{ tex \mathTT{alloc\_id} }}
+    | struct tag                             ::   :: Struct   {{ com C structs                   }}
     | record </ memberi : base_typei // i /> ::   :: Record   {{ com res. pred. output arguments }}
-    | map base_type base_type'                          ::   :: Map      {{ com map                         }}
-    | id_map                                            :: M :: IdMap    {{ com allocs to base and length   }}
-    | array base_type                                   :: M :: Array    {{ com array (integer-indexed map) }}
-    | list base_type                                    ::   :: List     {{ com list                        }}
-    | </ base_typei // * // i />                        ::   :: Tuple    {{ com tuple                       }}
-    | set base_type                                     ::   :: Set      {{ com set                         }}
-    | bool_of ( ct )                                    :: M :: Bool_of  {{ com boolean from C type         }}
-                                                                         {{ tex bool_ { [[ ct ]] }          }}
+    | id_map                                 :: M :: IdMap    {{ com allocs to base and length   }}
+    | array base_type                        :: M :: Array    {{ com array (integer-indexed map) }}
+    | list base_type                         ::   :: List     {{ com list                        }}
+    | </ base_typei // * // i />             ::   :: Tuple    {{ com tuple                       }}
+    | bool_of ( ct )                         :: M :: Bool_of  {{ com boolean from C type         }}
+                                                              {{ tex bool_{ [[ ct ]] }           }}
 
-    | to_base ( ct )                                    :: M :: Of_Ctype {{ com of a C type                 }}
-                                                                         {{ tex \beta_{ [[ct]] }            }}
-
+    | to_base ( ct )                         :: M :: Of_Ctype {{ com of a C type                 }}
+                                                              {{ tex \beta_{ [[ct]] }            }}
 
 
 grammar
@@ -232,7 +226,7 @@ grammar
 
   Symbol_sym {{ tex id }} , Sym_x {{ tex x }} :: '' ::=  {{ com Ott-hack, ignore }}
     | id  :: :: id
-    | ty_tag :: :: ty_tag {{ com hack for struct typing rules }}
+    | tag :: :: tag {{ com hack for struct typing rules }}
 
 grammar
 
@@ -372,9 +366,9 @@ grammar
     | int                      :: M :: of_int
     | to_int ty_mem_int           :: M :: of_mem_int
                                                      {{ tex [[ty_mem_int]] }} {{ com convert $[[ty_mem_int]]$ to an integer }}
-    | offsetof ty_tag member :: M :: of_Member
+    | offsetof tag member :: M :: of_Member
 
-      {{ tex \symrm{offset\_of}_{ [[ty_tag]] }( [[member]] )                 }}
+      {{ tex \symrm{offset\_of}_{ [[tag]] }( [[member]] )                 }}
       {{ com offset of a struct member                                                   }}
     | ptr_size                    :: M :: Ptr_size
                                                      {{ com size of a pointer                        }}
@@ -446,7 +440,7 @@ grammar
 
   struct_op :: '' ::= {{ auxparam 'bt }} {{ com SMT term for struct member-projection }}
     % DEFER struct construction and update
-    | ty_tag term dot member :: :: StructMember {{ tex [[term]] \, [[dot]] \, [[member]] }}
+    | tag term dot member :: :: StructMember {{ tex [[term]] \, [[dot]] \, [[member]] }}
 
   record_op :: '' ::= {{ auxparam 'bt }} {{ com SMT term for record operations }}
     % DEFER record update
@@ -727,7 +721,7 @@ grammar
     | iterate ( res_term , int )                  :: :: Iterate {{ com transform points-to-array into quantified points-to }}
     | congeal ( res_term , int )                  :: :: Congeal {{ com transform quantified points-to into points-to-array }}
     | explode ( res_term )                           :: :: Explode {{ com transform points-to-struct into member points-tos   }}
-    | implode ( res_term , ty_tag )                  :: :: Implode {{ com transform member points-tos into points-to-struct   }}
+    | implode ( res_term , tag )                  :: :: Implode {{ com transform member points-tos into points-to-struct   }}
     | break ( res_term , term )                      :: :: Break   {{ com break a qpred into a qpred and a pred               }}
     | glue ( res_term )                              :: :: Join    {{ com glue a qpred and a pred (back) into a qpred         }}
     | inj ( res_term , ptrt , step , Sym_x . iargs ) :: :: Inj     {{ com transform a pred into a singleton qpred             }}
