@@ -192,22 +192,13 @@ grammar
 metavar impl_const ::=
   {{ com implementation-defined constant }}
 
-metavar annots {{ tex }} ::=
-  {{ com Ott-hack, ignore (annotations) }}
-
-metavar ty_nat {{ tex nat }} ::=
-  {{ com OCaml arbitrary-width natural number }}
-
 grammar
 
-  ty_mem_ptr {{ tex mem\_ptr }} :: 'Ty_mem_ptr_' ::=  {{ com pointer above VIP model }}
+  ptr :: 'Ptr_' ::=  {{ com pointer in VIP model }}
     | ( @ int , int' ) :: :: PVloc     {{ com pointer with provenance (allocation id) }}
     | NULL             :: :: PVnull    {{ com null pointer                            }}
 % Not worth extra complication of rules
-%   | Symbol_sym                     :: :: PVfunptr  {{ com function pointer                        }}
-
-metavar ty_mem_value {{ tex mem\_val }} ::=
-    {{ com abstract memory value }}
+%   | id               :: :: PVfunptr  {{ com function pointer                        }}
 
 grammar
 
@@ -233,25 +224,19 @@ grammar
 grammar
 
   object_value :: 'M_OV' ::=  {{ auxparam 'TY }} {{ com C object values (inhabitants of object types), which can be read/stored }}
-    | int                                                                                :: :: integer {{ com integer value  }}
-    | ty_mem_ptr                                                                                :: :: pointer {{ com pointer value  }}
-    | array ( </ loaded_valuei // , // i /> )                                                   :: :: array   {{ com C array value  }}
-    | ( struct Symbol_sym ) { </ dot memberi : T_cti = ty_mem_valuei // , // i /> }  :: :: struct  {{ com C struct value }}
-    | ( union Symbol_sym ) { dot member = ty_mem_value }                             :: :: union   {{ com C union value  }}
+    | int                                                                    :: :: integer {{ com integer value  }}
+    | ptr                                                                    :: :: pointer {{ com pointer value  }}
+    | array ( </ object_valuei // , // i /> )                                :: :: array   {{ com C array value  }}
+    | ( struct Symbol_sym ) { </ dot memberi : T_cti = object_valuei // , // i /> } :: :: struct  {{ com C struct value }}
+    | ( union Symbol_sym ) { dot member = object_value }                            :: :: union   {{ com C union value  }}
 
-  loaded_value :: 'M_LV' ::= {{ auxparam 'TY }} {{ com potentially unspecified C object values }}
-    | specified object_value :: :: specified {{ com specified loaded value }}
-
-grammar
 
   T_bt {{ tex \beta }} :: 'T_bt_' ::=  {{ com Ott-hack, ignore }}
     | base_type :: :: BaseType
 
-grammar
 
   value :: 'M_V' ::= {{ auxparam 'TY }} {{ com Core values }}
     | object_value                    :: :: object {{ com C object value        }}
-    | loaded_value                    :: :: loaded {{ com loaded C object value }}
     | Unit                            :: :: unit   {{ com unit                  }}
     | True                            :: :: true   {{ com boolean true          }}
     | False                           :: :: false  {{ com boolean false         }}
@@ -272,7 +257,6 @@ grammar
     | Cons        :: :: cons        {{ com list cons                                       }} % : bTy -> [bTy] -> [bTy]
     | Tuple       :: :: tuple       {{ com tuple                                           }} % : bTy1 -> ... -> bTyN -> (bTy1, ..., bTyN)
     | Array       :: :: array       {{ com C fixed-size array (guaranteed to be non-empty) }} % : bTy -> ... -> bTy -> array bTy
-    | Specified   :: :: specified   {{ com non-unspecified loaded value                    }} % : objTy -> loaded objTy
 
   ctor_expr :: 'M_C' ::= {{ com data constructors (expressions, do reduce) }}
     | IvCOMPL     :: :: ivCOMPL     {{ com bitwise complement             }} % : ctype -> integer -> integer

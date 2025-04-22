@@ -68,11 +68,6 @@ defns
     Array ( </ pati // i /> ) = Array ( </ pvali // i /> ) ~> PAT [ </ subsi // i /> ]
 
 
-    pat = pval ~> PAT subs
-    -------------------------------------------------- :: Specified
-    Specified ( pat ) = Specified ( pval ) ~> PAT subs
-
-
   defn sym_or_pat = pval ~> out_subs :: :: Pat_Value'_ :: Pat_Value'_
   {{ com computational value deconstruction: [[sym_or_pat]] deconstructs $[[ pval ]]$ to produce substitution $[[out_subs]]$ }} by
 
@@ -192,25 +187,25 @@ defns
     % ctor_expr ( </ pvali // , // i /> )
 
     x eq alloct [ alloc_id ]
-    inj ty_mem_ptr' eq inj ty_mem_ptr +ptr ( int * sizeof ct )
-    alloct |- smt ( x dot base =< inj ty_mem_ptr' =< x dot base + x dot len )
-    pure_ret eq sigma y : loc . y = inj ty_mem_ptr +ptr ( int * sizeof ct ) /\ I
+    inj ptr' eq inj ptr +ptr ( int * sizeof ct )
+    alloct |- smt ( x dot base =< inj ptr' =< x dot base + x dot len )
+    pure_ret eq sigma y : loc . y = inj ptr +ptr ( int * sizeof ct ) /\ I
     --------------------------------------------------------------------------- :: Array_Shift
-    alloct | < array_shift ( ty_mem_ptr , T_ct , int ) > --> < done ty_mem_ptr' : pure_ret >
+    alloct | < array_shift ( ptr , T_ct , int ) > --> < done ptr' : pure_ret >
 
 
     x eq alloct [ alloc_id ]
-    inj ty_mem_ptr' eq inj ty_mem_ptr +ptr offsetof tag member
-    alloct |- smt ( x dot base =< inj ty_mem_ptr' dot addr =< x dot base + x dot len )
-    pure_ret eq sigma y : loc . y = inj ty_mem_ptr +ptr offsetof tag member /\ I
+    inj ptr' eq inj ptr +ptr offsetof tag member
+    alloct |- smt ( x dot base =< inj ptr' dot addr =< x dot base + x dot len )
+    pure_ret eq sigma y : loc . y = inj ptr +ptr offsetof tag member /\ I
     --------------------------------------------------------------------- :: Member_Shift
-    alloct | < member_shift ( ty_mem_ptr , tag , member ) > --> < done ty_mem_ptr' : pure_ret >
+    alloct | < member_shift ( ptr , tag , member ) > --> < done ptr' : pure_ret >
 
 
-    inj bool_value eq inj ty_mem_ptr1 dot addr = inj ty_mem_ptr2 dot addr
-    pure_ret eq sigma y : loc . y = ( inj ty_mem_ptr1 dot addr = inj ty_mem_ptr2 dot addr ) /\ I
+    inj bool_value eq inj ptr1 dot addr = inj ptr2 dot addr
+    pure_ret eq sigma y : loc . y = ( inj ptr1 dot addr = inj ptr2 dot addr ) /\ I
     --------------------------------------------------------------------------- :: Ptr_Eq
-    _ | < ty_mem_ptr1 = ty_mem_ptr2 > --> < done bool_value : pure_ret >
+    _ | < ptr1 = ptr2 > --> < done bool_value : pure_ret >
 
 
     ------------------------------------ :: Not_True
@@ -469,43 +464,43 @@ defns
 
     addr inEnv newAlloc ( h , pval , sizeof ct )
     alloc_id notIn dom ( alloct )
-    inj ty_mem_ptr eq ( @ alloc_id , addr )
-    pt eq inj ty_mem_ptr |- const ct false - ct -> default to_base ( ct )
+    inj ptr eq ( @ alloc_id , addr )
+    pt eq inj ptr |- const ct false - ct -> default to_base ( ct )
     ret eq sigma yp : loc . term /\ exists x : to_base ( ct ) . ( yp |- const ct false - ct -> x ) *o Alloc ( yp , ) ( sizeof ct ) *o I
-    term eq representable ( ct * , inj ty_mem_ptr ) /\ alignedI ( int , inj ty_mem_ptr ) /\ allocv [ alloc_id ] = ( addr , sizeof ct )
+    term eq representable ( ct * , inj ptr ) /\ alignedI ( int , inj ptr ) /\ allocv [ alloc_id ] = ( addr , sizeof ct )
     alloct |- smt ( term )
-    h' eq h + { pt & None } + { Alloc ( inj ty_mem_ptr , ) ( sizeof ct ) & None }
+    h' eq h + { pt & None } + { Alloc ( inj ptr , ) ( sizeof ct ) & None }
     ------------------------------------------------------------------------- :: Create
-    < alloct ; h ; create ( int , ct ) Symbol_prefix > --> < alloct [ alloc_id ] := ( addr , sizeof ct ) ;  h' ; done < ty_mem_ptr , default to_base ( ct ), Owned < ct > ( inj ty_mem_ptr , ) , Alloc ( inj ty_mem_ptr , ) > : ret >
+    < alloct ; h ; create ( int , ct ) Symbol_prefix > --> < alloct [ alloc_id ] := ( addr , sizeof ct ) ;  h' ; done < ptr , default to_base ( ct ), Owned < ct > ( inj ptr , ) , Alloc ( inj ptr , ) > : ret >
 
 
     % DEFER relax this rule - loading a (partially) undefined struct is fine
     alloct | < h ; res_term > ||v < h' + { pt & None } ; Owned < ct > (  ptrt , ) >
     pt eq ptrt |- init - ct -> inj pval
-    alloct |- smt ( ptrt = inj ty_mem_ptr /\ init = const ct true )
-    ret eq sigma y : to_base ( ct ) . y = inj pval /\ ( inj ty_mem_ptr |- const ct true - ct -> inj pval ) *o I
+    alloct |- smt ( ptrt = inj ptr /\ init = const ct true )
+    ret eq sigma y : to_base ( ct ) . y = inj pval /\ ( inj ptr |- const ct true - ct -> inj pval ) *o I
     -------------------------------------------------------------------------------------------------------------------------------------- :: Load
-    < alloct ; h ; load ( ct , ty_mem_ptr , _mem_order , res_term ) > --> < alloct ; h' + { pt & None } ; done < pval , Owned < ct > ( inj ty_mem_ptr ,  ) > : ret >
+    < alloct ; h ; load ( ct , ptr , _mem_order , res_term ) > --> < alloct ; h' + { pt & None } ; done < pval , Owned < ct > ( inj ptr ,  ) > : ret >
 
 
     % DEFER relax this rule - storing (partially) undefined struct preserves init
     alloct | < h ; res_term > ||v < h' + { pt & None } ; Owned < ct > (  ptrt , ) >
     pt eq ptrt |- _init - ct -> _t
-    alloct |- smt ( ptrt = inj ty_mem_ptr )
+    alloct |- smt ( ptrt = inj ptr )
     alloct |- smt ( representable ( ct , inj pval ) )
-    pt' eq inj ty_mem_ptr |- const ct true - ct -> inj pval
-    ret eq sigma _ : unit . ( inj ty_mem_ptr |- const ct true - ct -> inj pval ) *o I
+    pt' eq inj ptr |- const ct true - ct -> inj pval
+    ret eq sigma _ : unit . ( inj ptr |- const ct true - ct -> inj pval ) *o I
     ----------------------------------------------------------------------------------------- :: Store
-    < alloct ; h ; store ( _b , ct , ty_mem_ptr , pval , _mem_order , res_term ) > --> < alloct ; h' + { pt' & None } ; done < Unit , Owned < ct > ( inj ty_mem_ptr , ) > : ret >
+    < alloct ; h ; store ( _b , ct , ptr , pval , _mem_order , res_term ) > --> < alloct ; h' + { pt' & None } ; done < Unit , Owned < ct > ( inj ptr , ) > : ret >
 
 
     alloct | < h ; res_term > ||v < h' + { pred_term1 ( _t ) & None } + { pred_term2 ( term ) & None } ; < pred_term1 , pred_term2 > >
     pred_term1 eq Owned < ct > ( ptrt , )
     pred_term2 eq Alloc ( ptrt' , )
-    alloct |- smt ( ptrt = ptrt' = inj ty_mem_ptr /\ sizeof ct = term )
+    alloct |- smt ( ptrt = ptrt' = inj ptr /\ sizeof ct = term )
     ret eq sigma _ : unit . I
     ----------------------------------------------------------------------------------- :: Kill_Static
-    < alloct ; h ; kill ( static ct , ty_mem_ptr , res_term ) > --> < alloct ; h' ; done < Unit > : ret >
+    < alloct ; h ; kill ( static ct , ptr , res_term ) > --> < alloct ; h' ; done < Unit > : ret >
 
   defn term | < h ; memop  > --> < h' ; is_expr > :: :: Memop_Is :: Memop_Is_ by
 
@@ -553,31 +548,31 @@ defns
     pred_term eq Owned < ct > ( ptrt , )
     x eq alloct [ ptrt dot alloc_id ]
     alloct |- smt ( x dot base =< addr =< x dot base + x dot len )
-    inj ty_mem_ptr eq ( @ ptrt dot alloc_id , addr )
+    inj ptr eq ( @ ptrt dot alloc_id , addr )
     ret eq sigma y : loc . y = ( @ ptrt dot alloc_id , addr ) /\ pred_term ( oarg ) *o I
     ---------------------------------------------------------------------------------------- :: PtrFromInt
-    alloct | < h ; ptrFromInt ( res_term | ct1 , ct2 , addr ) > --> < h' + { pred_term ( oarg ) & None } ; done < ty_mem_ptr , pred_term > : ret >
+    alloct | < h ; ptrFromInt ( res_term | ct1 , ct2 , addr ) > --> < h' + { pred_term ( oarg ) & None } ; done < ptr , pred_term > : ret >
 
 
-    inj bool_value eq aligned ( ct , inj ty_mem_ptr )
-    ret eq sigma y : bool . y = aligned ( ct , inj ty_mem_ptr ) /\ I
+    inj bool_value eq aligned ( ct , inj ptr )
+    ret eq sigma y : bool . y = aligned ( ct , inj ptr ) /\ I
     -------------------------------------------------------- :: PtrValidForDeref
-    _ | < h ; ptrValidForDeref ( ct , ty_mem_ptr ) > --> < h ; done < bool_value > : ret >
+    _ | < h ; ptrValidForDeref ( ct , ptr ) > --> < h ; done < bool_value > : ret >
 
 
-    inj bool_value eq aligned ( ct , inj ty_mem_ptr )
-    ret eq sigma y : bool . y = aligned ( ct , inj ty_mem_ptr ) /\ I
+    inj bool_value eq aligned ( ct , inj ptr )
+    ret eq sigma y : bool . y = aligned ( ct , inj ptr ) /\ I
     ------------------------------------------------------------------ :: PtrWellAligned
-    _ | < h ; ptrWellAligned ( ct , ty_mem_ptr ) > --> < h ; done < bool_value > : ret >
+    _ | < h ; ptrWellAligned ( ct , ptr ) > --> < h ; done < bool_value > : ret >
 
 
     alloct | < h ; res_term > ||v < h' + { pred_term ( term ) & None } ; pred_term >
     pred_term eq Alloc ( ptrt , )
-    inj ty_mem_ptr' eq inj ty_mem_ptr +ptr ( int * sizeof ct )
-    alloct |- smt ( alloc_id = ptrt dot alloc_id /\ ptrt dot base =< inj ty_mem_ptr' dot addr =< ptrt dot base + term )
-    ret eq sigma y : loc . y = inj ty_mem_ptr +ptr ( int * sizeof ct ) /\ pred_term ( term ) *o I
+    inj ptr' eq inj ptr +ptr ( int * sizeof ct )
+    alloct |- smt ( alloc_id = ptrt dot alloc_id /\ ptrt dot base =< inj ptr' dot addr =< ptrt dot base + term )
+    ret eq sigma y : loc . y = inj ptr +ptr ( int * sizeof ct ) /\ pred_term ( term ) *o I
     --------------------------------------------------------------------------------------------- :: PtrArrayShift
-    alloct | < h ; ptrArrayShift ( res_term | ty_mem_ptr ,  ct , int ) > --> < h ; done < ty_mem_ptr' , pred_term > : ret >
+    alloct | < h ; ptrArrayShift ( res_term | ptr ,  ct , int ) > --> < h ; done < ptr' , pred_term > : ret >
 
 
   defn < s ; is_expr  > --> < s' ; is_expr' > :: :: Is_Is :: Is_Is_ by

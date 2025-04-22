@@ -265,13 +265,11 @@ substitutions in \HeapTy{} and \AllocTy), and so will be trivially decidable.
 \section{Typing Judgements}\label{sec:type_judge}
 
 In this document, $[[ C ; L ; N ; R ]] [[|-]] J$ stands for all \emph{defined}
-judgements, listed in the remainder of this section after this paragraph.  In
-particular, it does not stand for $[[ C |- ty_mem_value => mem base_type ]]$
-or $[[ C ; L |- term => out_base_type ]]$. Furthermore, I assume that
+judgements, listed in the remainder of this section after this paragraph,
+except for $[[ C ; L |- term => out_base_type ]]$. Furthermore, I assume that
 \lemmaref{sec:weakening} and \lemmaref{subsec:sub} (proven for the
-\emph{defined} judgements in the referenced sections) hold for these
-($[[ C |- ty_mem_value => mem base_type ]]$,
-and $[[ C ; L |- term => out_base_type ]]$) judgements.\\
+\emph{defined} judgements in the referenced sections) holds for the
+$[[ C ; L |- term => out_base_type ]]$) judgement.\\
 
 \cngrammartabular{
 \cnresXXjudge\cninterrule%
@@ -300,12 +298,8 @@ means that $[[ term ]]$ and $[[ term' ]]$ can be unified. Informally,
 $[[ term ~ term' ]]$ are defined recursively over the structure of SMT terms,
 using the standard definition of unification: variables unify with anything
 (modulo an occurs check), atoms unify if they are identical, compound terms
-unify if their constructors (except for $[[ Specified ]]$) and arity are
+unify if their constructors and arity are
 identical, and their arguments unify recursively.\\
-
-\noindent
-To clarify the $[[ Specified ]]$ exception: $[[ term ~ inj Specified ( pval ) ]]$
-(and $[[ inj Specified ( pval ) ~ term  ]]$) iff $[[ term ~ inj pval ]]$.\\
 
 \noindent
 $[[ ~ ]]$ is additionally assumed to be an equivalence relation and preserved by
@@ -363,14 +357,14 @@ No-resource / ``pure'' rules: \IGCmpEq, \IGCmpLt, \IGCmpGt, \IGCmpNone,
 \ResSimpRecExists, \ResSimpRecNoChange, \SimpNoSimp, \SimpSimp, \RetEqEnd,
 \RetEqComp, \RetEqLog, \RetEqPhi, \RetEqRes, \PatCompNoSymAnnot,
 \PatCompSymAnnot, \PatCompNil, \PatCompCons, \PatCompTuple, \PatCompArray,
-\PatCompSpecified, \PatSymOrPatSym, \PatSymOrPatPat, \PatResMatchEmp,
+\PatSymOrPatSym, \PatSymOrPatPat, \PatResMatchEmp,
 \PatResMatchPhi, \PatResMatchIfTrue, \PatResMatchIfFalse, \PatResMatchVar,
 \PatResMatchSepConj, \PatResMatchPack, \PatResMatchFold, \PatRetEmpty,
 \PatRetComp, \PatRetLog, \PatRetRes, \PatRetPhi, \PatRetAux, \PureValObjInt, \PureValObjPtr,
-\PureValObjArr, \PureValObjStruct, \PureValVar, \PureValObj, \PureValLoaded,
+\PureValObjArr, \PureValObjStruct, \PureValVar, \PureValObj,
 \PureValUnit, \PureValTrue, \PureValFalse, \PureValList, \PureValTuple,
 \PureValCtorNil, \PureValCtorCons, \PureValCtorTuple, \PureValCtorArray,
-\PureValCtorSpecified, \PureValStruct, \PureExprVal, \PureExprCtorIvXOR, \PureExprArrayShift,
+\PureValStruct, \PureExprVal, \PureExprCtorIvXOR, \PureExprArrayShift,
 \PureExprMemberShift, \PureExprNot, \PureExprArithBinop, \PureExprRelBinop,
 \PureExprBoolBinop, \PureExprCall, \PureExprAssertUndef, \PureExprBoolToInteger,
 \PureExprWrapI, \PureTopValUndef, \PureTopValError, \PureTopValDone,
@@ -395,9 +389,9 @@ restrict the resource context}
 \subsection{Value typing rules}\label{subsec:value_typing_rules}
 
 \PureValObjInt, \PureValObjPtr, \PureValObjArr, \PureValObjStruct, \PureValVar,
-\PureValObj, \PureValLoaded, \PureValUnit, \PureValTrue, \PureValFalse,
+\PureValObj, \PureValUnit, \PureValTrue, \PureValFalse,
 \PureValTuple, \PureValCtorNil, \PureValCtorCons, \PureValCtorTuple,
-\PureValCtorArray, \PureValCtorSpecified, \PureValStruct, \PureTopValDone,
+\PureValCtorArray, \PureValStruct, \PureTopValDone,
 \ResSynEmp, \ResSynVar, \ResSynVarSimp, \ResSynPred, \ResSynQPred,
 \ResChkPhi, \ExplTopValDone.
 
@@ -1379,12 +1373,6 @@ arbitrary (not normalised).
     \step{<2>6}{\case{\PatCompArray}{%
         \pf{} Similar to \PatCompTuple, but with \SubsPatValueArray.}}
 
-    \step{<2>7}{\case{\PatCompSpecified}{%
-        \pf{} By induction we have (1) $[[ term1 ~ inj pval ]]$, and by the $[[ Specified ]]$
-        exception (see Section~\ref{sec:proof_judge}, \nameref{sec:proof_judge})
-        $[[ term1 ~ inj Specified ( pval ) ]]$;\\
-        $[[ subs ]]$ for \SubsPatValueSpecified, typing by induction.}}
-
     \step{<2>8}{\case{\PatSymOrPatPat}{%
         \pf{} By induction.}}
 
@@ -1673,11 +1661,11 @@ arbitrary (not normalised).
     \begin{proof}
 
     \step{<2>1}{%
-        $[[pval1]]$ must be a $[[ty_mem_ptr]]$; $[[pval2]]$ must be a $[[int]]$.\\
+        $[[pval1]]$ must be a $[[ptr]]$; $[[pval2]]$ must be a $[[int]]$.\\
         \pf{} By inversion on the typing assumption and \PureValObjPtr and \PureValObjInt.}
     
     \step{<2>2}{%
-        $[[ alloct |- smt ( x dot base =< inj ty_mem_ptr' =< x dot base + x dot len ) ]]$ for $[[x eq alloct [ inj ty_mem_ptr dot alloc_id ] ]]$.\\
+        $[[ alloct |- smt ( x dot base =< inj ptr' =< x dot base + x dot len ) ]]$ for $[[x eq alloct [ inj ptr dot alloc_id ] ]]$.\\
         \pf{} By inversion on the typing assumption and $[[ alloct <= N ]]$.}
 
     \step{<2>3}{%
@@ -1688,14 +1676,14 @@ arbitrary (not normalised).
 \step{<1>5}{\case{%
     \PureExprMemberShift.
 }{%
-    \pf{} $[[ pval ]]$ must be a $[[ ty_mem_ptr ]]$ so step with
+    \pf{} $[[ pval ]]$ must be a $[[ ptr ]]$ so step with
     \PETPMemberShift.}}
 
 \step{<1>6}{\case{%
     \PureExprPtrEq.
 }{%
-    \pf{} $[[ pval1 ]]$ must be a $[[ ty_mem_ptr1 ]]$,
-    $[[ pval2 ]]$ must be a $[[ ty_mem_ptr2 ]]$, so step with
+    \pf{} $[[ pval1 ]]$ must be a $[[ ptr1 ]]$,
+    $[[ pval2 ]]$ must be a $[[ ptr2 ]]$, so step with
     \PETPPtrEq.}}
 
 \step{<1>7}{\case{%
@@ -1791,7 +1779,7 @@ arbitrary (not normalised).
         Step with \ActionIsCreate.\\
         \pf{} Since we assume all allocations succeed, $[[ addr ]]$ is
         constructible.  $[[ alloc_id ]]$ is simply a fresh allocation ID, and so
-        $[[ ty_mem_ptr ]]$ can be constructed to satisfy the requirements.}
+        $[[ ptr ]]$ can be constructed to satisfy the requirements.}
 
     \end{proof}
 
@@ -1800,12 +1788,12 @@ arbitrary (not normalised).
     \begin{proof}
 
     \step{<2>1}{%
-        $[[ pval0 ]]$ must be a $[[ ty_mem_ptr ]]$.\\
+        $[[ pval0 ]]$ must be a $[[ ptr ]]$.\\
         \pf{} By \PureValObjPtr.}
 
     \step{<2>2}{%
         $[[ cdot ; L0 ; N ; nR' |- res_term => term |- init - ct -> inj pval1 ]] $.\\
-        $[[ alloct |- smt ( ptrt = inj ty_mem_ptr /\ init = const ct true ) ]]$.\\
+        $[[ alloct |- smt ( ptrt = inj ptr /\ init = const ct true ) ]]$.\\
         \pf{} By inversion on the typing assumption, $[[ alloct <= N ]]$ and \stepref{<2>1}.}
 
     \step{<2>3}{%
@@ -1837,13 +1825,13 @@ arbitrary (not normalised).
     \begin{proof}
 
     \step{<2>1}{%
-        $[[ pval0 ]]$ must both be a $[[ ty_mem_ptr ]]$.\\
+        $[[ pval0 ]]$ must both be a $[[ ptr ]]$.\\
         \pf{} By \PureValObjPtr.}
 
     \step{<2>2}{%
         $[[ alloct |- smt ( representable ( ct , inj pval ) ) ]]$\\
         $[[ cdot ; L0 ; N ; nR |- res_term => term |- _init - ct -> _t ]]$\\
-        $[[ alloct |- smt ( ptrt = inj ty_mem_ptr ) ]]$.\\
+        $[[ alloct |- smt ( ptrt = inj ptr ) ]]$.\\
         \pf{} By inversion on the typing assumption, $[[ alloct <= N ]]$ and \stepref{<2>1}.}
 
     \step{<2>3}{%
@@ -1873,12 +1861,12 @@ arbitrary (not normalised).
     \begin{proof}
 
     \step{<2>1}{%
-        $[[pval]]$ must be a $[[ ty_mem_ptr ]]$.\\
+        $[[pval]]$ must be a $[[ ptr ]]$.\\
         \pf{} By \PureValObjPtr.}
 
     \step{<2>2}{%
         $[[ cdot ; L0 ; N ; nR |- res_term => ptrt1 |- _init - ct -> _t * Alloc ( ptrt2 , ) ( term ) ]]$\\
-        $[[ alloct |- smt ( ptrt = ptrt' = inj ty_mem_ptr /\ sizeof ct = term ) ]]$.\\
+        $[[ alloct |- smt ( ptrt = ptrt' = inj ptr /\ sizeof ct = term ) ]]$.\\
         \pf{} By inversion on the typing assumption, $[[ alloct <= N ]]$ and \stepref{<2>1}.}
 
     \step{<2>3}{%
@@ -1908,8 +1896,8 @@ arbitrary (not normalised).
     \begin{proof}
 
     \step{<2>1}{%
-        $[[pval1]]$ must be a $[[ ty_mem_ptr1 ]] = [[ ( @ alloc_id1 , addr1 ) ]]$.\\
-        $[[pval2]]$ must be a $[[ ty_mem_ptr2 ]] = [[ ( @ alloc_id2 , addr2 ) ]]$.\\
+        $[[pval1]]$ must be a $[[ ptr1 ]] = [[ ( @ alloc_id1 , addr1 ) ]]$.\\
+        $[[pval2]]$ must be a $[[ ptr2 ]] = [[ ( @ alloc_id2 , addr2 ) ]]$.\\
         \pf{} By on the typing assumption and \PureValObjPtr.}
 
     \step{<2>2}{%
@@ -1994,13 +1982,13 @@ arbitrary (not normalised).
     \end{proof}
 
 \step{<1>23}{\case{\ExplIsMemopPtrValidForDeref.}{
-    \pf{} $[[ pval ]]$ must be a $[[ ty_mem_ptr ]]$, so step with
+    \pf{} $[[ pval ]]$ must be a $[[ ptr ]]$, so step with
     \MemopIsPtrValidForDeref.}}
 
 \step{<1>24}{\case{%
     \ExplIsMemopPtrWellAligned.
 }{%
-    \pf{} $[[ pval ]]$ must be a $[[ ty_mem_ptr ]]$, so step with
+    \pf{} $[[ pval ]]$ must be a $[[ ptr ]]$, so step with
     \MemopIsPtrWellAligned.}}
 
 \step{<1>25}{\case{%
@@ -2159,10 +2147,10 @@ to deduce that $[[ nR' ]]$ can only be what you would have supplied anyways.
     \pflet{$[[ h' ]] = [[ cdot ]]$ and $[[ nR' ]] = [[ cdot ]]$,
         so $[[ heap ]] = [[ h' + f ]]$ trivially and $[[ alloct |- cdot <= cdot ]]$ (by \HeapEmpty).}
 
-    $[[ ret ]] = [[ sigma y : loc . y = inj ty_mem_ptr +ptr ( int * sizeof ct ) /\ I ]]$\\[\baselineskip]
-    \pf{} By \PureTopValDone, suffices to show $[[ cdot |- ty_mem_ptr' => loc ]]$
+    $[[ ret ]] = [[ sigma y : loc . y = inj ptr +ptr ( int * sizeof ct ) /\ I ]]$\\[\baselineskip]
+    \pf{} By \PureTopValDone, suffices to show $[[ cdot |- ptr' => loc ]]$
     (true by \PureValObjPtr) and
-    $[[ smt ( N => inj ty_mem_ptr' = inj ty_mem_ptr +ptr ( int * sizeof ct ) ) ]]$
+    $[[ smt ( N => inj ptr' = inj ptr +ptr ( int * sizeof ct ) ) ]]$
     (true by definition of \PETPArrayShift).}}
 
 \step{<1>3}{\case{%
@@ -2203,17 +2191,17 @@ to deduce that $[[ nR' ]]$ can only be what you would have supplied anyways.
     \pflet{%
         $[[ ret ]] = [[ sigma yp : loc . term /\ exists x : to_base ( ct ) . ( yp |- const ct false - ct -> x ) *o I  ]]$\\
         where $[[ term ]] = [[ representable ( ct * , yp ) /\ alignedI ( int , yp )  /\ allocv [ alloc_id ] = ( addr , sizeof ct ) ]]$.\\
-        $[[ pt ]] = [[ Owned < ct > ( inj ty_mem_ptr , ) ( oarg ) ]]$
+        $[[ pt ]] = [[ Owned < ct > ( inj ptr , ) ( oarg ) ]]$
         where $[[ oarg ]] = [[ { sym_init = const ct false , sym_value = default to_base ( ct ) } ]]$.\\[\baselineskip]}
 
     \assume{%
         $[[ cdot ; L0 ; N ; cdot |- create ( int , ct ) Symbol_prefix => ret ]]$
         and so $[[ h ]] = [[ cdot ]]$ (by inversion, \HeapEmpty)
-        and $[[ heap ]] = [[ f + { pt & None } + { Alloc ( inj ty_mem_ptr , ) ( sizeof ct ) & None } ]]$.\\}
+        and $[[ heap ]] = [[ f + { pt & None } + { Alloc ( inj ptr , ) ( sizeof ct ) & None } ]]$.\\}
 
     \pflet{%
-        $[[ h' ]] = [[ { pt & None } + { Alloc ( inj ty_mem_ptr , ) ( sizeof ct ) & None } ]]$,
-        $[[ nR' ]] = [[ _ : pt , _ : Alloc ( inj ty_mem_ptr , ) ( sizeof ct ) ]]$,
+        $[[ h' ]] = [[ { pt & None } + { Alloc ( inj ptr , ) ( sizeof ct ) & None } ]]$,
+        $[[ nR' ]] = [[ _ : pt , _ : Alloc ( inj ptr , ) ( sizeof ct ) ]]$,
         $[[ alloct' ]] = ( [[ alloct [ alloc_id ] := ( addr , sizeof ct ) ]])$,
         $[[ N' ]] = [[ N , allocv [ alloc_id ] = ( addr , sizeof ct )  ]]$.}}
     This means $[[ heap ]] = [[ h' + f ]]$ (trivially).
@@ -2222,17 +2210,17 @@ to deduce that $[[ nR' ]]$ can only be what you would have supplied anyways.
     (by \HeapPredOwned, \AllocTy, \StateTy).\\[\baselineskip]
 
     \prove{%
-        $[[ cdot ; L0 ; N' ; nR' |- done < ty_mem_ptr , default to_base ( ct ) , Owned < ct > (  inj ty_mem_ptr , ) > : ret => ret ]]$.\\[\baselineskip]}}
+        $[[ cdot ; L0 ; N' ; nR' |- done < ptr , default to_base ( ct ) , Owned < ct > (  inj ptr , ) > : ret => ret ]]$.\\[\baselineskip]}}
 
     \begin{proof}
 
-    \step{<2>1}{$[[ cdot |- ty_mem_ptr => loc ]]$ by \PureValObjPtr{} and \PureValObj.}
+    \step{<2>1}{$[[ cdot |- ptr => loc ]]$ by \PureValObjPtr{} and \PureValObj.}
 
-    \step{<2>2}{$[[ smt ( N' => term ) ]]$ by construction of $[[ ty_mem_ptr ]]$ and $[[ N' ]]$.}
+    \step{<2>2}{$[[ smt ( N' => term ) ]]$ by construction of $[[ ptr ]]$ and $[[ N' ]]$.}
 
     \step{<2>3}{$[[ cdot ; L0 |- default to_base ( ct ) => to_base ( ct ) ]]$ by construction.}
 
-    \step{<2>4}{$[[ cdot ; L0 ; N ; nR'  |- Owned < ct > ( inj ty_mem_ptr , ) <= pt ]]$ by
+    \step{<2>4}{$[[ cdot ; L0 ; N ; nR'  |- Owned < ct > ( inj ptr , ) <= pt ]]$ by
         \ResSynPred.}
 
     \step{<2>5}{Prove typing with \ExplSpineRet; \stepref{<2>4} -- \stepref{<2>1} with
@@ -2245,23 +2233,23 @@ to deduce that $[[ nR' ]]$ can only be what you would have supplied anyways.
     \ExplIsActionLoad.
 }{%
     \pflet{%
-        $[[ ret ]] = [[ sigma y : to_base ( ct ) . y = inj pval /\ ( inj ty_mem_ptr |- const ct true - ct -> inj pval ) *o I ]]$\\
-        $[[ pt ]] = [[ Owned < ct > ( inj ty_mem_ptr , ) ( oarg ) ]]$
+        $[[ ret ]] = [[ sigma y : to_base ( ct ) . y = inj pval /\ ( inj ptr |- const ct true - ct -> inj pval ) *o I ]]$\\
+        $[[ pt ]] = [[ Owned < ct > ( inj ptr , ) ( oarg ) ]]$
         where $[[ oarg ]] = [[ { sym_init = const ct true , sym_value = inj pval } ]]$.\\[\baselineskip]}
 
     \assume{%
-        $[[ cdot ; L0 ; N ; nR |- load ( ct , ty_mem_ptr , _mem_order , res_term ) => ret ]]$\\
+        $[[ cdot ; L0 ; N ; nR |- load ( ct , ptr , _mem_order , res_term ) => ret ]]$\\
         and $[[ heap ]] = [[ heap' + { pt & None } ]]$
-        so $[[ alloct | < h + f ; res_term > ||v < heap' + { pt & None } ; Owned < ct > ( inj ty_mem_ptr , ) > ]]$.\\[\baselineskip]}
+        so $[[ alloct | < h + f ; res_term > ||v < heap' + { pt & None } ; Owned < ct > ( inj ptr , ) > ]]$.\\[\baselineskip]}
 
     \pflet{$[[ h' ]]$ and $[[ nR' ]]$ be as per \lemmaref{subsec:res_term_red_isolated}.}
     $[[ nR' ]] = [[ _ : pt ]]$ by lemma~\ref{subsec:non_cond_res_det_ctx_val}
     and $[[ h' ]] = [[ { pt & None } ]]$ by lemma~\ref{subsec:norm_ctx_det_heap},
     hence $[[ heap' ]] = [[ f ]]$.\\
     This means $[[ heap ]] = [[ h' + f ]]$, $[[ alloct |- h' <= nR' ]]$
-    and $[[ cdot ; L0 ; N ; nR' |- Owned < ct > ( inj ty_mem_ptr , ) => pt ]]$.\\[\baselineskip]
+    and $[[ cdot ; L0 ; N ; nR' |- Owned < ct > ( inj ptr , ) => pt ]]$.\\[\baselineskip]
 
-    \prove{$[[ cdot ; L0 ; N ; nR' |- done < pval , Owned < ct > (  inj ty_mem_ptr ,  ) > : ret => ret ]]$.\\}}}
+    \prove{$[[ cdot ; L0 ; N ; nR' |- done < pval , Owned < ct > (  inj ptr ,  ) > : ret => ret ]]$.\\}}}
 
     \begin{proof}
 
@@ -2270,7 +2258,7 @@ to deduce that $[[ nR' ]]$ can only be what you would have supplied anyways.
 
     \step{<2>2}{$[[ smt ( N => inj pval = inj pval ) ]]$ trivially.}
 
-    \step{<2>3}{$[[ cdot ; L0 ; N ; nR' |- Owned < ct > ( inj ty_mem_ptr , ) => pt ]]$, already established.}
+    \step{<2>3}{$[[ cdot ; L0 ; N ; nR' |- Owned < ct > ( inj ptr , ) => pt ]]$, already established.}
 
     \step{<2>4}{Prove typing with \ExplSpineRet; \stepref{<2>3} -- \stepref{<2>1} with
         \ExplSpineRes, \ExplSpineLog, \ExplSpineComp{} respectively; \ExplIsTVal{}.}
@@ -2281,19 +2269,19 @@ to deduce that $[[ nR' ]]$ can only be what you would have supplied anyways.
     \ExplIsActionStore.
 }{%
     \pflet{%
-        $[[ ret ]] = [[ sigma _ : unit . ( inj ty_mem_ptr |- const ct true - ct -> inj pval ) *o I ]]$.\\
-        $[[ pt ]] = [[ Owned < ct > ( inj ty_mem_ptr , ) ( _t )]]$,
-        $[[ pt' ]] = [[ Owned < ct > ( inj ty_mem_ptr , ) ( oarg ) ]]$,
+        $[[ ret ]] = [[ sigma _ : unit . ( inj ptr |- const ct true - ct -> inj pval ) *o I ]]$.\\
+        $[[ pt ]] = [[ Owned < ct > ( inj ptr , ) ( _t )]]$,
+        $[[ pt' ]] = [[ Owned < ct > ( inj ptr , ) ( oarg ) ]]$,
         where $[[ oarg ]] = [[ { sym_init = const ct true , sym_value = inj pval } ]]$.\\[\baselineskip]}
 
     \assume{%
-        $[[ cdot ; L0 ; N ; nR |- store ( _b , ct , ty_mem_ptr , pval , _mem_order , res_term ) => ret ]]$
-        and $[[ heap ]] = [[ heap' + { pt' & None } ]]$ so $[[ alloct | < h + f ; res_term > ||v < heap' + { pt & None } ; Owned < ct > ( inj ty_mem_ptr , ) > ]]$.\\[\baselineskip]}
+        $[[ cdot ; L0 ; N ; nR |- store ( _b , ct , ptr , pval , _mem_order , res_term ) => ret ]]$
+        and $[[ heap ]] = [[ heap' + { pt' & None } ]]$ so $[[ alloct | < h + f ; res_term > ||v < heap' + { pt & None } ; Owned < ct > ( inj ptr , ) > ]]$.\\[\baselineskip]}
 
     $[[ exists ]] [[ h'' ]] , [[ nR'' ]]$ such that
     $[[ heap' + { pt & None } ]] = [[ h'' + f ]]$,
     $[[ alloct |- h' <= nR' ]]$
-    and $[[ cdot ; L0 ; N ; nR'' |- Owned < ct > ( inj ty_mem_ptr , ) => pt ]]$,
+    and $[[ cdot ; L0 ; N ; nR'' |- Owned < ct > ( inj ptr , ) => pt ]]$,
     by \lemmaref{subsec:res_term_red_isolated}.\\[\baselineskip]
 
     $[[ nR'' ]] = [[ _ : pt ]]$ by lemma~\ref{subsec:non_cond_res_det_ctx_val}
@@ -2303,13 +2291,13 @@ to deduce that $[[ nR' ]]$ can only be what you would have supplied anyways.
     This means $[[ heap ]] = [[ h' + f ]]$ and $[[ alloct |- h' <= nR' ]]$ (by \HeapPredOwned).\\[\baselineskip]
 
     \prove{%
-        $[[ cdot ; L0 ; N ; nR' |- done < Unit , Owned < ct > ( inj ty_mem_ptr , )  > : ret => ret ]]$.\\[\baselineskip]}}}
+        $[[ cdot ; L0 ; N ; nR' |- done < Unit , Owned < ct > ( inj ptr , )  > : ret => ret ]]$.\\[\baselineskip]}}}
 
     \begin{proof}
 
     \step{<2>1}{$[[ cdot |- Unit => unit ]]$ by \PureValUnit.}
 
-    \step{<2>2}{$[[ cdot ; L0 ; N ; _ : pt' |- Owned < ct > ( inj ty_mem_ptr , ) <= pt' ]]$
+    \step{<2>2}{$[[ cdot ; L0 ; N ; _ : pt' |- Owned < ct > ( inj ptr , ) <= pt' ]]$
         by \ResSynPred.}
 
     \step{<2>3}{Prove typing with \ExplSpineRet; \stepref{<2>2} -- \stepref{<2>1} with
@@ -2322,13 +2310,13 @@ to deduce that $[[ nR' ]]$ can only be what you would have supplied anyways.
 }{%
 
     \assume{%
-        $[[ cdot ; L0 ; N ; nR |- kill ( static ct , ty_mem_ptr , res_term ) => sigma _ : unit . I ]]$
-        and $[[ alloct | < h + f ; res_term > ||v < heap + { pt & None } + { Alloc ( ptrt ,  ) ( oarg ) & None } ; < Owned < ct > ( inj ty_mem_ptr , ) , Alloc ( ptrt ,  ) > > ]]$.\\[\baselineskip]}
+        $[[ cdot ; L0 ; N ; nR |- kill ( static ct , ptr , res_term ) => sigma _ : unit . I ]]$
+        and $[[ alloct | < h + f ; res_term > ||v < heap + { pt & None } + { Alloc ( ptrt ,  ) ( oarg ) & None } ; < Owned < ct > ( inj ptr , ) , Alloc ( ptrt ,  ) > > ]]$.\\[\baselineskip]}
 
     $[[ exists ]] [[ h'' ]] , [[ nR'' ]]$ such that
     $[[ heap + { pt & None } + { Alloc ( ptrt ,  ) ( oarg ) & None } ]] = [[ h'' + f ]]$,
     $[[ alloct |- h'' <= nR'' ]]$
-    and $[[ cdot ; L0 ; N ; nR'' |- < Owned < ct > ( inj ty_mem_ptr , ) , Alloc ( ptrt , ) > => pt ]]$,
+    and $[[ cdot ; L0 ; N ; nR'' |- < Owned < ct > ( inj ptr , ) , Alloc ( ptrt , ) > => pt ]]$,
     by \lemmaref{subsec:res_term_red_isolated}.\\[\baselineskip]
 
     $[[ nR'' ]] = [[ _ : pt , _ : Alloc ( ptrt , ) ( oarg ) ]]$ by lemma~\ref{subsec:non_cond_res_det_ctx_val}
@@ -2607,11 +2595,11 @@ have ranges which are disjoint with allocations so far.}
     \pf{} \pflet{ $[[ A' ]] = [[ A [ alloc_id ] := ( addr , sizeof ct , true ) ]]$ \\
     $[[ M' ]] = [[ M [ addr dd addr + sizeof ct - 1 ] ]] :=
     ( @ \mathsf{empty} , \mathsf{unspec} , \mathsf{none} )$.\\
-    $[[ alloct' ; h' ]] = [[ alloct [ alloc_id ] := ( addr , sizeof ct ) ; h + { pt & None } + { Alloc ( inj ty_mem_ptr , ) ( sizeof ct ) & None } ]]$.\\[\baselineskip]}
+    $[[ alloct' ; h' ]] = [[ alloct [ alloc_id ] := ( addr , sizeof ct ) ; h + { pt & None } + { Alloc ( inj ptr , ) ( sizeof ct ) & None } ]]$.\\[\baselineskip]}
 
     The premises of this step satisfy the premises of \VipAlloc{}.\\
     $[[ alloct' ]]$ is consistent with $[[ A' ]]$ (required by premise 2 of \SatStateDef{}).\\
-    $[[ ( A' , [| |] ) |= { Alloc ( inj ty_mem_ptr , ) ( sizeof ct ) & None } ]]$ by \SatHeapAlloc{}.\\
+    $[[ ( A' , [| |] ) |= { Alloc ( inj ptr , ) ( sizeof ct ) & None } ]]$ by \SatHeapAlloc{}.\\
     $[[ ( A' , M [ addr dd addr + sizeof ct - 1 ] ) |= { pt & None } ]]$ by \SatHeapOwned{}.\\
     $[[ ( A , M ) |= h ]]$ by assumption and so \SatHeapConcat{} proves heap satisfation overall.}}
 
@@ -2622,7 +2610,7 @@ have ranges which are disjoint with allocations so far.}
     where $[[ ptrt = ( @ alloc_id , addr ) ]]$ and \lemmaref{subsec:res_term_red_sat},
     we must have $[[ A [ alloc_id ] = ( addr , sizeof ct , true ) ]]$.\\[\baselineskip]
 
-    \pflet{ $[[ A' ]] = [[ A [ inj ty_mem_ptr dot alloc_id ] := ( inj ty_mem_ptr dot addr , sizeof ct , false ) ]]$.\\[\baselineskip]}
+    \pflet{ $[[ A' ]] = [[ A [ inj ptr dot alloc_id ] := ( inj ptr dot addr , sizeof ct , false ) ]]$.\\[\baselineskip]}
 
     The premises of this step satisfy the premises of \VipKill{}.\\
     $[[ alloct ]]$ remains consistent with $[[ A' ]]$ (by premise 2 of \SatStateDef{}).}}
@@ -2685,11 +2673,11 @@ have ranges which are disjoint with allocations so far.}
     $[[ M = M1 + M2 ]]$ where $[[ ( A , M1 ) |= h1 ]]$ and $[[ ( A , M2 ) |= { pt & None } ]]$.\\[\baselineskip]
 
     Hence, step with \VipStore{}. We have
-    $[[ ( A , M2' ) |= { inj ty_mem_ptr |- const ct true - ct -> inj pval & None } ]]$
+    $[[ ( A , M2' ) |= { inj ptr |- const ct true - ct -> inj pval & None } ]]$
     where $[[ M2' ]] = [[ M2 [ addr' dd addr' + sizeof ct - 1 ] ]]
     :=  \mathtt{repr} ( [[ pval ]] )$ (by \SatHeapOwnedInit{}, since
     $\mathtt{abst/repr}$ are effectively inverses) and so
-    $[[ ( A , M1 + M2' ) |=  h1 + { inj ty_mem_ptr |- const ct true - ct -> inj pval & None } ]]$.
+    $[[ ( A , M1 + M2' ) |=  h1 + { inj ptr |- const ct true - ct -> inj pval & None } ]]$.
     (by \SatHeapConcat{}).}}
 
 % Low priority
@@ -2717,9 +2705,9 @@ have ranges which are disjoint with allocations so far.}
     we have $[[ A [ alloc_id ] = ( addri , termi , _t ) ]]$.
     Also, from the premeise of the CN steps, we know
     $[[ addri =< addr' =< addri + termi ]]$
-    and $[[ inj ty_mem_ptr' eq inj ty_mem_ptr +ptr ( int * sizeof ct ) ]]$
-    where $[[ inj ty_mem_ptr' = ( @ alloc_id , addr' ) ]]$ and
-    $[[ inj ty_mem_ptr = ( @ alloc_id , addr ) ]]$.\\[\baselineskip]
+    and $[[ inj ptr' eq inj ptr +ptr ( int * sizeof ct ) ]]$
+    where $[[ inj ptr' = ( @ alloc_id , addr' ) ]]$ and
+    $[[ inj ptr = ( @ alloc_id , addr ) ]]$.\\[\baselineskip]
 
     Hence we may step with \VipArray{}. Since $[[ ( A , M ) ]]$ doesn't
     change, satisfaction is preserved.}}
@@ -2805,7 +2793,6 @@ have ranges which are disjoint with allocations so far.}
 \step{<0>37}{\case{\PatCompCons}{}}
 \step{<0>38}{\case{\PatCompTuple}{}}
 \step{<0>39}{\case{\PatCompArray}{}}
-\step{<0>40}{\case{\PatCompSpecified}{}}
 \step{<0>41}{\case{\PatSymOrPatSym}{}}
 \step{<0>42}{\case{\PatSymOrPatPat}{}}
 \step{<0>43}{\case{\PatResMatchEmp}{}}
@@ -2828,7 +2815,6 @@ have ranges which are disjoint with allocations so far.}
 \step{<0>60}{\case{\PureValObjStruct}{}}
 \step{<0>61}{\case{\PureValVar}{}}
 \step{<0>62}{\case{\PureValObj}{}}
-\step{<0>63}{\case{\PureValLoaded}{}}
 \step{<0>64}{\case{\PureValUnit}{}}
 \step{<0>65}{\case{\PureValTrue}{}}
 \step{<0>66}{\case{\PureValFalse}{}}
@@ -2838,7 +2824,6 @@ have ranges which are disjoint with allocations so far.}
 \step{<0>70}{\case{\PureValCtorCons}{}}
 \step{<0>71}{\case{\PureValCtorTuple}{}}
 \step{<0>72}{\case{\PureValCtorArray}{}}
-\step{<0>73}{\case{\PureValCtorSpecified}{}}
 \step{<0>74}{\case{\PureValStruct}{}}
 \step{<0>75}{\case{\PureExprVal}{}}
 \step{<0>76}{\case{\PureExprCtorIvXOR}{}}
@@ -3006,7 +2991,6 @@ have ranges which are disjoint with allocations so far.}
 \step{<0>236}{\case{\SubsPatValueCons}{}}
 \step{<0>237}{\case{\SubsPatValueTuple}{}}
 \step{<0>238}{\case{\SubsPatValueArray}{}}
-\step{<0>239}{\case{\SubsPatValueSpecified}{}}
 \step{<0>240}{\case{\SubsPatValueSym}{}}
 \step{<0>241}{\case{\SubsPatValuePat}{}}
 \step{<0>242}{\case{\SubsPatResEmp}{}}
