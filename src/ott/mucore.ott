@@ -227,21 +227,17 @@ grammar
     | ( union tag ) { dot member = object_value }                    :: :: union   {{ com C union value  }}
 
 
-  T_bt {{ tex \beta }} :: 'T_bt_' ::=  {{ com Ott-hack, ignore }}
-    | base_type :: :: BaseType
-
-
   value :: 'M_V' ::= {{ auxparam 'TY }} {{ com Core values }}
-    | object_value                    :: :: object {{ com C object value        }}
-    | Unit                            :: :: unit   {{ com unit                  }}
-    | True                            :: :: true   {{ com boolean true          }}
-    | False                           :: :: false  {{ com boolean false         }}
-    | T_bt [ </ valuei // , // i /> ] :: :: list   {{ com list                  }}
-    | ( </ valuei // , // i /> )      :: :: tuple  {{ com tuple                 }}
+    | object_value               :: :: object {{ com C object value        }}
+    | Unit                       :: :: unit   {{ com unit                  }}
+    | True                       :: :: true   {{ com boolean true          }}
+    | False                      :: :: false  {{ com boolean false         }}
+    | [ </ valuei // , // i /> ] :: :: list   {{ com list                  }}
+    | ( </ valuei // , // i /> ) :: :: tuple  {{ com tuple                 }}
 
   bool_value :: 'M_VB' ::= {{ auxparam 'TY }} {{ com Core booleans }}
-    | True                               :: :: true   {{ com boolean true          }}
-    | False                              :: :: false  {{ com boolean false         }}
+    | True                       :: :: true   {{ com boolean true          }}
+    | False                      :: :: false  {{ com boolean false         }}
 
  subrules
    bool_value <:: value
@@ -249,18 +245,16 @@ grammar
 grammar
 
   ctor_val :: 'M_C' ::= {{ com data constructors (values, do not reduce) }}
-    | Nil T_bt    :: :: nil         {{ com empty list                                      }} % : [bTy]
-    | Cons        :: :: cons        {{ com list cons                                       }} % : bTy -> [bTy] -> [bTy]
-    | Tuple       :: :: tuple       {{ com tuple                                           }} % : bTy1 -> ... -> bTyN -> (bTy1, ..., bTyN)
-    | Array       :: :: array       {{ com C fixed-size array (guaranteed to be non-empty) }} % : bTy -> ... -> bTy -> array bTy
+    | Nil base_type :: :: nil         {{ com empty list                                      }} % : [bTy]
+    | Cons          :: :: cons        {{ com list cons                                       }} % : bTy -> [bTy] -> [bTy]
+    | Tuple         :: :: tuple       {{ com tuple                                           }} % : bTy1 -> ... -> bTyN -> (bTy1, ..., bTyN)
+    | Array         :: :: array       {{ com C fixed-size array (guaranteed to be non-empty) }} % : bTy -> ... -> bTy -> array bTy
 
   ctor_expr :: 'M_C' ::= {{ com data constructors (expressions, do reduce) }}
     | IvCOMPL     :: :: ivCOMPL     {{ com bitwise complement             }} % : ctype -> integer -> integer
     | IvAND       :: :: ivAND       {{ com bitwise AND                    }} % : ctype -> integer -> integer -> integer
     | IvOR        :: :: ivOR        {{ com bitwise OR                     }} % : ctype -> integer -> integer -> integer
     | IvXOR       :: :: ivXOR       {{ com bitwise XOR                    }} % : ctype -> integer -> integer -> integer
-    | Fvfromint   :: :: fvfromint   {{ com cast integer to floating value }} % : integer -> floating
-    | Ivfromfloat :: :: ivfromfloat {{ com cast floating to integer value }} % : ctype -> floating -> integer
 
 metavar ty_loc {{ tex }} ::=
   {{ com Ott-hack, ignore (locations) }}
@@ -317,8 +311,8 @@ grammar
 grammar
 
   ty_sym_opt_T_bt {{ tex id\_opt\_\beta }} :: '' ::=  {{ com type annotated optional identifier }}
-    | _ : T_bt          ::   :: No_sym (+ binders = {}         +)
-    | Symbol_sym : T_bt ::   :: Just   (+ binders = Symbol_sym +)
+    | _ : base_type          ::   :: No_sym (+ binders = {}         +)
+    | Symbol_sym : base_type :: :: Just   (+ binders = Symbol_sym +)
 
 grammar
 
