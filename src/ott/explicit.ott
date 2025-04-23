@@ -1,7 +1,7 @@
 grammar
 
   C {{ tex \mathcal{C} }} :: Comp_Ctx_ ::= {{ com computational variable context }}
-    | x : BT_t     ::   :: cons   {{ com add to context       }}
+    | x : base_type     ::   :: cons   {{ com add to context       }}
     | </ Ci // , // i />    ::   :: concat {{ com concatenate contexts }}
     | cdot                  :: M :: empty  {{ com empty context        }}
 
@@ -15,7 +15,7 @@ grammar
 grammar
 
   L {{ tex \mathcal{L} }} :: Log_Ctx_ ::= {{ com logical variable context }}
-    | x : BT_t     ::   :: cons   {{ com add to context       }}
+    | x : base_type     ::   :: cons   {{ com add to context       }}
     | </ Li // , // i />    ::   :: concat {{ com concatenate contexts }}
     | cdot                  :: M :: empty  {{ com empty context        }}
 
@@ -644,14 +644,14 @@ defns
 
     C |- pval => bool
     -------------------------------- :: Bool_To_Integer
-    C ; L ; N |- bool_to_integer ( pval ) => sigma y : integer . y = if inj pval then z_one else z_zero /\ I
+    C ; L ; N |- bool_to_integer ( pval ) => sigma y : integer . y = if inj pval then 1 else 0 /\ I
 
 
     C |- pval => integer
-    abbrev1 eq max_int ct - min_int ct + z_one
+    abbrev1 eq max ct - min ct + 1
     abbrev2 eq inj pval REM abbrev1
     ------------------------------------------- :: WrapI
-    C ; L ; N |- wrapI ( ct , pval ) => sigma y : integer . y = if abbrev2 =< max_int ct then abbrev2 else abbrev2 - abbrev1 /\ I
+    C ; L ; N |- wrapI ( ct , pval ) => sigma y : integer . y = if abbrev2 =< max ct then abbrev2 else abbrev2 - abbrev1 /\ I
 
 
   defn CLN |- tpval <= pure_ret :: :: Top_Val :: Top_Val_
@@ -717,11 +717,11 @@ defns
     oarg [ x ] dot sym_init eq init [ x ]
     oarg [ x ] dot sym_value eq valuet [ x ]
     ----------------------------------------------------------------- :: Iterate
-    C ; L ; N ; R |- iterate ( res_term , n ) => ops ( *S x . z_zero =< x =< n - z_one => ptrt |- ct -> oarg )
+    C ; L ; N ; R |- iterate ( res_term , n ) => ops ( *S x . 0 =< x =< n - 1 => ptrt |- ct -> oarg )
 
 
     C ; L ; N ; R |- res_term => ( *S x . iguard => ptrt |- ct -> oarg  )
-    smt ( N => forall x . iguard <-> ( z_zero =< x =< n - z_one ) )
+    smt ( N => forall x . iguard <-> ( 0 =< x =< n - 1 ) )
     y1 eq allocv [ ptrt dot alloc_id ]
     smt ( N => y1 dot base =< ptrt dot addr /\ ptrt dot addr + sizeof ct * n  =< y1 dot base + y1 dot len )
     init [ y2 ]  eq oarg [ y2 ] dot sym_init

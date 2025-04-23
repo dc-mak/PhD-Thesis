@@ -237,9 +237,9 @@ defns
 
     % DEFER conv_int ( ct , pval )
 
-    abbrev1 eq max_int ct - min_int ct + z_one
+    abbrev1 eq max ct - min ct + 1
     abbrev2 eq inj pval REM abbrev1
-    int' eq if abbrev2 =< max_int ct then abbrev2 else abbrev2 - abbrev1
+    int' eq if abbrev2 =< max ct then abbrev2 else abbrev2 - abbrev1
     pure_ret eq sigma y : integer . y = int' /\ I
     ------------------------------------------------------------------------------- :: WrapI
     _ | < wrapI ( ct , int ) > --> < done int' : pure_ret >
@@ -301,7 +301,7 @@ defns
 
    alloct | < h ; res_term > ||v < h' + { pred_term ( oarg ) & None } ; pred_term >
    pred_term eq Owned < array n ct > ( ptrt , )
-   qpred_term eq { x ; z_zero =< x =< n - z_one . Owned < ct > (  ptrt + sizeof ct , ) }
+   qpred_term eq { x ; 0 =< x =< n - 1 . Owned < ct > (  ptrt + sizeof ct , ) }
    oarg' [ x ] dot sym_init eq oarg dot  sym_init [ x ]
    oarg' [ x ] dot sym_value eq oarg dot sym_value [ x ]
    -------------------------------------------------------------------------------------------- :: Iterate
@@ -310,7 +310,7 @@ defns
 
    alloct | < h ; res_term > ||v < h' + { qpred_term ( oarg ) & cdot } ; qpred_term >
    qpred_term eq { x ; iguard . Owned < ct > ( ptrt + sizeof ct , ) }
-   alloct |- smt ( forall x. iguard <-> ( z_zero =< x =< n - z_one ) )
+   alloct |- smt ( forall x. iguard <-> ( 0 =< x =< n - 1 ) )
    x eq alloct [ ptrt dot alloc_id ]
    alloct |- smt ( x dot base =< ptrt dot addr /\ ptrt dot addr + sizeof ct * n  =< x dot base + x dot len )
    pred_term eq Owned < array n ct > ( ptrt , )

@@ -80,28 +80,27 @@ grammar
 
 
   int , _int {{ tex \_ }} , step , addr , alloc_id :: 'Int_' ::=    {{ com integer }}
-    | n                   ::   :: IndexVar           {{ com literal integer                        }}
+    | n                   ::   :: IndexVar   {{ com literal integer                        }}
     | 1                   :: X :: One
     | 0                   :: X :: Zero
-    | sizeof ct           :: M :: of_Ctype           {{ tex \symrm{sizeof}( [[ct]] )               }}
-                                                     {{ com size of a C type                       }}
-    | offsetof tag member :: M :: of_Member          {{ tex \symrm{offsetof}([[tag]], [[member]] ) }}
-                                                     {{ com offset of a struct member              }}
-    | stackdepth ( S )    :: M :: stackdepth         {{ tex \mathrm{stackdepth}([[S]])             }}
-    | incdec ( n )        :: M :: incdec             {{ tex [[incdec]]([[n]])                      }}
-    | ptr_size            :: M :: Ptr_size           {{ com size of a pointer                      }}
-    | MAX_INT ct          :: M :: of_Max_Int         {{ tex \symrm{max\_int}_{ [[ct]] }            }}
-                                                     {{ com maximum value of int of type $[[ct]]$  }}
-    | MIN_INT ct          :: M :: of_Min_Int         {{ tex \symrm{min\_int}_{ [[ct]] }            }}
-                                                     {{ com minimum value of int of type $[[ct]]$  }}
+    | sizeof ct           :: M :: of_Ctype   {{ tex \symrm{sizeof}( [[ct]] )               }}
+                                             {{ com size of a C type                       }}
+    | offsetof tag member :: M :: of_Member  {{ tex \symrm{offsetof}([[tag]], [[member]] ) }}
+                                             {{ com offset of a struct member              }}
+    | stackdepth ( S )    :: M :: stackdepth {{ tex \mathrm{stackdepth}([[S]])             }}
+    | incdec ( n )        :: M :: incdec     {{ tex [[incdec]]([[n]])                      }}
+    | max ct              :: M :: Max        {{ tex \max{ [[ct]] }                         }}
+                                             {{ com maximum of numeric type $[[ct]]$       }}
+    | min ct              :: M :: Min        {{ tex \min{ [[ct]] }                         }}
+                                             {{ com minimum of numeric type $[[ct]]$       }}
 
 
 grammar
 
   ct {{ tex \tau }} :: 'Ct_' ::=  {{ com partial/relevant grammar of C types }}
-    | array int ct :: :: ArrayCt {{ com fixed-length array of element type $[[ct]]$ }}
-    | int             :: :: C_Int   {{ com C (signed) integer                          }}
-    | ct *            :: :: Pointer {{ com pointer to type $[[ct]]$                    }}
+    | array int ct :: :: ArrayN  {{ com fixed-length array of element type $[[ct]]$ }}
+    | int          :: :: Integer {{ com C (signed) integer                          }} {{ tex \cnkw{int} }}
+    | ct *         :: :: Pointer {{ com pointer to type $[[ct]]$                    }}
     | struct tag   :: :: Struct  {{ com C struct type                               }}
 
 metavar tag ::=  {{ com unique identifier for struct/union type }}
@@ -109,6 +108,7 @@ metavar tag ::=  {{ com unique identifier for struct/union type }}
 grammar
 
   member :: 'Member_' ::= {{ com record or C struct/union member name }}
+    | id        :: :: User_def {{ com user-defined member }}
     | alloc_id  :: :: Alloc_id {{ tex \mathrm{alloc\_id} }}
     | addr      :: :: Addr     {{ tex \mathrm{addr} }}
     | base      :: :: Base     {{ tex \mathrm{base} }}
@@ -312,22 +312,21 @@ grammar
     | ty_bool           ::   :: Bool
     | unit              ::   :: Unit
     | default base_type ::   :: Default
-    | null              ::   :: Null
+    | NULL              ::   :: Null
 
 grammar
 
   arith_op :: '' ::= {{ com SMT term arithmetic operations }}
-    | term1 +   term2             ::   :: Add
+    | term1 +   term2                   ::   :: Add
     | sum i inEnv { x | iguard } . term ::   :: Sum {{ tex \sum_{ [[ i ]] [[ inEnv ]] \{ [[ x ]] [[ | ]] [[ iguard ]] \} }{ [[ term ]] } }}
-    | term1 -   term2             ::   :: Sub
-    | term1 *   term2             ::   :: Mul {{ tex [[term1]] \times [[term2]] }}
-    | term1 /   term2             ::   :: Div
-    | term1 mod term2             ::   :: Mod
-    | term1 REM term2             ::   :: Rem
-    | term1 ^   term2             ::   :: Exp
-    | xor_uf ( term1 , term2 )    ::    :: Xor_Uf
-    | term1 ' arith_binop ' term2 :: M :: Arith_binop
-      {{ tex [[term1]] [[arith_binop]] [[term2]] }}
+    | term1 -   term2                   ::   :: Sub
+    | term1 *   term2                   ::   :: Mul {{ tex [[term1]] \times [[term2]] }}
+    | term1 /   term2                   ::   :: Div
+    | term1 mod term2                   ::   :: Mod
+    | term1 REM term2                   ::   :: Rem
+    | term1 ^   term2                   ::   :: Exp
+    | xor_uf ( term1 , term2 )          ::   :: Xor_Uf
+    | term1 ' arith_binop ' term2       :: M :: Arith_binop {{ tex [[term1]] [[arith_binop]] [[term2]] }}
 
 
   bool_op :: '' ::= {{ com SMT term boolean operations }}
@@ -341,8 +340,7 @@ grammar
     | term1 != term2                   :: M   :: Neq
     | term1 /\ term2                   :: X M :: And_Binary
     | term1 \/ term2                   :: X M :: Or_Binary
-    | term1 ' bool_binop ' term2       :: M   :: Bool_binop
-      {{ tex [[term1]] [[bool_binop]] [[term2]] }}
+    | term1 ' bool_binop ' term2       :: M   :: Bool_binop {{ tex [[term1]] [[bool_binop]] [[term2]] }}
 
 
   tuple_op :: '' ::= {{ com SMT term tuple constructor and projections }}
@@ -367,8 +365,7 @@ grammar
     | nil              ::  :: Nil
     | term1 cons term2 ::  :: Cons    {{ tex [[term1]] :: [[term2]] }}
     | tl term          ::  :: Tail
-    | int th_l term ::  :: NthList {{ order [[int]] [[term]]   }}
-                                      {{ tex [[term]]^{([[int]])} }}
+    | int th_l term    ::  :: NthList {{ order [[int]] [[term]]   }} {{ tex [[term]]^{([[int]])} }}
 
   ct_pred :: '' ::= {{ com SMT predicates for C-types }}
     | representable ( ct , term ) :: :: Representable
@@ -377,14 +374,10 @@ grammar
     | abst ( term , ct , term' )  ::  :: Abst
 
   cmp_op :: '' ::= {{ com SMT term relational operations }}
-    | term1 <  term2            ::   :: LT {{ tex [[term1]] < [[term2]] }}
+    | term1 <  term2            ::   :: LT        {{ tex [[term1]] < [[term2]] }}
     | term1 =< term2            ::   :: LE
-    | term1 ' rel_binop ' term2 :: M :: Rel_binop
-      {{ tex [[term1]] [[rel_binop]] [[term2]] }}
+    | term1 ' rel_binop ' term2 :: M :: Rel_binop {{ tex [[term1]] [[rel_binop]] [[term2]] }}
 
-
-  BT_t {{ tex \beta }} :: '' ::=  {{ com Ott-hack, ignore }}
-    | base_type :: :: Base_type
 
   map_op :: '' ::= {{ com SMT term map operations }}
     | [ | </ termi // , // i /> |]  :: M :: ArrayLit {{ com array literal }}
@@ -392,7 +385,7 @@ grammar
     | term1 [ term2 dd term3 ]      ::  :: Range
     | const term                    ::   :: Const
     | term1 [ term2 ] := term3      ::   :: Set
-    | x : base_type . term ::   :: Def
+    | x : base_type . term          ::   :: Def
 
   % DEFER align this with backend/cn/terms.ml
   term , _t {{ tex \_ }}, iguard , ptrt {{ tex ptr }} , init , _init {{ tex \_ }} ,
