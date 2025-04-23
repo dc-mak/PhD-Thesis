@@ -328,48 +328,36 @@ defns
 defns
   pat_judge :: 'Pat_' ::=
 
-  defn pat : base_type ~> PAT out_C with out_term :: :: Comp_ :: Comp_
+  defn pat : base_type ~> out_C with out_term :: :: Comp_ :: Comp_
   {{ com computational pattern to context: $[[pat]]$ and type $[[base_type]]$ produces context $[[out_C]]$ and constraint $[[out_term]]$ }} by
 
 
     ---------------------------------------- :: No_Sym_Annot
-    _ : base_type : base_type ~> PAT cdot with _
+    _ : base_type : base_type ~> cdot with _
 
 
     -------------------------------------------------------- :: Sym_Annot
-    x : base_type : base_type ~> PAT x : base_type with x
+    x : base_type : base_type ~> x : base_type with x
 
 
     --------------------------------------------------------- :: Nil
-    Nil base_type ( ) : list base_type ~> PAT cdot with nil
+    Nil base_type ( ) : list base_type ~> cdot with nil
 
 
-    pat1 : base_type ~> PAT C1 with term1
-    pat2 : list base_type ~> PAT C2 with term2
+    pat1 : base_type ~> C1 with term1
+    pat2 : list base_type ~> C2 with term2
     --------------------------------------------------------------------------- :: Cons
-    Cons ( pat1 , pat2 ) : list base_type ~> PAT C1 , C2 with term1 cons term2
+    Cons ( pat1 , pat2 ) : list base_type ~> C1 , C2 with term1 cons term2
 
 
     indexed pati : base_typei ~> Ci with termi
     ----------------------------------------------------------------------------------------------------------- :: Tuple
-    Tuple ( </ pati // i /> ) : </ base_typei // i /> ~> PAT </ Ci // i /> with ( </ termi // i /> )
+    Tuple ( </ pati // i /> ) : </ base_typei // i /> ~> </ Ci // i /> with ( </ termi // i /> )
 
 
     indexed pati : base_type ~> Ci with termi
     -------------------------------------------------------------------------------------------- :: Array
-    Array ( </ pati // i /> ) : array base_type ~> PAT </ Ci // i /> with [| </ termi // i /> |]
-
-
-  defn sym_or_pat : base_type ~> out_C with out_term :: :: Sym_Or_Pat :: Sym_Or_Pat_
-  {{ com identifier-or-pattern to context: $[[sym_or_pat]]$ and type $[[base_type]]$ produces context $[[out_C]]$ and constraint $[[out_term]]$ }} by
-
-    ------------------------------------- :: Sym
-    x : base_type ~> x : base_type with x
-
-
-    pat : base_type ~> PAT C with term
-    ------------------------------------------------ :: Pat
-    pat : base_type ~> C with term
+    Array ( </ pati // i /> ) : array base_type ~> </ Ci // i /> with [| </ termi // i /> |]
 
 
   defn L ; N |- res_pat : res ~> out_LNRp :: :: Res_Match_ :: Res_Match_
@@ -430,10 +418,10 @@ defns
 
 
     % This is the rule which requires ~ relation
-    sym_or_pat : base_type ~> C1 with term1
+    pat : base_type ~> C1 with term1
     C , C1 ; L ; N |- ret_pat : term1 / y ( ret ) ~> C2 ; L2 ; N2 ; R2
     ----------------------------------------------------------------------------------- :: Comp
-    C ; L ; N |- comp sym_or_pat , ret_pat : sigma y : base_type . ret ~> C1, C2 ; L2 ; N2 ; R2
+    C ; L ; N |- comp pat , ret_pat : sigma y : base_type . ret ~> C1, C2 ; L2 ; N2 ; R2
 
 
     C ; L , x : base_type ; N |- ret_pat : x / y ( ret ) ~> C2 ; L2 ; N2 ; R2
@@ -698,17 +686,17 @@ defns
 
 
     C ; L ; N |- pexpr => sigma y1 : base_type1 . term1 /\ I
-    sym_or_pat : base_type1 ~> C1 with term
+    pat : base_type1 ~> C1 with term
     C , C1 ; L ; N , term / y1 ( term1 ) |- tpexpr <= sigma y2 : base_type2 . term2 /\ I
     -------------------------------------------------------------------------------------------- :: Let
-    C ; L ; N |- let sym_or_pat = pexpr in tpexpr <= sigma y2 : base_type2 . term2 /\ I
+    C ; L ; N |- let pat = pexpr in tpexpr <= sigma y2 : base_type2 . term2 /\ I
 
 
     C ; L ; N |- tpexpr1 <= sigma y1 : base_type1 . term1 /\ I
-    sym_or_pat : base_type1 ~> C1 with term
+    pat : base_type1 ~> C1 with term
     C , C1 ; L ; N , term / y1 ( term1 ) |- tpexpr <= sigma y2 : base_type2 . term2 /\ I
     --------------------------------------------------------------------------------------------------------------------- :: LetT
-    C ; L ; N |- let sym_or_pat : pure_ret = tpexpr1 in tpexpr2 <= sigma y2 : base_type2 . term2 /\ I
+    C ; L ; N |- let pat : pure_ret = tpexpr1 in tpexpr2 <= sigma y2 : base_type2 . term2 /\ I
 
 
     C |- pval => base_type1
@@ -1166,17 +1154,17 @@ defns
 
 
     C ; L ; N |- pexpr => sigma y : base_type . term /\ I
-    sym_or_pat : base_type ~> C1 with term1
+    pat : base_type ~> C1 with term1
     C , C1 ; L ; N , term1 / y ( term ) ; R |- texpr <= ret
     ---------------------------------------------------------- :: LetP
-    C ; L ; N ; R |- let sym_or_pat = pexpr in texpr <= ret
+    C ; L ; N ; R |- let pat = pexpr in texpr <= ret
 
 
     C ; L ; N |- tpexpr <= pure_ret
-    sym_or_pat : base_type ~> C1 with term1
+    pat : base_type ~> C1 with term1
     C , C1 ; L ; N , term1 / y ( term ) ; R |- texpr <= ret
     -------------------------------------------------------------------- :: LetTP
-    C ; L ; N ; R |- let sym_or_pat : pure_ret = tpexpr in texpr <= ret
+    C ; L ; N ; R |- let pat : pure_ret = tpexpr in texpr <= ret
 
 
     C ; L ; N ; R' |- seq_expr => ret1

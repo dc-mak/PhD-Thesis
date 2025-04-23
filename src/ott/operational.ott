@@ -36,49 +36,36 @@ defns
     -------------------------------------- :: Alloc
     term |- smt ( qterm )
 
-  defn pat = pval ~> PAT out_subs :: :: Pat_Value_ :: Pat_Value_
+  defn pat = pval ~> out_subs :: :: Pat_Value_ :: Pat_Value_
   {{ com computational value deconstruction: $[[ pat ]]$ deconstructs $[[ pval ]]$ to produce substitution $[[out_subs]]$ }} by
 
 
     ----------------------------- :: No_Sym_Annot
-    _ : _bt = pval ~> PAT cdot
+    _ : _bt = pval ~> cdot
 
 
     -------------------------------------------- :: Sym_Annot
-    x : _bt = pval ~> PAT pval / x
+    x : _bt = pval ~> pval / x
 
 
     --------------------------------------------------- :: Nil
-    Nil base_type ( ) = Nil base_type ( ) ~> PAT cdot
+    Nil base_type ( ) = Nil base_type ( ) ~> cdot
 
 
-    pat1 = pval1 ~> PAT subs1
-    pat2 = pval2 ~> PAT subs2
+    pat1 = pval1 ~> subs1
+    pat2 = pval2 ~> subs2
     --------------------------------------------------------------------------------------------------- :: Cons
-    Cons ( pat1 , pat2 ) = Cons ( pval1 , pval2 ) ~> PAT [ subs1 , subs2 ]
+    Cons ( pat1 , pat2 ) = Cons ( pval1 , pval2 ) ~> [ subs1 , subs2 ]
 
 
-    indexed </ pati = pvali ~> PAT subsi // i />
+    indexed </ pati = pvali ~> subsi // i />
     ------------------------------------------------------------------------------------------- :: Tuple
-    Tuple ( </ pati // i /> ) = Tuple ( </ pvali // i /> ) ~> PAT [ </ subsi // i /> ]
+    Tuple ( </ pati // i /> ) = Tuple ( </ pvali // i /> ) ~> [ </ subsi // i /> ]
 
 
-    indexed </ pati = pvali ~> PAT subsi // i />
+    indexed </ pati = pvali ~> subsi // i />
     -------------------------------------------------------------------------------------------- :: Array
-    Array ( </ pati // i /> ) = Array ( </ pvali // i /> ) ~> PAT [ </ subsi // i /> ]
-
-
-  defn sym_or_pat = pval ~> out_subs :: :: Pat_Value'_ :: Pat_Value'_
-  {{ com computational value deconstruction: [[sym_or_pat]] deconstructs $[[ pval ]]$ to produce substitution $[[out_subs]]$ }} by
-
-
-    ----------------------------------- :: Sym
-    x = pval ~> pval / x
-
-
-    pat = pval ~> PAT subs
-    ------------------------------------ :: Pat
-    pat = pval ~> subs
+    Array ( </ pati // i /> ) = Array ( </ pvali // i /> ) ~> [ </ subsi // i /> ]
 
 
   defn < h ; res_pat = res_val > ~> < h' ; out_subs > :: :: Pat_Res :: Pat_Res_
@@ -123,10 +110,10 @@ defns
     % This more general definition only exists for the more general version of
     % "well-typed values pattern-match successfully". You could get rid of it,
     % and make the definitions & proofs simpler.
-    sym_or_pat = pval ~> subs
+    pat = pval ~> subs
     < h ; </ ret_pati = ret_termi // i /> > ~> < h' ; psi >
     -------------------------------------------- :: Comp
-    < h ; comp sym_or_pat = pval , </ ret_pati = ret_termi // i /> > ~> < subs ( h' ) ; [ subs , psi ] >
+    < h ; comp pat = pval , </ ret_pati = ret_termi // i /> > ~> < subs ( h' ) ; [ subs , psi ] >
 
 
     % This more general definition only exists for the more general version of
@@ -266,35 +253,35 @@ defns
 
   defn term | < tpexpr > --> < tpexpr' > :: :: TP_TP :: TP_TP_ by
 
-    patj = pval ~> PAT subsj
+    patj = pval ~> subsj
     forall i lt j . not ( pati = pval ~> subsi )
     ------------------------------------------------------------------------------------------------------- :: Case
     _ | < case pval of </ | pati => tpexpri // i /> end > --> < subsj ( tpexprj ) >
 
 
-    sym_or_pat = pval ~> subs
+    pat = pval ~> subs
     ------------------------------------------------------------ :: Let_Sub
-    _ | < let sym_or_pat = pval in tpexpr > --> < subs ( tpexpr ) >
+    _ | < let pat = pval in tpexpr > --> < subs ( tpexpr ) >
 
 
     alloct | < pexpr > --> < tpval : pure_ret >
     ------------------------------------------- :: Let_Let
-    alloct | < let sym_or_pat = pexpr in tpexpr > --> < let sym_or_pat : pure_ret = tpval in tpexpr >
+    alloct | < let pat = pexpr in tpexpr > --> < let pat : pure_ret = tpval in tpexpr >
 
 
     alloct | < pexpr > --> < tpexpr1 : pure_ret >
     ---------------------------------------------------------------------- :: Let_LetT
-    alloct | < let sym_or_pat = pexpr in tpexpr2 > --> < let sym_or_pat : pure_ret = tpexpr1 in tpexpr2 >
+    alloct | < let pat = pexpr in tpexpr2 > --> < let pat : pure_ret = tpexpr1 in tpexpr2 >
 
 
-    sym_or_pat = pval ~> subs
+    pat = pval ~> subs
     ------------------------------------------- :: LetT_Sub
-    _ | < let sym_or_pat : pure_ret = done pval in tpexpr > --> < subs ( tpexpr ) >
+    _ | < let pat : pure_ret = done pval in tpexpr > --> < subs ( tpexpr ) >
 
 
     alloct | < tpexpr1 > --> < tpexpr1' >
     ------------------------------------------- :: LetT_LetT
-    alloct | < let sym_or_pat : pure_ret = tpexpr1 in tpexpr2 > --> < let sym_or_pat : pure_ret = tpexpr1' in tpexpr2 >
+    alloct | < let pat : pure_ret = tpexpr1 in tpexpr2 > --> < let pat : pure_ret = tpexpr1' in tpexpr2 >
 
 
     ------------------------------------------------------------------------------- :: If_True
@@ -634,29 +621,29 @@ defns
     < s ; case pval of </ | pati => texpri // i /> end > --> < s ; subsj ( texprj ) >
 
 
-    sym_or_pat = pval ~> subs
+    pat = pval ~> subs
     --------------------------------------- :: LetP_Sub
-    < s ; let sym_or_pat = pval in texpr > --> < s ; subs ( texpr ) >
+    < s ; let pat = pval in texpr > --> < s ; subs ( texpr ) >
 
 
     alloct | < pexpr > --> < tpval : pure_ret >
     ------------------------------------------- :: LetP_LetP
-    < alloct ; h ; let sym_or_pat = pexpr in texpr > --> < alloct ; h ; let sym_or_pat : pure_ret = tpval in texpr >
+    < alloct ; h ; let pat = pexpr in texpr > --> < alloct ; h ; let pat : pure_ret = tpval in texpr >
 
 
     alloct | < pexpr > --> < tpexpr : pure_ret >
     ------------------------------------------- :: LetP_LetTP
-    < alloct ; h ; let sym_or_pat = pexpr in texpr > --> < alloct ; h ; let sym_or_pat : pure_ret = tpexpr in texpr >
+    < alloct ; h ; let pat = pexpr in texpr > --> < alloct ; h ; let pat : pure_ret = tpexpr in texpr >
 
 
-    sym_or_pat = pval ~> subs
+    pat = pval ~> subs
     ------------------------------------------- :: LetTP_Sub
-    < s ; let sym_or_pat : pure_ret = done pval in texpr > --> < s ; subs ( texpr ) >
+    < s ; let pat : pure_ret = done pval in texpr > --> < s ; subs ( texpr ) >
 
 
     alloct | < tpexpr > --> < tpexpr' >
     ------------------------------------------- :: LetTP_LetTP
-    < alloct ; h ; let sym_or_pat : pure_ret = tpexpr in texpr > --> < alloct ; h ; let sym_or_pat : pure_ret = tpexpr' in texpr >
+    < alloct ; h ; let pat : pure_ret = tpexpr in texpr > --> < alloct ; h ; let pat : pure_ret = tpexpr' in texpr >
 
 
     < h ; </ ret_pati = ret_termi // i /> > ~> < h' ; subs >

@@ -295,12 +295,6 @@ grammar
 
 grammar
 
-  sym_or_pat {{ tex id\_or\_pat }} :: 'M_' ::= {{ auxparam 'TY }} {{ com identifier or pattern }}
-    | id :: :: Symbol (+ binders = id     +)
-    | pat        :: :: Pat    (+ binders = binders( pat ) +)
-
-grammar
-
   Z_t {{ tex z }} :: 'Z_' ::=  {{ com OCaml arbitrary-width integer }}
     | z_one                       :: X M :: One       {{ tex 1                     }}
     | z_zero                      :: X M :: Zero      {{ tex 0                     }}
@@ -617,9 +611,9 @@ grammar
   tpexpr :: 'M_TPE' ::= {{ aux ty_loc annots tyvar_TY _ }} {{ auxparam 'TY }} {{ com top-level pure expressions }}
     | tpval                                             ::   :: tpval {{ com top-level pure values                 }}
     | case pval of </ | tpexpr_case_branchi // i /> end ::   :: case  {{ com pat matching                      }}
-    | let sym_or_pat = pexpr in tpexpr                  ::   :: let   (+ bind binders( sym_or_pat ) in tpexpr  +)
+    | let pat = pexpr in tpexpr                  ::   :: let   (+ bind binders( pat ) in tpexpr  +)
                                                                       {{ com pure let                              }}
-    | let sym_or_pat : pure_ret = tpexpr1 in tpexpr2    ::   :: letT  (+ bind binders( sym_or_pat ) in tpexpr2 +)
+    | let pat : pure_ret = tpexpr1 in tpexpr2    ::   :: letT  (+ bind binders( pat ) in tpexpr2 +)
                                                                       {{ com annoted pure let                      }}
     | if pval then tpexpr1 else tpexpr2                 ::   :: if    {{ com pure if                               }}
     | subs ( tpexpr )                                   :: M :: subs
@@ -799,7 +793,7 @@ grammar
 grammar
 
   ret_pat :: RetP_ ::= {{ com return pat }}
-    | comp sym_or_pat          :: :: comp (+ binders = binders( sym_or_pat )          +) {{ com computational pattern       }}
+    | comp pat          :: :: comp (+ binders = binders( pat )          +) {{ com computational pattern       }}
     | log  y          :: :: log  (+ binders = y                     +) {{ com logical variable            }}
     | reso res_pat             :: :: res  (+ binders = binders( res_pat )             +) {{ com resource pattern            }}
     | </ ret_pati // , // i /> :: :: seq  (+ binders = binders( </ ret_pati // i /> ) +) {{ com sequence of return patterns }}
@@ -821,9 +815,9 @@ grammar
   seq_texpr :: 'M_Seq_TE' ::= {{ aux ty_loc annots _ }} {{ auxparam 'TY }} {{ com sequential top-level (effectful) expressions }}
     | tval                                            :: :: tval           {{ com (effectful) top-level values                             }}
     | run id </ pvali // , // i />            :: :: run            {{ com run from label                                           }}
-    | let sym_or_pat = pexpr in texpr                 :: :: letP           (+ bind binders( sym_or_pat ) in texpr                          +)
+    | let pat = pexpr in texpr                 :: :: letP           (+ bind binders( pat ) in texpr                          +)
                                                                            {{ com pure let                                                 }}
-    | let sym_or_pat : pure_ret = tpexpr in texpr     :: :: letTP          (+ bind binders( sym_or_pat ) in texpr                          +)
+    | let pat : pure_ret = tpexpr in texpr     :: :: letTP          (+ bind binders( pat ) in texpr                          +)
                                                                            {{ com annotated pure let                                       }}
     | let ret_pat = seq_expr in texpr                 :: :: let            (+ bind binders( ret_pat ) in texpr                             +)
                                                                            {{ com bind return pats                                         }}
