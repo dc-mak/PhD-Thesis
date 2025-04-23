@@ -8,8 +8,8 @@ grammar
       {{ com request is satisfied exactly by $[[out_res_term]]$ and the output argument is $[[out_oarg]]$ }}
     | out_oarg and out_res_req                                                                            :: :: More
       {{ com request is satisfied partially with output argument $[[out_oarg]]$ with remaining $[[out_res_req]]$ }}
-    | bind out_res_pat1 : out_res1 = out_res_term1 for out_Sym1 & out_oarg and out_Sym2 : out_rem     :: :: Rem
-      {{ com deconstruct $[[out_res_term1]] [[:]] [[out_res1]]$ using $[[out_res_pat1]]$ to satisfy request exactly (using $[[out_Sym1]]$ and $[[out_oarg]]$) with remainder $[[out_Sym2]] [[:]] [[out_rem]]$ }}
+    | bind out_res_pat1 : out_res1 = out_res_term1 for out_x1 & out_oarg and out_x2 : out_rem     :: :: Rem
+      {{ com deconstruct $[[out_res_term1]] [[:]] [[out_res1]]$ using $[[out_res_pat1]]$ to satisfy request exactly (using $[[out_x1]]$ and $[[out_oarg]]$) with remainder $[[out_x2]] [[:]] [[out_rem]]$ }}
 
 
   res_bind :: 'res_bind_' ::= {{ com resource bindings }}
@@ -78,8 +78,8 @@ defns
     N |- a ( ptrt2 , </ iarg1i // i /> ) in? { x ; iguard . a ( ptrt1 + step , </ iarg2i // i /> ) } ~> term
 
 
-  defn N |- Symbol_sym : norm_res -? res_req ~> res_diff :: :: Res_Diff :: Res_Diff_
-  {{ com the difference between $[[Symbol_sym]] [[:]] [[norm_res]]$ and requested $[[res_req]]$ is $[[res_diff]]$ }} by
+  defn N |- r : norm_res -? res_req ~> res_diff :: :: Res_Diff :: Res_Diff_
+  {{ com the difference between $[[r]] [[:]] [[norm_res]]$ and requested $[[res_req]]$ is $[[res_diff]]$ }} by
 
     ---------------------------------------------------------- :: If_None
     N |- _ : if term then res1 else res2 -? res_req ~> None
@@ -155,8 +155,8 @@ defns
     % N |- r : qpred_term & oarg -? qpred_term'  ~> oarg and { x ; iguard' /\ neg iguard . a ( ptrt + step , iargs ) }
 
 
-  defn N |- Symbol_sym1 : norm_res +? res_term2 : res_req & oarg2 ~> out_res_term and out_oarg3 :: :: Res_Comb :: Res_Comb_
-  {{ com combining $[[Symbol_sym1]] [[:]] [[norm_res]]$, $[[res_term2]] [[:]] [[res_req]] \& [[oarg2]]$, results in $[[out_res_term]]$ $[[out_oarg3]]$ }} by
+  defn N |- r1 : norm_res +? res_term2 : res_req & oarg2 ~> out_res_term and out_oarg3 :: :: Res_Comb :: Res_Comb_
+  {{ com combining $[[r1]] [[:]] [[norm_res]]$, $[[res_term2]] [[:]] [[res_req]] \& [[oarg2]]$, results in $[[out_res_term]]$ $[[out_oarg3]]$ }} by
 
     N |- pred_term in? qpred_term ~> term
     C ; L |- oarg1 => base_type
@@ -211,8 +211,8 @@ defns
     N ; nR |- { x ; iguard . a ( ptrt + step , </ iargi // i /> ) } ~> bind res_bind for res_term and oarg -| nR'
 
 
-  defn N ; nR |- if term then res1 else res2 ~> out_Sym -| out_nRp :: :: If_ :: If_
-  {{ com under-determined conditional resource request: $[[N]] ; [[nR]]$ fulfil request for $[[if]]$ $[[term]]$ $[[then]]$ $[[res1]]$ $[[else]]$ $[[res2]]$ with \textbf{synthesising} $[[out_Sym]]$ and $[[out_nRp]]$ leftover }} by
+  defn N ; nR |- if term then res1 else res2 ~> out_x -| out_nRp :: :: If_ :: If_
+  {{ com under-determined conditional resource request: $[[N]] ; [[nR]]$ fulfil request for $[[if]]$ $[[term]]$ $[[then]]$ $[[res1]]$ $[[else]]$ $[[res2]]$ with \textbf{synthesising} $[[out_x]]$ and $[[out_nRp]]$ leftover }} by
 
 
     N |- norm_res eq if term then res1 else res2
@@ -332,15 +332,15 @@ defns
 
     % action {{ tex mem\_action }} :: 'M_' ::= {{ aux ty_loc _ }} {{ auxparam 'TY }} {{ com memory actions }}
     %   | alloc ( ty_asym1 , ty_asym2 ) Symbol_prefix                                                         :: :: Alloc
-    %   | load ( ty_act , ty_asym , Cmm_memory_order )                                                        :: :: Load
-    %   | rmw ( ty_act ,  ty_asym1 , ty_asym2 , ty_asym3 , Cmm_memory_order1 , Cmm_memory_order2 )            :: :: RMW
+    %   | load ( ct , ty_asym , Cmm_memory_order )                                                        :: :: Load
+    %   | rmw ( ct ,  ty_asym1 , ty_asym2 , ty_asym3 , Cmm_memory_order1 , Cmm_memory_order2 )            :: :: RMW
     %   | fence ( Cmm_memory_order )                                                                          :: :: Fence
-    %   | cmp_exch_strong ( ty_act , ty_asym1 , ty_asym2 , ty_asym3 , Cmm_memory_order1 , Cmm_memory_order2 ) :: :: CompareExchangeStrong
-    %   | cmp_exch_weak ( ty_act , ty_asym1 , ty_asym2 , ty_asym3 , Cmm_memory_order1 , Cmm_memory_order2 )   :: :: CompareExchangeWeak
+    %   | cmp_exch_strong ( ct , ty_asym1 , ty_asym2 , ty_asym3 , Cmm_memory_order1 , Cmm_memory_order2 ) :: :: CompareExchangeStrong
+    %   | cmp_exch_weak ( ct , ty_asym1 , ty_asym2 , ty_asym3 , Cmm_memory_order1 , Cmm_memory_order2 )   :: :: CompareExchangeWeak
     %   | linux_fence ( Linux_linux_memory_order )                                                            :: :: LinuxFence
-    %   | linux_load ( ty_act , ty_asym , Linux_linux_memory_order )                                          :: :: LinuxLoad
-    %   | linux_store ( ty_act , ty_asym1 , ty_asym2 , Linux_linux_memory_order )                             :: :: LinuxStore
-    %   | linux_rmw ( ty_act , ty_asym1 , ty_asym2 , Linux_linux_memory_order )                               :: :: LinuxRMW
+    %   | linux_load ( ct , ty_asym , Linux_linux_memory_order )                                          :: :: LinuxLoad
+    %   | linux_store ( ct , ty_asym1 , ty_asym2 , Linux_linux_memory_order )                             :: :: LinuxStore
+    %   | linux_rmw ( ct , ty_asym1 , ty_asym2 , Linux_linux_memory_order )                               :: :: LinuxRMW
 
 
   % DEFER out_memop'
@@ -416,7 +416,7 @@ defns
     % realloc ( pval1 , pval2 , pval3 )
     % va_start ( pval1 , pval2 )
     % va_copy ( pval )
-    % va_arg ( pval , ty_act )
+    % va_arg ( pval , ct )
     % va_end ( pval )
 
 
@@ -508,10 +508,10 @@ defns
   {{ com seq. expression elaboration: given $[[CLNnR]]$, $[[seq_expr]]$ elaborates (via $[[out_res_bind]]$) to $[[seq_expr']] [[:]] [[out_norm_ret]]$, with $[[out_nRp]]$ leftover }} by
 
 
-    Symbol_sym :  norm_fun eq </ xi // i /> |-> texpr  inEnv Globals
+    id :  norm_fun eq </ xi // i /> |-> texpr  inEnv Globals
     C ; L ; N ; nR |- spine :; norm_fun ~> bind res_bind for </ spine_elemi // i /> and norm_ret -| nR'
     ---------------------------------------------------------------------------------------------------------------- :: CCall
-    C ; L ; N ; nR |- ccall ( ty_act , Symbol_sym , spine ) ~> bind res_bind for ccall ( ty_act , Symbol_sym , </ spine_elemi // i /> ) : norm_ret -| nR'
+    C ; L ; N ; nR |- ccall ( ct , id , spine ) ~> bind res_bind for ccall ( ct , id , </ spine_elemi // i /> ) : norm_ret -| nR'
 
 
     name :  norm_fun eq </ xi // i /> |-> texpr  inEnv Globals
@@ -694,10 +694,10 @@ defns
     C ; L ; N ; nR |- if pval then texpr1 else texpr2 <= norm_ret ~> if pval then insert_lets ( res_bind1 , texpr1' ) else insert_lets ( res_bind2 , texpr2' )
 
 
-    Symbol_sym :  norm_fun eq </ xi // i /> |-> texpr inEnv Globals
+    id :  norm_fun eq </ xi // i /> |-> texpr inEnv Globals
     C ; L ; N ; cdot |- </ xi = pvali // i /> :; norm_fun >> subs ; false /\ I
     ----------------------------------------------------------------------------- :: Run
-    C ; L ; N ; cdot |- run Symbol_sym </ pvali // i /> <= false /\ I ~> run Symbol_sym </ pvali // i />
+    C ; L ; N ; cdot |- run id </ pvali // i /> <= false /\ I ~> run id </ pvali // i />
 
 
   % DEFER out_seq_texpr'

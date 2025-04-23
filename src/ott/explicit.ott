@@ -1,7 +1,7 @@
 grammar
 
   C {{ tex \mathcal{C} }} :: Comp_Ctx_ ::= {{ com computational variable context }}
-    | Symbol_sym : BT_t     ::   :: cons   {{ com add to context       }}
+    | x : BT_t     ::   :: cons   {{ com add to context       }}
     | </ Ci // , // i />    ::   :: concat {{ com concatenate contexts }}
     | cdot                  :: M :: empty  {{ com empty context        }}
 
@@ -15,7 +15,7 @@ grammar
 grammar
 
   L {{ tex \mathcal{L} }} :: Log_Ctx_ ::= {{ com logical variable context }}
-    | Symbol_sym : BT_t     ::   :: cons   {{ com add to context       }}
+    | x : BT_t     ::   :: cons   {{ com add to context       }}
     | </ Li // , // i />    ::   :: concat {{ com concatenate contexts }}
     | cdot                  :: M :: empty  {{ com empty context        }}
 
@@ -32,14 +32,14 @@ grammar
 grammar
 
   R {{ tex \mathcal{R} }} :: Res_Ctx_ ::= {{ com resource environment }}
-    | Symbol_sym : res     ::   :: cons   {{ com add to context                                                            }}
+    | r : res     ::   :: cons   {{ com add to context                                                            }}
     | </ Ri // , // i />   ::   :: concat {{ com concatenate contexts                                                      }}
     | cdot                 :: M :: empty  {{ com empty context                                                             }}
     | subs ( R )           :: M :: subs   {{ com substitute $[[subs]]$ over all SMT terms in all resource types in $[[R]]$ }}
 
 
   nR {{ tex \norm{\mathcal{R} } }} , Rem , Fr :: NormRes_Ctx_ ::= {{ com normalised resource env }}
-    | Symbol_sym : norm_res ::   :: cons   {{ com add to context                                                            }}
+    | r : norm_res ::   :: cons   {{ com add to context                                                            }}
     | </ nRi // , // i />   ::   :: concat {{ com concatenate contexts                                                      }}
     | cdot                  :: M :: empty  {{ com empty context                                                             }}
     | subs ( R )             :: M :: subs  {{ com substitute $[[subs]]$ over all SMT terms in all resource types in $[[R]]$ }}
@@ -90,7 +90,7 @@ grammar
 
   ty_extra :: 'ty_extra_' ::= {{ com extra judgements for explicit and inference typing systems }}
     | smt ( N => qterm )                                                     ::  :: smt                     {{ com check if $[[qterm]]$ is SMT-provable in constraint context $[[N]]$     }}
-    | Symbol_sym : out_base_type inEnv C                                     ::  :: x_in_C                  {{ com lookup type of $[[Symbol_sym]]$ in context $[[C]]$                     }}
+    | x : out_base_type inEnv C                                     ::  :: x_in_C                  {{ com lookup type of $[[x]]$ in context $[[C]]$                     }}
     | struct tag & </ out_memberi : out_cti // i /> inEnv Globals            ::  :: struct_in_globals       {{ com lookup types of struct $[[tag]]$ members in $[[Globals]]$            }}
     | a eq </ out_xi : out_base_typei // , // i /> |-> out_res inEnv Globals ::  :: res_pred_in_globals     {{ com lookup body of resource predicate $[[a]]$ in $[[Globals]]$             }}
     | C ; L |- term => out_base_type                                         ::  :: term_synth_type         {{ com omitted/assumed definition: $[[ term ]]$ is (a) well-formed (b) annotated with $[[out_base_type]]$ }}
@@ -240,7 +240,7 @@ defns
 
     N |- res eq res'
     -------------------------------------------------------------------------------- :: Exists
-    N |- exists Symbol_sym : base_type . res eq exists Symbol_sym : base_type . res'
+    N |- exists x : base_type . res eq exists x : base_type . res'
 
 
     smt ( N => term1 <-> term2 )
@@ -641,11 +641,11 @@ defns
     C ; L ; N |- name ( </ pvali // i /> ) => pure_ret
 
 
-    % DEFER (not implemented) memberof ( Symbol_sym , member , pval )
+    % DEFER (not implemented) memberof ( tag , member , pval )
 
 
     % DEFER conv_int -- complicated
-    % conv_int ( ty_act , pval )
+    % conv_int ( ct , pval )
 
 
     C |- pval => bool
@@ -989,15 +989,15 @@ defns
 
     % action {{ tex mem\_action }} :: 'M_' ::= {{ aux ty_loc _ }} {{ auxparam 'TY }} {{ com memory actions }}
     %   | alloc ( ty_asym1 , ty_asym2 ) Symbol_prefix                                                         :: :: Alloc
-    %   | load ( ty_act , ty_asym , Cmm_memory_order )                                                        :: :: Load
-    %   | rmw ( ty_act ,  ty_asym1 , ty_asym2 , ty_asym3 , Cmm_memory_order1 , Cmm_memory_order2 )            :: :: RMW
+    %   | load ( ct , ty_asym , Cmm_memory_order )                                                        :: :: Load
+    %   | rmw ( ct ,  ty_asym1 , ty_asym2 , ty_asym3 , Cmm_memory_order1 , Cmm_memory_order2 )            :: :: RMW
     %   | fence ( Cmm_memory_order )                                                                          :: :: Fence
-    %   | cmp_exch_strong ( ty_act , ty_asym1 , ty_asym2 , ty_asym3 , Cmm_memory_order1 , Cmm_memory_order2 ) :: :: CompareExchangeStrong
-    %   | cmp_exch_weak ( ty_act , ty_asym1 , ty_asym2 , ty_asym3 , Cmm_memory_order1 , Cmm_memory_order2 )   :: :: CompareExchangeWeak
+    %   | cmp_exch_strong ( ct , ty_asym1 , ty_asym2 , ty_asym3 , Cmm_memory_order1 , Cmm_memory_order2 ) :: :: CompareExchangeStrong
+    %   | cmp_exch_weak ( ct , ty_asym1 , ty_asym2 , ty_asym3 , Cmm_memory_order1 , Cmm_memory_order2 )   :: :: CompareExchangeWeak
     %   | linux_fence ( Linux_linux_memory_order )                                                            :: :: LinuxFence
-    %   | linux_load ( ty_act , ty_asym , Linux_linux_memory_order )                                          :: :: LinuxLoad
-    %   | linux_store ( ty_act , ty_asym1 , ty_asym2 , Linux_linux_memory_order )                             :: :: LinuxStore
-    %   | linux_rmw ( ty_act , ty_asym1 , ty_asym2 , Linux_linux_memory_order )                               :: :: LinuxRMW
+    %   | linux_load ( ct , ty_asym , Linux_linux_memory_order )                                          :: :: LinuxLoad
+    %   | linux_store ( ct , ty_asym1 , ty_asym2 , Linux_linux_memory_order )                             :: :: LinuxStore
+    %   | linux_rmw ( ct , ty_asym1 , ty_asym2 , Linux_linux_memory_order )                               :: :: LinuxRMW
 
   defn CLNR |- memop => out_ret :: :: Is_Memop :: Is_Memop_
   {{ com memory operation synthesises: given $[[CLNR]]$, $[[memop]]$ synthesises return type $[[out_ret]]$ }} by
@@ -1087,7 +1087,7 @@ defns
     % realloc ( pval1 , pval2 , pval3 )
     % va_start ( pval1 , pval2 )
     % va_copy ( pval )
-    % va_arg ( pval , ty_act )
+    % va_arg ( pval , ct )
     % va_end ( pval )
 
     C ; L ; N ; R |- tval <= ret
@@ -1123,10 +1123,10 @@ defns
   {{ com seq. expression synthesises: given $[[CLNR]]$, $[[seq_expr]]$ synthesises return type $[[out_ret]]$ }} by
 
 
-    Symbol_sym :  fon eq </ xi // i /> |-> texpr  inEnv Globals
+    id :  fon eq </ xi // i /> |-> texpr  inEnv Globals
     C ; L ; N ; R |- </ xi = spine_elemi // i /> :; fon >> subs ; ret
     ------------------------------------------------------------------------------ :: CCall
-    C ; L ; N ; R |- ccall ( ty_act , Symbol_sym , </ spine_elemi // i /> ) => ret
+    C ; L ; N ; R |- ccall ( ct , id , </ spine_elemi // i /> ) => ret
 
 
     name :  fon eq </ xi // i /> |-> texpr  inEnv Globals
@@ -1207,10 +1207,10 @@ defns
     C ; L ; N ; R |- if pval then texpr1 else texpr2 <= ret
 
 
-    Symbol_sym :  fon eq </ xi // i /> |-> texpr  inEnv Globals
+    id :  fon eq </ xi // i /> |-> texpr  inEnv Globals
     C ; L ; N ; cdot |- </ xi = pvali // i /> :; fon >> subs ; false /\ I
     ----------------------------------------------------------------- :: Run
-    C ; L ; N ; cdot |- run Symbol_sym </ pvali // i /> <= false /\ I
+    C ; L ; N ; cdot |- run id </ pvali // i /> <= false /\ I
 
 
   defn CLNR |- is_texpr <= ret :: :: Top_Is :: Top_Is_

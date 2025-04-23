@@ -93,8 +93,8 @@ defns
     % Not having pats and matching rules for (q)preds makes substitutions
     % and their typing match up more closely.
 
-    ------------------------------------------------------------- :: Var
-    < h ; Symbol_sym = res_val > ~> < h ; res_val / Symbol_sym >
+    ------------------------------------------ :: Var
+    < h ; r = res_val > ~> < h ; res_val / r >
 
 
     < h ; res_pat1 = res_val1 > ~> < h1 ; subs1 >
@@ -105,7 +105,7 @@ defns
 
     < h ; res_pat = res_val > ~> < h' ; subs >
     ----------------------------------------------------------------------------------------------------------- :: Pack
-    < h ; pack ( Symbol_sym , res_pat ) = pack ( oarg , res_val ) > ~> < h' ; [ oarg / Symbol_sym , subs ] >
+    < h ; pack ( x , res_pat ) = pack ( oarg , res_val ) > ~> < h' ; [ oarg / x , subs ] >
 
 
     < h + h' ; res_pat = def > ~> < h'' ; subs >
@@ -234,7 +234,7 @@ defns
     _ | < bool_value1 bool_binop bool_value2 > --> < done bool_value : pure_ret >
 
 
-    % DEFER (not implemented) memberof ( Symbol_sym , member , pval )
+    % DEFER (not implemented) memberof ( tag , member , pval )
 
 
     ------------------------------------------------------------------- :: Assert_Undef
@@ -248,14 +248,14 @@ defns
     ---------------------------------------------------- :: Bool_To_Integer_False
     _ | < bool_to_integer ( False ) > --> < done 0 : sigma y : integer . y = 0 /\ I >
 
-    % DEFER conv_int ( ty_act , pval )
+    % DEFER conv_int ( ct , pval )
 
     abbrev1 eq max_int ct - min_int ct + z_one
     abbrev2 eq inj pval REM abbrev1
     int' eq if abbrev2 =< max_int ct then abbrev2 else abbrev2 - abbrev1
     pure_ret eq sigma y : integer . y = int' /\ I
     ------------------------------------------------------------------------------- :: WrapI
-    _ | < wrapI ( ty_act , int ) > --> < done int' : pure_ret >
+    _ | < wrapI ( ct , int ) > --> < done int' : pure_ret >
 
 
     name : pure_fun eq </ xi // i /> |-> tpexpr inEnv Globals
@@ -607,10 +607,10 @@ defns
   defn term | seq_expr --> texpr : ret :: :: Seq_T :: Seq_T_ by
 
 
-    Symbol_sym : fon eq </ xi // i /> |-> texpr inEnv Globals
+    id : fon eq </ xi // i /> |-> texpr inEnv Globals
     alloct | </ xi = spine_elemi // i /> :; fon >> < subs ; ret >
     ------------------------------------------------------------- :: CCall
-    alloct | ccall ( ty_act , Symbol_sym , </ spine_elemi // i /> ) --> subs ( texpr ) : ret
+    alloct | ccall ( ct , id , </ spine_elemi // i /> ) --> subs ( texpr ) : ret
 
 
     name : fon eq </ xi // i /> |-> texpr inEnv Globals
@@ -622,10 +622,10 @@ defns
   defn < s ; seq_texpr > --> < s' ; texpr > :: :: TS_T :: TSeq_T_ by
 
 
-    Symbol_sym : fon eq </ xi // i /> |-> texpr inEnv Globals
+    id : fon eq </ xi // i /> |-> texpr inEnv Globals
     alloct | </ xi = pvali // i /> :; fon >> < subs ; false /\ I >
     ------------------------------------------------------------ :: Run
-    < alloct ; h ; run Symbol_sym </ pvali // i /> > --> < alloct ; h ; subs ( texpr ) >
+    < alloct ; h ; run id </ pvali // i /> > --> < alloct ; h ; subs ( texpr ) >
 
 
     patj = pval ~> subsj

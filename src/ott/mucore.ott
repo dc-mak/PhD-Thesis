@@ -74,7 +74,7 @@ grammar
 
 grammar
 
-  incdec :: 'IoD_' ::= {{ com increment or decrement }}
+  incdec :: 'ID_' ::= {{ com increment or decrement }}
     | inc    ::  :: increment {{ com increment a number by 1 }}
     | dec    ::  :: decrement {{ com decrement a number by 1 }}
 
@@ -143,7 +143,7 @@ grammar
 grammar
 
   % Binary operators
-  binop {{ tex \mathbin{ binop } }} :: 'Op' ::=  {{ com binary operators }}
+  binop {{ tex \mathbin{ binop } }} :: 'Op_' ::=  {{ com binary operators }}
     % arithmetic operators (integer -> integer -> integer)
     | +   :: :: Add   {{ tex \mathbin{ \mathTT{+} } }} {{ com addition       }}
     | -   :: :: Sub   {{ tex \mathbin{ \mathTT{-} } }} {{ com subtraction    }}
@@ -163,7 +163,7 @@ grammar
     | /\  :: :: And   {{ tex \mathbin{ \mathTT{/\char`\\} } }} {{ com conjucntion }}
     | \/  :: :: Or    {{ tex \mathbin{ \mathTT{\char`\\/} } }} {{ com disjunction }}
 
-  arith_binop {{ tex \mathbin{ binop_{arith} } }} :: 'Arith_Op' ::= {{ com arithmentic binary operators }}
+  arith_binop {{ tex \mathbin{ binop_{arith} } }} :: 'ArithOp_' ::= {{ com arithmentic binary operators }}
     | +   :: :: Add
     | -   :: :: Sub
     | *   :: :: Mul
@@ -172,7 +172,7 @@ grammar
     | REM :: :: Rem_f
     | ^   :: :: Exp
 
-  rel_binop {{ tex \mathbin{ binop_{rel} } }} :: 'Rel_Op' ::= {{ com relational binary operators }}
+  rel_binop {{ tex \mathbin{ binop_{rel} } }} :: 'RelOp_' ::= {{ com relational binary operators }}
     | =   :: :: Eq
     | !=  :: :: Ne
     | >   :: :: Gt
@@ -180,7 +180,7 @@ grammar
     | >=  :: :: Ge
     | <=  :: :: Le
 
-  bool_binop {{ tex \mathbin{ binop_{bool} } }} :: 'Bool_Op' ::= {{ com boolean binary operators }}
+  bool_binop {{ tex \mathbin{ binop_{bool} } }} :: 'BoolOp_' ::= {{ com boolean binary operators }}
     | /\  :: :: And
     | \/  :: :: Or
 
@@ -207,19 +207,9 @@ grammar
     | ct :: :: ct {{ tex \outpol{ [[ct]] } }}
 
 
-  Symbol_sym {{ tex id }} , Sym_x {{ tex x }} :: '' ::=  {{ com Ott-hack, ignore }}
-    | id  :: :: id
-    | tag :: :: tag {{ com hack for struct typing rules }}
-
 grammar
 
-  % OUT_HACK|Symbol_sym,id|Sym,id
-  out_Symbol_sym {{ tex \outpol{ id } }} , out_Sym {{ tex \outpol{ id } }}   :: 'Out_hack_' ::=  {{ com Ott-hack, ignore }}
-    | Symbol_sym :: :: Symbol_sym {{ tex \outpol{ [[Symbol_sym]] } }}
-
-grammar
-
-  object_value :: 'M_OV' ::=  {{ auxparam 'TY }} {{ com C object values (inhabitants of object types), which can be read/stored }}
+  object_value :: 'OV_' ::=  {{ com C object values (inhabitants of object types), which can be read/stored }}
     | int                                                            :: :: integer {{ com integer value  }}
     | ptr                                                            :: :: pointer {{ com pointer value  }}
     | array ( </ object_valuei // , // i /> )                        :: :: array   {{ com C array value  }}
@@ -227,7 +217,7 @@ grammar
     | ( union tag ) { dot member = object_value }                    :: :: union   {{ com C union value  }}
 
 
-  value :: 'M_V' ::= {{ auxparam 'TY }} {{ com Core values }}
+  value :: 'V_' ::= {{ com Core values }}
     | object_value               :: :: object {{ com C object value        }}
     | Unit                       :: :: unit   {{ com unit                  }}
     | True                       :: :: true   {{ com boolean true          }}
@@ -235,7 +225,7 @@ grammar
     | [ </ valuei // , // i /> ] :: :: list   {{ com list                  }}
     | ( </ valuei // , // i /> ) :: :: tuple  {{ com tuple                 }}
 
-  bool_value :: 'M_VB' ::= {{ auxparam 'TY }} {{ com Core booleans }}
+  bool_value :: 'BV_' ::= {{ auxparam 'TY }} {{ com Core booleans }}
     | True                       :: :: true   {{ com boolean true          }}
     | False                      :: :: false  {{ com boolean false         }}
 
@@ -244,48 +234,31 @@ grammar
 
 grammar
 
-  ctor_val :: 'M_C' ::= {{ com data constructors (values, do not reduce) }}
+  ctor_val :: 'CtorV_' ::= {{ com data constructors (values, do not reduce) }}
     | Nil base_type :: :: nil         {{ com empty list                                      }} % : [bTy]
     | Cons          :: :: cons        {{ com list cons                                       }} % : bTy -> [bTy] -> [bTy]
     | Tuple         :: :: tuple       {{ com tuple                                           }} % : bTy1 -> ... -> bTyN -> (bTy1, ..., bTyN)
     | Array         :: :: array       {{ com C fixed-size array (guaranteed to be non-empty) }} % : bTy -> ... -> bTy -> array bTy
 
-  ctor_expr :: 'M_C' ::= {{ com data constructors (expressions, do reduce) }}
+  ctor_expr :: 'CtorE_' ::= {{ com data constructors (expressions, do reduce) }}
     | IvCOMPL     :: :: ivCOMPL     {{ com bitwise complement             }} % : ctype -> integer -> integer
     | IvAND       :: :: ivAND       {{ com bitwise AND                    }} % : ctype -> integer -> integer -> integer
     | IvOR        :: :: ivOR        {{ com bitwise OR                     }} % : ctype -> integer -> integer -> integer
     | IvXOR       :: :: ivXOR       {{ com bitwise XOR                    }} % : ctype -> integer -> integer -> integer
 
-metavar ty_loc {{ tex }} ::=
-  {{ com Ott-hack, ignore (locations) }}
-
-metavar Mem_mem_iv_constraint {{ tex mem\_iv\_c }} ::=
-  {{ com OCaml type for memory constraints on integer values }}
-
 metavar UB_name ::=
  {{ com undefined behaviour }}
-
-metavar ty_string {{ tex string }} , List {{ tex \symrm{List} }} ::=
-  {{ com OCaml string }}
-
-metavar tyvar_TY {{ tex }} ::=
-  {{ com Ott-hack, ignore (OCaml type variable TY) }}
-
-grammar
-
-  ty_act {{ tex \tau }} :: 'Ty_act_of' ::=  {{ com Ott-hack, ignore }}
-    | ct :: :: ct
 
 grammar
 
   name :: 'Name_' ::=
-    | Symbol_sym :: :: Sym   {{ com Core identifier                 }}
+    | id         :: :: Sym   {{ com Core identifier                 }}
     | impl_const :: :: ImplC {{ com implementation-defined constant }}
 
 grammar
 
-  pval :: 'M_PV' ::= {{ aux ty_loc annots tyvar_TY _ }} {{ auxparam 'TY }} {{ com pure values }}
-    | Symbol_sym                                                     ::   :: Sym         {{ com Core identifier                           }}
+  pval :: 'PV_' ::= {{ aux ty_loc annots tyvar_TY _ }} {{ auxparam 'TY }} {{ com pure values }}
+    | id                                                             ::   :: Sym         {{ com Core identifier                           }}
     | impl_const                                                     ::   :: ImplC       {{ com implementation-defined constant           }}
     | value                                                          ::   :: val         {{ com Core values                               }}
     | constrained ( </ Mem_mem_iv_constrainti , pvali // , // i /> ) ::   :: constrained {{ com constrained value                         }}
@@ -312,7 +285,7 @@ grammar
 
   ty_sym_opt_T_bt {{ tex id\_opt\_\beta }} :: '' ::=  {{ com type annotated optional identifier }}
     | _ : base_type          ::   :: No_sym (+ binders = {}         +)
-    | Symbol_sym : base_type :: :: Just   (+ binders = Symbol_sym +)
+    | id : base_type :: :: Just   (+ binders = id +)
 
 grammar
 
@@ -323,7 +296,7 @@ grammar
 grammar
 
   sym_or_pat {{ tex id\_or\_pat }} :: 'M_' ::= {{ auxparam 'TY }} {{ com identifier or pattern }}
-    | Symbol_sym :: :: Symbol (+ binders = Symbol_sym     +)
+    | id :: :: Symbol (+ binders = id     +)
     | pat        :: :: Pat    (+ binders = binders( pat ) +)
 
 grammar
@@ -375,7 +348,7 @@ grammar
 
   arith_op :: '' ::= {{ auxparam 'bt }} {{ com SMT term arithmetic operations }}
     | term1 +   term2             ::   :: Add
-    | sum i inEnv { Sym_x | iguard } . term ::   :: Sum {{ tex \sum_{ [[ i ]] [[ inEnv ]] \{ [[ Sym_x ]] [[ | ]] [[ iguard ]] \} }{ [[ term ]] } }}
+    | sum i inEnv { x | iguard } . term ::   :: Sum {{ tex \sum_{ [[ i ]] [[ inEnv ]] \{ [[ x ]] [[ | ]] [[ iguard ]] \} }{ [[ term ]] } }}
     | term1 -   term2             ::   :: Sub
     | term1 *   term2             ::   :: Mul {{ tex [[term1]] \times [[term2]] }}
     | term1 /   term2             ::   :: Div
@@ -449,12 +422,12 @@ grammar
     | term1 [ term2 dd term3 ]      ::  :: Range
     | const term                    ::   :: Const
     | term1 [ term2 ] := term3      ::   :: Set
-    | Symbol_sym : base_type . term ::   :: Def
+    | x : base_type . term ::   :: Def
 
   % DEFER align this with backend/cn/terms.ml
   term , _t {{ tex \_ }}, iguard , ptrt {{ tex ptr }} , init , _init {{ tex \_ }} ,
   valuet {{ tex value }} , iarg , oarg , alloct {{ tex alloc }} , A , M :: '' ::= {{ aux _ ty_bt }} {{ auxparam 'bt }} {{ com SMT term grammar }}
-    | Symbol_sym                       ::   :: Sym
+    | x                       ::   :: Sym
     | lit                              ::   :: Lit
     | arith_op                         ::   :: Arith_op
     | bool_op                          ::   :: Bool_op
@@ -482,8 +455,8 @@ grammar
 
   qterm :: 'QTerm_' ::= {{ com quantified SMT terms }}
     | term                     ::   :: Term   {{ com unquantified SMT term                  }}
-    | forall Symbol_sym . term ::   :: Forall {{ com universally quantified SMT term        }}
-    | exists Symbol_sym . term ::   :: Exists {{ com existentially quantified SMT term      }}
+    | forall x . term ::   :: Forall {{ com universally quantified SMT term        }}
+    | exists x . term ::   :: Exists {{ com existentially quantified SMT term      }}
     | subs < qterm >           :: M :: Subs    {{ tex [[subs]] ( [[qterm]] ) }}
                                               {{ com substitute $[[subs]]$ into $[[qterm]]$ }}
 
@@ -508,9 +481,9 @@ grammar
 
   qpred_term :: '' ::= {{ com quantifed predicate term/request }}
 
-    | { Sym_x ; iguard . a ( ptrt + step , iargs ) } ::  :: QPredT (+ bind Sym_x in iguard +) (+ bind Sym_x in iargs +)
+    | { x ; iguard . a ( ptrt + step , iargs ) } ::  :: QPredT (+ bind x in iguard +) (+ bind x in iargs +)
       {{ com $[[iguard]]$ , $[[ptrt]]$ and $[[step]]$ must be specified }}
-      {{ tex ( [[Sym_x]] [[;]] [[iguard]] ) \{ [[a]] [[(]] [[ptrt]] +_{ \symrm{ ptr } } [[Sym_x]] {\times} [[step]] \ifthenelse{ \equal{ \, }{ [[ iargs ]] } }{}{ [[,]] [[iargs]] } [[)]] \} }}
+      {{ tex ( [[x]] [[;]] [[iguard]] ) \{ [[a]] [[(]] [[ptrt]] +_{ \symrm{ ptr } } [[x]] {\times} [[step]] \ifthenelse{ \equal{ \, }{ [[ iargs ]] } }{}{ [[,]] [[iargs]] } [[)]] \} }}
     | each qpred_term                                        :: S :: EachT
 
   res_req :: 'ResReq_' ::= {{ com resource request }}
@@ -535,9 +508,9 @@ grammar
     | qpred_term ( oarg )                               ::   :: Q {{ com a qpredicate-type is simply the term with an array output argument }}
 
 
-    | *S Sym_x . iguard => ptrt |- ct -> oarg   :: S :: Qpt
-      {{ com pretty-printing for quantified points-to predicate $[[*S]] [[Sym_x]] [[.]] [[iguard]] [[=>]] \symtt{Owned} \langle [[ ct ]] \rangle ( [[ ptrt ]] +_{ \symrm{ ptr } } [[ Sym_x ]] {\times} \symrm{sizeof}( [[ ct ]] ) , [[ oarg ]] [ [[ Sym_x ]] ] )$ }}
-      {{ tex [[ *S ]] [[ Sym_x ]] [[ . ]] [[ iguard ]] [[ => ]] [[ ptrt ]] + [[ Sym_x ]] {\times} \symrm{sizeof}( [[ ct ]] ) \mathbin{ \overset{ [[ oarg ]] [ [[ Sym_x ]] ] . init }{ {\mapsto}_{ [[ ct ]] } } } { [[ oarg ]] [ [[ Sym_x ]] ] . value } }}
+    | *S x . iguard => ptrt |- ct -> oarg   :: S :: Qpt
+      {{ com pretty-printing for quantified points-to predicate $[[*S]] [[x]] [[.]] [[iguard]] [[=>]] \symtt{Owned} \langle [[ ct ]] \rangle ( [[ ptrt ]] +_{ \symrm{ ptr } } [[ x ]] {\times} \symrm{sizeof}( [[ ct ]] ) , [[ oarg ]] [ [[ x ]] ] )$ }}
+      {{ tex [[ *S ]] [[ x ]] [[ . ]] [[ iguard ]] [[ => ]] [[ ptrt ]] + [[ x ]] {\times} \symrm{sizeof}( [[ ct ]] ) \mathbin{ \overset{ [[ oarg ]] [ [[ x ]] ] . init }{ {\mapsto}_{ [[ ct ]] } } } { [[ oarg ]] [ [[ x ]] ] . value } }}
 
 
 grammar
@@ -550,7 +523,7 @@ grammar
     | res1 * res2                         ::     :: SepConj {{ com seperating conjunction                      }}
     | *S ( </ resi // , // i /> )         :: M   :: BigConj {{ com notation for nested sep. conj.              }}
 
-    | exists Symbol_sym : base_type . res ::     :: Exists  {{ com existential                                 }}
+    | exists x : base_type . res ::     :: Exists  {{ com existential                                 }}
     | if term then res1 else res2         ::     :: If      {{ com conditional resource / ordered disjuction   }}
     | ( res )                             :: X S :: Paren   {{ com parentheses }}
     | subs ( res )                        :: M   :: Subs
@@ -629,15 +602,15 @@ grammar
     | pval                                                   ::   :: pval            {{ com pure values                                      }}
     | ctor_expr ( </ pvali // , // i /> )                    ::   :: ctor            {{ com data constructor application                     }}
     | array_shift ( pval1 ,   ct , pval2 )                   ::   :: array_shift     {{ com pointer array shift                              }}
-    | member_shift ( pval , Symbol_sym , member ) ::   :: member_shift    {{ com pointer struct/union member shift                }}
+    | member_shift ( pval , tag , member ) ::   :: member_shift    {{ com pointer struct/union member shift                }}
     | not ( pval )                                           ::   :: not             {{ com boolean not                                      }}
     | pval1 binop pval2                                      ::   :: op              {{ order [[binop]] [[ pval1 ]] [[ pval2 ]]              }} {{ com binary operations }}
-    | memberof  ( Symbol_sym , member , pval )    ::   :: memberof        {{ com C struct/union member access                     }}
+    | memberof  ( tag , member , pval )    ::   :: memberof        {{ com C struct/union member access                     }}
     | name ( </ pvali // , // i /> )                         ::   :: call            {{ com pure function call                               }}
     | assert_undef ( pval , ty_loc UB_name )                 ::   :: assert_undef    {{ com if $[[ pval ]]$ then UB for reason $[[UB_name]]$ }}
     | bool_to_integer ( pval )                               ::   :: bool_to_integer {{ com convert boolean $[[ pval ]]$ to integer          }}
-    | conv_int ( ty_act , pval )                             ::   :: conv_int        {{ com convert between different integer types          }}
-    | wrapI ( ty_act , pval )                                ::   :: wrapI           {{ com wrap integer                                     }}
+    | conv_int ( ct , pval )                             ::   :: conv_int        {{ com convert between different integer types          }}
+    | wrapI ( ct , pval )                                ::   :: wrapI           {{ com wrap integer                                     }}
     | subs ( pexpr )                                         :: M :: expr_subs       {{ com substitution for pure expressions                }}
 
 
@@ -692,7 +665,7 @@ grammar
     | implode ( res_term , tag )                  :: :: Implode {{ com transform member points-tos into points-to-struct   }}
     | break ( res_term , term )                      :: :: Break   {{ com break a qpred into a qpred and a pred               }}
     | glue ( res_term )                              :: :: Join    {{ com glue a qpred and a pred (back) into a qpred         }}
-    | inj ( res_term , ptrt , step , Sym_x . iargs ) :: :: Inj     {{ com transform a pred into a singleton qpred             }}
+    | inj ( res_term , ptrt , step , x . iargs ) :: :: Inj     {{ com transform a pred into a singleton qpred             }}
     | chop ( res_term , iguard )                     :: :: Chop    {{ com chop a qpred into two qpreds along $[[iguard]]$     }}
 
   % It is subtle, but quite important, that only variables can have an
@@ -706,7 +679,7 @@ grammar
     | TERM                          ::   :: Phi     {{ com term for assertion                          }}
     | pred_term                     ::   :: Pred    {{ com heap predicate                              }}
     | qpred_term                    ::   :: QPred   {{ com quanitfied (integer-indexed) heap predicate }}
-    | Symbol_sym                    ::   :: Var     {{ com variable                                    }}
+    | r                    ::   :: Var     {{ com variable                                    }}
     | < </ res_termi // , // i /> > ::   :: SepPair {{ com (nested) seperating-conjunction pair        }}
     | pack ( oarg , res_term )      ::   :: Pack    {{ com packing for existentials                    }}
     | fold res_term : pred          ::   :: Fold    {{ com fold into recursive res. pred.              }}
@@ -738,17 +711,17 @@ grammar
 grammar
 
   action :: 'M_' ::= {{ com memory actions }}
-    | create ( pval , ty_act ) Symbol_prefix                                                     ::  :: Create
+    | create ( pval , ct ) Symbol_prefix                                                     ::  :: Create
     | alloc ( pval1 , pval2 ) Symbol_prefix                                                      ::  :: Alloc
     | kill ( m_kill_kind , pval , res_term )                                                     ::  :: Kill
-    | store ( ty_bool , ty_act , pval1 , pval2 , Cmm_memory_order , res_term )                   ::  :: Store {{ com true means store is locking }}
-    | load ( ty_act , pval , Cmm_memory_order , res_term )                                       ::  :: Load
+    | store ( ty_bool , ct , pval1 , pval2 , Cmm_memory_order , res_term )                   ::  :: Store {{ com true means store is locking }}
+    | load ( ct , pval , Cmm_memory_order , res_term )                                       ::  :: Load
 
   % Factor out res_term proof for all of these (just use emp for create)
   res_action :: 'RA_' ::= {{ com memory actions which require resource terms }}
     | kill ( m_kill_kind , pval , res_term )                                                     ::  :: Kill
-    | store ( ty_bool , ty_act , pval1 , pval2 , Cmm_memory_order , res_term )                   ::  :: Store {{ com true means store is locking }}
-    | load ( ty_act , pval , Cmm_memory_order , res_term )                                       ::  :: Load
+    | store ( ty_bool , ct , pval1 , pval2 , Cmm_memory_order , res_term )                   ::  :: Store {{ com true means store is locking }}
+    | load ( ct , pval , Cmm_memory_order , res_term )                                       ::  :: Load
 
 subrules
     res_action <:: action
@@ -767,14 +740,14 @@ grammar
   % Factor out res_term proof for all of these (just use emp for the pure ones)
   memop :: 'M_' ::=  {{ auxparam 'TY }} {{ com operations involving the memory state}}
     | res_term | pval1 rel_binop pval2                     :: :: PtrRelBinop      {{ com pointer relational binary operations                 }}
-    | res_term | pval1 - ty_act - pval2                    :: :: PtrDiff          {{ order [[ty_act]] [[ pval1 ]] [[ pval2 ]]                 }}
+    | res_term | pval1 - ct - pval2                    :: :: PtrDiff          {{ order [[ct]] [[ pval1 ]] [[ pval2 ]]                 }}
                                                                                   {{ com pointer subtraction                                  }}
-                                                                                  {{ tex [[ pval1 ]] -_{ [[ty_act]] } [[ pval2 ]]             }}
-    | intFromPtr ( res_term | ty_act1 , ty_act2 , pval )   :: :: IntFromPtr       {{ com cast pointer value to integer value                  }}
-    | ptrFromInt ( res_term | ty_act1 , ty_act2 , pval )   :: :: PtrFromInt       {{ com cast integer value to pointer value                  }}
-    | ptrValidForDeref ( ty_act , pval )                   :: :: PtrValidForDeref {{ com check pointer is valid for dereferencing             }}
-    | ptrWellAligned ( ty_act , pval )                     :: :: PtrWellAligned   {{ com check pointer is aligned for the type $[[ ty_act ]]$ }}
-    | ptrArrayShift ( res_term | pval1 ,  ty_act , pval2 ) :: :: PtrArrayShift    {{ com pointer-arithmetic for indexing arrays               }}
+                                                                                  {{ tex [[ pval1 ]] -_{ [[ct]] } [[ pval2 ]]             }}
+    | intFromPtr ( res_term | ct1 , ct2 , pval )   :: :: IntFromPtr       {{ com cast pointer value to integer value                  }}
+    | ptrFromInt ( res_term | ct1 , ct2 , pval )   :: :: PtrFromInt       {{ com cast integer value to pointer value                  }}
+    | ptrValidForDeref ( ct , pval )                   :: :: PtrValidForDeref {{ com check pointer is valid for dereferencing             }}
+    | ptrWellAligned ( ct , pval )                     :: :: PtrWellAligned   {{ com check pointer is aligned for the type $[[ ct ]]$ }}
+    | ptrArrayShift ( res_term | pval1 ,  ct , pval2 ) :: :: PtrArrayShift    {{ com pointer-arithmetic for indexing arrays               }}
     | memcpy ( res_term | pval1 , pval2 , pval3 )          :: :: Memcpy
     | memcmp ( res_term | pval1 , pval2 , pval3 )          :: :: Memcmp
 
@@ -810,11 +783,11 @@ grammar
   res_pat :: 'ResP_' ::= {{ com resource patterns }}
     | emp                           :: :: Empty    (+ binders = {}         +) {{ com empty heap                   }}
     | TERM                          :: :: Phi      (+ binders = {}         +) {{ com logical assertion token      }}
-    | Symbol_sym                    :: :: Var      (+ binders = Symbol_sym +) {{ com variable                     }}
+    | r                    :: :: Var      (+ binders = r +) {{ com variable                     }}
     | fold ( res_pat )              :: :: Fold     (+ binders = {}         +) {{ com unfold (recursive) predicate }}
     | < res_pat1 , res_pat2 >       :: :: SepPair  (+ binders = binders( res_pat1 ) union binders( res_pat2 ) +)
                                                    {{ com seperating-conjunction pair }}
-    | pack ( Symbol_sym , res_pat ) :: :: Pack     (+ binders = Symbol_sym union binders( res_pat ) +)
+    | pack ( x , res_pat ) :: :: Pack     (+ binders = x union binders( res_pat ) +)
                                                    {{ com packing for existentials }}
 
 grammar
@@ -827,7 +800,7 @@ grammar
 
   ret_pat :: RetP_ ::= {{ com return pat }}
     | comp sym_or_pat          :: :: comp (+ binders = binders( sym_or_pat )          +) {{ com computational pattern       }}
-    | log  Symbol_sym          :: :: log  (+ binders = Symbol_sym                     +) {{ com logical variable            }}
+    | log  y          :: :: log  (+ binders = y                     +) {{ com logical variable            }}
     | reso res_pat             :: :: res  (+ binders = binders( res_pat )             +) {{ com resource pattern            }}
     | </ ret_pati // , // i /> :: :: seq  (+ binders = binders( </ ret_pati // i /> ) +) {{ com sequence of return patterns }}
 
@@ -839,7 +812,7 @@ grammar
 
   % There used to be an effectful value (val) `skip' - I (dcm41) removed it because it seemed redundant.
   seq_expr :: 'M_Seq_E' ::= {{ aux ty_loc annots _ }} {{ auxparam 'TY }} {{ com sequential (effectful) expressions }}
-    | ccall ( ty_act , Symbol_sym , spine ) ::   :: ccall {{ com C function call                       }}
+    | ccall ( ct , yf , spine ) ::   :: ccall {{ com C function call                       }}
     | pcall ( name , spine )                ::   :: proc  {{ com procedure call                        }}
     | subs ( seq_expr )                     :: M :: subs
 
@@ -847,7 +820,7 @@ grammar
   % We don't have unspecified() so we won't have nd()
   seq_texpr :: 'M_Seq_TE' ::= {{ aux ty_loc annots _ }} {{ auxparam 'TY }} {{ com sequential top-level (effectful) expressions }}
     | tval                                            :: :: tval           {{ com (effectful) top-level values                             }}
-    | run Symbol_sym </ pvali // , // i />            :: :: run            {{ com run from label                                           }}
+    | run id </ pvali // , // i />            :: :: run            {{ com run from label                                           }}
     | let sym_or_pat = pexpr in texpr                 :: :: letP           (+ bind binders( sym_or_pat ) in texpr                          +)
                                                                            {{ com pure let                                                 }}
     | let sym_or_pat : pure_ret = tpexpr in texpr     :: :: letTP          (+ bind binders( sym_or_pat ) in texpr                          +)
@@ -1020,7 +993,7 @@ grammar
 
   % Given how this is used in the spine-judgements, this must be sequential substitutions
   subs {{ tex \sigma }} , psi {{ tex \psi }} :: Subs_ ::= {{ com substitutions }}
-    | ret_term / Symbol_sym     ::   :: cons_ret_term {{ com sub $[[ret_term]]$ for $[[Symbol_sym]]$       }}
+    | ret_term / x     ::   :: cons_ret_term {{ com sub $[[ret_term]]$ for $[[x]]$       }}
     | [ </ subsi // , // i /> ] ::   :: concat        {{ com sequential substitutions                      }}
     | cdot                      :: M :: empty         {{ com empty substitution                            }}
     | id                        :: X M :: id          {{ com identity substitution                         }} {{ tex \symrm{id} }}
@@ -1037,13 +1010,13 @@ grammar
 
   opt_ident :: 'OptIdent_' ::= {{ com optional identifier }}
     | None       :: :: None
-    | Symbol_sym :: :: Some
+    | x :: :: Some
 
   spec :: 'Spec_' ::= {{ com alternative, C-programmer friendly syntax for defining predicates and writing specifications }}
     | cdot                                        ::  :: Empty  {{ com empty specification                             }}
     | return term ;                               ::  :: Ret    {{ com specify output arguments                        }}
-    | let Symbol_sym = term ; spec                ::  :: Let    {{ com bind (pure) term                                }}
-    | take Symbol_sym = res_req ; spec            ::  :: Take   {{ com bind output arguments of resource (q)predicates }}
+    | let x = term ; spec                ::  :: Let    {{ com bind (pure) term                                }}
+    | take x = res_req ; spec            ::  :: Take   {{ com bind output arguments of resource (q)predicates }}
     | assert ( term ) ; spec                      ::  :: Assert {{ com assert specification                            }}
     | if ( term ) { spec1 } else { spec2 } spec3  ::  :: If     {{ com conditional specification                       }}
 
