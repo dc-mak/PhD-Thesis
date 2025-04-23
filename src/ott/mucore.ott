@@ -80,13 +80,20 @@ grammar
 
 
   int , _int {{ tex \_ }} , step , addr , alloc_id :: 'Int_' ::=    {{ com integer }}
-    | n                ::   :: IndexVar    {{ com literal integer }}
-    | 1                :: X :: One
-    | 0                :: X :: Zero
-    | sizeof ct        :: M :: of_Ctype    {{ tex \symrm{sizeof}( [[ct]] )         }}
-                                           {{ com size of a C type                  }}
-    | stackdepth ( S ) :: M :: stackdepth  {{ tex \mathrm{stackdepth}([[S]]) }}
-    | incdec ( n )     :: M :: incdec      {{ tex [[incdec]]([[n]]) }}
+    | n                   ::   :: IndexVar           {{ com literal integer                        }}
+    | 1                   :: X :: One
+    | 0                   :: X :: Zero
+    | sizeof ct           :: M :: of_Ctype           {{ tex \symrm{sizeof}( [[ct]] )               }}
+                                                     {{ com size of a C type                       }}
+    | offsetof tag member :: M :: of_Member          {{ tex \symrm{offsetof}([[tag]], [[member]] ) }}
+                                                     {{ com offset of a struct member              }}
+    | stackdepth ( S )    :: M :: stackdepth         {{ tex \mathrm{stackdepth}([[S]])             }}
+    | incdec ( n )        :: M :: incdec             {{ tex [[incdec]]([[n]])                      }}
+    | ptr_size            :: M :: Ptr_size           {{ com size of a pointer                      }}
+    | MAX_INT ct          :: M :: of_Max_Int         {{ tex \symrm{max\_int}_{ [[ct]] }            }}
+                                                     {{ com maximum value of int of type $[[ct]]$  }}
+    | MIN_INT ct          :: M :: of_Min_Int         {{ tex \symrm{min\_int}_{ [[ct]] }            }}
+                                                     {{ com minimum value of int of type $[[ct]]$  }}
 
 
 grammar
@@ -289,30 +296,6 @@ grammar
 
 grammar
 
-  Z_t {{ tex z }} :: 'Z_' ::=  {{ com OCaml arbitrary-width integer }}
-    | z_one                       :: X M :: One       {{ tex 1                     }}
-    | z_zero                      :: X M :: Zero      {{ tex 0                     }}
-    | i                           :: M :: of_index
-                                                     {{ com literal integer                          }}
-    | int                      :: M :: of_int
-    | offsetof tag member :: M :: of_Member
-
-      {{ tex \symrm{offset\_of}_{ [[tag]] }( [[member]] )                 }}
-      {{ com offset of a struct member                                                   }}
-    | ptr_size                    :: M :: Ptr_size
-                                                     {{ com size of a pointer                        }}
-    | max_int ct                  :: M :: of_Max_Int
-                                                     {{ tex \symrm{max\_int}_{ [[ct]] }                }}
-                                                     {{ com maximum value of int of type $[[ct]]$       }}
-    | min_int ct                  :: M :: of_Min_Int
-                                                     {{ tex \symrm{min\_int}_{ [[ct]] }                }}
-                                                     {{ com minimum value of int of type $[[ct]]$       }}
-
-metavar rational {{ tex \symbb{Q} }} ::=
-  {{ com OCaml type for rational numbers }}
-
-grammar
-
   ty_bool {{ tex bool }} , _b {{ tex \_ }} :: '' ::=  {{ com OCaml booleans }}
     | true                  ::   :: True
     | false                 ::   :: False
@@ -325,8 +308,7 @@ grammar
 grammar
 
   lit :: 'Lit_' ::=
-    | Z_t               ::   :: Z
-    | rational          ::   :: Q
+    | int               ::   :: Z
     | ty_bool           ::   :: Bool
     | unit              ::   :: Unit
     | default base_type ::   :: Default
