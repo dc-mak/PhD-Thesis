@@ -189,9 +189,6 @@ grammar
     rel_binop   <:: binop
     bool_binop  <:: binop
 
-metavar impl_const ::=
-  {{ com implementation-defined constant }}
-
 grammar
 
   ptr :: 'Ptr_' ::=  {{ com pointer in VIP model }}
@@ -225,7 +222,7 @@ grammar
     | [ </ valuei // , // i /> ] :: :: list   {{ com list                  }}
     | ( </ valuei // , // i /> ) :: :: tuple  {{ com tuple                 }}
 
-  bool_value :: 'BV_' ::= {{ auxparam 'TY }} {{ com Core booleans }}
+  bool_value :: 'BV_' ::= {{ com Core booleans }}
     | True                       :: :: true   {{ com boolean true          }}
     | False                      :: :: false  {{ com boolean false         }}
 
@@ -249,6 +246,9 @@ grammar
 metavar UB_name ::=
  {{ com undefined behaviour }}
 
+metavar impl_const ::=
+  {{ com implementation-defined constant }}
+
 grammar
 
   name :: 'Name_' ::=
@@ -257,7 +257,7 @@ grammar
 
 grammar
 
-  pval :: 'PV_' ::= {{ aux ty_loc annots tyvar_TY _ }} {{ auxparam 'TY }} {{ com pure values }}
+  pval :: 'PV_' ::= {{ com pure values }}
     | id                                                             ::   :: Sym         {{ com Core identifier                           }}
     | impl_const                                                     ::   :: ImplC       {{ com implementation-defined constant           }}
     | value                                                          ::   :: val         {{ com Core values                               }}
@@ -267,7 +267,7 @@ grammar
     | ( union tag ) { dot member = pval }                            ::   :: union       {{ com C union expression                        }}
     | subs ( pval )                                                  :: M :: val_subs    {{ com substitution for pure values }}
 
-  pvals :: '' ::= {{ auxparam 'TY }} {{ com list of pure values }}
+  pvals :: '' ::= {{ com list of pure values }}
     | </ pvali // , // i /> ::   :: pvals
     | subs ( pvals )        :: M :: Subspvals
 
@@ -276,10 +276,10 @@ grammar
 
 grammar
 
-  tpval :: 'M_TPV' ::= {{ aux ty_loc annots tyvar_TY _ }} {{ auxparam 'TY }} {{ com top-level pure values }}
-    | done pval                  :: :: done  {{ com pure done                 }}
-    | undef ty_loc UB_name       :: :: undef {{ com undefined behaviour       }}
-    | error ( ty_string , pval ) :: :: error {{ com impl-defined static error }}
+  tpval :: 'TPV_' ::= {{ com top-level pure values }}
+    | done pval     :: :: done  {{ com pure done                 }}
+    | undef UB_name :: :: undef {{ com undefined behaviour       }}
+    | error pval    :: :: error {{ com impl-defined static error }}
 
 grammar
 
@@ -289,7 +289,7 @@ grammar
 
 grammar
 
-  pat :: 'M_Case' ::= {{ com computational patterns }}
+  pat :: 'Case_' ::= {{ com computational patterns }}
     | ty_sym_opt_T_bt                   :: :: Base (+ binders = binders( ty_sym_opt_T_bt ) +)
     | ctor_val ( </ pati // , // i /> ) :: :: Ctor (+ binders = binders( </ pati // i /> ) +)
 
@@ -340,7 +340,7 @@ grammar
 
 grammar
 
-  arith_op :: '' ::= {{ auxparam 'bt }} {{ com SMT term arithmetic operations }}
+  arith_op :: '' ::= {{ com SMT term arithmetic operations }}
     | term1 +   term2             ::   :: Add
     | sum i inEnv { x | iguard } . term ::   :: Sum {{ tex \sum_{ [[ i ]] [[ inEnv ]] \{ [[ x ]] [[ | ]] [[ iguard ]] \} }{ [[ term ]] } }}
     | term1 -   term2             ::   :: Sub
@@ -354,7 +354,7 @@ grammar
       {{ tex [[term1]] [[arith_binop]] [[term2]] }}
 
 
-  bool_op :: '' ::= {{ auxparam 'bt }} {{ com SMT term boolean operations }}
+  bool_op :: '' ::= {{ com SMT term boolean operations }}
     | /\\ ( </ termi // , // i />    ) ::     :: And
     | \// ( </ termi // , // i />    ) ::     :: Or
     | term1 -> term2                   ::     :: Impl
@@ -369,38 +369,38 @@ grammar
       {{ tex [[term1]] [[bool_binop]] [[term2]] }}
 
 
-  tuple_op :: '' ::= {{ auxparam 'bt }} {{ com SMT term tuple constructor and projections }}
+  tuple_op :: '' ::= {{ com SMT term tuple constructor and projections }}
     | ( </ termi // , // i /> ) :: :: Tuple
     | int th_t term          :: :: NthTuple   {{ tex [[term]]^{([[int]])}       }}
 
-  struct_op :: '' ::= {{ auxparam 'bt }} {{ com SMT term for struct member-projection }}
+  struct_op :: '' ::= {{ com SMT term for struct member-projection }}
     % DEFER struct construction and update
     | tag term dot member :: :: StructMember {{ tex [[term]] \, [[dot]] \, [[member]] }}
 
-  record_op :: '' ::= {{ auxparam 'bt }} {{ com SMT term for record operations }}
+  record_op :: '' ::= {{ com SMT term for record operations }}
     % DEFER record update
     | { </ memberi = termi // , // i /> } :: :: RecordValue
     | term dot member              :: :: RecordMember
 
-  pointer_op :: '' ::= {{ auxparam 'bt }} {{ com SMT term pointer operations }}
+  pointer_op :: '' ::= {{ com SMT term pointer operations }}
     | ( @ term , term' )   :: :: Pointer
     | term1 +ptr term2     :: :: AddPointer
     | cast_ptr_to_int term :: :: PointerToIntegerCast
 
-  list_op :: '' ::= {{ auxparam 'bt }} {{ com SMT term list constructors and operations }}
+  list_op :: '' ::= {{ com SMT term list constructors and operations }}
     | nil              ::  :: Nil
     | term1 cons term2 ::  :: Cons    {{ tex [[term1]] :: [[term2]] }}
     | tl term          ::  :: Tail
     | int th_l term ::  :: NthList {{ order [[int]] [[term]]   }}
                                       {{ tex [[term]]^{([[int]])} }}
 
-  ct_pred :: '' ::= {{ auxparam 'bt }} {{ com SMT predicates for C-types }}
+  ct_pred :: '' ::= {{ com SMT predicates for C-types }}
     | representable ( ct , term ) :: :: Representable
     | aligned ( ct , term )       :: :: Aligned
     | alignedI ( term1 , term2 )  :: :: AlignedI
     | abst ( term , ct , term' )  ::  :: Abst
 
-  cmp_op :: '' ::= {{ auxparam 'bt }} {{ com SMT term relational operations }}
+  cmp_op :: '' ::= {{ com SMT term relational operations }}
     | term1 <  term2            ::   :: LT {{ tex [[term1]] < [[term2]] }}
     | term1 =< term2            ::   :: LE
     | term1 ' rel_binop ' term2 :: M :: Rel_binop
@@ -410,7 +410,7 @@ grammar
   BT_t {{ tex \beta }} :: '' ::=  {{ com Ott-hack, ignore }}
     | base_type :: :: Base_type
 
-  map_op :: '' ::= {{ auxparam 'bt }} {{ com SMT term map operations }}
+  map_op :: '' ::= {{ com SMT term map operations }}
     | [ | </ termi // , // i /> |]  :: M :: ArrayLit {{ com array literal }}
     | term1 [ term2 ]               ::   :: Get
     | term1 [ term2 dd term3 ]      ::  :: Range
@@ -420,30 +420,30 @@ grammar
 
   % DEFER align this with backend/cn/terms.ml
   term , _t {{ tex \_ }}, iguard , ptrt {{ tex ptr }} , init , _init {{ tex \_ }} ,
-  valuet {{ tex value }} , iarg , oarg , alloct {{ tex alloc }} , A , M :: '' ::= {{ aux _ ty_bt }} {{ auxparam 'bt }} {{ com SMT term grammar }}
-    | x                       ::   :: Sym
-    | lit                              ::   :: Lit
-    | arith_op                         ::   :: Arith_op
-    | bool_op                          ::   :: Bool_op
-    | cmp_op                           ::   :: Cmp_op
-    | tuple_op                         ::   :: Tuple_op
-    | struct_op                        ::   :: Struct_op
-    | record_op                        ::   :: Record_op
-    | pointer_op                       ::   :: Pointer_op
-    | list_op                          ::   :: List_op
-    | ct_pred                          ::   :: CT_pred
-    | map_op                           ::   :: Map_op
-    | ty_string ( term1 , .. , termn ) ::   :: Pred
-    | ( term )                         :: S :: Paren    {{ com parentheses                             }}
-    | subs ( term )                    :: M :: Subs
-                                                       {{ com substitute $[[subs]]$ in $[[term]]$                          }}
-    | inj pvals                        :: M :: Of_pval {{ tex [[pvals]] }}
-                                                       {{ com tranlate pure values $[[pvals]]$ into corresponding SMT term }}
-    | const ct ty_bool                 :: M :: Of_ct   {{ tex [[const]]_{[[ct]]} [[ty_bool]]                               }}
+  valuet {{ tex value }} , iarg , oarg , alloct {{ tex alloc }} , A , M :: '' ::= {{ com SMT term grammar }}
+    | x                         ::   :: Sym
+    | lit                       ::   :: Lit
+    | arith_op                  ::   :: Arith_op
+    | bool_op                   ::   :: Bool_op
+    | cmp_op                    ::   :: Cmp_op
+    | tuple_op                  ::   :: Tuple_op
+    | struct_op                 ::   :: Struct_op
+    | record_op                 ::   :: Record_op
+    | pointer_op                ::   :: Pointer_op
+    | list_op                   ::   :: List_op
+    | ct_pred                   ::   :: CT_pred
+    | map_op                    ::   :: Map_op
+    | id ( term1 , .. , termn ) ::   :: Pred
+    | ( term )                  :: S :: Paren    {{ com parentheses                             }}
+    | subs ( term )             :: M :: Subs
+                                                {{ com substitute $[[subs]]$ in $[[term]]$                          }}
+    | inj pvals                 :: M :: Of_pval {{ tex [[pvals]] }}
+                                                {{ com tranlate pure values $[[pvals]]$ into corresponding SMT term }}
+    | const ct ty_bool          :: M :: Of_ct   {{ tex [[const]]_{[[ct]]} [[ty_bool]]                               }}
 
-                                                       {{ com term with structure corresponding to $[[ct]]$                }}
+                                                {{ com term with structure corresponding to $[[ct]]$                }}
 
-  iargs , _iargs {{ tex \_ }} :: '' ::= {{ auxparam 'bt }} {{ com list of terms (predicate input-arguments) }}
+  iargs , _iargs {{ tex \_ }} :: '' ::= {{ com list of terms (predicate input-arguments) }}
     | </ iargi // , // i />     ::   :: Iargs
     | subs ( iargs )            :: M :: SubsIarg
 
@@ -465,7 +465,7 @@ grammar
   pred_name , a {{ tex { \alpha } }} :: '' ::= {{ com names of predicates }}
     | Owned < ct >  :: :: Owned {{ com sep. logic points-to indexed by C type $[[ ct ]]$ }}
     | Alloc         :: :: Alloc {{ com (provenance) knowledge of an allocation           }}
-    | ty_string     :: :: PName {{ com user-defined name                                 }}
+    | id            :: :: PName {{ com user-defined name                                 }}
 
   pred_term :: '' ::= {{ com predicate term/request }}
 
@@ -592,7 +592,7 @@ grammar
 
 grammar
 
-  pexpr :: 'M_PE' ::= {{ aux ty_loc annots tyvar_TY _ }} {{ auxparam 'TY }} {{ com pure expressions }}
+  pexpr :: 'PE_' ::= {{ com pure expressions }}
     | pval                                                   ::   :: pval            {{ com pure values                                      }}
     | ctor_expr ( </ pvali // , // i /> )                    ::   :: ctor            {{ com data constructor application                     }}
     | array_shift ( pval1 ,   ct , pval2 )                   ::   :: array_shift     {{ com pointer array shift                              }}
@@ -601,14 +601,14 @@ grammar
     | pval1 binop pval2                                      ::   :: op              {{ order [[binop]] [[ pval1 ]] [[ pval2 ]]              }} {{ com binary operations }}
     | memberof  ( tag , member , pval )    ::   :: memberof        {{ com C struct/union member access                     }}
     | name ( </ pvali // , // i /> )                         ::   :: call            {{ com pure function call                               }}
-    | assert_undef ( pval , ty_loc UB_name )                 ::   :: assert_undef    {{ com if $[[ pval ]]$ then UB for reason $[[UB_name]]$ }}
+    | assert_undef ( pval , UB_name )                 ::   :: assert_undef    {{ com if $[[ pval ]]$ then UB for reason $[[UB_name]]$ }}
     | bool_to_integer ( pval )                               ::   :: bool_to_integer {{ com convert boolean $[[ pval ]]$ to integer          }}
     | conv_int ( ct , pval )                             ::   :: conv_int        {{ com convert between different integer types          }}
     | wrapI ( ct , pval )                                ::   :: wrapI           {{ com wrap integer                                     }}
     | subs ( pexpr )                                         :: M :: expr_subs       {{ com substitution for pure expressions                }}
 
 
-  tpexpr :: 'M_TPE' ::= {{ aux ty_loc annots tyvar_TY _ }} {{ auxparam 'TY }} {{ com top-level pure expressions }}
+  tpexpr :: 'TPE_' ::= {{ com top-level pure expressions }}
     | tpval                                             ::   :: tpval {{ com top-level pure values                 }}
     | case pval of </ | tpexpr_case_branchi // i /> end ::   :: case  {{ com pat matching                      }}
     | let pat = pexpr in tpexpr                  ::   :: let   (+ bind binders( pat ) in tpexpr  +)
@@ -619,7 +619,7 @@ grammar
     | subs ( tpexpr )                                   :: M :: subs
                                                                        {{ com substitute $[[subs]]$ in $[[tpexpr]]$ }}
 
-  tpexpr_case_branch :: 'M_TPE_Case_' ::= {{ auxparam 'TY }} {{ com pure top-level case expression branch }}
+  tpexpr_case_branch :: 'TPE_Case__' ::= {{ com pure top-level case expression branch }}
     | pat => tpexpr :: :: branch (+ bind binders( pat ) in tpexpr    +)
                                      {{ com top-level case expression branch }}
 
@@ -632,7 +632,7 @@ grammar
 
 grammar
 
-  m_kill_kind :: 'M_' ::=
+  m_kill_kind :: '_' ::=
     | dynamic     :: :: Dynamic
     | static   ct :: :: Static
 
@@ -704,7 +704,7 @@ grammar
 
 grammar
 
-  action :: 'M_' ::= {{ com memory actions }}
+  action :: '_' ::= {{ com memory actions }}
     | create ( pval , ct ) Symbol_prefix                                                     ::  :: Create
     | alloc ( pval1 , pval2 ) Symbol_prefix                                                      ::  :: Alloc
     | kill ( m_kill_kind , pval , res_term )                                                     ::  :: Kill
@@ -726,13 +726,13 @@ grammar
     | Pos :: :: Pos {{ com (pos) sequenced by $\cnkw{let\ weak}$ and $\cnkw{let\ strong}$ }} {{ tex              }}
     | Neg :: :: Neg {{ com only sequenced by $\cnkw{let\ strong}$                         }} {{ tex \symtt{neg} }}
 
-  paction {{ tex pol\_mem\_action }} :: 'M_' ::= {{ auxparam 'TY }} {{ com memory actions with polarity }}
+  paction {{ tex pol\_mem\_action }} :: '_' ::= {{ com memory actions with polarity }}
     | polarity action :: :: Paction
 
 grammar
 
   % Factor out res_term proof for all of these (just use emp for the pure ones)
-  memop :: 'M_' ::=  {{ auxparam 'TY }} {{ com operations involving the memory state}}
+  memop :: '_' ::=  {{ com operations involving the memory state}}
     | res_term | pval1 rel_binop pval2                     :: :: PtrRelBinop      {{ com pointer relational binary operations                 }}
     | res_term | pval1 - ct - pval2                    :: :: PtrDiff          {{ order [[ct]] [[ pval1 ]] [[ pval2 ]]                 }}
                                                                                   {{ com pointer subtraction                                  }}
@@ -747,7 +747,7 @@ grammar
 
 grammar
 
-  ret_term , spine_elem :: RetTerm_ ::=  {{ auxparam 'TY }} {{ com return values / spine element }}
+  ret_term , spine_elem :: RetTerm_ ::=  {{ com return values / spine element }}
     | pval              ::   :: pval     {{ com pure computational value                        }}
     | oarg              ::   :: term     {{ com logical value                                   }}
     | res_term          ::   :: res_term {{ com resource term                                   }}
@@ -765,11 +765,11 @@ grammar
 
 grammar
 
-   tval :: 'M_TV' ::= {{ aux ty_loc annots _ }} {{ auxparam 'TY }} {{ com (effectful) top-level values }}
-    | done < ret_terms >         ::   :: done     {{ com end of top-level expression       }}
-    | undef ty_loc UB_name       ::   :: undef    {{ com undefined behaviour               }}
-    | error ( ty_string , pval ) ::   :: error    {{ com impl-defined static error         }}
-    | subs ( tval )              :: M :: val_subs {{ com substitution for top-level values }}
+   tval :: 'TV_' ::= {{ com (effectful) top-level values }}
+    | done < ret_terms > ::   :: done     {{ com end of top-level expression       }}
+    | undef UB_name      ::   :: undef    {{ com undefined behaviour               }}
+    | error pval         ::   :: error    {{ com impl-defined static error         }}
+    | subs ( tval )      :: M :: val_subs {{ com substitution for top-level values }}
 
 
 grammar
@@ -805,14 +805,14 @@ grammar
 grammar
 
   % There used to be an effectful value (val) `skip' - I (dcm41) removed it because it seemed redundant.
-  seq_expr :: 'M_Seq_E' ::= {{ aux ty_loc annots _ }} {{ auxparam 'TY }} {{ com sequential (effectful) expressions }}
+  seq_expr :: 'Seq_E_' ::= {{ com sequential (effectful) expressions }}
     | ccall ( ct , yf , spine ) ::   :: ccall {{ com C function call                       }}
     | pcall ( name , spine )                ::   :: proc  {{ com procedure call                        }}
     | subs ( seq_expr )                     :: M :: subs
 
   % nd() is only used in the elab of if/loops for the case where the condiditional expression evaluates to unspecified()
   % We don't have unspecified() so we won't have nd()
-  seq_texpr :: 'M_Seq_TE' ::= {{ aux ty_loc annots _ }} {{ auxparam 'TY }} {{ com sequential top-level (effectful) expressions }}
+  seq_texpr :: 'Seq_TE_' ::= {{ com sequential top-level (effectful) expressions }}
     | tval                                            :: :: tval           {{ com (effectful) top-level values                             }}
     | run id </ pvali // , // i />            :: :: run            {{ com run from label                                           }}
     | let pat = pexpr in texpr                 :: :: letP           (+ bind binders( pat ) in texpr                          +)
@@ -828,12 +828,12 @@ grammar
     | insert_lets ( res_bind , seq_texpr )             :: M :: Insert_lets {{ com insert let expressions for binding resources             }}
 
 
-  texpr_case_branch :: 'M_Seq_TE_Case_' ::= {{ auxparam 'TY }}  {{ com top-level case expression branch }}
+  texpr_case_branch :: 'Seq_TE_Case__' ::=  {{ com top-level case expression branch }}
     | pat => texpr :: :: branch (+ bind binders( pat ) in texpr     +)
                                 {{ com top-level case expression branch }}
 
 
-  is_expr :: 'M_Is_E' ::= {{ aux ty_loc annots _ }} {{ auxparam 'TY }} {{ com indet seq (effectful) expressions }}
+  is_expr :: 'Is_E_' ::= {{ com indet seq (effectful) expressions }}
     | tval : ret                         ::  :: tval   {{ com (effectful) top-level values }}
     | MEMOP ( memop )                    ::  :: memop  {{ com pointer op involving memory  }}
     | paction                            ::  :: action {{ com memory action                }}
@@ -841,11 +841,11 @@ grammar
     | unpack a ( pval , pvals )          ::  :: unpack {{ com unfold a predicate           }}
     % unseq ( </ texpri : reti // i /> ) ::  :: unseq  {{ com unsequenced expressions      }}
 
-  is_texpr :: 'M_Is_TE' ::= {{ aux ty_loc annots _ }} {{ auxparam 'TY }} {{ com indet seq top-level (effectful) expressions }}
+  is_texpr :: 'Is_TE_' ::= {{ com indet seq top-level (effectful) expressions }}
     | let weak   ret_pat = is_expr in texpr  :: :: wseq (+ bind binders( ret_pat ) in texpr +) {{ com weak sequencing   }}
     | let strong ret_pat = is_expr in texpr  :: :: sseq (+ bind binders( ret_pat ) in texpr +) {{ com strong sequencing }}
 
-  texpr :: 'M_TE' ::= {{ auxparam 'TY }} {{ com top-level (effectful) expressions }}
+  texpr :: 'TE_' ::= {{ com top-level (effectful) expressions }}
     | seq_texpr                        ::   :: Seq         {{ com sequential (effectful) expressions           }}
     | is_texpr                         ::   :: Is          {{ com indet seq (effectful) expressions            }}
     | insert_lets ( res_bind , texpr ) :: M :: Insert_lets {{ com insert let expressions for binding resources }}
