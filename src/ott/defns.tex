@@ -89,19 +89,19 @@ which are things like unit, booleans, (mathematical) integers, locations,
 and records of other base types. Each C type $[[ ct ]]$ is mapped to a
 corresponding base type -- for example, \ $[[ to_base ( int * ) ]] = [[ loc ]]$.
 Logical terms are variously referred to as $[[ term ]]$, $[[ ptrt ]]$
-(for pointers), $[[ valuet ]]$ (for pointees), $[[ iarg ]]$ (for
+(for pointers), $[[ iarg ]]$ (for
 input-arguments), $[[ oarg ]]$ (output-arguments, of array type for
 iterated resources), and $[[ iguard ]]$ (for boolean guards of iterated resources).
 
 \begin{wrapfigure}{l}{.5\textwidth}
 \vspace{-1.5\baselineskip}
 \begin{align*}
-    [[ res ]] &::= [[ emp ]] \mid [[ term ]] \mid [[ pred ]] \mid [[ qpred ]] \mid [[ res1 * res2 ]]
+    [[ res ]] &::= [[ emp ]] \mid [[ term ]] \mid [[ pred ]] \mid [[ ipred ]] \mid [[ res1 * res2 ]]
         \mid [[ exists y : base_type . res' ]] \mid [[ if term then res1 else res2 ]]\\
-    [[ pred ]] &::= [[ a ( ptrt , iargs ) ( oarg ) ]] \\
-    [[ qpred ]] &::= [[ { x ; iguard . a ( ptrt + step , iargs ) } ( oarg ) ]] \\[1em]
-%     [[ qpred_term ]] &::= [[   ]]\\[1em]
-    [[ res_term ]] &::= [[ emp ]] \mid [[ TERM ]] \mid [[ pred_term ]] \mid [[ qpred_term ]] \mid [[ < res_term1 , res_term2 > ]]
+    [[ pred ]] &::= [[ a ( iargs ) ( oarg ) ]] \\
+    [[ ipred ]] &::= [[ each (integer x; iguard) { a ( iargs ) } ( oarg ) ]] \\[1em]
+%     [[ ipred_term ]] &::= [[   ]]\\[1em]
+    [[ res_term ]] &::= [[ emp ]] \mid [[ TERM ]] \mid [[ pred_term ]] \mid [[ ipred_term ]] \mid [[ < res_term1 , res_term2 > ]]
         \mid [[ pack ( oarg , res_term' ) ]]\\
        & \qquad [[ r ]] \mid [[ fold res_term : pred ]] \mid [[ pred_ops ]] \\
     [[ pred_ops ]] &::=
@@ -111,7 +111,7 @@ iterated resources), and $[[ iguard ]]$ (for boolean guards of iterated resource
     &\quad [[ congeal ( res_term , int )              ]]
     \mid   [[ break ( res_term , term )                  ]]
     \mid   [[ glue ( res_term )                          ]]\\
-    &\quad [[ inj ( res_term , ptrt , step , x . iargs ) ]]
+    &\quad [[ inj ( res_term , ptrt , ct , x . iargs ) ]]
     \mid   [[ chop ( res_term , iguard )                 ]]
 \end{align*}
 \caption{\vspace{-2\baselineskip}Grammar of Resource Terms}
@@ -130,17 +130,16 @@ disjunction to avoid backtracking during typechecking.
 
 Resource predicates have special syntax to handle the division of their
 arguments into inputs and outputs. An occurrence of a predicate is written
-$[[ a ( ptrt , iargs ) ( oarg )]]$. This is read as the predicate $[[ a ]]$,
-applied to a pointer argument $[[ ptrt ]]$ and a list of other input arguments
+$[[ a ( iargs ) ( oarg )]]$. This is read as the predicate $[[ a ]]$
+applied to a list of input arguments
 $[[ iargs ]]$. The output argument $[[ oarg ]]$ is
 \colorbox{red!10}{highlighted} and in a second set of parentheses. Every
 predicate has exactly one output argument.
 %
-A $[[ qpred ]]$ represents the iterated separating conjunction of predicate
-instances; it quantifies over integer indices $[[ x ]]$ satisfying a guard $[[
-iguard ]]$, and is with input arguments $[[ iargs ]]$ and output $[[ oarg ]]$.
-It represents an instance of $[[ a ]]$ beginning at $[[ ptrt ]]$, and repeating
-every $[[ step ]]$ bytes, for as long as the $[[ iguard ]]$ is true.
+An $[[ ipred ]]$ represents the iterated separating conjunction of predicate
+instances; it quantifies over integer indices $[[ x ]]$ satisfying a guard
+$[[ iguard ]]$, with input arguments $[[ iargs ]]$ and output $[[ oarg ]]$.
+It represents instances of $[[ a ]]$ for all indices such that $[[ iguard ]]$ holds.
 
 
 Each resource type has introduction and elimination forms -- e.g.
@@ -158,33 +157,33 @@ most of these operations have simple intuitions.
 %
 $[[ explode ( res_term ) ]]$ and $[[ implode ( res_term , tag ) ]]$
 are operations on structs and their members; the first takes an
-$[[ Owned < struct tag > ]]$ and turns it into a
-$[[ Owned < cti > ]]$ for each of of its members; the second does the
+$[[ Owned < init , struct tag > ]]$ and turns it into a
+$[[ Owned < init , cti > ]]$ for each of its members; the second does the
 inverse.  $[[ iterate ( res_term , int ) ]]$ and
 $[[ congeal ( res_term , int ) ]]$ function similarly, but for C's
-fixed-size arrays, returning a \emph{quantified} $[[ Owned < ct > ]]$
+fixed-size arrays, returning a \emph{iterated} $[[ Owned < init , ct > ]]$
 instead.
 
 Morally,
-$\cnkw{break}$ has type $[[ qpred ]] [[ -> ]] [[ qpred * pred ]]$: it
+$\cnkw{break}$ has type $[[ ipred ]] [[ -> ]] [[ ipred * pred ]]$: it
 extracts a single predicate from a quantified one, and must return the
 remainder as well because resource terms are linearly typed;
-$\cnkw{glue}$ has type $[[ qpred * pred ]] [[ -> ]] [[ qpred ]]$: it
+$\cnkw{glue}$ has type $[[ ipred * pred ]] [[ -> ]] [[ ipred ]]$: it
 is the inverse to $\cnkw{break}$; $\cnkw{split}$ has type
-$[[ qpred * iguard ]] [[ -> ]] [[ qpred * qpred ]]$: given a
+$[[ ipred * iguard ]] [[ -> ]] [[ ipred * ipred ]]$: given a
 quantified predicate of index-guard $[[ iguard' ]]$, and an
 $[[ iguard ]]$, if $[[ iguard -> iguard' ]]$ then it splits the given
 quantified predicate into two disjoint parts (one of index-guard
 $[[ iguard ]]$ and the other of $[[ iguard' /\ neg iguard ]]$);
 $\cnkw{inj}$ has type
-$[[ pred * ptrt * step ]] [[ * ]] [[ iargs ]] [[ -> ]] [[ qpred ]]$:
-it turns a predicate $[[ a ( ptrt' , iargs' ) ]]$ into a quantified
+$[[ pred ]] [[ * ]] [[ ct ]] [[ * ]] [[ iargs ]] [[ -> ]] [[ ipred ]]$:
+it turns a predicate $[[ a ( iargs' ) ]]$ into a quantified
 predicate, with $[[ iguard = ( x = k ) ]]$, where
-$[[ k = ( ptrt' - ptrt ) / step ]]$ and
+$[[ k = ( ptrt' - ptrt ) / sizeof ct ]]$ and
 $[[ iargs' ]] = [[ k / x ( iargs ) ]]$. Because our inference
 algorithm does not support inferring merging
 arrays, there is no inverse to
-$\cnkw{split}$ of type $[[ qpred * qpred ]] [[ -> ]] [[ qpred ]]$.
+$\cnkw{split}$ of type $[[ ipred * ipred ]] [[ -> ]] [[ ipred ]]$.
 
 \subsection{Judgements and Example Rules}
 \label{subsec:judgm_eg_rules}
@@ -212,7 +211,7 @@ We need both judgements because variables, folding, predicate operations are
 naturally typed as synthesising rules, whereas constraints, packing
 existentials, and conditional resources require checking.  Furthermore, as we
 shall see soon, memory actions require a synthesising judgement (to obtain and
-manipulate the output argument of $[[ Owned < ct > ]]$), whereas top-level
+manipulate the output argument of $[[ Owned < init , ct > ]]$), whereas top-level
 values (such as typing spines) require checking judgements.
 
 \begin{figure}[t]
@@ -223,18 +222,18 @@ values (such as typing spines) require checking judgements.
 \cndruleResXXChkXXIfXXTrue{}%
 \\[-1\baselineskip]
 \cndrule{%
-    \cnpremise{ [[ ret eq sigma yp : loc . term /\ exists y : record sym_init : bool sym_value : to_base ( ct ) . ret' ]] }%
-    \cnpremise{ [[ ret' eq ( yp |- y dot sym_init - ct -> y dot sym_value ) *o y dot sym_init = false /\ I]] }%
+    \cnpremise{ [[ ret eq sigma yp : loc . term /\ exists y : to_base ( ct ) . ret' ]] }%
+    \cnpremise{ [[ ret' eq ( yp |- Uninit - ct -> y ) *o I]] }%
 }{%
-  [[ C ; L ; N ; cdot |- create ( pval , ct ) Symbol_prefix => ret ]]
+  [[ C ; L ; N ; cdot |- emp | create < ct > ( pval ) => ret ]]
 }{\ExplIsActionCreate}%
 \\[-1\baselineskip]
 \cndrule{
     \cnpremise{ [[ C ; L ; N ; R |- res_term => term |- _init - ct -> _t ]] }%
     \cnpremise{ [[ smt ( N =>  term = inj pval0 ) ]] }%
-    \cnpremise{ [[ ret eq sigma _ : unit . ( inj pval0 |- true - ct -> inj pval1 ) *o I ]] }%
+    \cnpremise{ [[ ret eq sigma _ : unit . ( inj pval0 |- Init - ct -> inj pval1 ) *o I ]] }%
 }{%
-    [[ C ; L ; N ; R |- store ( _b , ct , pval0 , pval1 , _mem_order , res_term ) => ret ]]
+    [[ C ; L ; N ; R |- res_term | store < ct > ( pval0 , pval1 ) => ret ]]
 }{\ExplIsActionStore}
 \vspace{-2\baselineskip}
 \end{minipage}
@@ -249,18 +248,18 @@ values (such as typing spines) require checking judgements.
 }{\ResSynPred}%
 \\[-1\baselineskip]
 \cndrule{%
-    \cnpremise{ [[ C ; L ; N ; R |- res_term => term |- init - ct -> inj pval1 ]] }%
-    \cnpremise{ [[ smt ( N => ( term = inj pval0 ) /\ ( init = true ) ) ]] }%
-    \cnpremise{ [[ ret eq sigma y : to_base ( ct ) . y = inj pval1 /\ ( inj pval0 |- true - ct -> inj pval1 ) *o I ]] }%
+    \cnpremise{ [[ C ; L ; N ; R |- res_term => term |- Init - ct -> inj pval1 ]] }%
+    \cnpremise{ [[ smt ( N => ( term = inj pval0 ) ) ]] }%
+    \cnpremise{ [[ ret eq sigma y : to_base ( ct ) . y = inj pval1 /\ ( inj pval0 |- Init - ct -> inj pval1 ) *o I ]] }%
 }{%
-    [[ C ; L ; N ; R |- load ( ct , pval0 , _mem_order , res_term ) => ret ]]
+    [[ C ; L ; N ; R |- res_term | load < ct > ( pval0 ) => ret ]]
 }{\ExplIsActionLoad}%
 \\[-1\baselineskip]
 \cndrule{
     \cnpremise{ [[ C ; L ; N ; R |- res_term => term |- _init - ct -> _t ]] }%
     \cnpremise{ [[ smt ( N =>  term = inj pval ) ]] }%
 }{%
-    [[ C ; L ; N ; R |-  kill ( static ct , pval , res_term ) => sigma _ : unit . I ]]
+    [[ C ; L ; N ; R |-  res_term | kill < ct > ( pval ) => sigma _ : unit . I ]]
 }{\ExplIsActionKillStatic}
 \vspace{-2\baselineskip}
 \end{minipage}
@@ -278,7 +277,7 @@ variable of an SMT-equivalent type).
 
 The rule for folding predicates shown is simplified for presentation (omitting
 only the type checking of the all the predicate arguments, and the exclusion of
-the $[[ Owned < ct > ]]$ predicate because it cannot be folded). The first line
+the $[[ Owned < init , ct > ]]$ predicate because it cannot be folded). The first line
 is a simple lookup based on the predicate name of types of the arguments, and
 the ``body'' $[[ res ]]$ of the predicate. The second checks $[[ res_term ]]$
 against the $[[ res ]]$ with its arguments (supplied by the fold term)
@@ -289,10 +288,9 @@ presentation.  Allocating memory (which takes an alignment $[[ pval ]]$ and a C
 type $[[ ct ]]$) synthesises a return type $[[ ret ]]$ representing: a newly
 created pointer (referred to in the type by the name $[[ yp ]]$), some omitted
 constraints about alignment and representability ($[[ term ]]$), a logical
-value ($[[ y ]]$) representing the output argument of a points-to/$[[ Owned< ct
-> ]]$ resource (which differs slightly from the implementation in that it
-additionally contains the initialisedness status), the resource itself
-($[[ Owned <ct> ( yp , ) ( y ) ]]$ is pretty-printed in more familiar $[[ |-> ]]$
+value ($[[ y ]]$) representing the output argument of a points-to/
+$[[ Owned< init , ct > ]]$ resource, the resource itself
+($[[ Owned <init , ct> ( yp ) ( y ) ]]$ is pretty-printed in more familiar $[[ |-> ]]$
 notation), and a constraint that the points-to is not initialised.
 
 Loading from a memory location requires a correctly typed resource term,

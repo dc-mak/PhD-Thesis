@@ -54,28 +54,28 @@ grammar
 defns
   inf_res :: '' ::=
 
-  defn N |- pred_term in? qpred_term ~> out_opt_term :: :: PinQ :: PinQ_
-  {{ com given constraints $[[N]]$, $[[pred_term]]$ is potentially a part of $[[qpred_term]]$ at index $[[out_opt_term]]$ }} by
+  defn N |- pred_term in? ipred_term ~> out_opt_term :: :: PinI :: PinI_
+  {{ com given constraints $[[N]]$, $[[pred_term]]$ is potentially a part of $[[ipred_term]]$ at index $[[out_opt_term]]$ }} by
 
     a1 != a2
     ----------------------------------------------------------------------- :: Name_Neq
-    N |- a1 ( _t , _iargs ) in? { _ ; _t . a2 ( _t + _int , _iargs ) } ~> None
+    N |- a1 ( _iargs ) in? each (integer _; _t) { a2 ( _iargs ) } ~> None
 
 
-    term eq ( ptrt2 - ptrt1 ) / step
+    term eq ( ptrt2 - ptrt1 ) / sizeof ct
     term1 eq term / x ( iguard )
     term2 eq /\\ ( </ iarg1i = [ term / x ] ( iarg2i ) // i /> )
     smt ( N => neg ( term1 /\ term2 ) )
     -------------------------------------------------------------------------- :: IG_Or_IArg_Neq
-    N |- a ( ptrt2 , </ iarg1i // i /> ) in? { x ; iguard . a ( ptrt1 + step , </ iarg2i // i /> ) }  ~> None
+    N |- a ( ptrt2 , </ iarg1i // i /> ) in? each (integer x; iguard) { a ( array_shift < ct > ( ptrt1 , x ) , </ iarg2i // i /> ) }  ~> None
 
 
-    term eq ( ptrt2 - ptrt1 ) / step
+    term eq ( ptrt2 - ptrt1 ) / sizeof ct
     term1 eq term / x ( iguard )
     term2 eq /\\ ( </  iarg1i = [ term / x ] ( iarg2i ) // i /> )
     smt ( N => term1 /\ term2 )
     -------------------------------------------------------------------------- :: Comp
-    N |- a ( ptrt2 , </ iarg1i // i /> ) in? { x ; iguard . a ( ptrt1 + step , </ iarg2i // i /> ) } ~> term
+    N |- a ( ptrt2 , </ iarg1i // i /> ) in? each (integer x; iguard) { a ( array_shift < ct > ( ptrt1 , x ) , </ iarg2i // i /> ) } ~> term
 
 
   defn N |- r : norm_res -? res_req ~> res_diff :: :: Res_Diff :: Res_Diff_
@@ -95,74 +95,74 @@ defns
     N |- r : pred_term' ( oarg ) -? pred_term ~> r and oarg
 
 
-    N |- pred_term in? qpred_term ~> None
-    ------------------------------------------------ :: PQ_None
-    N |- _ : qpred_term ( _t ) -? pred_term ~> None
+    N |- pred_term in? ipred_term ~> None
+    ------------------------------------------------ :: PI_None
+    N |- _ : ipred_term ( _t ) -? pred_term ~> None
 
 
-    N |- pred_term in? qpred_term ~> term
-    qpred_term eq { x ; iguard . a ( ptrt1 + step , iargs ) }
-    rem eq { x ; iguard /\ ( x != term ) . a ( ptrt1 + step , iargs ) } ( oarg )
-    -------------------------------------------------------------------------- :: PQ_Rem
-    N |- r : qpred_term ( oarg ) -? pred_term ~> bind < r1 , r2 > : rem * pred_term ( oarg [ term ] ) = break ( r , term ) for r2 & oarg [ term ]  and r1 : rem
+    N |- pred_term in? ipred_term ~> term
+    ipred_term eq each (integer x; iguard) { a ( array_shift < ct > ( ptrt1 , x ) , </ iargi // i /> ) }
+    rem eq each (integer x; iguard /\ (x != term)) { a ( array_shift < ct > ( ptrt1 , x ) , </ iargi // i /> ) } ( oarg )
+    -------------------------------------------------------------------------- :: PI_Rem
+    N |- r : ipred_term ( oarg ) -? pred_term ~> bind < r1 , r2 > : rem * pred_term ( oarg [ term ] ) = break ( r , term ) for r2 & oarg [ term ]  and r1 : rem
 
 
-    N |- pred_term in? qpred_term ~> None
-    ------------------------------------------------ :: QP_None
-    N |- _ : pred_term ( _t ) -? qpred_term ~> None
+    N |- pred_term in? ipred_term ~> None
+    ------------------------------------------------ :: IP_None
+    N |- _ : pred_term ( _t ) -? ipred_term ~> None
 
 
-    N |- pred_term in? qpred_term ~> term
-    qpred_term eq { x ; iguard . a ( ptrt1 + step , iargs ) }
+    N |- pred_term in? ipred_term ~> term
+    ipred_term eq each (integer x; iguard) { a ( array_shift < ct > ( ptrt1 , x ) , </ iargi // i /> ) }
     smt ( N => exists x . iguard /\ ( x != term ) )
-    ------------------------------------------------------------------------------------------------ :: QP_More
-    N |- r : pred_term ( oarg ) -? qpred_term ~> oarg and { x ; iguard /\ ( x != term ) . a ( ptrt1 + step , iargs ) }
+    ------------------------------------------------------------------------------------------------ :: IP_More
+    N |- r : pred_term ( oarg ) -? ipred_term ~> oarg and each (integer x; iguard /\ ( x != term ) ) { a ( array_shift < ct > ( ptrt1 , x ) , </ iargi // i /> ) }
 
 
-    N |- pred_term in? qpred_term ~> term
-    qpred_term eq { x ; iguard . a ( ptrt1 + step , iargs ) }
+    N |- pred_term in? ipred_term ~> term
+    ipred_term eq each (integer x; iguard) { a ( array_shift < ct > ( ptrt1 , x ) , </ iargi // i /> ) }
     smt ( N => forall x . neg ( iguard /\ ( x != term ) ) )
     C ; L |- oarg => base_type
-    ------------------------------------------------------------------------------------------------ :: QP_Last
-    N |- r : pred_term ( oarg ) -? qpred_term ~> inj ( r , ptrt1 , step , x . iargs ) and const oarg
+    ------------------------------------------------------------------------------------------------ :: IP_Last
+    N |- r : pred_term ( oarg ) -? ipred_term ~> inj ( r , ptrt1 , ct , x . iargs ) and const oarg
 
 
-    N |- qpred_term [=? qpred_term' ~> None
-    -------------------------------------------------- :: QQ_None
-    N |- _ : qpred_term' ( _t ) -? qpred_term ~> None
+    N |- ipred_term [=? ipred_term' ~> None
+    -------------------------------------------------- :: II_None
+    N |- _ : ipred_term' ( _t ) -? ipred_term ~> None
 
 
-    N |- qpred_term' [=? qpred_term ~> Eq
-    ------------------------------------------------------------------- :: QQ_Eq
-    N |- r : qpred_term ( oarg ) -? qpred_term'  ~> r and oarg
+    N |- ipred_term' [=? ipred_term ~> Eq
+    ------------------------------------------------------------------- :: II_Eq
+    N |- r : ipred_term ( oarg ) -? ipred_term'  ~> r and oarg
 
 
-    N |- qpred_term' [=? qpred_term ~> Lt
-    % qpred_term' < qpred_term
-    qpred_term eq { x ; iguard  . a ( ptrt + step , iargs ) }
-    qpred_term' eq { x ; iguard' . a ( ptrt + step , iargs ) }
-    rem eq { x ; iguard  /\ neg iguard' . a ( ptrt + step , iargs ) } ( oarg )
-    ---------------------------------------------------------------------------------------- :: QQ_Lt
-    N |- r : qpred_term ( oarg ) -? qpred_term' ~> bind < r1 , r2 > : res = chop ( r , iguard' ) for r1 & oarg [ k ] and r2 : rem
+    N |- ipred_term' [=? ipred_term ~> Lt
+    % ipred_term' < ipred_term
+    ipred_term eq each (integer x; iguard) { a ( array_shift<ct>(ptrt, x) , </ iargi // i /> ) }
+    ipred_term' eq each (integer x; iguard') { a ( array_shift<ct>(ptrt,x) , </ iargi // i />  ) }
+    rem eq each (integer x; iguard  /\ neg iguard') { a ( array_shift<ct>(ptrt,x) , </ iargi // i /> ) } ( oarg )
+    ---------------------------------------------------------------------------------------- :: II_Lt
+    N |- r : ipred_term ( oarg ) -? ipred_term' ~> bind < r1 , r2 > : res = chop ( r , iguard' ) for r1 & oarg [ k ] and r2 : rem
 
 
     % This would require being able to merge arrays, which the implementation does not support
-    % N |- qpred_term' [=? qpred_term ~> Gt
-    % % qpred_term' > qpred_term
-    % qpred_term  eq { x ; iguard  . a ( ptrt + step , iargs ) }
-    % qpred_term' eq { x ; iguard' . a ( ptrt + step , iargs ) }
-    % ------------------------------------------------------------------ :: QQ_Gt
-    % N |- r : qpred_term & oarg -? qpred_term'  ~> oarg and { x ; iguard' /\ neg iguard . a ( ptrt + step , iargs ) }
+    % N |- ipred_term' [=? ipred_term ~> Gt
+    % % ipred_term' > ipred_term
+    % ipred_term  eq { x ; iguard  . a ( ptrt + step , iargs ) }
+    % ipred_term' eq { x ; iguard' . a ( ptrt + step , iargs ) }
+    % ------------------------------------------------------------------ :: II_Gt
+    % N |- r : ipred_term & oarg -? ipred_term'  ~> oarg and { x ; iguard' /\ neg iguard . a ( ptrt + step , iargs ) }
 
 
   defn N |- r1 : norm_res +? res_term2 : res_req & oarg2 ~> out_res_term and out_oarg3 :: :: Res_Comb :: Res_Comb_
   {{ com combining $[[r1]] [[:]] [[norm_res]]$, $[[res_term2]] [[:]] [[res_req]] \& [[oarg2]]$, results in $[[out_res_term]]$ $[[out_oarg3]]$ }} by
 
-    N |- pred_term in? qpred_term ~> term
+    N |- pred_term in? ipred_term ~> term
     C ; L |- oarg1 => base_type
     C ; L |- oarg2 => array base_type
-    ---------------------------------------------------------- :: PQ
-    N |- r : pred_term ( oarg1 ) +? res_term : qpred_term & oarg2 ~> glue( < res_term , r > ) and oarg2 [ term ] := oarg1
+    ---------------------------------------------------------- :: PI
+    N |- r : pred_term ( oarg1 ) +? res_term : ipred_term & oarg2 ~> glue( < res_term , r > ) and oarg2 [ term ] := oarg1
 
 
   defn N ; nR |- wf res_req ~> bind out_res_bind for out_res_term and out_oarg -| out_nRp :: :: Req_ :: Req_
@@ -206,9 +206,9 @@ defns
     a eq _ : loc , </ _i : base_typei // i  /> , y' : base_type |-> res inEnv Globals
     C ; L |- ptrt => loc
     indexed </ C ; L |- iargi => base_typei // i />
-    N ; nR |- wf { x ; iguard . a ( ptrt + step , </ iargi // i /> ) } ~> bind res_bind for res_term and oarg -| nR'
-    ----------------------------------------------------------------- :: QPred
-    N ; nR |- { x ; iguard . a ( ptrt + step , </ iargi // i /> ) } ~> bind res_bind for res_term and oarg -| nR'
+    N ; nR |- wf each (integer x; iguard) { a ( array_shift < ct > ( ptrt , x ) , </ iargi // i /> ) } ~> bind res_bind for res_term and oarg -| nR'
+    ----------------------------------------------------------------- :: IPred
+    N ; nR |- each (integer x; iguard) { a ( array_shift < ct > ( ptrt , x ) , </ iargi // i /> ) } ~> bind res_bind for res_term and oarg -| nR'
 
 
   defn N ; nR |- if term then res1 else res2 ~> out_x -| out_nRp :: :: If_ :: If_
@@ -273,11 +273,11 @@ defns
     N ; nR |- calc y using exists y' : base_type.  pred_term ( y' ) * res ~> bind res_bind1 , res_bind2 for res_term and oarg  -| nR''
 
 
-    N ; nR |- qpred_term ~> bind res_bind1 for res_term1 and oarg' -| nR'
+    N ; nR |- ipred_term ~> bind res_bind1 for res_term1 and oarg' -| nR'
     N ; nR' |- calc y using oarg' / y' ( res ) ~> bind res_bind2 for res_term2 and oarg -| nR''
     res_term eq pack ( oarg' , < res_term1 , res_term2 > )
-    -------------------------------------------------------------------------------------------------------------- :: TakeQPred
-    N ; nR |- calc y using exists y' : array base_type . qpred_term ( y' ) * res ~> bind res_bind1 , res_bind2 for res_term and oarg  -| nR''
+    -------------------------------------------------------------------------------------------------------------- :: TakeIPred
+    N ; nR |- calc y using exists y' : array base_type . ipred_term ( y' ) * res ~> bind res_bind1 , res_bind2 for res_term and oarg  -| nR''
 
 
 defns
@@ -288,60 +288,43 @@ defns
   {{ com memory action elaboration: given $[[CLNnR]]$, $[[action]]$ elaborates (via $[[out_res_bind]]$) to $[[action']] [[:]] [[out_norm_ret]]$, with $[[out_nRp]]$ leftover }} by
 
 
-    C ; L ; N ; nR |- create ( pval , ct ) Symbol_prefix => norm_ret
-    norm_ret eq sigma yp : loc . term /\ exists x : to_base ( ct ) . ( yp |- const ct false - ct -> x ) *o I
+    C ; L ; N ; nR |- emp | create < ct > ( pval ) => norm_ret
+    norm_ret eq sigma yp : loc . term /\ exists x : to_base ( ct ) . ( yp |- Uninit - ct -> x ) *o I
     term eq representable ( ct * , yp ) /\ alignedI ( inj pval , yp )
     ----------------------------------------------------------------------- :: Create
-    C ; L ; N ; nR |- create ( pval , ct ) Symbol_prefix ~> bind cdot for create ( pval , ct ) Symbol_prefix : norm_ret -| nR
+    C ; L ; N ; nR |- _rest | create < ct > ( pval ) ~> bind cdot for emp | create < ct > ( pval ) : norm_ret -| nR
 
 
     % DEFER (not implemented)
     % C ; L ; N ; cdot |-> create_readonly ( vp , ct , v ) Symbol_prefix => ??
 
 
-    % DEFER relax this rule - loading a (partially) undefined struct is fine
     % DEFER (not implemented) - memory order
     C |- pval0 => loc
-    N ; nR |- Owned < ct > ( inj pval0 , ) ~> bind res_bind for res_term and oarg -| nR'
-    smt ( N =>  oarg dot sym_init = const ct true )
-    norm_ret eq sigma y : to_base ( ct ) . y = oarg dot sym_value /\ pt *o I
+    N ; nR |- Owned < Init , ct > ( inj pval0 ) ~> bind res_bind for res_term and oarg -| nR'
+    norm_ret eq sigma y : to_base ( ct ) . y = oarg /\ pt *o I
     -------------------------------------------------------------------------- :: Load
-    C ; L ; N ; nR |- load ( ct , pval0 , _mem_order , _rest ) ~> bind res_bind for load ( ct , pval0 , _mem_order , res_term ) : norm_ret -| nR'
+    C ; L ; N ; nR |- _rest | load < ct >  ( pval0 ) ~> bind res_bind for res_term | load < ct > ( pval0 ) : norm_ret -| nR'
 
 
-    % DEFER relax this rule - storing (partially) undefined struct preserves init
     C |- pval0 => loc
     C |- pval1 => to_base ( ct )
     % DEFER (not implemented) - locking boolean
     smt ( N => representable ( ct , inj pval1 ) )
-    N ; nR |- Owned < ct > ( inj pval0 , ) ~> bind res_bind for res_term and _t -| nR'
-    norm_ret eq sigma _ : unit . ( inj pval0 |- const ct true - ct -> inj pval1 ) *o I
+    N ; nR |- Owned < _init , ct > ( inj pval0 ) ~> bind res_bind for res_term and _t -| nR'
+    norm_ret eq sigma _ : unit . ( inj pval0 |- Init - ct -> inj pval1 ) *o I
     ------------------------------------------------------------------------------------------- :: Store
-    C ; L ; N ; nR |- store ( _b , ct , pval0 , pval1 , _mem_order , _rest ) ~> bind res_bind for store ( _b , ct , pval0 , pval1 , _mem_order , res_term ) : norm_ret -| nR'
+    C ; L ; N ; nR |- _rest | store < ct > ( pval0 , pval1 ) ~> bind res_bind for res_term | store < ct > ( pval0 , pval1 ) : norm_ret -| nR'
 
 
     C |- pval0 => loc
-    N ; nR |- Owned < ct > ( inj pval , ) ~> bind res_bind for res_term and _t -| nR'
+    N ; nR |- Owned < _init , ct > ( inj pval ) ~> bind res_bind for res_term and _t -| nR'
     ---------------------------------------------------------------------------------------- :: Kill_Static
-    C ; L ; N ; nR |- kill ( static ct , pval , _rest ) ~> bind res_bind for kill ( static ct , pval , res_term ) : sigma _ : unit . I -| nR'
+    C ; L ; N ; nR |- _rest | kill < ct > ( pval ) ~> bind res_bind for res_term | kill < ct > ( pval ) : sigma _ : unit . I -| nR'
 
 
     % DEFER (not implemented)
-    % C ; L ; N ; ?? |- kill ( dynamic , v ) => ??
-
-
-    % action {{ tex mem\_action }} :: 'M_' ::= {{ com memory actions }}
-    %   | alloc ( ty_asym1 , ty_asym2 ) Symbol_prefix                                                         :: :: Alloc
-    %   | load ( ct , ty_asym , Cmm_memory_order )                                                        :: :: Load
-    %   | rmw ( ct ,  ty_asym1 , ty_asym2 , ty_asym3 , Cmm_memory_order1 , Cmm_memory_order2 )            :: :: RMW
-    %   | fence ( Cmm_memory_order )                                                                          :: :: Fence
-    %   | cmp_exch_strong ( ct , ty_asym1 , ty_asym2 , ty_asym3 , Cmm_memory_order1 , Cmm_memory_order2 ) :: :: CompareExchangeStrong
-    %   | cmp_exch_weak ( ct , ty_asym1 , ty_asym2 , ty_asym3 , Cmm_memory_order1 , Cmm_memory_order2 )   :: :: CompareExchangeWeak
-    %   | linux_fence ( Linux_linux_memory_order )                                                            :: :: LinuxFence
-    %   | linux_load ( ct , ty_asym , Linux_linux_memory_order )                                          :: :: LinuxLoad
-    %   | linux_store ( ct , ty_asym1 , ty_asym2 , Linux_linux_memory_order )                             :: :: LinuxStore
-    %   | linux_rmw ( ct , ty_asym1 , ty_asym2 , Linux_linux_memory_order )                               :: :: LinuxRMW
-
+    % C ; L ; N ; ?? |- _rest | kill < dyn > ( v ) => ??
 
   % DEFER out_memop'
   defn CLNnR |- memop ~> bind out_res_bind for memop' : out_norm_ret -| out_nRp :: :: Is_Memop :: Is_Memop_
@@ -421,37 +404,31 @@ defns
 
 
     C ; L ; N ; nR |- memop ~> bind res_bind for memop' : norm_ret -| nR'
-    ----------------------------------------------------------------------------------------------- :: Memop
-    C ; L ; N ; nR |- MEMOP ( memop ) ~> bind res_bind for ( MEMOP ( memop' ) ) : norm_ret -| nR'
+    ------------------------------------------------------------------------- :: Memop
+    C ; L ; N ; nR |- memop ~> bind res_bind for ( memop' ) : norm_ret -| nR'
 
 
     C ; L ; N ; nR |- action ~> bind res_bind for action' : norm_ret -| nR'
-    -------------------------------------------------------------------------------- :: Action
-    C ; L ; N ; nR |- Pos action ~> bind res_bind for ( Pos action' ) : norm_ret -| nR'
+    --------------------------------------------------------------------------- :: Action
+    C ; L ; N ; nR |- action ~> bind res_bind for ( action' ) : norm_ret -| nR'
 
 
-    C ; L ; N ; nR |- action ~> bind res_bind for action' : norm_ret -| nR'
-    -------------------------------------------------------------------------------- :: Neg_Action
-    C ; L ; N ; nR |- Neg action ~> bind res_bind for ( Neg action' ) : norm_ret -| nR'
+    a eq </ xi : base_typei // i  /> , y : base_type |-> res inEnv Globals
+    indexed </ C |- pvali => base_typei // i />
+    N ; nR |- calc y using [ [ </ pvali / xi // i /> ] ] ( res ) ~> bind res_bind for res_term and oarg -| nR'
+    ret eq sigma _ : unit . a ( </ inj pvali // i /> ) ( oarg ) *o I
+    ----------------------------------------------------------------------------------------------------------------------------------- :: Fold
+    C ; L ; N ; nR |- fold a ( </ pvali // i /> ) ~> bind res_bind for ( done < Unit , fold res_term : a ( </ inj pvali // i /> ) ( oarg ) > : ret ) : ret -| nR'
 
 
-    a eq xp : loc , </ xi : base_typei // i  /> , y : base_type |-> res inEnv Globals
+    a eq </ xi : base_typei // i  /> , y : base_type |-> res inEnv Globals
     C |- pval => loc
     indexed </ C |- pvali => base_typei // i />
-    N ; nR |- calc y using [ [ </ pvali / xi // i /> ] , pval / xp ] ( res ) ~> bind res_bind for res_term and oarg -| nR'
-    ret eq sigma _ : unit . a ( inj pval , </ inj pvali // i /> ) ( oarg ) *o I
-    ----------------------------------------------------------------------------------------------------------------------------------- :: Pack
-    C ; L ; N ; nR |- pack a ( pval , </ pvali // i /> ) ~> bind res_bind for ( done < Unit , fold res_term : a ( inj pval , </ inj pvali // i /> ) ( oarg ) > : ret ) : ret -| nR'
-
-
-    a eq xp : loc , </ xi : base_typei // i  /> , y : base_type |-> res inEnv Globals
-    C |- pval => loc
-    indexed </ C |- pvali => base_typei // i />
-    N ; nR |- a ( inj pval , inj </ pvali // i /> ) ~> bind res_bind for res_term and oarg -| nR'
-    res' eq [ oarg / y , [ </ iargi / xi // i /> ] , ptrt / xp ] ( res )
+    N ; nR |- a ( </ inj pvali // i /> ) ~> bind res_bind for res_term and oarg -| nR'
+    res' eq [ oarg / y , [ </ iargi / xi // i /> ] ] ( res )
     ret eq sigma _ : unit . res' *o I
-    ------------------------------------------------------------------------------------------------ :: Unpack
-    C ; L ; N ; nR |- unpack a ( pval , </ pvali // i /> ) ~> bind fold ( x ) : a ( inj pval , </ inj pvali // i /> ) ( oarg ) = res_term for ( done < Unit , x > : ret ) : ret -| nR'
+    ------------------------------------------------------------------------------------------------ :: Unfold
+    C ; L ; N ; nR |- unfold a ( </ pvali // i /> ) ~> bind fold ( x ) : a ( </ inj pvali // i /> ) ( oarg ) = res_term for ( done < Unit , x > : ret ) : ret -| nR'
 
 
     % </ C ; L ; N ; nRi |- texpri <= reti // i />
@@ -482,10 +459,10 @@ defns
     C ; L ; N ; nR |- spine :; forall y : base_type . pred_term ( y ) --o norm_fun ~> bind res_bind , res_bind' for oarg , res_term , spine' and norm_ret -| nR''
 
 
-    N ; nR |- qpred_term ~> bind res_bind for res_term and oarg -| nR'
+    N ; nR |- ipred_term ~> bind res_bind for res_term and oarg -| nR'
     C ; L ; N ; nR' |- spine :; oarg / y ( norm_fun ) ~> bind res_bind' for spine' and norm_ret' -| nR''
-    --------------------------------------------------------------------------------------------------------------- :: TakeQPred
-    C ; L ; N ; nR |- spine :; forall y : array base_type . qpred_term ( y ) --o norm_fun ~> bind res_bind , res_bind' for oarg , res_term , spine' and norm_ret -| nR''
+    --------------------------------------------------------------------------------------------------------------- :: TakeIPred
+    C ; L ; N ; nR |- spine :; forall y : array base_type . ipred_term ( y ) --o norm_fun ~> bind res_bind , res_bind' for oarg , res_term , spine' and norm_ret -| nR''
 
 
     N ; nR |- calc _ using if term then res1 else res2 ~> bind res_bind for res_term and unit -| nR'

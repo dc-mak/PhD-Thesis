@@ -34,7 +34,7 @@ else
 endif
 
 .PHONY: $(BUILD)/main.pdf
-$(BUILD)/main.pdf: formal-statics.$(GEN).tex \
+$(BUILD)/main.pdf: formal-kernel.$(GEN).tex formal-statics.$(GEN).tex \
     $(PREFIX)_included.$(GEN).tex \
     $(PREFIX)_override.$(GEN).tex \
     $(PREFIX)_drulenames.$(GEN).tex | $(BUILD)
@@ -43,6 +43,9 @@ ifeq ($(CAT_ON_FAIL),y)
 else
 	latexmk $(FLAGS)
 endif
+
+formal-kernel.$(GEN).tex: formal-kernel.mng $(CACHE) | check_rule_diff
+	ott -readsys $(CACHE) -tex_name_prefix $(PREFIX) -tex_filter $< $@ | tac
 
 formal-statics.$(GEN).tex: formal-statics.mng $(CACHE) | check_rule_diff
 	ott -readsys $(CACHE) -tex_name_prefix $(PREFIX) -tex_filter $< $@ | tac

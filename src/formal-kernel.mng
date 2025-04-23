@@ -1,3 +1,4 @@
+% vim: ft=tex
 \chapter{Kernel CN:\ Grammar}%
 \label{chap:kernel-grammar}
 
@@ -27,10 +28,10 @@ relevant terms, with a particular focus on explicit resource terms.
     \caption{\kl{Kernel CN} function and return types.}\label{fig:kernel-fun-ret}
 \end{figure}
 
-\cref{fig:kernel-fun-ret} show the grammar of function types $\cnnt{fun}$ which
-include both pre- and postconditions, and return types ${ret}$, which
+\cref{fig:kernel-fun-ret} show the grammar of function types $[[ fon ]]$ which
+include both pre- and postconditions, and return types $[[ ret ]]$, which
 represents postconditions. Where the \kl{CN} grammar pre- and postconditions
-are a flats list of ${conditions}$, these types are nested and have quantifiers
+are a flat list of conditions, these types are nested and have quantifiers
 to make explicit their scoping, specifically that the variables bound in the
 precondition are available for use in the postcondition. This is necessary
 because these types depend on computational values, and so, for example, a call
@@ -39,9 +40,7 @@ into the rest of a pre- and postcondition (via a spine judgement).
 
 In order, both include: quantification over computational (program) values,
 quantification over logical (ghost) values, separating implication/conjunction
-for assertions about the heap,\sidenote{TODO\@: Should I change this (back) to
-$\otimes$ and $\multimap$? Or would that be confusing? I also don't
-have `multimap' in my maths font.} and logical implication/conjunction for pure
+for assertions about the heap, and logical implication/conjunction for pure
 assertions (in a linear context, about an empty heap).
 
 Though this seems like a large departure from the syntax given in
@@ -64,19 +63,20 @@ predicate definitions, but can occur directly in function types, and can be
 arbitrarily nested. This makes defining predicates to represent tagged unions
 more succinct, and allows for opening predicates in more cases.
 
-Predicates ${pred}$ and iterated predicates ${qpred}$ are simple ${pred\_term}$
-and ${qpred\_term}$ with output arguments, as seen in~\cref{fig:kernel-qpred}.
-I will explain why I factored out ${pred\_term}$ and ${qpred\_term}$ in
-\nameref{sec:res-terms}. For now, I will draw attention to the fact that
-where there is a distinction between \cninline{Owned} and \cninline{Block} in
-the surface syntax, the formalisation tracks whether or not a points-to has
-been initialised in a symbolic \emph{record} field ${.init}$, whose type
-mirrors the structure of the C type, i.e.\ with leaves which are booleans, and
-branches which are records or arrays. This allows for more fine-grained control
-over reading and writing \emph{partially} (and completely) uninitialised reads
-of structs/unions,\sidenote{\url{https://www.cl.cam.ac.uk/~pes20/cerberus/notes98-2018-04-21-uninit-v4.html\#reads-of-partially-uninitialised-structsunions-as-a-whole}% chktex 8
-\\ Though honestly I could just get rid of this because it would be simpler.}\label{sn:partial-init-read}
-as allowed by the C standard.
+Predicates $[[ pred ]]$ and iterated predicates $[[ ipred ]]$ are simple
+$[[ pred_term ]]$ and $[[ipred_term]]$ with output arguments, % chktex 25
+as seen in~\cref{fig:kernel-ipred}.
+I will explain why I factored out $[[pred_term]]$ and $[[ipred_term]]$ in % chktex 25
+\nameref{sec:res-terms}. Where the surface syntax is written \cninline{RW} and
+\cninline{W}, I write it as $[[ Owned < Init , ct > ]]$ and
+$[[ Owned < Uninit , ct > ]]$ respectively. \sidenote{Prior versions of this
+    system allowed for more fine-grained control over reading and writing
+    \emph{partially} (and completely) uninitialised reads of
+    structs/unions. However,
+    \href{https://www.cl.cam.ac.uk/~pes20/cerberus/notes98-2018-04-21-uninit-v4.html\#reads-of-partially-uninitialised-structsunions-as-a-whole}{the
+    precise semantics of such a scheme is unresolved} and it is
+    considerably simpler and in practice, sufficient to be conservative in this
+    regard.}\label{sn:partial-init-read}
 
 \begin{figure*}
     \small
@@ -84,18 +84,18 @@ as allowed by the C standard.
     \grammartabularSTY{%
         \cnpredXXname{}\cninterrule{}
         \cnpredXXterm{}\cninterrule{}
-        \cnqpredXXterm{}\cnafterlastrule{}
+        \cnipredXXterm{}\cnafterlastrule{}
     }
     \begingroup%
     \renewcommand{\cnprodline}{\cnprodlineCommentNewline}
     \grammartabularSTY{%
-        \cnqpred{}\cnafterlastrule{}
+        \cnipred{}\cnafterlastrule{}
     }
     \endgroup%
     \caption{\kl{Kernel CN} predicate and iterated predicate terms (without
         output arguments) and types (with output arguments). The formalisation
         is set up with some syntactic sugar (marked with $\mathsf{S}$) to make
-        the meanings of these constructs more intuitive.}\label{fig:kernel-qpred}
+        the meanings of these constructs more intuitive.}\label{fig:kernel-ipred}
 
 \end{figure*}
 
@@ -113,11 +113,11 @@ as allowed by the C standard.
 All judgements in the formalisation which have a natural bidirectional
 interpretation have the information they are synthesising highlighted with
 \colorbox{pink!30}{light pink} background. The grammars presented below will
-refer to ${term}$, ${iguard}$, ${ptr}$, ${init}$, ${value}$, ${iarg}$, ${oarg}$
-(and later, ${alloc}$). These are all simply aliases for pure (SMT) terms, used
+refer to $[[term]]$, $[[iguard]]$, $[[ptrt]]$, $[[iarg]]$, $[[oarg]]$
+(and later, $[[alloct]]$). These are all simply aliases for pure (SMT) terms, used
 so that the roles of these terms in different productions, especially ones
 productions which refer to multiple instances of them, are clearer. \intro{Base
-types}, represented by $\beta$ or ${bty}$ are simply the types of such terms.
+types}, represented by $[[ base_type ]]$ are simply the types of such terms. % chktex 25
 
 Desugaring \kl{CN} types into \kl{Kernel CN} starts with the C functions, which
 map their parameters into computational variables in function types, or with
@@ -165,7 +165,7 @@ Desugaring predicate definitions is similar. Because the grammar is used in two
 contexts, inside a pre- or postcondition where a return is not allowed, and in
 a predicate definition where a return is allowed, the desugaring is
 parameterised over whether or not a return is expected. If one is not, then the
-resource is simply an $\mathsf{emp}$, otherwise it is an equality constraint,
+resource is simply an $[[ emp ]]$, otherwise it is an equality constraint,
 as shown in \cref{fig:monad-sl}. Outputs of (iterated) predicates are always
 assumed to be of the shape of a record for uniformity, which I will justify
 later. Abbreviations are also substituted in.\sidenote{As in note~\ref{sn:abbrev}.}
@@ -304,7 +304,7 @@ arguments to \coreinline{run} are contain pure expressions
 However, these are mutually defined with \kl{indeterminately} sequenced
 top-level expressions (\coreinline{let weak} and \coreinline{let strong}), for
 which as I mentioned before, I do not have accurate support. The mutual
-recursion is achieved via the $\mathit{texpr}$ production.
+recursion is achieved via the $[[ texpr ]]$ production.
 
 \begin{figure*}[tp]
     \small
@@ -365,7 +365,7 @@ pointers which require checks that pointers are live (\cref{fig:res-term-constru
 \begin{figure*}
     \small
     \grammartabularSTY{%
-        \cnresXXaction{}\cninterrule{}
+        \cnaction{}\cninterrule{}
         \cnmemop{}\cnafterlastrule{}
     }
     \caption{Constructs in \kl{ResCore} extended to accommodate
@@ -388,50 +388,52 @@ object model (\cref{sec:cn-vip-soundness}).
 \cref{fig:res-terms} shows the resource terms of \kl{ResCore}. There are
 \emph{several} side conditions for each of the operations the terms represent,
 which I will show in \nameref{sec:typing-res-terms}, but for now it suffices to
-explain just the intuition. Terms $\mathsf{emp}$ and
-$\mathsf{term}$ are introduction forms for the types $\mathsf{emp}$ and pure
-assertions $\mathit{term}$, and they have corresponding forms for eliminating
+explain just the intuition. Terms $[[ emp ]]$ and
+$[[ TERM ]]$ are introduction forms for the types $[[ emp ]]$ and pure
+assertions $[[ term ]]$, and they have corresponding forms for eliminating
 them too. Variables are also resource terms and patterns, for any resource
-type. Terms $\mathit{pred\_term}$ and $\mathit{qpred\_term}$ introduce
-$\mathit{pred}$ and $\mathit{qpred}$ types respectively (the only difference
+type. Terms $\mathit{pred\_term}$ and $\mathit{ipred\_term}$ introduce
+$[[ pred ]]$ and $[[ ipred ]]$ types respectively (the only difference
 between the two is that the latter also carry their output arguments). Angle
-brackets $\langle \_ , \_ \rangle$ and $\mathsf{pack}$ are introduction forms
-for the separating conjunction $\astRef{}$ and $\exists$ types respectively,
-and they have corresponding eliminators too.
+brackets $\langle \_ , \_ \rangle$ and $[[ pack (_, _rest ) ]]$ are % chktex 25
+introduction forms for the separating conjunction $\astRef{}$ and $\exists$
+types respectively, and they have corresponding eliminators too.
 
 Ordered-disjunctions can be introduced by \emph{any} resource term, and
 eliminated by any resource pattern.
 
 The following terms are all operations on predicates. Types for
-user-defined predicates are introduced and eliminated by the $\mathsf{fold}$
-construct, so that definitions of predicates can be hidden or exposed as required
-(necessary because we need and allow predicates to be recursive). The
-$\mathsf{implode}$ and $\mathsf{explode}$ constructs are for transforming from
-and to an $\mathsf{Owned}\langle \mathtt{struct} \mathit{tag} \rangle$ predicate
-(which, in kernel CN, represents both \cninline{Owned<ct>} and
-\cninline{Block<ct>} from the surface syntax); the first consumes ownership of
-a struct and produces ownership of its members, the second does the inverse.
-Analagously for $\mathsf{iterate}$ and $\mathsf{congeal}$, the former consumes
-ownership of a fixed-size array, and produces ownership to each of its members,
-whereas the latter does the inverse.
+user-defined predicates are introduced and eliminated by the
+$[[ fold _rest : pred ]]$ construct, so that definitions of predicates % chktex 25
+can be hidden or exposed as required (necessary because we need and allow
+predicates to be recursive). The $[[ implode ( _rest , tag ) ]]$ % chktex 25
+and $[[ explode ( _rest ) ]]$ constructs are for transforming from % chktex 25
+and to an $[[ Owned < init , struct tag > ]]$ predicate (which, in kernel CN,
+represents \cninline{RW<ct>} for $[[ init ]] = [[ Init ]]$, and
+\cninline{W<ct>} for $[[ init ]] = [[ Uninit ]]$); the first consumes ownership
+of a struct and produces ownership of its members, the second does the inverse.
+Analagously for $[[ iterate ( _rest , n ) ]]$ and $[[ congeal ( _rest , n ) ]]$, % chktex 25
+the former consumes ownership of a fixed-size array, and produces ownership to
+each of its members, whereas the latter does the inverse.
 
 The remaining terms are all operations on iterated predicates. The
-$\mathsf{break}$ operation indexes an iterated predicate to move ownership out
-of it, whereas the $\mathsf{glue}$ operation does the inverse. The
-$\mathsf{inj}$ operation introduces a singleton (non-empty) iterated
-predicate.\sidenote{I chose a singleton introduction form rather than an empty
-    one to enforce the invariant that all iterated predicates in the typing
-    context are guaranteed to be non-empty. I do not believe this makes a
-    material difference to soundness, but it reduces redundant lookups in the
-    resource context, and avoids the need of inventing default values for empty
-    arrays in the SMT problem. However, due to the mismatch between finite
-    arrays in C, and total maps in SMT theories, the difference does seem to
-    affect usability in the implementation
-(\href{https://github.com/rems-project/cerberus/issues/729}{issue \#729}).
+$[[ break ( _rest , _t ) ]]$ operation indexes an iterated predicate % chktex 25
+to move ownership out of it, whereas the $[[ glue ( _rest ) ]]$ % chktex 25
+operation does the inverse. The $[[ inj ( _rest , _t , ct , _ . _iargs ) ]]$ % chktex 25
+operation introduces a singleton (non-empty) iterated predicate.\sidenote{I
+    chose a singleton introduction form rather than an empty one to enforce the
+    invariant that all iterated predicates in the typing context are guaranteed
+    to be non-empty. I do not believe this makes a material difference to
+    soundness, but it reduces redundant lookups in the resource context, and
+    avoids the need of inventing default values for empty arrays in the SMT
+    problem. However, due to the mismatch between finite arrays in C, and total
+    maps in SMT theories, the difference does seem to affect usability in the
+    implementation
+    (\href{https://github.com/rems-project/cerberus/issues/729}{issue \#729}).
 TODO\@: allow empty arrays and require the array value to be put in the rather
 term than assume default.}
-Lastly, the $\mathsf{chop}$ operation splits an iterated predicate along a
-given index guard $\mathit{iguard}$. As mentioned in
+Lastly, the $[[ chop ( _rest , iguard ) ]]$ operation splits an iterated % chktex 25
+predicate along a given index guard $[[ iguard ]]$. As mentioned in
 \nameref{sec:monadic-syntax}, to preserve decidability by not inferring
 quantified constraints, the type system does not support merging arrays.
 

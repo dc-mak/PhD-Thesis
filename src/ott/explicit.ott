@@ -90,8 +90,8 @@ grammar
 
   ty_extra :: 'ty_extra_' ::= {{ com extra judgements for explicit and inference typing systems }}
     | smt ( N => qterm )                                                     ::  :: smt                     {{ com check if $[[qterm]]$ is SMT-provable in constraint context $[[N]]$     }}
-    | x : out_base_type inEnv C                                     ::  :: x_in_C                  {{ com lookup type of $[[x]]$ in context $[[C]]$                     }}
-    | struct tag & </ out_memberi : out_cti // i /> inEnv Globals            ::  :: struct_in_globals       {{ com lookup types of struct $[[tag]]$ members in $[[Globals]]$            }}
+    | x : out_base_type inEnv C                                              ::  :: x_in_C                  {{ com lookup type of $[[x]]$ in context $[[C]]$                     }}
+    | tagged tag & </ out_memberi : out_cti // i /> inEnv Globals            ::  :: struct_in_globals       {{ com lookup types of struct $[[tag]]$ members in $[[Globals]]$            }}
     | a eq </ out_xi : out_base_typei // , // i /> |-> out_res inEnv Globals ::  :: res_pred_in_globals     {{ com lookup body of resource predicate $[[a]]$ in $[[Globals]]$             }}
     | C ; L |- term => out_base_type                                         ::  :: term_synth_type         {{ com omitted/assumed definition: $[[ term ]]$ is (a) well-formed (b) annotated with $[[out_base_type]]$ }}
     | pred_name1 != pred_name2                                               ::  :: pred_name_neq           {{ com check if $[[pred_name1]]$ and $[[pred_name2]]$ are unequal             }}
@@ -140,44 +140,32 @@ defns
     N |- cmp_min ( iguard , iguard' ) ~> None
 
 
-  defn N |- qpred_term [=? qpred_term' ~> out_opt_cmp :: :: Q_Cmp :: Q_Cmp_
-  {{ com given constraints $[[N]]$ , $[[qpred_term]]$ is potentially included in $[[qpred_term']]$ (or vice-versa) with ordering $[[out_opt_cmp]]$ }} by
+  defn N |- ipred_term [=? ipred_term' ~> out_opt_cmp :: :: I_Cmp :: I_Cmp_
+  {{ com given constraints $[[N]]$ , $[[ipred_term]]$ is potentially included in $[[ipred_term']]$ (or vice-versa) with ordering $[[out_opt_cmp]]$ }} by
 
 
     a1 != a2
     ---------------------------------------------------------------------------------------------- :: Name_Neq
-    N |- { _ ; _t . a2 ( _t + _int , _iargs ) } [=? { _ ; _t . a1 ( _t + _int , _iargs ) } ~> None
+    N |- each ( integer _; _t ) { a1 ( _iargs ) } [=? each ( integer _; _t ) { a2 ( _iargs ) } ~> None
 
 
-    term1 eq ( ptrt = ptrt' ) /\ (step = step')
-    smt ( N => neg term1 )
-    --------------------------------------------------------------------------------------- :: PtrStep_Neq
-    N |- { x ; _t . a ( ptrt + step , _iargs ) } [=? { x ; _t . a ( ptrt' + step' , _iargs ) } ~> None
-
-
-    term1 eq ( ptrt = ptrt' ) /\ (step = step')
-    smt ( N => term1 )
     N |- cmp_min ( iguard , iguard' ) ~> None
     --------------------------------------------------------------------------------------- :: IG_Neq
-    N |- { x ; iguard . a ( ptrt + step , _iargs ) } [=? { x ; iguard' . a ( ptrt' + step' , _iargs ) } ~> None
+    N |- each (integer x; iguard) { a ( _iargs ) } [=? each (integer x ; iguard') { a ( _iargs ) } ~> None
 
 
-    term1 eq ( ptrt = ptrt' ) /\ (step = step')
-    smt ( N => term1 )
     N |- cmp_min ( iguard , iguard' ) ~> cmp , iguard''
-    term2 eq iguard'' -> /\\ ( </ iargi = iarg'i // i /> )
-    smt ( N => exists x . neg term2 )
+    term eq iguard'' -> /\\ ( </ iargi = iarg'i // i /> )
+    smt ( N => exists x . neg term )
     --------------------------------------------------------------------------------------- :: IArg_Neq
-    N |- { x ; iguard . a ( ptrt + step , _iargs ) } [=? { x ; iguard' . a ( ptrt' + step' , _iargs ) } ~> None
+    N |- each (integer x; iguard) { a ( </ iargi // i /> ) } [=? each (integer x ; iguard') { a ( </ iarg'i // i /> ) } ~> None
 
 
-    term1 eq ( ptrt = ptrt' ) /\ (step = step')
-    smt ( N => term1 )
     N |- cmp_min ( iguard , iguard' ) ~> cmp , iguard''
-    term2 eq iguard'' -> /\\ ( </ iargi = iarg'i // i /> )
-    smt ( N => forall x . term2 )
+    term eq iguard'' -> /\\ ( </ iargi = iarg'i // i /> )
+    smt ( N => forall x . term )
     --------------------------------------------------------------------------------------- :: Comparable
-    N |- { x ; iguard . a ( ptrt + step , _iargs ) } [=? { x ; iguard' . a ( ptrt' + step' , _iargs ) } ~> cmp
+    N |- each (integer x; iguard) { a ( </ iargi // i /> ) } [=? each (integer x ; iguard') { a ( </ iarg'i // i /> ) } ~> cmp
 
 
   defn N |- res_req eq res_req' ~> ty_bool :: :: Req_Eq :: Req_Eq_
@@ -186,27 +174,27 @@ defns
 
     a1 != a2
     ------------------------------------------------------ :: PP_Name_Neq
-    N |- a1 ( _t , _iargs ) eq a2 ( _t , _iargs ) ~> false
+    N |- a1 ( _iargs ) eq a2 ( _iargs ) ~> false
 
 
-    smt ( N => neg ( ptrt1 = ptrt2 /\ /\\ ( </ iarg1i = iarg2i // i /> ) ) )
-    -------------------------------------------------------------------------------------------------- :: PP_IArg_Neq
-    N |- a ( ptrt1 , </ iarg1i // i /> ) eq a ( ptrt2 , </ iarg2i // i /> ) ~> false
+    smt ( N => neg ( /\\ ( </ iarg1i = iarg2i // i /> ) ) )
+    ------------------------------------------------------------------ :: PP_IArg_Neq
+    N |- a ( </ iarg1i // i /> ) eq a (  </ iarg2i // i /> ) ~> false
 
 
-    smt ( N => ptrt1 = ptrt2 /\ /\\ ( </ iarg1i = iarg2i // i /> ) )
-    -------------------------------------------------------------------------------------------------- :: PP_Eq
-    N |- a ( ptrt1 , </ iarg1i // i /> ) eq a ( ptrt2 , </ iarg2i // i /> ) ~> true
+    smt ( N => /\\ ( </ iarg1i = iarg2i // i /> ) )
+    --------------------------------------------------------------- :: PP_Eq
+    N |- a ( </ iarg1i // i /> ) eq a ( </ iarg2i // i /> ) ~> true
 
 
-    N |- qpred_term [=? qpred_term' ~> Eq
-    -------------------------------------- :: QQ_Eq
-    N |- qpred_term eq qpred_term' ~> true
+    N |- ipred_term [=? ipred_term' ~> Eq
+    -------------------------------------- :: II_Eq
+    N |- ipred_term eq ipred_term' ~> true
 
 
-    N |- qpred_term [=? qpred_term' ~> opt_cmp
-    ------------------------------------------ :: QQ_Neq
-    N |- qpred_term eq qpred_term' ~> false
+    N |- ipred_term [=? ipred_term' ~> opt_cmp
+    ------------------------------------------ :: II_Neq
+    N |- ipred_term eq ipred_term' ~> false
 
 
   defn N |- res eq res' :: :: Res_Eq :: Res_Eq_
@@ -227,9 +215,9 @@ defns
     N |- pred_term ( _t ) eq pred_term' ( _t )
 
 
-    N |- qpred_term eq qpred_term' ~> true
-    --------------------------------------- :: QPred
-    N |- qpred_term ( _t ) eq qpred_term' ( _t )
+    N |- ipred_term eq ipred_term' ~> true
+    --------------------------------------- :: IPred
+    N |- ipred_term ( _t ) eq ipred_term' ( _t )
 
 
     N |- res1 eq res'1
@@ -402,11 +390,11 @@ defns
     L ; N |- pack ( x , res_pat ) : exists y : base_type . res ~> L' , x : base_type ; N' ; R'
 
 
-    a != Owned < ct >
-    a eq xp : _bt , </ xi : _bti // i /> , y : _bt  |-> res inEnv Globals
-    L ; N |- res_pat : [ oarg / y , [ </ iargi / xi // i />  ] , ptrt / xp ] ( res ) ~> L' ; N' ; R'
+    a != Owned < _init , ct >
+    a eq </ xi : _bti // i /> , y : _bt  |-> res inEnv Globals
+    L ; N |- res_pat : [ oarg / y , [ </ iargi / xi // i />  ] ] ( res ) ~> L' ; N' ; R'
     --------------------------------------------------------------------------------------------------- :: Fold
-    L ; N |- fold ( res_pat ) : a ( ptrt , iargs ) ( oarg ) ~> L' ; N' ; R'
+    L ; N |- fold ( res_pat ) : a ( </ iargi // i /> ) ( oarg ) ~> L' ; N' ; R'
 
 
   defn CLN |- ret_pat : ret ~> out_CLNRp :: :: Ret_ :: Ret_
@@ -469,9 +457,9 @@ defns
     C |- array ( </ object_valuei // i /> ) => obj array base_type
 
 
-    struct tag & </ memberi : cti // i /> inEnv Globals
+    tagged tag & </ memberi : cti // i /> inEnv Globals
     indexed </ C |- valuei => to_base ( cti ) // i />
-    -------------------------------------------------------------------------------- :: Struct
+    --------------------------------------------------------------------------------- :: Struct
     C |- ( struct tag ) { </ dot memberi = object_valuei //  i /> } => obj struct tag
 
 
@@ -541,9 +529,9 @@ defns
     C |- Array ( </ pvali // i /> ) => array base_type
 
 
-    struct tag & </ memberi : cti // i /> inEnv Globals
+    tagged tag & </ memberi : cti // i /> inEnv Globals
     indexed C |- pvali => to_base ( cti )
-    -------------------------------------------------------------------------------- :: Struct
+    --------------------------------------------------------------------- :: Struct
     C |- ( struct tag ) { </ dot memberi = pvali // i /> } => struct tag
 
 
@@ -576,18 +564,19 @@ defns
 
     C |- pval1 => loc
     C |- pval2 => integer
-    x eq allocv [ inj pval dot alloc_id ]
-    smt ( N => x dot base =< inj pval1 dot addr + ( inj pval2 * sizeof ct ) =< x dot base + x dot len )
+    ptrt' eq array_shift < ct > ( inj pval1 , inj pval2 )
+    x eq allocv [ inj pval1 dot alloc_id ]
+    smt ( N => x dot base =< ptrt' dot addr =< x dot base + x dot len )
     ----------------------------------------------------------------- :: Array_Shift
-    C ; L ; N |- array_shift ( pval1 , ct , pval2 ) => sigma y : loc . y = inj pval1 +ptr ( inj pval2 * sizeof ct ) /\ I
+    C ; L ; N |- array_shift < ct > ( pval1 , pval2 ) => sigma y : loc . y = ptrt' /\ I
 
 
     C |- pval => loc
     x eq allocv [ inj pval dot alloc_id ]
-    struct tag & </ memberi : cti // i /> inEnv Globals
-    smt ( N => x dot base =< inj pval dot addr + offsetof tag memberj =< x dot base + x dot len )
+    tagged tag & </ memberi : cti // i /> inEnv Globals
+    smt ( N => x dot base =< member_shift < tagged tag > ( inj pval , memberj ) dot addr =< x dot base + x dot len )
     ------------------------------------------------------------ :: Member_Shift
-    C ; L ; N |- member_shift ( pval , tag , memberj ) => sigma y : loc . y = inj pval +ptr offsetof tag memberj /\ I
+    C ; L ; N |- member_shift < tagged tag > ( pval , memberj ) => sigma y : loc . y = member_shift < tagged tag > ( inj pval , memberj ) /\ I
 
 
     C |- pval1 => loc
@@ -710,82 +699,76 @@ defns
   expl_res :: '' ::=
 
   defn CLNR |- pred_ops => ops out_res :: :: Res_Syn_PredOps :: Res_Syn_PredOps_
-  {{ com resource (q)predicate operation term synthesis: given $[[CLNR]]$, $[[pred_ops]]$ synthesises resource $[[out_res]]$ }} by
+  {{ com resource (i)predicate operation term synthesis: given $[[CLNR]]$, $[[pred_ops]]$ synthesises resource $[[out_res]]$ }} by
 
 
-    C ; L ; N ; R |- res_term => ptrt |- init - array n ct -> valuet
-    oarg [ x ] dot sym_init eq init [ x ]
-    oarg [ x ] dot sym_value eq valuet [ x ]
+    C ; L ; N ; R |- res_term => ptrt |- init - array n ct -> oarg
     ----------------------------------------------------------------- :: Iterate
-    C ; L ; N ; R |- iterate ( res_term , n ) => ops ( *S x . 0 =< x =< n - 1 => ptrt |- ct -> oarg )
+    C ; L ; N ; R |- iterate ( res_term , n ) => ops ( *S x . 0 =< x =< n - 1 => ptrt |- init - ct -> oarg )
 
 
-    C ; L ; N ; R |- res_term => ( *S x . iguard => ptrt |- ct -> oarg  )
+    C ; L ; N ; R |- res_term => ( *S x . iguard => ptrt |- init - ct -> oarg  )
     smt ( N => forall x . iguard <-> ( 0 =< x =< n - 1 ) )
     y1 eq allocv [ ptrt dot alloc_id ]
-    smt ( N => y1 dot base =< ptrt dot addr /\ ptrt dot addr + sizeof ct * n  =< y1 dot base + y1 dot len )
-    init [ y2 ]  eq oarg [ y2 ] dot sym_init
-    valuet [ y2 ] eq oarg [ y2 ] dot sym_value
+    smt ( N => y1 dot base =< ptrt dot addr /\ array_shift < ct > ( ptrt , n ) dot addr  =< y1 dot base + y1 dot len )
     --------------------------------------------------------------------------------------- :: Congeal
-    C ; L ; N ; R |- congeal ( res_term , n ) => ops  ptrt |- init - array n ct -> valuet
+    C ; L ; N ; R |- congeal ( res_term , n ) => ops  ptrt |- init - array n ct -> oarg
 
 
-    C ; L ; N ; R |- res_term => ptrt |- init - struct tag -> valuet
-    struct tag & </ memberi : cti // i /> inEnv Globals
+    C ; L ; N ; R |- res_term => ptrt |- init - struct tag -> oarg
+    tagged tag & </ memberi : cti // i /> inEnv Globals
     ------------------------------------------------------------------------ :: Explode
-    C ; L ; N ; R |- explode ( res_term ) => ops *S ( </ ptrt +ptr offsetof tag memberi |- tag init dot memberi - cti -> tag valuet dot memberi // i /> )
+    C ; L ; N ; R |- explode ( res_term ) => ops *S ( </ member_shift < struct tag > ( ptrt , memberi ) |- init - cti -> oarg dot memberi // i /> )
 
 
-    C ; L ; N ; R |- res_term => *S ( </ ptrti |- initi - cti -> valueti // i /> )
-    struct tag & </ memberi : cti // i /> inEnv Globals
+    C ; L ; N ; R |- res_term => *S ( </ ptrti |- init - cti -> oargi // i /> )
+    tagged tag & </ memberi : cti // i /> inEnv Globals
     term eq ptrt0 dot addr - offsetof tag member0
     smt ( N => /\\ ( </ term = ptrti dot addr - offsetof tag memberi /\ ptrt0 dot alloc_id = ptrti dot alloc_id // i /> ) )
     x eq allocv [ ptrt0 dot alloc_id ]
-    smt ( N => x dot base =< term /\ term + sizeof struct tag =< x dot base + x dot len )
-    indexed </ tag init dot memberi eq initi // i />
-    indexed </ tag valuet dot memberi eq valueti // i />
+    smt ( N => x dot base =< term /\ term + sizeof tagged tag =< x dot base + x dot len )
     ----------------------------------------------------------------------------------------------- :: Implode
-    C ; L ; N ; R |- implode ( res_term , tag ) => ops ( @ ptrt0 dot alloc_id , term ) |- init - struct tag -> valuet
+    C ; L ; N ; R |- implode ( res_term , tag ) => ops ( @ ptrt0 dot alloc_id , term ) |- init - struct tag -> { </ memberi = oargi // i /> }
 
 
     C ; L |- term => integer
-    C ; L ; N ; R |- res_term => { x ; iguard . a ( ptrt + step , iargs ) } ( oarg )
+    C ; L ; N ; R |- res_term => each (integer x ; iguard) { a ( array_shift < ct >( ptrt , x ) , </ iargi // i /> ) } ( oarg )
     smt ( N => term / x ( iguard ) )
-    qpred eq { x ; iguard /\ ( x != term ) . a ( ptrt + step , iargs ) } ( oarg )
-    pred eq a ( ptrt + ( term * step ) , term / x ( iargs ) ) ( oarg [ term ] )
+    ipred eq each (integer x ; iguard /\ ( x != term )) { a ( array_shift < ct > ( ptrt , x ) , </ iargi // i /> ) } ( oarg )
+    pred eq a ( array_shift < ct > ( ptrt, term ) , term / x ( </ iargi // i /> ) ) ( oarg [ term ] )
     --------------------------------------------------------------------------------- :: Break
-    C ; L ; N ; R |- break ( res_term , term ) => ops qpred * pred
+    C ; L ; N ; R |- break ( res_term , term ) => ops ipred * pred
 
 
-    C ; L ; N ; R |- res_term => { x ; iguard . a ( ptrt1 + step , </ iarg1i // i /> ) } ( oarg1 ) * a ( ptrt2 , </ iarg2i // i /> ) ( oarg2 )
-    term eq ( ptrt2 dot base - ptrt1 dot base ) / step
-    smt ( N => ptrt1 dot alloc_id = ptrt2 dot alloc_id /\ ( ptrt2 dot addr = ptrt1 dot addr + term * step ) )
-    smt ( N => /\\ ( </ ( term / x ( iarg1i ) ) = iarg2i // i /> ) )
+    C ; L ; N ; R |- res_term => each (integer x ; iguard) { a ( array_shift <ct> ( ptrt1 , x ) , </ iarg1i // i /> ) } ( oarg1 ) * a ( ptrt2 , </ iarg2i // i /> ) ( oarg2 )
+    term eq ( ptrt2 dot base - ptrt1 dot base ) / sizeof ct
+    smt ( N => ptrt1 dot alloc_id = ptrt2 dot alloc_id /\ ( ptrt2 dot addr = array_shift < ct > ( ptrt1 , term ) dot addr ) )
+    smt ( N => /\\ ( term / x ( </ iarg1i = iarg2i // i /> ) ) )
     x eq allocv [ ptrt1 dot alloc_id ]
-    smt ( N => x dot base =< ptrt2 dot addr /\ ptrt2 dot addr + step =< x dot base + x dot len )
+    smt ( N => x dot base =< ptrt2 dot addr /\ ptrt2 dot addr + sizeof ct =< x dot base + x dot len )
     ----------------------------------------------------------------- :: Glue
-    C ; L ; N ; R |- glue ( res_term ) => ops { x ; iguard \/ x = term . a ( ptrt1 + step , </ iarg1i // i /> ) } ( oarg1 [ term ] := oarg2 )
+    C ; L ; N ; R |- glue ( res_term ) => ops each (integer x; iguard \/ x = term) { a ( array_shift < ct > ( ptrt1 , x ) , </ iarg1i // i /> ) } ( oarg1 [ term ] := oarg2 )
 
 
     C ; L ; N ; R |- res_term => a ( ptrt2 , </ iarg2i // i /> ) ( oarg )
-    term eq ( ptrt2 dot addr - ptrt1 dot addr ) / step
-    smt ( N => ptrt1 dot alloc_id = ptrt2 dot alloc_id /\ ( ptrt2 dot addr = ptrt1 dot addr + term * step ) )
-    smt ( N => /\\ ( </ ( term / x ( iarg1i ) ) = iarg2i // i /> ) )
+    term eq ( ptrt2 dot addr - ptrt1 dot addr ) / sizeof ct
+    smt ( N => ptrt1 dot alloc_id = ptrt2 dot alloc_id /\ ( ptrt2 dot addr = ptrt1 dot addr + term * sizeof ct ) )
+    smt ( N => /\\ ( term / x ( </ iarg1i = iarg2i // i /> ) ) )
     x eq allocv [ ptrt1 dot alloc_id ]
-    smt ( N => x dot base =< ptrt1 dot addr /\ ptrt2 dot addr + step =< x dot base + x dot len )
+    smt ( N => x dot base =< ptrt1 dot addr /\ ptrt2 dot addr + sizeof ct =< x dot base + x dot len )
     C ; L |- oarg => base_type
     ----------------------------------------------------------------- :: Inj
-    C ; L ; N ; R |- inj ( res_term , ptrt1 , step , x . </ iarg1 // i /> ) => ops { x ; x = term . a ( ptrt1 + step , </ iarg1i // i /> ) } ( const oarg )
+    C ; L ; N ; R |- inj ( res_term , ptrt1 , ct , x . </ iarg1i // i /> ) => ops each (integer x ; x = term ) { a ( array_shift < ct > ( ptrt1 , x ) , </ iarg1i // i /> ) } ( const oarg )
 
 
-    C ; L ; N ; R |- res_term => { x ; iguard' . a ( ptrt + step , iargs ) } ( oarg )
+    C ; L ; N ; R |- res_term => each (integer x ; iguard') { a ( array_shift < ct > ( ptrt , x ) , </ iargi // i /> ) } ( oarg )
     smt ( N => forall x. iguard -> iguard' )
     iguard2 eq iguard' /\ neg iguard
     --------------------------------------------------------------------------------- :: Chop
-    C ; L ; N ; R |- chop ( res_term , iguard ) => ops { x ; iguard . a ( ptrt + step , iargs ) } ( oarg ) * { x ; iguard2 . a ( ptrt + step , iargs ) } ( oarg )
+    C ; L ; N ; R |- chop ( res_term , iguard ) => ops each ( integer x; iguard ) { a ( array_shift <ct> (ptrt, x) , </ iargi // i /> ) } ( oarg ) * each (integer x; iguard2) { a ( array_shift<ct>(ptrt, x) , </ iargi // i /> ) } ( oarg )
 
     % Implementation does not support un-chopping (array merging requires quantifiers).
-    % split and join reserved for regions of dynamically allocvated memory.
+    % split and join reserved for regions of dynamically allocated memory.
 
 
   defn CLNR |- res_term => out_res :: :: Res_Syn :: Res_Syn_
@@ -805,33 +788,30 @@ defns
     C ; L ; N ; r : res |- r => res'
 
 
-    pred_term' eq a ( ptrt' , </ iarg'i // i /> )
-    a eq _ : loc , </ _ : base_typei // i  /> |-> _res inEnv Globals
-    C ; L |- ptrt' => loc
+    pred_term' eq a ( </ iarg'i // i /> )
+    a eq </ _ : base_typei // i  /> |-> _res inEnv Globals
     indexed </ C ; L |- iarg'i => base_typei // i />
     N |- pred_term eq pred_term' ~> true
     -------------------------------------------------------------------- :: Pred
     C ; L ; N ; _ : pred_term ( oarg ) |- pred_term' => pred_term ( oarg )
 
 
-    pred_term eq a ( ptrt , </ iargi // i /> )
-    a != Owned < ct >
-    a eq xp : loc , </ xi : base_typei // i  /> , y : base_type |-> res inEnv Globals
-    C ; L |- ptrt => loc
+    pred_term eq a ( </ iargi // i /> )
+    a != Owned < _init, ct >
+    a eq </ xi : base_typei // i  /> , y : base_type |-> res inEnv Globals
     indexed </ C ; L |- iargi => base_typei // i />
     C ; L |- oarg => base_type
-    C ; L ; N ; R |- res_term <= [ oarg / y , [ </ iargi / xi // i /> ] , ptrt / xp ] ( res )
+    C ; L ; N ; R |- res_term <= [ oarg / y , [ </ iargi / xi // i /> ] ] ( res )
     ----------------------------------------------------------------------------------------- :: Fold
     C ; L ; N ; R |- fold res_term : pred_term ( oarg ) => pred_term ( oarg )
 
 
-    qpred_term' eq { x ; iguard' . a ( ptrt' + step , </ iarg'i // i /> ) }
-    a eq _ : loc , </ _ : base_typei // i  /> |-> _res inEnv Globals
-    C ; L |- ptrt' => loc
+    ipred_term' eq each (integer x ; iguard) { a ( </ iarg'i // i /> ) }
+    a eq </ _ : base_typei // i  /> |-> _res inEnv Globals
     indexed </ C ; L |- iarg'i => base_typei // i />
-    N |- qpred_term eq qpred_term' ~> true
-    ------------------------------------------------------------------------------ :: QPred
-    C ; L ; N ; _ : qpred_term ( oarg ) |-  qpred_term' => qpred_term ( oarg )
+    N |- ipred_term eq ipred_term' ~> true
+    ------------------------------------------------------------------------------ :: IPred
+    C ; L ; N ; _ : ipred_term ( oarg ) |-  ipred_term' => ipred_term ( oarg )
 
 
     C ; L ; N ; R |- pred_ops => ops res
@@ -935,9 +915,9 @@ defns
 
     C |- pval => integer
     term eq representable ( ct * , yp ) /\ alignedI ( inj pval , yp ) /\ allocv [ yp dot alloc_id ] = ( yp dot base , sizeof ct )
-    ret eq ( yp |- const ct false - ct -> x ) *o Alloc ( yp , ) ( sizeof ct ) *o I
+    ret eq ( yp |- Uninit - ct -> x ) *o Alloc ( yp ) ( sizeof ct ) *o I
     ------------------------------------------------------------------------- :: Create
-    C ; L ; N ; cdot |- create ( pval , ct ) Symbol_prefix => sigma yp : loc . term /\ exists x : to_base ( ct ) .  ret
+    C ; L ; N ; cdot |- emp | create < ct >  ( pval ) => sigma yp : loc . term /\ exists x : to_base ( ct ) .  ret
 
 
     % DEFER (not implemented)
@@ -947,10 +927,10 @@ defns
     % DEFER relax this rule - loading a (partially) undefined struct is fine
     % DEFER (not implemented) - memory order
     C |- pval0 => loc
-    C ; L ; N ; R |- res_term => ptrt |- init - ct -> valuet
-    smt ( N => ( ptrt = inj pval0 ) /\ ( init = const ct true ) )
+    C ; L ; N ; R |- res_term => ptrt |- Init - ct -> oarg
+    smt ( N => ( ptrt = inj pval0 ) )
     ------------------------------------------------------------------------------ :: Load
-    C ; L ; N ; R |- load ( ct , pval0 , _mem_order , res_term ) => sigma y : to_base ( ct ) . y = valuet /\ ( inj pval0 |- const ct true - ct -> valuet ) *o I
+    C ; L ; N ; R |- res_term | load < ct > ( pval0 ) => sigma y : to_base ( ct ) . y = oarg /\ ( inj pval0 |- Init - ct -> oarg ) *o I
 
 
     % DEFER relax this rule - storing (partially) undefined struct preserves init
@@ -961,31 +941,17 @@ defns
     C ; L ; N ; R |- res_term => ptrt |- _init - ct -> _t
     smt ( N => ptrt = inj pval0 )
     --------------------------------------------------------------- :: Store
-    C ; L ; N ; R |- store ( _b , ct , pval0 , pval1 , _mem_order , res_term ) => sigma _ : unit . ( inj pval0 |- const ct true - ct -> inj pval1 ) *o I
+    C ; L ; N ; R |- res_term | store < ct > ( pval0 , pval1 ) => sigma _ : unit . ( inj pval0 |- Init - ct -> inj pval1 ) *o I
 
 
     C |- pval => loc
-    C ; L ; N ; R |- res_term => ptrt |- _init - ct -> _t * Alloc ( ptrt' , ) ( term )
+    C ; L ; N ; R |- res_term => ptrt |- _init - ct -> _t * Alloc ( ptrt' ) ( term )
     smt ( N =>  ptrt = ptrt' = inj pval /\ sizeof ct = term )
     ---------------------------------------------------------------------------- :: Kill_Static
-    C ; L ; N ; R |-  kill ( static ct , pval , res_term ) => sigma _ : unit . I
-
+    C ; L ; N ; R |-  res_term | kill < ct > ( pval ) => sigma _ : unit . I
 
     % DEFER (not implemented)
     % C ; L ; N ; ?? |- kill ( dynamic , v ) => ??
-
-
-    % action {{ tex mem\_action }} :: 'M_' ::= {{ com memory actions }}
-    %   | alloc ( ty_asym1 , ty_asym2 ) Symbol_prefix                                                         :: :: Alloc
-    %   | load ( ct , ty_asym , Cmm_memory_order )                                                        :: :: Load
-    %   | rmw ( ct ,  ty_asym1 , ty_asym2 , ty_asym3 , Cmm_memory_order1 , Cmm_memory_order2 )            :: :: RMW
-    %   | fence ( Cmm_memory_order )                                                                          :: :: Fence
-    %   | cmp_exch_strong ( ct , ty_asym1 , ty_asym2 , ty_asym3 , Cmm_memory_order1 , Cmm_memory_order2 ) :: :: CompareExchangeStrong
-    %   | cmp_exch_weak ( ct , ty_asym1 , ty_asym2 , ty_asym3 , Cmm_memory_order1 , Cmm_memory_order2 )   :: :: CompareExchangeWeak
-    %   | linux_fence ( Linux_linux_memory_order )                                                            :: :: LinuxFence
-    %   | linux_load ( ct , ty_asym , Linux_linux_memory_order )                                          :: :: LinuxLoad
-    %   | linux_store ( ct , ty_asym1 , ty_asym2 , Linux_linux_memory_order )                             :: :: LinuxStore
-    %   | linux_rmw ( ct , ty_asym1 , ty_asym2 , Linux_linux_memory_order )                               :: :: LinuxRMW
 
   defn CLNR |- memop => out_ret :: :: Is_Memop :: Is_Memop_
   {{ com memory operation synthesises: given $[[CLNR]]$, $[[memop]]$ synthesises return type $[[out_ret]]$ }} by
@@ -993,7 +959,7 @@ defns
     C |- pval1 => loc
     C |- pval2 => loc
     C ; L ; N ; R |- res_term => res
-    res eq Alloc ( ptrt1 , ) ( term1 ) * Alloc ( ptrt2 , ) ( term2 )
+    res eq Alloc ( ptrt1 ) ( term1 ) * Alloc ( ptrt2 ) ( term2 )
     smt ( N => inj pval1 dot alloc_id = inj pval2 dot alloc_id = ptrt1 dot alloc_id = ptrt2 dot alloc_id )
     smt ( N => ptrt1 dot base =< inj pval1 dot addr =< ptrt1 dot base + term1 )
     smt ( N => ptrt2 dot base =< inj pval2 dot addr =< ptrt2 dot base + term2 )
@@ -1004,7 +970,7 @@ defns
     % DEFER ask Kayvan when/how Ptrdiff can be called with an ct = array n ct'
     C |- pval1 => loc
     C |- pval2 => loc
-    res eq Alloc ( ptrt , ) ( term )
+    res eq Alloc ( ptrt ) ( term )
     C ; L ; N ; R |- res_term => res
     smt ( N => ptrt dot alloc_id = inj pval1 dot alloc_id = inj pval2 dot alloc_id ) 
     smt ( N => ptrt dot base =< ( inj pval1 dot addr , inj pval2 dot addr ) =< ptrt dot base + term )
@@ -1014,7 +980,7 @@ defns
 
     C |- pval1 => loc
     C |- pval2 => loc
-    res eq Alloc ( ptrt , ) ( term )
+    res eq Alloc ( ptrt ) ( term )
     C ; L ; N ; R |- res_term => res
     smt ( N => ptrt dot alloc_id = inj pval1 dot alloc_id = inj pval2 dot alloc_id )
     smt ( N => ptrt dot base =< ( inj pval1 dot addr , inj pval2 dot addr ) =< ptrt dot base + term )
@@ -1024,21 +990,21 @@ defns
 
     % Doesn't require a bounds check in VIP
     C |- pval => loc
-    C ; L ; N ; R |- res_term => Alloc ( ptrt , ) ( _t )
+    C ; L ; N ; R |- res_term => Alloc ( ptrt ) ( _t )
     smt ( N => inj pval dot alloc_id = ptrt dot alloc_id /\ representable ( ct2 , inj pval dot addr ) )
     ----------------------------------------------------------------------------------------------------- :: IntFromPtr
-    C ; L ; N ; R |- intFromPtr ( res_term | ct1 , ct2 , pval ) => sigma y : integer . y = inj pval dot addr /\ res *o I
+    C ; L ; N ; R |- res_term | intFromPtr < ct1 , ct2 > ( pval ) => sigma y : integer . y = inj pval dot addr /\ res *o I
 
 
     % This rule requires an Owned rather than an Alloc because copy_alloc_id is
     % NOT a ghost operation, and Owned only takes computational arguments for
     % its input - thus forcing an appropriate pointer to be in the context.
     C |- pval => integer
-    C ; L ; N ; R |- res_term => ptrt |- init - ct1 -> valuet
+    C ; L ; N ; R |- res_term => ptrt |- init - ct1 -> _t
     x eq allocv [ ptrt dot alloc_id ]
     smt ( N => x dot base =< inj pval =< x dot base + x dot len  )
     ----------------------------------- :: PtrFromInt
-    C ; L ; N ; R |- ptrFromInt ( res_term | ct1 , ct2 , pval ) => sigma y : loc . y = ( @ ptrt dot alloc_id , inj pval ) /\ res *o I
+    C ; L ; N ; R |- res_term | ptrFromInt < ct1 , ct2 > ( pval ) => sigma y : loc . y = ( @ ptrt dot alloc_id , inj pval ) /\ res *o I
 
 
     % The implementation over-approximates the behaviour of PtrValidForDeref. It
@@ -1048,35 +1014,32 @@ defns
     % part of the C standard and so is not subject to pointer-liveness constraints.
     C |- pval => loc
     ---------------- :: PtrValidForDeref
-    C ; L ; N ; cdot |- ptrValidForDeref ( ct , pval ) => sigma y : bool . y = aligned ( ct , inj pval ) /\ I
+    C ; L ; N ; cdot |- emp | ptrValidForDeref < ct > ( pval ) => sigma y : bool . y = aligned ( ct , inj pval ) /\ I
 
 
     % Similar to PtrValidForDeref.
     C |- pval => loc
     ----------------- :: PtrWellAligned
-    C ; L ; N ; cdot |- ptrWellAligned ( ct , pval ) => sigma y : bool . y = aligned ( ct , inj pval ) /\ I
+    C ; L ; N ; cdot |- emp | ptrWellAligned < ct > ( pval ) => sigma y : bool . y = aligned ( ct , inj pval ) /\ I
 
 
     C |- pval1 => loc
     C |- pval2 => integer
-    C ; L ; N ; R |- res_term => Alloc ( ptrt ,  ) ( term )
-    smt ( N => inj pval dot alloc_id = ptrt dot alloc_id  /\ ptrt dot base =< inj pval1 dot addr + ( inj pval2 * sizeof ct ) =< ptrt dot base + term )
+    ptrt' eq array_shift<ct>(inj pval1, inj pval2)
+    C ; L ; N ; R |- res_term => Alloc ( ptrt  ) ( term )
+    smt ( N => inj pval dot alloc_id = ptrt dot alloc_id  /\ ptrt dot base =< ptrt' dot addr =< ptrt dot base + term )
     ----------------------------------------------------------------------------- :: PtrArrayShift
-    C ; L ; N ; R |- ptrArrayShift ( res_term | pval1 ,  ct , pval2 ) => sigma y : loc . y = inj pval1 +ptr ( inj pval2 * sizeof ct ) /\ res *o I
+    C ; L ; N ; R |- res_term | ptrArrayShift < ct > ( pval1 , pval2 ) => sigma y : loc . y = ptrt' /\ res *o I
+
+
+  % DEFER (not implemented)
+  % memcpy ( pval1 , pval2 , pval3 )
+  % memcmp ( pval1 , pval2 , pval3 )
 
 
   defn CLNR |- is_expr => out_ret :: :: Is :: Is_
   {{ com indet. seq. expression synthesises: given $[[CLNR]]$, $[[is_expr]]$ synthesises return type $[[out_ret]]$ }} by
 
-
-    % DEFER (not implemented)
-    % memcpy ( pval1 , pval2 , pval3 )
-    % memcmp ( pval1 , pval2 , pval3 )
-    % realloc ( pval1 , pval2 , pval3 )
-    % va_start ( pval1 , pval2 )
-    % va_copy ( pval )
-    % va_arg ( pval , ct )
-    % va_end ( pval )
 
     C ; L ; N ; R |- tval <= ret
     ----------------------------------------- :: TVal
@@ -1084,18 +1047,13 @@ defns
 
 
     C ; L ; N ; R |- memop => ret
-    ------------------------------------------ :: Memop
-    C ; L ; N ; R |- MEMOP ( memop ) => ret
+    ----------------------------- :: Memop
+    C ; L ; N ; R |- memop => ret
 
 
     C ; L ; N ; R |- action => ret
-    ------------------------------------- :: Action
-    C ; L ; N ; R |- Pos action => ret
-
-
+    ------------------------------- :: Action
     C ; L ; N ; R |- action => ret
-    ------------------------------------- :: Neg_Action
-    C ; L ; N ; R |- Neg action => ret
 
 
     % TODO add unseq rules
