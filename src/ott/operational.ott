@@ -168,7 +168,7 @@ defns
     int eq xor_uf ( int1 , int2 )
     pure_ret eq sigma y : integer . y = xor_uf ( int1 , int2 )  /\ I
     -------------------------------------------------------------------------- :: Ctor_IvXOR
-    _ | < ctor_expr ( int1 , int2 ) > --> < done int : pure_ret >
+    _ | < ctor_expr ( int1 , int2 ) > --> < int : pure_ret >
 
     % DEFER (not implemented) other ctor_expr
     % ctor_expr ( </ pvali // , // i /> )
@@ -178,7 +178,7 @@ defns
     alloct |- smt ( x dot base =< inj ptr' dot addr =< x dot base + x dot len )
     pure_ret eq sigma y : loc . y = inj ptr' /\ I
     --------------------------------------------------------------------------- :: Array_Shift
-    alloct | < array_shift < ct > ( ptr , int ) > --> < done ptr' : pure_ret >
+    alloct | < array_shift < ct > ( ptr , int ) > --> < ptr' : pure_ret >
 
 
     x eq alloct [ alloc_id ]
@@ -186,54 +186,54 @@ defns
     alloct |- smt ( x dot base =< inj ptr' dot addr =< x dot base + x dot len )
     pure_ret eq sigma y : loc . y = inj ptr' /\ I
     --------------------------------------------------------------------- :: Member_Shift
-    alloct | < member_shift < tagged tag > ( ptr , member ) > --> < done ptr' : pure_ret >
+    alloct | < member_shift < tagged tag > ( ptr , member ) > --> < ptr' : pure_ret >
 
 
     inj bool_value eq inj ptr1 dot addr = inj ptr2 dot addr
     pure_ret eq sigma y : loc . y = ( inj ptr1 dot addr = inj ptr2 dot addr ) /\ I
     --------------------------------------------------------------------------- :: Ptr_Eq
-    _ | < ptr1 = ptr2 > --> < done bool_value : pure_ret >
+    _ | < ptr1 = ptr2 > --> < bool_value : pure_ret >
 
 
     ------------------------------------ :: Not_True
-    _ | < not ( True ) > --> < done False : sigma y : bool . y = neg inj True /\ I >
+    _ | < not ( True ) > --> < False : sigma y : bool . y = neg inj True /\ I >
 
 
     ------------------------------------ :: Not_False
-    _ | < not ( False ) > --> < done True : sigma y : bool . y = neg inj False /\ I >
+    _ | < not ( False ) > --> < True : sigma y : bool . y = neg inj False /\ I >
 
 
     int eq int1 ' arith_binop ' int2
     pure_ret eq sigma y : integer . y = int1 ' arith_binop ' int2 /\ I
     ----------------------------------------------------------------- :: Arith_Binop
-    _ | < int1 arith_binop int2 > --> < done int : pure_ret >
+    _ | < int1 arith_binop int2 > --> < int : pure_ret >
 
 
     inj bool_value eq int1 ' rel_binop ' int2
     pure_ret eq sigma y : bool . y = int1 ' rel_binop ' int2 /\ I
     ------------------------------------------------------------------ :: Rel_Binop
-    _ | < int1 rel_binop int2 > --> < done bool_value : pure_ret >
+    _ | < int1 rel_binop int2 > --> < bool_value : pure_ret >
 
 
     inj bool_value eq inj bool_value1 ' bool_binop ' inj bool_value2
     pure_ret eq sigma y : bool . y = inj bool_value1 ' bool_binop ' inj bool_value2 /\ I
     --------------------------------------------------------------------------- :: Bool_Binop
-    _ | < bool_value1 bool_binop bool_value2 > --> < done bool_value : pure_ret >
+    _ | < bool_value1 bool_binop bool_value2 > --> < bool_value : pure_ret >
 
 
     % DEFER (not implemented) memberof ( tag , member , pval )
 
 
     ------------------------------------------------------------------- :: Assert_Undef
-    _ | < assert_undef ( True , UB_name ) > --> < done Unit : sigma _ : unit . I >
+    _ | < assert_undef ( True , UB_name ) > --> < Unit : sigma _ : unit . I >
 
 
     ---------------------------------------------------- :: Bool_To_Integer_True
-    _ | < bool_to_integer ( True ) > --> < done 1 : sigma y : integer . y = 1 /\ I >
+    _ | < bool_to_integer ( True ) > --> < 1 : sigma y : integer . y = 1 /\ I >
 
 
     ---------------------------------------------------- :: Bool_To_Integer_False
-    _ | < bool_to_integer ( False ) > --> < done 0 : sigma y : integer . y = 0 /\ I >
+    _ | < bool_to_integer ( False ) > --> < 0 : sigma y : integer . y = 0 /\ I >
 
     % DEFER conv_int ( ct , pval )
 
@@ -242,7 +242,7 @@ defns
     int' eq if abbrev2 =< max ct then abbrev2 else abbrev2 - abbrev1
     pure_ret eq sigma y : integer . y = int' /\ I
     ------------------------------------------------------------------------------- :: WrapI
-    _ | < wrapI ( ct , int ) > --> < done int' : pure_ret >
+    _ | < wrapI ( ct , int ) > --> < int' : pure_ret >
 
 
     name : pure_fun eq </ xi // i /> |-> tpexpr inEnv Globals
@@ -264,9 +264,9 @@ defns
     _ | < let pat = pval in tpexpr > --> < subs ( tpexpr ) >
 
 
-    alloct | < pexpr > --> < tpval : pure_ret >
+    alloct | < pexpr > --> < pval : pure_ret >
     ------------------------------------------- :: Let_Let
-    alloct | < let pat = pexpr in tpexpr > --> < let pat : pure_ret = tpval in tpexpr >
+    alloct | < let pat = pexpr in tpexpr > --> < let pat : pure_ret = pval in tpexpr >
 
 
     alloct | < pexpr > --> < tpexpr1 : pure_ret >
@@ -276,7 +276,7 @@ defns
 
     pat = pval ~> subs
     ------------------------------------------- :: LetT_Sub
-    _ | < let pat : pure_ret = done pval in tpexpr > --> < subs ( tpexpr ) >
+    _ | < let pat : pure_ret = pval in tpexpr > --> < subs ( tpexpr ) >
 
 
     alloct | < tpexpr1 > --> < tpexpr1' >
@@ -438,7 +438,7 @@ defns
     alloct | < h ; pack ( oarg , res_term ) > ||v < h' ; pack ( oarg , res_val ) >
 
 
-  defn < s ; action  > --> < s' ; is_expr > :: :: Action_Is :: Action_Is_ by
+  defn < s ; action  > --> < s' ; texpr : ret > :: :: Action_TExpr :: Action_TExpr_ by
 
 
     addr inEnv newAlloc ( h , pval , sizeof ct )
@@ -450,7 +450,7 @@ defns
     alloct |- smt ( term )
     h' eq h + { pt & None } + { Alloc ( inj ptr ) ( sizeof ct ) & None }
     ------------------------------------------------------------------------- :: Create
-    < alloct ; h ; emp | create < ct > ( int ) > --> < alloct [ alloc_id ] := ( addr , sizeof ct ) ;  h' ; done < ptr , default to_base ( ct ), Owned < Uninit , ct > ( inj ptr ) , Alloc ( inj ptr ) > : ret >
+    < alloct ; h ; emp | create < ct > ( int ) > --> < alloct [ alloc_id ] := ( addr , sizeof ct ) ;  h' ; < ptr , default to_base ( ct ), Owned < Uninit , ct > ( inj ptr ) , Alloc ( inj ptr ) > : ret >
 
 
     alloct | < h ; res_term > ||v < h' + { pt & None } ; Owned < Init , ct > ( ptrt ) >
@@ -458,7 +458,7 @@ defns
     alloct |- smt ( ptrt = inj ptr )
     ret eq sigma y : to_base ( ct ) . y = inj pval /\ ( inj ptr |- Init - ct -> inj pval ) *o I
     -------------------------------------------------------------------------------------------------------------------------------------- :: Load
-    < alloct ; h ; res_term | load < ct > ( ptr ) > --> < alloct ; h' + { pt & None } ; done < pval , Owned < Init , ct > ( inj ptr ) > : ret >
+    < alloct ; h ; res_term | load < ct > ( ptr ) > --> < alloct ; h' + { pt & None } ; < pval , Owned < Init , ct > ( inj ptr ) > : ret >
 
 
     alloct | < h ; res_term > ||v < h' + { pt & None } ; Owned < _init , ct > (  ptrt ) >
@@ -468,7 +468,7 @@ defns
     pt' eq inj ptr |- Init - ct -> inj pval
     ret eq sigma _ : unit . ( inj ptr |- Init - ct -> inj pval ) *o I
     ----------------------------------------------------------------------------------------- :: Store
-    < alloct ; h ; res_term | store < ct > ( ptr , pval ) > --> < alloct ; h' + { pt' & None } ; done < Unit , Owned < Init , ct > ( inj ptr ) > : ret >
+    < alloct ; h ; res_term | store < ct > ( ptr , pval ) > --> < alloct ; h' + { pt' & None } ; < Unit , Owned < Init , ct > ( inj ptr ) > : ret >
 
 
     alloct | < h ; res_term > ||v < h' + { pred_term1 ( _t ) & None } + { pred_term2 ( term ) & None } ; < pred_term1 , pred_term2 > >
@@ -477,9 +477,9 @@ defns
     alloct |- smt ( ptrt = ptrt' = inj ptr /\ sizeof ct = term )
     ret eq sigma _ : unit . I
     ----------------------------------------------------------------------------------- :: Kill_Static
-    < alloct ; h ; res_term | kill < ct > ( ptr ) > --> < alloct ; h' ; done < Unit > : ret >
+    < alloct ; h ; res_term | kill < ct > ( ptr ) > --> < alloct ; h' ; < Unit > : ret >
 
-  defn term | < h ; memop  > --> < h' ; is_expr > :: :: Memop_Is :: Memop_Is_ by
+  defn term | < h ; memop  > --> < h' ; texpr : ret > :: :: Memop_TExpr :: Memop_TExpr_ by
 
     alloct | < h ; res_term > ||v < h1 + h2 ;  < pred_term1 , pred_term2 > >
     h2 eq </ { pred_termi ( termi ) & None } // i />
@@ -490,7 +490,7 @@ defns
     inj bool_value eq addr1 ' rel_binop ' addr2
     ret eq sigma y : bool . y = ( addr1 ' rel_binop ' addr2 ) /\ pred_term1 ( term1 ) * pred_term2 ( term2 ) *o I
     -------------------------------------------------------------------------------------------------------------- :: Rel_Binop
-    alloct | < h ; res_term | ( @ alloc_id1 , addr1 ) rel_binop ( @ alloc_id2 , addr2 ) > --> < h1 + h2 ; done < bool_value , < pred_term1 , pred_term2 > > : ret >
+    alloct | < h ; res_term | ( @ alloc_id1 , addr1 ) rel_binop ( @ alloc_id2 , addr2 ) > --> < h1 + h2 ; < bool_value , < pred_term1 , pred_term2 > > : ret >
 
 
     alloct | < h ; res_term > ||v < h1 + { pred_term ( term ) & None } ;  pred_term >
@@ -500,7 +500,7 @@ defns
     int eq ( addr1 - addr2 ) / sizeof ct
     ret eq sigma y : integer . y = ( addr1 - addr2 ) / sizeof ct /\ res *o I
     -------------------------------------------------------------------------------------------------------------- :: PtrDiff_Arr
-    alloct | < h ; res_term | ( @ alloc_id1 , addr1 ) - array n ct - ( @ alloc_id2 , addr2 ) > --> < h1 + { pred_term ( term ) & None } ; done < int , pred_term > : ret >
+    alloct | < h ; res_term | ( @ alloc_id1 , addr1 ) - array n ct - ( @ alloc_id2 , addr2 ) > --> < h1 + { pred_term ( term ) & None } ; < int , pred_term > : ret >
 
 
     alloct | < h ; res_term > ||v < h1 + { pred_term ( term ) & None } ;  pred_term >
@@ -510,7 +510,7 @@ defns
     int eq ( addr1 - addr2 ) / sizeof ct
     ret eq sigma y : integer . y = ( addr1 - addr2 ) / sizeof ct /\ res *o I
     -------------------------------------------------------------------------------------------------------------- :: PtrDiff
-    alloct | < h ; res_term | ( @ alloc_id1 , addr1 ) - ct - ( @ alloc_id2 , addr2 ) > --> < h1 + { pred_term ( term ) & None } ; done < int , pred_term > : ret >
+    alloct | < h ; res_term | ( @ alloc_id1 , addr1 ) - ct - ( @ alloc_id2 , addr2 ) > --> < h1 + { pred_term ( term ) & None } ; < int , pred_term > : ret >
 
 
     alloct | < h ; res_term > ||v < h' + { pred_term ( _t ) & None } ; pred_term >
@@ -518,7 +518,7 @@ defns
     alloct |- smt ( alloc_id = ptrt dot alloc_id /\ representable ( ct2 , addr ) )
     ret eq sigma y : integer . y = addr /\ pred_term ( _t ) *o I
     ---------------------------------------------------------------------------------- :: IntFromPtr
-    _ | < h ; res_term | intFromPtr < ct1 , ct2 > ( ( @ alloc_id , addr ) ) > --> < h' + { pred_term ( _t ) & None } ; done < addr , pred_term > : ret >
+    _ | < h ; res_term | intFromPtr < ct1 , ct2 > ( ( @ alloc_id , addr ) ) > --> < h' + { pred_term ( _t ) & None } ; < addr , pred_term > : ret >
 
 
     alloct | < h ; res_term > ||v < h' + { pred_term ( oarg ) & None } ; pred_term >
@@ -528,19 +528,19 @@ defns
     inj ptr eq ( @ ptrt dot alloc_id , addr )
     ret eq sigma y : loc . y = ( @ ptrt dot alloc_id , addr ) /\ pred_term ( oarg ) *o I
     ---------------------------------------------------------------------------------------- :: PtrFromInt
-    alloct | < h ; res_term | ptrFromInt < ct1 , ct2 > ( addr ) > --> < h' + { pred_term ( oarg ) & None } ; done < ptr , pred_term > : ret >
+    alloct | < h ; res_term | ptrFromInt < ct1 , ct2 > ( addr ) > --> < h' + { pred_term ( oarg ) & None } ; < ptr , pred_term > : ret >
 
 
     inj bool_value eq aligned ( ct , inj ptr )
     ret eq sigma y : bool . y = aligned ( ct , inj ptr ) /\ I
     -------------------------------------------------------- :: PtrValidForDeref
-    _ | < h ; emp | ptrValidForDeref < ct > ( ptr ) > --> < h ; done < bool_value > : ret >
+    _ | < h ; emp | ptrValidForDeref < ct > ( ptr ) > --> < h ; < bool_value > : ret >
 
 
     inj bool_value eq aligned ( ct , inj ptr )
     ret eq sigma y : bool . y = aligned ( ct , inj ptr ) /\ I
     ------------------------------------------------------------------ :: PtrWellAligned
-    _ | < h ; emp | ptrWellAligned < ct > ( ptr ) > --> < h ; done < bool_value > : ret >
+    _ | < h ; emp | ptrWellAligned < ct > ( ptr ) > --> < h ; < bool_value > : ret >
 
 
     alloct | < h ; res_term > ||v < h' + { pred_term ( term ) & None } ; pred_term >
@@ -549,50 +549,35 @@ defns
     alloct |- smt ( alloc_id = ptrt dot alloc_id /\ inj ptr' dot addr =< ptrt dot base + term )
     ret eq sigma y : loc . y = inj ptr' /\ pred_term ( term ) *o I
     --------------------------------------------------------------------------------------------- :: PtrArrayShift
-    alloct | < h ; res_term | ptrArrayShift < ct > ( ptr , int ) > --> < h ; done < ptr' , pred_term > : ret >
+    alloct | < h ; res_term | ptrArrayShift < ct > ( ptr , int ) > --> < h ; < ptr' , pred_term > : ret >
 
 
-  defn < s ; is_expr  > --> < s' ; is_expr' > :: :: Is_Is :: Is_Is_ by
+  defn < s ; expr > --> < s' ; texpr : ret > :: :: Expr_T :: Expr_T_ by
 
 
-    alloct | < h ; memop > --> < h' ; tval : ret >
-    --------------------------------------------------- :: Memop
-    < alloct ; h ; memop > --> < alloct ; h' ; tval : ret >
+    alloct | < h ; memop > --> < h' ; texpr : ret >
+    --------------------------------------------------------- :: Memop
+    < alloct ; h ; memop > --> < alloct ; h' ; texpr : ret >
 
 
-    < s ; action > --> < s' ; tval : ret >
-    -------------------------------------- :: Action
-    < s ; action > --> < s' ; tval : ret >
-
-
-  defn term | seq_expr --> texpr : ret :: :: Seq_T :: Seq_T_ by
+    < s ; action > --> < s' ; texpr : ret >
+    ---------------------------------------- :: Action
+    < s ; memop > --> < s' ; texpr : ret >
 
 
     id : fon eq </ xi // i /> |-> texpr inEnv Globals
     alloct | </ xi = spine_elemi // i /> :; fon >> < subs ; ret >
     ------------------------------------------------------------- :: CCall
-    alloct | ccall ( ct , id , </ spine_elemi // i /> ) --> subs ( texpr ) : ret
+    < alloct ; h ; ccall ( ct , id , </ spine_elemi // i /> ) > --> < alloct ; h ; subs ( texpr ) : ret >
 
 
     name : fon eq </ xi // i /> |-> texpr inEnv Globals
     alloct | </ xi = spine_elemi // i /> :; fon >> < subs ; ret >
     --------------------------------------------------------- :: Proc
-    alloct | pcall ( name , </ spine_elemi // i /> ) --> subs ( texpr ) : ret
+    < alloct ; h ; pcall ( name , </ spine_elemi // i /> ) > --> < alloct ; h ; subs ( texpr ) : ret >
 
 
-  defn < s ; seq_texpr > --> < s' ; texpr > :: :: TS_T :: TSeq_T_ by
-
-
-    id : fon eq </ xi // i /> |-> texpr inEnv Globals
-    alloct | </ xi = pvali // i /> :; fon >> < subs ; false /\ I >
-    ------------------------------------------------------------ :: Run
-    < alloct ; h ; run id </ pvali // i /> > --> < alloct ; h ; subs ( texpr ) >
-
-
-    patj = pval ~> subsj
-    forall i lt j . not ( pati = pval ~> subsi )
-    ------------------------------------------------------------ :: Case
-    < s ; case pval of </ | pati => texpri // i /> end > --> < s ; subsj ( texprj ) >
+  defn < s ; texpr > --> < s' ; texpr' > :: :: T_T :: T_T_ by
 
 
     pat = pval ~> subs
@@ -600,9 +585,9 @@ defns
     < s ; let pat = pval in texpr > --> < s ; subs ( texpr ) >
 
 
-    alloct | < pexpr > --> < tpval : pure_ret >
+    alloct | < pexpr > --> < pval : pure_ret >
     ------------------------------------------- :: LetP_LetP
-    < alloct ; h ; let pat = pexpr in texpr > --> < alloct ; h ; let pat : pure_ret = tpval in texpr >
+    < alloct ; h ; let pat = pexpr in texpr > --> < alloct ; h ; let pat : pure_ret = pval in texpr >
 
 
     alloct | < pexpr > --> < tpexpr : pure_ret >
@@ -610,24 +595,25 @@ defns
     < alloct ; h ; let pat = pexpr in texpr > --> < alloct ; h ; let pat : pure_ret = tpexpr in texpr >
 
 
-    pat = pval ~> subs
-    ------------------------------------------- :: LetTP_Sub
-    < s ; let pat : pure_ret = done pval in texpr > --> < s ; subs ( texpr ) >
-
-
     alloct | < tpexpr > --> < tpexpr' >
     ------------------------------------------- :: LetTP_LetTP
     < alloct ; h ; let pat : pure_ret = tpexpr in texpr > --> < alloct ; h ; let pat : pure_ret = tpexpr' in texpr >
 
 
+
+    < s ; expr  > --> < s' ; texpr : ret >
+    ----------------------------------------------------------------- :: LetS_LetS
+    < s ; let ret_pat = expr in texpr' > --> < s' ; let ret_pat : ret = texpr in texpr' >
+
+
     < h ; </ ret_pati = ret_termi // i /> > ~> < h' ; subs >
     --------------------------------------------- :: LetT_Sub
-    < alloct ; h ; let </ ret_pati // i /> : ret = done < </ ret_termi // i /> > in texpr > --> < alloct ; h' ; subs ( texpr ) >
+    < alloct ; h ; let </ ret_pati // i /> : ret = < </ ret_termi // i /> > in texpr > --> < alloct ; h' ; subs ( texpr ) >
 
 
-    alloct | seq_expr --> texpr1 : ret
+    < s ; expr > --> < s' ; texpr1 : ret >
     -------------------------------------------------------- :: Let_LetT
-    < alloct ; h ; let ret_pat = seq_expr in texpr2 > --> < alloct ; h ; let ret_pat : ret = texpr1 in texpr2 >
+    < s ; let ret_pat = expr in texpr2 > --> < s' ; let ret_pat : ret = texpr1 in texpr2 >
 
 
     < s ; texpr1 > --> < s' ; texpr1' >
@@ -643,29 +629,13 @@ defns
     < s ; if False then texpr1 else texpr2 > --> < s ; texpr2 >
 
 
-  defn < s ; is_texpr  > --> < s' ; texpr > :: :: TIs_T :: TIs_T_ by
-
-    % DEFER add let weak rule
-    % let weak   ret_pat = is_expr in texpr
-
-    < h ; </ ret_pati = ret_termi // i /> > ~> < h' ; subs >
-    ----------------------------------------------------------- :: LetS_Sub
-    < alloct ; h ; let strong </ ret_pati // i /> = done < </ ret_termi // i /> > : ret in texpr > --> < alloct ; h' ; subs ( texpr ) >
+    patj = pval ~> subsj
+    forall i lt j . not ( pati = pval ~> subsi )
+    ------------------------------------------------------------ :: Case
+    < s ; case pval of </ | pati => texpri // i /> end > --> < s ; subsj ( texprj ) >
 
 
-    < s ; is_expr  > --> < s' ; is_expr' >
-    ----------------------------------------------------------------- :: LetS_LetS
-    < s ; let strong ret_pat = is_expr in texpr > --> < s' ; let strong ret_pat = is_expr' in texpr >
-
-
-  defn < s ; texpr > --> < s' ; texpr' > :: :: T_T :: T_T_ by
-
-
-    < s ; seq_texpr > --> < s' ; texpr >
-    ------------------------------------ :: TSeq_T
-    < s ; seq_texpr > --> < s' ; texpr >
-
-
-    < s ; is_texpr > --> < s' ; texpr >
-    ----------------------------------- :: TIs_T
-    < s ; is_texpr > --> < s' ; texpr >
+    id : fon eq </ xi // i /> |-> texpr inEnv Globals
+    alloct | </ xi = pvali // i /> :; fon >> < subs ; false /\ I >
+    ------------------------------------------------------------ :: Run
+    < alloct ; h ; run id </ pvali // i /> > --> < alloct ; h ; subs ( texpr ) >

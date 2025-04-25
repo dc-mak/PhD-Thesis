@@ -283,23 +283,10 @@ grammar
 
 grammar
 
-  tpval :: 'TPV_' ::= {{ com top-level pure values }}
-    | done pval     :: :: done  {{ com pure done                 }}
-    | undef UB_name :: :: undef {{ com undefined behaviour       }}
-    | error pval    :: :: error {{ com impl-defined static error }}
-
-grammar
-
-  pat :: 'Pat_' ::= {{ com computational patterns }}
-    | id                                :: :: var  (+ binders = id +)
-    | ctor_val ( </ pati // , // i /> ) :: :: ctor (+ binders = binders( </ pati // i /> ) +)
-
-grammar
-
   ty_bool {{ tex bool }} , _b {{ tex \_ }} :: 'Ty_bool_' ::=  {{ com OCaml booleans }}
     | true                  ::   :: true
     | false                 ::   :: false
-    | ty_bool || ty_bool'   :: M :: or
+    | ty_bool || ty_bool'   :: M :: or    {{ tex [[ty_bool]] \mathrel{||} [[ty_bool']] }}
 
   % OUT_HACK|ty_bool,bool
   out_ty_bool {{ tex \outpol{ bool } }}   :: 'Out_hack_' ::=  {{ com Ott-hack, ignore }}
@@ -317,7 +304,7 @@ grammar
 
   arith_op :: 'Arith_op_' ::= {{ com SMT term arithmetic operations }}
     | term1 +   term2                   ::   :: add
-    | sum i inEnv { x | iguard } . term ::   :: sum {{ tex \sum_{ [[ i ]] [[ inEnv ]] \{ [[ x ]] [[ | ]] [[ iguard ]] \} }{ [[ term ]] } }}
+    | sum i . iguard => term            ::   :: sum {{ tex \sum_{ [[ i ]] } { [[ iguard ]] [[ => ]] \left\{ [[ term ]] \right\}  } }}
     | term1 -   term2                   ::   :: sub
     | term1 *   term2                   ::   :: mul {{ tex [[term1]] \times [[term2]] }}
     | term1 /   term2                   ::   :: div
@@ -545,6 +532,12 @@ grammar
 
 grammar
 
+  pat :: 'Pat_' ::= {{ com computational patterns }}
+    | id                                :: :: var  (+ binders = id +)
+    | ctor_val ( </ pati // , // i /> ) :: :: ctor (+ binders = binders( </ pati // i /> ) +)
+
+grammar
+
   pexpr :: 'PE_' ::= {{ com pure expressions }}
     | pval                                  ::   :: pval            {{ com pure values                                      }}
     | ctor_expr ( </ pvali // , // i /> )   ::   :: ctor            {{ com data constructor application                     }}
@@ -560,22 +553,22 @@ grammar
     | wrapI ( ct , pval )                   ::   :: wrapI           {{ com wrap integer                                     }}
     | subs ( pexpr )                        :: M :: expr_subs       {{ com substitution for pure expressions                }}
 
+grammar
 
   tpexpr :: 'TPE_' ::= {{ com top-level pure expressions }}
-    | tpval                                             ::   :: tpval {{ com top-level pure values                 }}
-    | case pval of </ | tpexpr_case_branchi // i /> end ::   :: case  {{ com pat matching                      }}
-    | let pat = pexpr in tpexpr                  ::   :: let   (+ bind binders( pat ) in tpexpr  +)
-                                                                      {{ com pure let                              }}
-    | let pat : pure_ret = tpexpr1 in tpexpr2    ::   :: letT  (+ bind binders( pat ) in tpexpr2 +)
-                                                                      {{ com annoted pure let                      }}
-    | if pval then tpexpr1 else tpexpr2                 ::   :: if    {{ com pure if                               }}
-    | subs ( tpexpr )                                   :: M :: subs
-                                                                       {{ com substitute $[[subs]]$ in $[[tpexpr]]$ }}
+    | pval                                    ::    :: pval  {{ com pure value                            }}
+    | undef UB_name                           ::    :: undef {{ com undefined behaviour                   }}
+    | let pat = pexpr in tpexpr               ::   :: let    (+ bind binders( pat ) in tpexpr             +)
+                                                             {{ com pure let                              }}
+    | let pat : pure_ret = tpexpr1 in tpexpr2 ::   :: letT   (+ bind binders( pat ) in tpexpr2            +)
+                                                             {{ com annoted pure let                      }}
+    | if pval then tpexpr1 else tpexpr2       ::   :: if     {{ com pure if                               }}
+    | case pval of </ | pbranchi // i /> end  ::   :: case   {{ com pattern-matching                      }}
+    | subs ( tpexpr )                         :: M :: subs   {{ com substitute $[[subs]]$ in $[[tpexpr]]$ }}
 
-  tpexpr_case_branch :: 'TPE_Case__' ::= {{ com pure top-level case expression branch }}
-    | pat => tpexpr :: :: branch (+ bind binders( pat ) in tpexpr    +)
-                                     {{ com top-level case expression branch }}
-
+  pbranch :: 'PBranch_' ::= {{ com pure case expression branch }}
+    | pat => tpexpr :: :: branch (+ bind binders( pat ) in tpexpr        +)
+                                 {{ com top-level case expression branch }}
 
 grammar
 
@@ -688,15 +681,6 @@ grammar
 
 grammar
 
-   tval :: 'TV_' ::= {{ com (effectful) top-level values }}
-    | done < ret_terms > ::   :: done  {{ com end of top-level expression       }}
-    | undef UB_name      ::   :: undef {{ com undefined behaviour               }}
-    | error pval         ::   :: error {{ com impl-defined static error         }}
-    | subs ( tval )      :: M :: subs  {{ com substitution for top-level values }}
-
-
-grammar
-
   res_pat :: 'Res_pat_' ::= {{ com resource patterns }}
     | emp                     :: :: empty (+ binders = {}         +) {{ com empty heap                   }}
     | TERM                    :: :: phi   (+ binders = {}         +) {{ com logical assertion token      }}
@@ -715,7 +699,7 @@ grammar
 
 grammar
 
-  ret_pat :: RetP_ ::= {{ com return pat }}
+  ret_pat , _ret_pat {{ tex \_ }} :: RetP_ ::= {{ com return pattern }}
     | comp pat                 :: :: comp (+ binders = binders( pat )                 +) {{ com computational pattern       }}
     | log  y                   :: :: log  (+ binders = y                              +) {{ com logical variable            }}
     | reso res_pat             :: :: res  (+ binders = binders( res_pat )             +) {{ com resource pattern            }}
@@ -728,53 +712,40 @@ grammar
 grammar
 
   % There used to be an effectful value (val) `skip' - I (dcm41) removed it because it seemed redundant.
-  seq_expr :: 'Seq_E_' ::= {{ com sequential (effectful) expressions }}
-    | ccall ( ct , yf , spine ) ::   :: ccall {{ com C function call                       }}
-    | pcall ( name , spine )    ::   :: proc  {{ com procedure call                        }}
-    | subs ( seq_expr )         :: M :: subs
+  expr :: 'Expr_' ::= {{ com sequential (effectful) expressions }}
+    | memop                     ::   :: memop     {{ com pointer op involving memory               }}
+    | action                    ::   :: action    {{ com memory action                             }}
+    | ccall ( ct , yf , spine ) ::   :: ccall     {{ com C function call                           }}
+    | pcall ( name , spine )    ::   :: proc      {{ com Core procedure call                       }}
+    | fold a ( pvals )          ::   :: fold      {{ com (pre-elaboration only) fold a predicate   }}
+    | unfold a ( pvals )        ::   :: unfold    {{ com (pre-elaboration only) unfold a predicate }}
+    | res_term                  ::   :: res_term  {{ com (elaboration only)                        }}
+    | subs ( expr )             :: M :: subs      {{ com substitution                              }}
+    % unseq ( </ texpri : reti // i /> ) ::  :: unseq  {{ com unsequenced expressions      }}
 
   % nd() is only used in the elab of if/loops for the case where the condiditional expression evaluates to unspecified()
   % We don't have unspecified() so we won't have nd()
-  seq_texpr :: 'Seq_TE_' ::= {{ com sequential top-level (effectful) expressions }}
-    | tval                                            :: :: tval           {{ com (effectful) top-level values                             }}
-    | run id </ pvali // , // i />            :: :: run            {{ com run from label                                           }}
-    | let pat = pexpr in texpr                 :: :: letP           (+ bind binders( pat ) in texpr                          +)
-                                                                           {{ com pure let                                                 }}
-    | let pat : pure_ret = tpexpr in texpr     :: :: letTP          (+ bind binders( pat ) in texpr                          +)
-                                                                           {{ com annotated pure let                                       }}
-    | let ret_pat = seq_expr in texpr                 :: :: let            (+ bind binders( ret_pat ) in texpr                             +)
-                                                                           {{ com bind return pats                                         }}
-    | let ret_pat : ret = texpr1 in texpr2            :: :: letT           (+ bind binders( ret_pat ) in texpr2                            +)
-                                                                           {{ com annotated bind return pats                               }}
-    | case pval of </ | texpr_case_branchi // i /> end :: :: case          {{ com pat matching                                             }}
-    | if pval then texpr1 else texpr2                  :: :: if            {{ com conditional                                              }}
-    | insert_lets ( res_bind , seq_texpr )             :: M :: Insert_lets {{ com insert let expressions for binding resources             }}
-
-
-  texpr_case_branch :: 'Seq_TE_Case__' ::=  {{ com top-level case expression branch }}
-    | pat => texpr :: :: branch (+ bind binders( pat ) in texpr     +)
-                                {{ com top-level case expression branch }}
-
-
-  is_expr :: 'Is_E_' ::= {{ com indet seq (effectful) expressions }}
-    | tval : ret         ::  :: tval   {{ com (effectful) top-level values }}
-    | memop              ::  :: memop  {{ com pointer op involving memory  }}
-    | action             ::  :: action {{ com memory action                }}
-    | fold a ( pvals )   ::  :: pack   {{ com fold a predicate             }}
-    | unfold a ( pvals ) ::  :: unfold {{ com unfold a predicate           }}
-    % unseq ( </ texpri : reti // i /> ) ::  :: unseq  {{ com unsequenced expressions      }}
-
-  is_texpr :: 'Is_TE_' ::= {{ com indet seq top-level (effectful) expressions }}
-    | let weak   ret_pat = is_expr in texpr  :: :: wseq (+ bind binders( ret_pat ) in texpr +) {{ com weak sequencing   }}
-    | let strong ret_pat = is_expr in texpr  :: :: sseq (+ bind binders( ret_pat ) in texpr +) {{ com strong sequencing }}
-
   texpr :: 'TE_' ::= {{ com top-level (effectful) expressions }}
-    | seq_texpr                        ::   :: Seq         {{ com sequential (effectful) expressions           }}
-    | is_texpr                         ::   :: Is          {{ com indet seq (effectful) expressions            }}
-    | insert_lets ( res_bind , texpr ) :: M :: Insert_lets {{ com insert let expressions for binding resources }}
-    | subs ( texpr )                   :: M :: Subs        {{ com substitute $[[subs]]$ in $[[texpr]]$         }}
+    | < ret_terms >                         ::     :: ret_terms   {{ com values (including logical and reosurces terms) }}
+    | let pat = pexpr in texpr              ::     :: letP        (+ bind binders( pat ) in texpr                       +)
+                                                                  {{ com pure let                                       }}
+    | let pat : pure_ret = tpexpr in texpr  ::     :: letTP       (+ bind binders( pat ) in texpr                       +)
+                                                                  {{ com annotated pure let                             }}
+    | let ret_pat = expr in texpr           ::     :: let         (+ bind binders( ret_pat ) in texpr                   +)
+                                                                  {{ com bind return pats                               }}
+    | let ret_pat : ret = texpr1 in texpr2  ::     :: letT        (+ bind binders( ret_pat ) in texpr2                  +)
+                                                                  {{ com annotated bind return pats                     }}
+    | if pval then texpr1 else texpr2       ::     :: if          {{ com conditional                                    }}
+    | case pval of </ | branchi // i /> end ::     :: case        {{ com pattern-matching                               }}
+    | run id pvals                          ::     :: run         {{ com run from label                                 }}
+    | insert_lets ( res_bind , texpr )      :: M X :: insert_lets {{ com insert let expressions for binding resources   }}
+    | subs ( texpr )                        :: M   :: subs        {{ com substitute $[[subs]]$ in $[[texpr]]$           }}
 
-% DEFER generate substitutions
+
+  branch :: 'Branch_' ::=  {{ com (effectful) case-expression branch }}
+    | pat => texpr :: :: branch (+ bind binders( pat ) in texpr           +)
+                                {{ com (effectful) case-expression branch }}
+
 
 grammar
 

@@ -35,8 +35,10 @@ over an arbitrary record of arrays.}
 Along with the type system, I briefly discuss a formalisation of two different
 elaboration algorithms: one for inferring instantiations of logical quantifiers,
 one for inferring indices for \kl{iterated} predicates. Because of a change
-to the inference scheme used by \kl{CN}, the latter algorithm is no longer
-used.\sidenote{\href{https://github.com/rems-project/cerberus/commit/7c2c0a364a4373e4eb109f32d01cc9584f51e81f}{Commit
+to the inference scheme used by \kl{CN}, only the parts relating to inferring
+ghost arguments are used.\sidenote{The parts no longer used are (a) inferring
+indices for iterated predicates and (b) relating manual annotations for folding
+and unfolding into the resource term calculus. See \href{https://github.com/rems-project/cerberus/commit/7c2c0a364a4373e4eb109f32d01cc9584f51e81f}{commit
 7c2c0a36.}}\label{sn:new-inf-statics}
 
 \section{Contexts}
@@ -138,7 +140,7 @@ computation.
 Whilst the rules for typing \emph{top-level} pure values and pure expressions
 share the same context as typing pure values and expressions, they differ in
 that they are \emph{checking} judgements instead of synthesising ones, of the
-form $[[ C ; L ; N |- tpval <= pure_ret ]]$ (and similarly for $[[ tpexpr ]]$). % chktex 25
+form $[[ C ; L ; N |- tpexpr <= pure_ret ]]$ (and similarly for $[[ pval ]]$). % chktex 25
 Given the computational, logical and constraint contexts, check the top-level
 value (or expression) satisfies this type.
 
@@ -165,12 +167,13 @@ assume all patterns are complete.
 \begin{figure*}[tp]
     \small
     \raggedright{}
-    \cndefnPureXXTopXXVal{}\\
     \onlyUseRules{\cndefnPureXXTop{}}{%
+        \cndefnPureXXTopXXPVal{},
+        \cndefnPureXXTopXXUB{},
         \cndrulePureXXTopXXIf{},
         \cndrulePureXXTopXXLet{}
     }\\
-    \cndefnPatXXCompXX{}%
+    \cndefnPatXXComp{}%
     \caption{Selection of \kl{Kernel CN} typing rules for top-level pure values and
         expressions, including the translation of computational patterns into a
         computational context used in the \coreinline{let} rule.}\label{fig:typing-tpval-tpexpr}
@@ -343,10 +346,10 @@ rule for dynamic allocations.}
 \begin{figure*}[tp]
     \small
     \raggedright{}
-    \cndefnExplXXIsXXAction{}
+    \cndefnAction{}
     \\%
-    \onlyUseRules{\cndefnExplXXIsXXMemop{}}{%
-        \cndruleExplXXIsXXMemopXXRelXXBinop{}
+    \onlyUseRules{\cndefnMemop{}}{%
+        \cndruleMemopXXRelXXBinop{}
     }
     \caption{\kl{Kernel CN} typing rules for memory actions, and a select rule
         for typing a memory operation.}\label{fig:typing-mem-action}
@@ -383,7 +386,7 @@ rules (\cref{fig:typing-spine}).
 \begin{figure*}[tp]
     \small
     \raggedright{}
-    \cndefnExplXXSpine{}
+    \cndefnSpine{}
     \caption{\kl{Kernel CN} typing rules for function
         spines.}\label{fig:typing-spine}
 \end{figure*}
@@ -414,15 +417,15 @@ The spine typing is used in the rules for calling elaborated C function
 \coreinline{ccall()}, and effectful Core procedures % chktex 36
 \coreinline{pcall()}, in \cref{fig:typing-seq-expr-tval}. Both are % chktex 36
 syntactically effectful sequenced expressions, typed with a judgement of the
-form $[[ C ; L ; N ; R |- seq_expr => ret ]]$, % chktex 25 
+form $[[ C ; L ; N ; R |- expr => ret ]]$, % chktex 25 
 which says that given the contexts and an effectful
 sequenced expression, synthesise a return type. Both lookup a function type for
 the called function/procedure,\sidenote{\kl{CN} does not support
 computed/indirect function calls, so I assume the callee has already been
-resolved.} and simply produce the return type synthesised by the spine
-judgement. This is also basically identical to how the top-level value
-$[[ done _ ]]$ is typed, with the main difference that (a) the judgement
-$[[ C ; L ; N ; R |- tval <= ret ]]$
+resolved.} and produce the return type synthesised by the spine
+judgement. This is also identical to how the top-level values
+(and expressions) $[[< ret_terms > ]]$ are typed, with the main difference that
+(a) the judgement $[[ C ; L ; N ; R |- < ret_terms > <= ret ]]$
 is checking and (b) the return type must be mapped to its dual
 function type before using the spine judgement. Similar to the pure case, the
 \coreinline{undef()} and \coreinline{error()} constructs % chktex 36 check
@@ -431,17 +434,19 @@ against any type if the constraint context is inconsistent.
 \begin{figure*}[tp]
     \small
     \raggedright{}
-    \cndefnExplXXSeq{}
+    \cndefnExpr{}
     \\
-    \cndefnExplXXTopXXVal{}
+    \onlyUseRules{\cndefnTExpr{}}{
+        \cndefnTExprXXRetXXTerms{}
+    }
     \caption{\kl{Kernel CN} typing rules for sequential expressions and top-level values.}\label{fig:typing-seq-expr-tval}
 \end{figure*}
 
 \section{Pattern matching}
 
-Pattern matching is a surprisingly important crux of \kl{kernel CN}'s type
-system because it \emph{is} the canal which directs a rich the grammar of
-resource and return types into contexts. The judgement for this is
+\textbf{Pattern matching is an unusually important crux of \kl{kernel CN}'s type
+system because it \emph{is} the canal which directs the rich grammar of
+resource and return types into contexts.} The judgement for this is
 $[[ C ; L ; N |- ret_pat : ret ~> C' ; L' ; N' ; R' ]]$, % chktex 25
 which says that given the contexts, a return pattern and a return type,
 synthesise computational, logical, constraint and resource contexts.
@@ -454,7 +459,7 @@ have their own patterns (\cref{fig:typing-tpval-tpexpr}).
 \begin{figure*}[tp]
     \small
     \raggedright{}
-    \cndefnPatXXRetXX{}
+    \cndefnPatXXRet{}
     \caption{\kl{Kernel CN} typing rules for pattern matching at return
         types.}\label{fig:typing-ret-pat}
 \end{figure*}
@@ -494,7 +499,7 @@ resource contexts.
 \begin{figure*}[tp]
     \small
     \raggedright{}
-    \cndefnPatXXResXXMatchXX{}
+    \cndefnPatXXResXXMatch{}
     \caption{\kl{Kernel CN} typing rules for pattern matching at resource
         types.}\label{fig:typing-res-pat}
 \end{figure*}
@@ -530,9 +535,9 @@ type.\sidenote{Need to update the rule.}
 \begin{figure*}[tp]
     \small
     \raggedright{}
-    \onlyUseRules{\cndefnExplXXTopXXSeq{}}{%
-        \cndruleExplXXTopXXSeqXXLet{},
-        \cndruleExplXXTopXXSeqXXRun{}
+    \onlyUseRules{\cndefnTExpr{}}{%
+        \cndruleExplXXTExprXXLet{},
+        \cndruleExplXXTExprXXRun{}
     }
     \caption{Select \kl{Kernel CN} typing rules for effectful top-level
         expressions.}\label{fig:typing-seq-texpr}
@@ -713,8 +718,8 @@ annotations to engineer into a synthesis form.
 \begin{figure*}[tp]
     \small
     \raggedright{}
-    \onlyUseRules{\cndefnElabXXIs{}}{%
-        \cndruleElabXXIsXXPack{}
+    \onlyUseRules{\cndefnElabXXExpr{}}{%
+        \cndruleElabXXExprXXFold{}
     }
     \caption{\kl{Kernel CN} elaboration rule for manually folding
         predicates.}\label{fig:kernel-elab-fold}
@@ -733,8 +738,8 @@ terms) are the main things elaborated into the program.
 \begin{figure*}[tp]
     \small
     \raggedright{}
-    \onlyUseRules{\cndefnElabXXIsXXAction{}}{%
-        \cndruleElabXXIsXXActionXXLoad{}
+    \onlyUseRules{\cndefnElabXXAction{}}{%
+        \cndruleElabXXActionXXLoad{}
     }
     \caption{Select \kl{Kernel CN} elaboration rule for memory
         actions.}\label{fig:elab-action}
@@ -744,7 +749,7 @@ terms) are the main things elaborated into the program.
     \small
     \raggedright{}
     \onlyUseRules{\cndefnElabXXSpine{}}{%
-        \cndruleElabXXSpineXXLetPred{}
+        \cndruleElabXXSpineXXTakePred{}
     }
     \caption{\kl{Kernel CN} elaboration rule for instantiating a logical
         quantifier when elaborating a function call spine.}\label{fig:elab-spine}
@@ -833,7 +838,7 @@ four parts to this proof.
     assumption until the variable used in the context appears, and then
     use the equational properties of substitution and the assumptions
     to prove the goal.
-\item \textsc{Expl\_Top\_Val\_Done}. $\mathtt{to\_fun}$ commutes with
+\item \TExprRetTerms. $[[ to_fun ret ]]$ commutes with
     substitution, but leaves terms unchanged, so induction proceeds
     straightforwardly.
 \item \textbf{Context change rules.} Split up substitutions as required by the
@@ -979,7 +984,7 @@ typing and resource term typing are consistent.
 \begin{theorem}[Progress for ResCore]
 If a top-level expression ($[[ texpr ]]$) is well-typed
 ($[[ cdot ; cdot ; N ; nR |- texpr <= ret ]]$) and all computational patterns
-in it are exhaustive, then either it is a value ($[[ tval ]]$), or it is
+in it are exhaustive, then either it is a value ($[[< ret_terms >]]$), or it is
 unreachable, or for all heaps ($[[ h ]]$), if the heap is well-typed
 ($[[ h <= nR ]]$) then there exists another heap ($[[ h' ]]$) and expression
 ($[[ texpr' ]]$) which is stepped to ($[[ < _t ; h ; texpr > --> < _t ; h' ; texpr' > ]]$)

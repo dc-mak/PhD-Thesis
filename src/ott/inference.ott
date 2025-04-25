@@ -1,4 +1,5 @@
-% These rules are out of date
+% These rules infer indices, which the implementation currently does not (but did at one point)
+
 grammar
 
   res_diff {{ tex \outpol{\mathit{res\_diff} } }} :: 'Res_diff_' ::= {{ com resource difference }}
@@ -165,7 +166,7 @@ defns
     N |- r : pred_term ( oarg1 ) +? res_term : ipred_term & oarg2 ~> glue( < res_term , r > ) and oarg2 [ term ] := oarg1
 
 
-  defn N ; nR |- wf res_req ~> bind out_res_bind for out_res_term and out_oarg -| out_nRp :: :: Req_ :: Req_
+  defn N ; nR |- wf res_req ~> bind out_res_bind for out_res_term and out_oarg -| out_nRp :: :: Req :: Req_
   {{ com $[[N]] ; [[nR]]$ fulfil well-formed request $[[res_req]]$ (via $[[out_res_bind]]$) for answer $[[out_res_term]]$ and $[[out_oarg]]$, with $[[out_nRp]]$ leftover }} by
 
 
@@ -192,7 +193,7 @@ defns
     N ; nR , r : norm_res |- wf res_req1 ~> bind res_bind for res_term3 and oarg3 -| nR2
 
 
-  defn N ; nR |- res_req ~> bind out_res_bind for out_res_term and out_oarg -| out_nRp :: :: Req_Wf_ :: Req_Wf_
+  defn N ; nR |- res_req ~> bind out_res_bind for out_res_term and out_oarg -| out_nRp :: :: Req_Wf :: Req_Wf_
   {{ com $[[N]] ; [[nR]]$ (check well-formedness of and then) fulfil request $[[res_req]]$ (via $[[out_res_bind]]$) for answer $[[out_res_term]]$ and $[[out_oarg]]$, with $[[out_nRp]]$ leftover }} by
 
     a eq _ : loc , </ _i : base_typei // i  /> , y' : base_type |-> res inEnv Globals
@@ -211,7 +212,7 @@ defns
     N ; nR |- each (integer x; iguard) { a ( array_shift < ct > ( ptrt , x ) , </ iargi // i /> ) } ~> bind res_bind for res_term and oarg -| nR'
 
 
-  defn N ; nR |- if term then res1 else res2 ~> out_x -| out_nRp :: :: If_ :: If_
+  defn N ; nR |- if term then res1 else res2 ~> out_x -| out_nRp :: :: If :: If_
   {{ com under-determined conditional resource request: $[[N]] ; [[nR]]$ fulfil request for $[[if]]$ $[[term]]$ $[[then]]$ $[[res1]]$ $[[else]]$ $[[res2]]$ with \textbf{synthesising} $[[out_x]]$ and $[[out_nRp]]$ leftover }} by
 
 
@@ -281,10 +282,10 @@ defns
 
 
 defns
-  elab_is_expr :: 'Elab_' ::=
+  elab_action :: 'Elab_' ::=
 
   % DEFER out_action'
-  defn CLNnR |- action ~> bind out_res_bind for action' : out_norm_ret -| out_nRp :: :: Is_Action :: Is_Action_
+  defn CLNnR |- action ~> bind out_res_bind for action' : out_norm_ret -| out_nRp :: :: Action :: Action_
   {{ com memory action elaboration: given $[[CLNnR]]$, $[[action]]$ elaborates (via $[[out_res_bind]]$) to $[[action']] [[:]] [[out_norm_ret]]$, with $[[out_nRp]]$ leftover }} by
 
 
@@ -326,8 +327,11 @@ defns
     % DEFER (not implemented)
     % C ; L ; N ; ?? |- _rest | kill < dyn > ( v ) => ??
 
+defns
+  elab_memop :: 'Elab_' ::=
+
   % DEFER out_memop'
-  defn CLNnR |- memop ~> bind out_res_bind for memop' : out_norm_ret -| out_nRp :: :: Is_Memop :: Is_Memop_
+  defn CLNnR |- memop ~> bind out_res_bind for memop' : out_norm_ret -| out_nRp :: :: Memop :: Memop_
   {{ com memory operation elaboration: given $[[CLNnR]]$, $[[memop]]$ elaborates to (via $[[out_res_bind]]$) to $[[memop']] [[:]] [[out_norm_ret]]$, with $[[out_nRp]]$ leftover }} by
 
 
@@ -350,6 +354,7 @@ defns
     % N |- inj pval2 inEnv res
     % -------------------------------- :: PtrDiff_Arr
     % C ; L ; N ; R |- res_term | pval1 - array n ct - pval2 => sigma y : bool . y = ( inj pval1 - inj pval2 ) / sizeof ct /\ res *o I
+
 
     % C |- pval1 => loc
     % C |- pval2 => loc
@@ -388,11 +393,6 @@ defns
     C ; L ; N ; nR |- memop ~> bind cdot for memop : norm_ret -| nR
 
 
-  % DEFER out_is_expr'
-  defn CLNnR |- is_expr ~> bind out_res_bind for ( is_expr' ) : out_ret -| out_nRp :: :: Is :: Is_
-  {{ com indet. seq. expression elaboration: given $[[CLNnR]]$, $[[is_expr]]$ elaborates (via $[[out_res_bind]]$) to $[[is_expr']] [[:]] [[out_ret]]$, with $[[out_nRp]]$ leftover }} by
-
-
     % DEFER (not implemented)
     % memcpy ( pval1 , pval2 , pval3 )
     % memcmp ( pval1 , pval2 , pval3 )
@@ -402,38 +402,6 @@ defns
     % va_arg ( pval , ct )
     % va_end ( pval )
 
-
-    C ; L ; N ; nR |- memop ~> bind res_bind for memop' : norm_ret -| nR'
-    ------------------------------------------------------------------------- :: Memop
-    C ; L ; N ; nR |- memop ~> bind res_bind for ( memop' ) : norm_ret -| nR'
-
-
-    C ; L ; N ; nR |- action ~> bind res_bind for action' : norm_ret -| nR'
-    --------------------------------------------------------------------------- :: Action
-    C ; L ; N ; nR |- action ~> bind res_bind for ( action' ) : norm_ret -| nR'
-
-
-    a eq </ xi : base_typei // i  /> , y : base_type |-> res inEnv Globals
-    indexed </ C |- pvali => base_typei // i />
-    N ; nR |- calc y using [ [ </ pvali / xi // i /> ] ] ( res ) ~> bind res_bind for res_term and oarg -| nR'
-    ret eq sigma _ : unit . a ( </ inj pvali // i /> ) ( oarg ) *o I
-    ----------------------------------------------------------------------------------------------------------------------------------- :: Fold
-    C ; L ; N ; nR |- fold a ( </ pvali // i /> ) ~> bind res_bind for ( done < Unit , fold res_term : a ( </ inj pvali // i /> ) ( oarg ) > : ret ) : ret -| nR'
-
-
-    a eq </ xi : base_typei // i  /> , y : base_type |-> res inEnv Globals
-    C |- pval => loc
-    indexed </ C |- pvali => base_typei // i />
-    N ; nR |- a ( </ inj pvali // i /> ) ~> bind res_bind for res_term and oarg -| nR'
-    res' eq [ oarg / y , [ </ iargi / xi // i /> ] ] ( res )
-    ret eq sigma _ : unit . res' *o I
-    ------------------------------------------------------------------------------------------------ :: Unfold
-    C ; L ; N ; nR |- unfold a ( </ pvali // i /> ) ~> bind fold ( x ) : a ( </ inj pvali // i /> ) ( oarg ) = res_term for ( done < Unit , x > : ret ) : ret -| nR'
-
-
-    % </ C ; L ; N ; nRi |- texpri <= reti // i />
-    % -------------------------------------------------------------------------------------------- :: Unseq
-    % C ; L ; N ; </ nRi // i /> |- unseq ( </ texpri : reti // i /> ) => concat </ reti // i />
 
 defns
   elab_spine :: 'Elab_' ::=
@@ -478,11 +446,24 @@ defns
 
 
 defns
-  elab_seq_expr :: 'Elab_' ::=
+  elab_expr :: 'Elab_' ::=
 
-  % DEFER out_seq_expr'
-  defn CLNnR |- seq_expr ~> bind out_res_bind for seq_expr' : out_norm_ret -| out_nRp :: :: Seq :: Seq_
-  {{ com seq. expression elaboration: given $[[CLNnR]]$, $[[seq_expr]]$ elaborates (via $[[out_res_bind]]$) to $[[seq_expr']] [[:]] [[out_norm_ret]]$, with $[[out_nRp]]$ leftover }} by
+  defn CLNnR |- expr ~> bind out_res_bind for expr' : out_ret -| out_nRp :: :: Expr :: Expr_
+  {{ com (effectful) expression elaboration: given $[[CLNnR]]$, $[[expr]]$ elaborates (via $[[out_res_bind]]$) to $[[expr']] [[:]] [[out_ret]]$, with $[[out_nRp]]$ leftover }} by
+
+    C ; L ; N ; nR |- memop ~> bind res_bind for memop' : norm_ret -| nR'
+    ------------------------------------------------------------------------- :: Memop
+    C ; L ; N ; nR |- memop ~> bind res_bind for memop' : norm_ret -| nR'
+
+
+    C ; L ; N ; nR |- action ~> bind res_bind for action' : norm_ret -| nR'
+    --------------------------------------------------------------------------- :: Action
+    C ; L ; N ; nR |- action ~> bind res_bind for action' : norm_ret -| nR'
+
+
+    % </ C ; L ; N ; nRi |- texpri <= reti // i />
+    % -------------------------------------------------------------------------------------------- :: Unseq
+    % C ; L ; N ; </ nRi // i /> |- unseq ( </ texpri : reti // i /> ) => concat </ reti // i />
 
 
     id :  norm_fun eq </ xi // i /> |-> texpr  inEnv Globals
@@ -497,15 +478,30 @@ defns
     C ; L ; N ; nR |- pcall ( name , spine ) ~> bind res_bind for pcall ( name , </ spine_elemi // i /> ) : norm_ret -| nR'
 
 
+    a eq </ xi : base_typei // i  /> , y : base_type |-> res inEnv Globals
+    indexed </ C |- pvali => base_typei // i />
+    N ; nR |- calc y using [ </ pvali / xi // i /> ] ( res ) ~> bind res_bind for res_term and oarg -| nR'
+    pred eq a ( </ inj pvali // i /> ) ( oarg )
+    ---------------------------------------------------------------------------------------------------------- :: Fold
+    C ; L ; N ; nR |- fold a ( </ pvali // i /> ) ~> bind res_bind for fold res_term : pred : pred *o I -| nR''
+
+
+    a eq </ xi : base_typei // i  /> , y : base_type |-> res inEnv Globals
+    indexed </ C |- pvali => base_typei // i />
+    N ; nR |- a ( </ inj pvali // i /> ) ~> bind res_bind for res_term and oarg -| nR'
+    res' eq [ oarg / y , [ </ iargi / xi // i /> ] ] ( res )
+    ------------------------------------------------------------------------------------------------ :: Unfold
+    C ; L ; N ; nR |- unfold a ( </ pvali // i /> ) ~> bind res_bind , fold ( r ) : a ( </ inj pvali // i /> ) ( oarg ) = res_term for r : res' *o I -| nR'
+
 
 defns
   elab_top :: 'Elab_' ::=
 
   defn N |- res ~> out_res_pat :: :: Res_Pat :: Res_Pat_
-  {{ com resource normalisation by pat-matching: under constraints $[[N]]$ , $[[res]]$ will produces a normalised resourced context if it matches against $[[out_res_pat]]$ }} by
+  {{ com resource type normalisation by pattern-matching: under constraints $[[N]]$ , $[[res]]$ will produce a normalised resourced context if it matches against $[[out_res_pat]]$ }} by
 
 
-    ---------- :: Empty
+    ---------------- :: Empty
     N |- emp ~> emp
 
     ----------------- :: Phi
@@ -541,7 +537,7 @@ defns
 
 
   defn N |- ret ~> out_ret_pat :: :: Ret_Pat :: Ret_Pat_
-  {{ com return-value normalisation by pattern-matching: under constraints $[[N]]$ , $[[ret]]$ will produce a normalised resourced context if it matches against $[[out_ret_pat]]$ }} by
+  {{ com return type normalisation by pattern-matching: under constraints $[[N]]$ , $[[ret]]$ will produce a normalised resourced context if it matches against $[[out_ret_pat]]$ }} by
 
   --------- :: I
   N |- I ~>
@@ -556,41 +552,6 @@ defns
   N |- ret ~> ret_pat
   ------------------------------------------------------------ :: Log
   N |- exists x : base_type . ret ~> log x , ret_pat
-
-
-  % DEFER out_texpr
-  defn CLNnR |- is_texpr <= norm_ret ~> texpr :: :: Top_Is :: Top_Is_
-  {{ com top-level indet. seq. expression elaboration: given $[[CLNnR]]$, $[[is_texpr]]$ elaborates to $[[texpr]]$ }} by
-
-
-    % % DEFER (not implemented) - memory events
-    % C ; L ; N ; nR |- is_expr => ret1
-    % ret_pat : ret1 ~> C1 ; L1 ; N1 ; nR1
-    % C , C1 ; L , L1 ; N , N1 ; nR , nR1 |- texpr <= ret2
-    % ------------------------------------------------------- :: LetW
-    % C ; L ; N ; nR |- let weak ret_pat = is_expr in texpr <= ret2 ~> ...
-
-    C ; L ; N ; nR |- is_expr ~> bind res_bind for ( is_expr' ) : sigma y : base_type . ret -| nR'
-    N |- ret ~> ret_pat
-    N |- comp pat , ret_pat : sigma y : base_type . ret ~> C1 ; L1 ; N1 ; nR1
-    C , C1 ; L , L' , L1 ; N , N' , N1 ; nR' , nR1 |- texpr <= norm_ret2 ~> texpr'
-    texpr'' eq insert_lets ( res_bind , let strong comp pat , ret_pat = is_expr' in texpr' )
-    --------------------------------------------------------------------------------------------- :: LetS
-    C ; L ; N ; nR |- let strong comp pat = is_expr in texpr <= norm_ret2 ~> texpr''
-
-  % DEFER out_tval'
-  defn CLNnR |- tval <= norm_ret ~> bind out_res_bind for tval' -| out_nRp :: :: Top_Val :: Top_Val_
-  {{ com top-level value elaboration: given $[[CLNnR]]$, $[[tval]]$ elaborates (via $[[out_res_bind]]$) to $[[tval']]$ with $[[out_nRp]]$ leftover }} by
-
-
-    C ; L ; N ; nR |- ret_terms :; to_fun norm_ret ~> bind res_bind for ret_terms' and I -| nR'
-    ----------------------------------------------------------------------------------------- :: Done
-    C ; L ; N ; nR |- done < ret_terms > <= norm_ret ~> bind res_bind for done < ret_terms' > -| nR'
-
-
-    smt ( N => false )
-    ----------------------------------------------------------------------------------------------- :: Undef
-    C ; L ; N ; nR |- undef UB_name <= norm_ret ~> bind cdot for undef UB_name -| nR
 
 
   defn N ; nR ~> out_res_bind :: :: Simp_Ctx :: Simp_Ctx_
@@ -612,14 +573,14 @@ defns
     N ; nR , _ : norm_res ~> res_bind
 
 
-  % DEFER out_seq_texpr'
-  defn CLNnR |- seq_texpr <= norm_ret ~> seq_texpr' :: :: Top_Seq :: Top_Seq_
-  {{ com top-level seq. expression elaboration: given $[[CLNnR]]$, $[[seq_texpr]]$ checks against $[[norm_ret]]$ and elaborates to $[[seq_texpr']]$ }} by
+  % DEFER out_texpr
+  defn CLNnR |- texpr <= norm_ret ~> texpr' :: :: TExpr :: TExpr_
+  {{ com (effectful) expression elaboration: given $[[CLNnR]]$, $[[texpr]]$ elaborates to $[[texpr']]$ }} by
 
 
-    C ; L ; N ; nR |- tval <= norm_ret ~> bind res_bind for tval' -| cdot
-    --------------------------------------------------------------------- :: TVal
-    C ; L ; N ; nR |- tval <= norm_ret ~> insert_lets ( res_bind , tval )
+    C ; L ; N ; nR |- ret_terms :; to_fun norm_ret ~> bind res_bind for ret_terms' and I -| nR'
+    ----------------------------------------------------------------------------------------- :: RetTerms
+    C ; L ; N ; nR |- < ret_terms > <= norm_ret ~> insert_lets ( res_bind , < ret_terms' > )
 
 
     C ; L ; N |- pexpr => sigma y : base_type . term /\ I
@@ -636,30 +597,22 @@ defns
     C ; L ; N ; nR |- let pat : pure_ret = tpexpr in texpr <= norm_ret ~> let pat : pure_ret = tpexpr in texpr'
 
 
-    C ; L ; N ; nR1 |- seq_expr ~> bind res_bind for seq_expr' : sigma y : base_type . norm_ret1 -| nR1'
-    N |- norm_ret1 ~> ret_pat
-    N |- comp pat , ret_pat : sigma y : base_type . norm_ret1 ~> C1 ; L1 ; N1 ; nR1''
-    C , C1 ; L , L1 ; N , N1 ; nR1' , nR1'' , nR2 |- texpr <= norm_ret2 ~> texpr'
-    seq_texpr'' eq insert_lets ( res_bind , let comp pat , ret_pat = seq_expr' in texpr' )
-    ----------------------------------------------------------------------------------- :: Let
-    C ; L ; N ; nR1 , nR2 |- let comp pat = seq_expr in texpr <= norm_ret2 ~> seq_texpr''
+    C ; L ; N ; nR |- expr ~> bind res_bind for expr' : ret -| nR'
+    N |- ret ~> ret_pat
+    N |- ret_pat : sigma y : base_type . ret ~> C1 ; L1 ; N1 ; nR1
+    C , C1 ; L , L' , L1 ; N , N' , N1 ; nR' , nR1 |- texpr <= norm_ret2 ~> texpr'
+    texpr'' eq insert_lets ( res_bind , let ret_pat = expr' in texpr' )
+    ---------------------------------------------------------------------------------------- :: Let
+    C ; L ; N ; nR |- let _ret_pat = expr in texpr <= norm_ret2 ~> texpr''
 
 
-    C ; L ; N ; nR' |- texpr1 <= sigma y : base_type . norm_ret1 ~> texpr1'
+    C ; L ; N ; nR' |- texpr1 <= norm_ret1 ~> texpr1'
     N |- norm_ret1 ~> ret_pat
-    N |- comp pat , ret_pat : sigma y : base_type . norm_ret1 ~> C1 ; L1 ; N1 ; nR1
+    N |- ret_pat : norm_ret1 ~> C1 ; L1 ; N1 ; nR1
     C , C1 ; L , L1 ; N , N1 ; nR , nR1 |- texpr2 <= norm_ret2 ~> texpr2'
-    seq_texpr'' eq let comp pat , ret_pat : sigma y : base_type . norm_ret1 = texpr1' in texpr2'
+    texpr'' eq let ret_pat : norm_ret1 = texpr1' in texpr2'
     ---------------------------------------------------------------------- :: LetT
-    C ; L ; N ; nR' , nR |- let comp pat : sigma y : base_type . norm_ret1 = texpr1 in texpr2 <= norm_ret2 ~> seq_texpr''
-
-
-    C |- pval => base_type1
-    indexed pati : base_type1 ~> Ci with termi
-    indexed </ N , termi = inj pval ; nR ~> res_bindi // i />
-    indexed </ C , Ci ; L ; N , termi = inj pval ; nR |- insert_lets ( res_bindi , texpri ) <= norm_ret ~> texpr'i // i />
-    ------------------------------------------------------------------------------------------------------ :: Case
-    C ; L ; N ; nR |- case pval of </ | pati => texpri // i /> end <= norm_ret ~> case pval of </ | pati => texpr'i // i /> end
+    C ; L ; N ; nR' , nR |- let _ret_pat : norm_ret1 = texpr1 in texpr2 <= norm_ret2 ~> texpr''
 
 
     C |- pval => bool
@@ -671,23 +624,15 @@ defns
     C ; L ; N ; nR |- if pval then texpr1 else texpr2 <= norm_ret ~> if pval then insert_lets ( res_bind1 , texpr1' ) else insert_lets ( res_bind2 , texpr2' )
 
 
-    id :  norm_fun eq </ xi // i /> |-> texpr inEnv Globals
+    C |- pval => base_type1
+    indexed pati : base_type1 ~> Ci with termi
+    indexed </ N , termi = inj pval ; nR ~> res_bindi // i />
+    indexed </ C , Ci ; L ; N , termi = inj pval ; nR |- insert_lets ( res_bindi , texpri ) <= norm_ret ~> texpr'i // i />
+    ------------------------------------------------------------------------------------------------------ :: Case
+    C ; L ; N ; nR |- case pval of </ | pati => texpri // i /> end <= norm_ret ~> case pval of </ | pati => texpr'i // i /> end
+
+
+    id : norm_fun eq </ xi // i /> |-> texpr inEnv Globals
     C ; L ; N ; cdot |- </ xi = pvali // i /> :; norm_fun >> subs ; false /\ I
     ----------------------------------------------------------------------------- :: Run
     C ; L ; N ; cdot |- run id </ pvali // i /> <= false /\ I ~> run id </ pvali // i />
-
-
-  % DEFER out_seq_texpr'
-  defn CLNnR |- texpr <= norm_ret ~> texpr' :: :: Top :: Top_
-  {{ com top-level expression elaboration: given $[[CLNnR]]$, $[[texpr]]$ checks against $[[norm_ret]]$ and elaborates to $[[texpr']]$ }} by
-
-    C ; L ; N ; nR |- seq_texpr <= norm_ret ~> seq_texpr'
-    ------------------------------------------------------------- :: Seq
-    C ; L ; N ; nR |- seq_texpr <= norm_ret ~> seq_texpr'
-
-
-    C ; L ; N ; nR |- is_texpr <= norm_ret ~> texpr
-    ---------------------------------------------------- :: Is
-    C ; L ; N ; nR |- is_texpr <= norm_ret ~> texpr
-
-

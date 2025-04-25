@@ -89,12 +89,12 @@ grammar
 grammar
 
   ty_extra :: 'ty_extra_' ::= {{ com extra judgements for explicit and inference typing systems }}
-    | smt ( N => qterm )                                                     ::  :: smt                     {{ com check if $[[qterm]]$ is SMT-provable in constraint context $[[N]]$     }}
-    | x : out_base_type inEnv C                                              ::  :: x_in_C                  {{ com lookup type of $[[x]]$ in context $[[C]]$                     }}
-    | tagged tag & </ out_memberi : out_cti // i /> inEnv Globals            ::  :: struct_in_globals       {{ com lookup types of struct $[[tag]]$ members in $[[Globals]]$            }}
-    | a eq </ out_xi : out_base_typei // , // i /> |-> out_res inEnv Globals ::  :: res_pred_in_globals     {{ com lookup body of resource predicate $[[a]]$ in $[[Globals]]$             }}
-    | C ; L |- term => out_base_type                                         ::  :: term_synth_type         {{ com omitted/assumed definition: $[[ term ]]$ is (a) well-formed (b) annotated with $[[out_base_type]]$ }}
-    | pred_name1 != pred_name2                                               ::  :: pred_name_neq           {{ com check if $[[pred_name1]]$ and $[[pred_name2]]$ are unequal             }}
+    | smt ( N => qterm )                                                     ::  :: smt                     {{ com check if $[[qterm]]$ is SMT-provable in constraint context $[[N]]$    }}
+    | x : out_base_type inEnv C                                              ::  :: x_in_C                  {{ com lookup type of $[[x]]$ in context $[[C]]$                             }}
+    | tagged tag & </ out_memberi : out_cti // i /> inEnv Globals            ::  :: struct_in_globals       {{ com lookup types of struct $[[tag]]$ members in $[[Globals]]$             }}
+    | a eq </ out_xi : out_base_typei // , // i /> |-> out_res inEnv Globals ::  :: res_pred_in_globals     {{ com lookup body of resource predicate $[[a]]$ in $[[Globals]]$            }}
+    | C ; L |- term => out_base_type                                         ::  :: term_synth_type         {{ com omitted/assumed: $[[ term ]]$ is has type $[[out_base_type]]$         }}
+    | pred_name1 != pred_name2                                               ::  :: pred_name_neq           {{ com check if $[[pred_name1]]$ and $[[pred_name2]]$ are unequal            }}
 
 grammar
 
@@ -238,7 +238,7 @@ defns
     N |- if term1 then res11 else res12 eq if term2 then res21 else res22
 
 
-  defn N |- simp_rec ( res ) ~> out_res' , out_ty_bool :: :: Res_SimpRec_ :: Res_SimpRec_
+  defn N |- simp_rec ( res ) ~> out_res' , out_ty_bool :: :: Res_SimpRec :: Res_SimpRec_
   {{ com partial-simplification of resources: given constraints $[[N]]$, $[[res]]$ partially simplifies (strips ifs) to $[[out_res']]$ }} by
 
 
@@ -269,7 +269,7 @@ defns
     N |- simp_rec ( res ) ~> res , false
 
 
-  defn N |- simp ( res ) ~> opt_out_res :: :: Simp_ :: Simp_
+  defn N |- simp ( res ) ~> opt_out_res :: :: Simp :: Simp_
   {{ com partial-simplification of resources: given constraints $[[N]]$, $[[res]]$ attempts a partial simplification (strips ifs) to $[[opt_out_res]]$ }} by
 
 
@@ -316,7 +316,7 @@ defns
 defns
   pat_judge :: 'Pat_' ::=
 
-  defn pat : base_type ~> out_C with out_term :: :: Comp_ :: Comp_
+  defn pat : base_type ~> out_C with out_term :: :: Comp :: Comp_
   {{ com computational pattern to context: $[[pat]]$ and type $[[base_type]]$ produces context $[[out_C]]$ and constraint $[[out_term]]$ }} by
 
 
@@ -348,7 +348,7 @@ defns
     Array ( </ pati // i /> ) : array base_type ~> </ Ci // i /> with [| </ termi // i /> |]
 
 
-  defn L ; N |- res_pat : res ~> out_LNRp :: :: Res_Match_ :: Res_Match_
+  defn L ; N |- res_pat : res ~> out_LNRp :: :: Res_Match :: Res_Match_
   {{ com resources pattern to context: given constraints $[[N]]$, $[[res_pat]]$ of type $[[res]]$ produces contexts $[[out_LNRp]]$ }} by
 
 
@@ -374,8 +374,7 @@ defns
     L ; N |- res_pat : if term then res1 else res2 ~> L ; N ; R
 
 
-    {{ (replace res with res_norm for normalised contexts) }}
-    ------------------------------------------------- :: Var
+    ------------------------------------------ :: Var
     L ; N |- r : res ~> cdot ; cdot ; r : res
 
 
@@ -397,7 +396,7 @@ defns
     L ; N |- fold ( res_pat ) : a ( </ iargi // i /> ) ( oarg ) ~> L' ; N' ; R'
 
 
-  defn CLN |- ret_pat : ret ~> out_CLNRp :: :: Ret_ :: Ret_
+  defn CLN |- ret_pat : ret ~> out_CLNRp :: :: Ret :: Ret_
   {{ com return pattern to context: given context $[[ CLN ]]$, $[[ret_pat]]$ and return type $[[ret]]$ produces contexts $[[out_CLNRp]]$ }} by
 
 
@@ -440,7 +439,7 @@ defns
 defns
   expl_pure :: 'Pure_' ::=
 
-  defn C |- object_value => obj out_base_type :: :: Val_Obj_ :: Val_Obj_
+  defn C |- object_value => obj out_base_type :: :: Val_Obj :: Val_Obj_
   {{ com object value synthesises: given $[[C]]$, $[[object_value]]$ synthesises type $[[out_base_type]]$ }} by
 
 
@@ -643,35 +642,18 @@ defns
     C ; L ; N |- wrapI ( ct , pval ) => sigma y : integer . y = if abbrev2 =< max ct then abbrev2 else abbrev2 - abbrev1 /\ I
 
 
-  defn CLN |- tpval <= pure_ret :: :: Top_Val :: Top_Val_
-  {{ com pure top-level value checks: given $[[ CLN ]]$, $[[ tpval ]]$ checks against $[[ pure_ret ]]$ }} by
-
-    C |- pval => base_type
-    smt ( N => pval / y ( term ) )
-    -------------------------------------------- :: Done
-    C ; L ; N |- done pval <= sigma y : base_type . term /\ I
-
-
-    smt ( N => false )
-    ------------------- :: Undef
-    C ; L ; N |- undef UB_name <= sigma _ : _bt . _t /\ I
-
-
-    smt ( N => false )
-    ------------------ :: Error
-    C ; L ; N |- error pval <= sigma _ : _bt . _t /\ I
-
-
   defn CLN |- tpexpr <= pure_ret :: :: Top :: Top_
   {{ com pure top-level expression checks: given $[[CLN]]$, $[[tpexpr]]$ checks against $[[pure_ret]]$ }} by
 
+    C |- pval => base_type
+    smt ( N => pval / y ( term ) )
+    -------------------------------------------- :: PVal
+    C ; L ; N |- pval <= sigma y : base_type . term /\ I
 
-    % No need for propogating constraints
-    C |- pval => bool
-    C ; L ; N , inj pval = true  |- tpexpr1 <= sigma y : base_type . term /\ I
-    C ; L ; N , inj pval = false |- tpexpr2 <= sigma y : base_type . term /\ I
-    -------------------------------------------------------------------------------------------- :: If
-    C ; L ; N |- if pval then tpexpr1 else tpexpr2 <= sigma y : base_type . term /\ I
+
+    smt ( N => false )
+    ------------------- :: UB
+    C ; L ; N |- undef UB_name <= sigma _ : _bt . _t /\ I
 
 
     C ; L ; N |- pexpr => sigma y1 : base_type1 . term1 /\ I
@@ -686,6 +668,14 @@ defns
     C , C1 ; L ; N , term / y1 ( term1 ) |- tpexpr <= sigma y2 : base_type2 . term2 /\ I
     --------------------------------------------------------------------------------------------------------------------- :: LetT
     C ; L ; N |- let pat : pure_ret = tpexpr1 in tpexpr2 <= sigma y2 : base_type2 . term2 /\ I
+
+
+    % No need for propogating constraints
+    C |- pval => bool
+    C ; L ; N , inj pval = true  |- tpexpr1 <= sigma y : base_type . term /\ I
+    C ; L ; N , inj pval = false |- tpexpr2 <= sigma y : base_type . term /\ I
+    -------------------------------------------------------------------------------------------- :: If
+    C ; L ; N |- if pval then tpexpr1 else tpexpr2 <= sigma y : base_type . term /\ I
 
 
     C |- pval => base_type1
@@ -873,7 +863,7 @@ defns
     C ; L ; N ; R |- res_term <= res'
 
 defns
-  expl_spine :: 'Expl_' ::=
+  expl_spine :: '' ::=
 
   defn CLNR |- param_spine :; fon >> out_subs ; out_ret :: :: Spine :: Spine_
   {{ com function call spine checks: given $[[ CLNR ]]$, and $[[ param_spine ]]$ for function of type $[[ fon ]]$, produce
@@ -907,9 +897,9 @@ defns
     C ; L ; N ; R1 , R2 |- x = res_term , param_spine :; res --o fon >> [ res_term / x , subs ] ; ret
 
 defns
-  expl_is_expr :: 'Expl_' ::=
+  expl_action :: '' ::=
 
-  defn CLNR |- action => out_ret :: :: Is_Action :: Is_Action_
+  defn CLNR |- action => out_ret :: :: Action :: Action_
   {{ com memory action synthesises: given $[[CLNR]]$, $[[action]]$ synthesises return type $[[out_ret]]$ }} by
 
 
@@ -953,7 +943,10 @@ defns
     % DEFER (not implemented)
     % C ; L ; N ; ?? |- kill ( dynamic , v ) => ??
 
-  defn CLNR |- memop => out_ret :: :: Is_Memop :: Is_Memop_
+defns
+  expl_memop :: '' ::=
+
+  defn CLNR |- memop => out_ret :: :: Memop :: Memop_
   {{ com memory operation synthesises: given $[[CLNR]]$, $[[memop]]$ synthesises return type $[[out_ret]]$ }} by
 
     C |- pval1 => loc
@@ -1037,14 +1030,11 @@ defns
   % memcmp ( pval1 , pval2 , pval3 )
 
 
-  defn CLNR |- is_expr => out_ret :: :: Is :: Is_
-  {{ com indet. seq. expression synthesises: given $[[CLNR]]$, $[[is_expr]]$ synthesises return type $[[out_ret]]$ }} by
+defns
+  expl_texpr :: '' ::=
 
-
-    C ; L ; N ; R |- tval <= ret
-    ----------------------------------------- :: TVal
-    C ; L ; N ; R |- tval : ret => out_ret
-
+  defn CLNR |- expr => out_ret :: :: Expr :: Expr_
+  {{ com seq. expression synthesises: given $[[CLNR]]$, $[[expr]]$ synthesises return type $[[out_ret]]$ }} by
 
     C ; L ; N ; R |- memop => ret
     ----------------------------- :: Memop
@@ -1056,59 +1046,31 @@ defns
     C ; L ; N ; R |- action => ret
 
 
+    id : fon eq </ xi // i /> |-> texpr  inEnv Globals
+    C ; L ; N ; R |- </ xi = spine_elemi // i /> :; fon >> subs ; ret
+    ------------------------------------------------------------------ :: CCall
+    C ; L ; N ; R |- ccall ( ct , id , </ spine_elemi // i /> ) => ret
+
+
+    name : fon eq </ xi // i /> |-> texpr  inEnv Globals
+    C ; L ; N ; R |- </ xi = spine_elemi // i /> :; fon >> subs ; ret
+    ------------------------------------------------------------------ :: Proc
+    C ; L ; N ; R |- pcall ( name , </ spine_elemi // i /> ) => ret
+
+
     % TODO add unseq rules
     % </ C ; L ; N ; Ri |- texpri <= reti // i />
     % -------------------------------------------------------------------------------------------- :: Unseq
     % C ; L ; N ; </ Ri // i /> |- unseq ( </ texpri : reti // i /> ) => concat </ reti // i />
 
 
-defns
-  expl_seq_expr :: 'Expl_' ::=
+  defn CLNR |- texpr <= ret :: :: TExpr :: TExpr_
+  {{ com top-level expression checks: given $[[CLNR]]$, $[[texpr]]$ checks against return type $[[ret]]$ }} by
 
-  defn CLNR |- seq_expr => out_ret :: :: Seq :: Seq_
-  {{ com seq. expression synthesises: given $[[CLNR]]$, $[[seq_expr]]$ synthesises return type $[[out_ret]]$ }} by
-
-
-    id :  fon eq </ xi // i /> |-> texpr  inEnv Globals
-    C ; L ; N ; R |- </ xi = spine_elemi // i /> :; fon >> subs ; ret
-    ------------------------------------------------------------------------------ :: CCall
-    C ; L ; N ; R |- ccall ( ct , id , </ spine_elemi // i /> ) => ret
-
-
-    name :  fon eq </ xi // i /> |-> texpr  inEnv Globals
-    C ; L ; N ; R |- </ xi = spine_elemi // i /> :; fon >> subs ; ret
-    ------------------------------------------------------------------ :: Proc
-    C ; L ; N ; R |- pcall ( name , </ spine_elemi // i /> ) => ret
-
-
-defns
-  expl_top :: 'Expl_' ::=
-
-  defn CLNR |- tval <= ret :: :: Top_Val :: Top_Val_
-  {{ com top-level value checks: given $[[CLNR]]$, $[[tval]]$ checks against return type $[[ret]]$ }} by
 
     C ; L ; N ; R |- to_param ret_terms :; to_fun ret >> subs ; I
-    -------------------------------------------- :: Done
-    C ; L ; N ; R |- done < ret_terms > <= ret
-
-
-    smt ( N => false )
-    ----------------------------------------------- :: Undef
-    C ; L ; N ; cdot |- undef UB_name <= ret
-
-
-    smt ( N => false )
-    ------------------------------------------------------------- :: Error
-    C ; L ; N ; cdot |- error pval <= ret
-
-
-  defn CLNR |- seq_texpr <= ret :: :: Top_Seq :: Top_Seq_
-  {{ com top-level seq. expression checks: given $[[CLNR]]$, $[[seq_texpr]]$ checks against return type $[[ret]]$ }} by
-
-
-    C ; L ; N ; R |- tval <= ret
-    -------------------------------- :: Val
-    C ; L ; N ; R |- tval <= ret
+    -------------------------------------------- :: Ret_Terms
+    C ; L ; N ; R |- < ret_terms > <= ret
 
 
     C ; L ; N |- pexpr => sigma y : base_type . term /\ I
@@ -1125,11 +1087,11 @@ defns
     C ; L ; N ; R |- let pat : pure_ret = tpexpr in texpr <= ret
 
 
-    C ; L ; N ; R' |- seq_expr => ret1
+    C ; L ; N ; R' |- expr => ret1
     N |- ret_pat : ret1 ~> C1 ; L1 ; N1 ; R1
     C , C1 ; L , L1 ; N , N1 ; R , R1 |- texpr <= ret2
-    --------------------------------------------------------------- :: Let
-    C ; L ; N ; R' , R |- let ret_pat = seq_expr in texpr <= ret2
+    ---------------------------------------------------------- :: Let
+    C ; L ; N ; R' , R |- let ret_pat = expr in texpr <= ret2
 
 
     C ; L ; N ; R' |- texpr1 <= ret1
@@ -1157,38 +1119,3 @@ defns
     C ; L ; N ; cdot |- </ xi = pvali // i /> :; fon >> subs ; false /\ I
     ----------------------------------------------------------------- :: Run
     C ; L ; N ; cdot |- run id </ pvali // i /> <= false /\ I
-
-
-  defn CLNR |- is_texpr <= ret :: :: Top_Is :: Top_Is_
-  {{ com top-level indet. seq. expression checks: given $[[CLNR]]$, $[[is_texpr]]$ checks against return type $[[ret]]$ }} by
-
-
-    % % TODO let weak rules
-    % C ; L ; N ; R |- is_expr => ret1
-    % N |- ret_pat : ret1 ~> C1 ; L1 ; N1 ; R1
-    % C , C1 ; L , L1 ; N , N1 ; R , R1 |- texpr <= ret2
-    % --------------------------------------------------------------------------------------- :: LetW
-    % C ; L ; N ; R |- let weak ret_pat = is_expr in texpr <= ret2
-
-
-    % DEFER (not implemented) - memory events
-    C ; L ; N ; R' |- is_expr => ret1
-    N |- ret_pat : ret1 ~> C1 ; L1 ; N1 ; R1
-    C , C1 ; L , L1 ; N , N1 ; R , R1 |- texpr <= ret2
-    --------------------------------------------------------------------------------- :: LetS
-    C ; L ; N ; R' , R |- let strong ret_pat = is_expr in texpr <= ret2
-
-
-    % impl does Ret orFalse, for checking the body of a label (to ensure it doesn't return)
-  defn CLNR |- texpr <= ret :: :: Top :: Top_
-  {{ com top-level expression checks: given $[[CLNR]]$, $[[texpr]]$ checks against return type $[[ret]]$ }} by
-
-
-    C ; L ; N ; R |- is_texpr <= ret
-    --------------------------------------- :: Is
-    C ; L ; N ; R |- is_texpr <= ret
-
-
-    C ; L ; N ; R |- seq_texpr <= ret
-    ---------------------------------------- :: Seq
-    C ; L ; N ; R |- seq_texpr <= ret

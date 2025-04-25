@@ -1,11 +1,11 @@
 % vim: ft=tex
 % updated rules
-% PureExprArrayShift   ResSynPredOpsCongeal   ExplIsActionCreate        ExplIsMemopRelBinop
-% PureExprMemberShift  ResSynPredOpsImplode   ExplIsActionKillStatic    ExplIsMemopPtrDiffArr
-%                      ResSynPredOpsGlue                                ExplIsMemopPtrDiff
-%                      ResSynPredOpsInj                                 ExplIsMemopIntFromPtr
-%                                                                       ExplIsMemopPtrFromInt
-%                                                                       ExplIsMemopPtrArrayShift
+% PureExprArrayShift   ResSynPredOpsCongeal   ActionCreate        MemopRelBinop
+% PureExprMemberShift  ResSynPredOpsImplode   ActionKillStatic    MemopPtrDiffArr
+%                      ResSynPredOpsGlue                                MemopPtrDiff
+%                      ResSynPredOpsInj                                 MemopIntFromPtr
+%                                                                       MemopPtrFromInt
+%                                                                       MemopPtrArrayShift
 
 \PassOptionsToPackage{dvipsnames,usenames}{color}
 \documentclass[11pt]{article}%
@@ -183,7 +183,7 @@ containing the resources referred to by the value.
 \begin{theorem}[Progress for the annotated and let-normalised Core]
 If a top-level expression ($[[ texpr ]]$) is well-typed
 ($[[ cdot ; L0 ; N ; nR |- texpr <= ret ]]$) and all computational patterns
-in it are exhaustive, then either it is a value ($[[ tval ]]$), or it is
+in it are exhaustive, then either it is a value ($[[ < ret_terms > ]]$), or it is
 unreachable, or for all well-typed states ($[[ s <= N ; nR ]]$)
 then there exists another state ($[[ s' ]]$) and expression ($[[ texpr' ]]$)
 which is stepped to ($[[ < s ; texpr > --> < s' ; texpr' > ]]$)
@@ -236,7 +236,7 @@ and the top-level expression too
 A few things are noteworthy about the proof.
 
 First is that a frame-heap has to be explicitly passed around.  Whilst this is
-inconvenient, it becomes necessary in the \ExplTopSeqLetT{} case.
+inconvenient, it becomes necessary in the \TExprLetT{} case.
 % Don't think this applies any more.
 % The next is that proof that well-typed spines produce well-typed substitutions
 % require quantifying over the substitutions done \emph{so far}, so that the
@@ -278,9 +278,9 @@ $[[ C ; L |- term => out_base_type ]]$) judgement.\\
 \cnexplXXpure\cninterrule%
 \cnexplXXres\cninterrule %
 \cnexplXXspine\cninterrule%
-\cnexplXXisXXexpr\cninterrule%
-\cnexplXXseqXXexpr\cninterrule%
-\cnexplXXtop\cnafterlastrule%
+\cnexplXXaction\cninterrule%
+\cnexplXXmemop\cninterrule%
+\cnexplXXtexpr\cnafterlastrule%
 }
 
 \section{Operational Semantics Judgements}\label{sec:opsem_judge}
@@ -328,24 +328,23 @@ argue for the soundness of pattern-matching
 \ICmpComparable, \ReqEqPPIArgNeq, \ReqEqPPEq, \ResEqPhi, \ResEqOrdDisj,
 \ResSimpRecIfTrue, \ResSimpRecIfFalse, \RetEqPhi, \PatResMatchIfTrue,
 \PatResMatchIfFalse, \PureExprArrayShift, \PureExprMemberShift,
-\PureExprAssertUndef, \PureTopValDone, \PureTopValUndef,
-\PureTopValError, \ResSynPredOpsCongeal, \ResSynPredOpsImplode,
+\PureExprAssertUndef, \PureTopPVal, \PureTopUB,
+\ResSynPredOpsCongeal, \ResSynPredOpsImplode,
 \ResSynPredOpsBreak, \ResSynPredOpsGlue, \ResSynPredOpsInj, \ResSynPredOpsChop,
-\ResChkPhi, \ResChkIfTrue, \ResChkIfFalse, \ExplIsActionLoad,
-\ExplIsActionStore, \ExplIsActionKillStatic, \ExplIsMemopRelBinop,
-\ExplIsMemopPtrDiffArr, \ExplIsMemopPtrDiff, \ExplIsMemopIntFromPtr,
-\ExplIsMemopPtrFromInt, \ExplIsMemopPtrArrayShift,
-\ExplTopValUndef, \ExplTopValError.
+\ResChkPhi, \ResChkIfTrue, \ResChkIfFalse, \ActionLoad,
+\ActionStore, \ActionKillStatic, \MemopRelBinop,
+\MemopPtrDiffArr, \MemopPtrDiff, \MemopIntFromPtr,
+\MemopPtrFromInt, \MemopPtrArrayShift.
 
 \subsection{Typing rules which change the context}\label{subsec:ctx_change_rules}
 
 \subsubsection{Rules which add constraints}
-\ExplTopSeqIf.
+\TExprIf.
 
 
 \subsubsection{Rules which add constraints and computational or logical variables}
 
-\ExplTopSeqLetP, \ExplTopSeqLetTP, \ExplTopSeqCase.\\
+\TExprLetP, \TExprLetTP, \TExprCase.\\
 
 \subsubsection{Rules which restrict the resource context}
 
@@ -366,15 +365,15 @@ No-resource / ``pure'' rules: \IGCmpEq, \IGCmpLt, \IGCmpGt, \IGCmpNone,
 \PureValStruct, \PureExprVal, \PureExprCtorIvXOR, \PureExprArrayShift,
 \PureExprMemberShift, \PureExprNot, \PureExprArithBinop, \PureExprRelBinop,
 \PureExprBoolBinop, \PureExprCall, \PureExprAssertUndef, \PureExprBoolToInteger,
-\PureExprWrapI, \PureTopValUndef, \PureTopValError, \PureTopValDone,
-\MemopIsPtrValidForDeref, \MemopIsPtrWellAligned.\\[\baselineskip]
+\PureExprWrapI, \PureTopUB, \PureTopPVal,
+\MemopTExprPtrValidForDeref, \MemopTExprPtrWellAligned.\\[\baselineskip]
 
 Resource-mentioning rules: \ResSynEmp, \ResSynVar, \ResSynVarSimp, \ResSynPred,
-\ResSynIPred, \ResSynSepConj, \ResChkPhi, \ResChkSepConj, \ExplSpineRet,
-\ExplSpineRes, \ExplIsActionCreate, \ExplIsMemopRelBinop,
-\ExplIsMemopPtrDiffArr, \ExplIsMemopPtrDiff,
-\ExplIsMemopIntFromPtr, \ExplIsMemopPtrFromInt, \ExplIsMemopPtrArrayShift,
-\ExplTopValUndef, \ExplTopValError, \ExplTopSeqRun, \SubsChkEmpty, \SubsChkRes.
+\ResSynIPred, \ResSynSepConj, \ResChkPhi, \ResChkSepConj, \SpineRet,
+\SpineRes, \ActionCreate, \MemopRelBinop,
+\MemopPtrDiffArr, \MemopPtrDiff,
+\MemopIntFromPtr, \MemopPtrFromInt, \MemopPtrArrayShift,
+\TExprRun, \SubsChkEmpty, \SubsChkRes.
 
 \subsubsection{Rules which add constraints and restrict the resource context}
 \PureTopIf.
@@ -382,17 +381,16 @@ Resource-mentioning rules: \ResSynEmp, \ResSynVar, \ResSynVarSimp, \ResSynPred,
 \subsubsection{Rules which add constraints and variables, and
 restrict the resource context}
 
-\PureTopLet, \PureTopLetT, \PureTopCase, \ExplTopSeqLet, \ExplTopSeqLetT,
-\ExplTopIsLetS.
+\PureTopLet, \PureTopLetT, \PureTopCase, \TExprLet, \TExprLetT.
 
 \subsection{Value typing rules}\label{subsec:value_typing_rules}
 
 \PureValObjInt, \PureValObjPtr, \PureValObjArr, \PureValObjStruct, \PureValVar,
 \PureValObj, \PureValUnit, \PureValTrue, \PureValFalse,
 \PureValTuple, \PureValCtorNil, \PureValCtorCons, \PureValCtorTuple,
-\PureValCtorArray, \PureValStruct, \PureTopValDone,
+\PureValCtorArray, \PureValStruct, \PureTopPVal,
 \ResSynEmp, \ResSynVar, \ResSynVarSimp, \ResSynPred, \ResSynIPred,
-\ResChkPhi, \ExplTopValDone.
+\ResChkPhi, \TExprRetTerms.
 
 
 \section{Weakening}\label{sec:weakening}
@@ -521,7 +519,7 @@ $[[ exists ]] [[ N1 ]], [[ N2 ]] [[ . ]] [[ subs ( N1 , N2 ) ]] = [[ subs ( N1 )
 \pfsketch{ Induction over the typing judgements.\\
 \begin{pfenum*}
 \item Variable rules: \PureValVar, \ResSynVarSimp, \ResSynVar.
-\item \ExplTopValDone: prove that $\cnkw{to\_fun}$ commutes with substitution.
+\item \TExprRetTerms: prove that $\cnkw{to\_fun}$ commutes with substitution.
 \item \nameref{subsec:ctx_change_rules} (see~\ref{subsec:ctx_change_rules}).
 \item Remaining rules by straightforward induction.
 \end{pfenum*}\leavevmode\\[\baselineskip]}
@@ -621,7 +619,7 @@ $[[ exists ]] [[ N1 ]], [[ N2 ]] [[ . ]] [[ subs ( N1 , N2 ) ]] = [[ subs ( N1 )
     \pf{} Similar to \ResSynVarSimp}, but with $[[res']] = [[res]]$.}
 
 
-\step{<1>4}{\case{\ExplTopValDone.}{%
+\step{<1>4}{\case{\TExprRetTerms.}{%
 \pfsketch{
     $\cnkw{to\_fun}$ recursively maps
     $[[ sigma ]]$ to $[[ pi ]]$,
@@ -635,7 +633,7 @@ $[[ exists ]] [[ N1 ]], [[ N2 ]] [[ . ]] [[ subs ( N1 , N2 ) ]] = [[ subs ( N1 )
 \step{<1>5}{\case{\nameref{subsec:ctx_change_rules}
         (see~\ref{subsec:ctx_change_rules}), except for
         \PureValVar, \ResSynVar, and \ResSynVarSimp.}{%
-    For brevity, I shall only go over \ExplTopSeqLet, as it is one of the most
+    For brevity, I shall only go over \TExprLet, as it is one of the most
     general rules; one which adds constraints and variables, and restricts the
     resource context.\\[\baselineskip]
 
@@ -643,16 +641,16 @@ $[[ exists ]] [[ N1 ]], [[ N2 ]] [[ . ]] [[ subs ( N1 , N2 ) ]] = [[ subs ( N1 )
     required by the restrictions on the resource context. If a rule has a
     $[[ smt ( N => qterm ) ]]$ premise, then apply \lemmaref{subsec:sub_smt}}.\\[\baselineskip]
 
-    $[[ C' ; L' ; N ; R1' , R2' |- let ret_pat = seq_expr in texpr <= ret2 ]]$\\
+    $[[ C' ; L' ; N ; R1' , R2' |- let ret_pat = expr in texpr <= ret2 ]]$\\
     $[[ C ; L ; subs ( N ) ; R |- subs <= ( C' ; L' ; R1' , R2' ) ]]$.
-    \prove{ $[[ C ; L ; subs ( N ) ; R |- let ret_pat = subs ( seq_expr ) in subs ( texpr) <= subs ( ret2 ) ]]$.}}}
+    \prove{ $[[ C ; L ; subs ( N ) ; R |- let ret_pat = subs ( expr ) in subs ( texpr) <= subs ( ret2 ) ]]$.}}}
 
     \begin{proof}
 
     \step{<2>1}{%
         $[[ exists ]] [[ ret1 ]], [[ C3 ]], [[ L3 ]] , [[ N3 ]] , [[ R3 ]]$.
         \begin{pfenum}
-        \item $[[ C' ; L' ; N ; R1' |- seq_expr => ret1 ]]$
+        \item $[[ C' ; L' ; N ; R1' |- expr => ret1 ]]$
         \item $[[ N |- ret_pat : ret1 ~> C3 ; L3 ; N3 ; R3 ]]$
         \item $[[ C' , C3 ; L' , L3 ; N , N3 ; R2' , R3 |- texpr <= ret2 ]]$.
         \end{pfenum}
@@ -662,7 +660,7 @@ $[[ exists ]] [[ N1 ]], [[ N2 ]] [[ . ]] [[ subs ( N1 , N2 ) ]] = [[ subs ( N1 )
         \begin{pfenum}
         \item $[[ forall ]] [[ C ]], [[ L ]] , [[ R1 ]] , [[ subs1 ]].$\\
             $\left( [[ C ; L ; subs1 ( N ) ; R1 |- subs1 <= ( C' ; L' ; R1' ) ]] \right) [[=>]]$\\
-            $[[ C ; L ; subs1 ( N ) ; R1 |- subs1 ( seq_expr ) => subs1 ( ret1 ) ]]$.
+            $[[ C ; L ; subs1 ( N ) ; R1 |- subs1 ( expr ) => subs1 ( ret1 ) ]]$.
         \item $[[ forall ]] [[ C ]], [[ L ]] , [[ R4 ]] , [[ subs2 ]].$\\
             $\left( [[ C ; L ; subs2 ( N ) ; R4 |- subs2 <= ( C' ; L' ; cdot ) ]] \right) [[=>]]$\\
             $[[ subs2 ( N ) |- ret_pat : subs2 ( ret1 ) ~> C3 ; L3 ; subs2 ( N3 ) ; subs2 ( R3 ) ]]$.
@@ -697,11 +695,11 @@ $[[ exists ]] [[ N1 ]], [[ N2 ]] [[ . ]] [[ subs ( N1 , N2 ) ]] = [[ subs ( N1 )
         $[[ exists ]] [[ R1 ]], [[ R2 ]], [[ ret1 ]], [[ C3 ]], [[ L3 ]] , [[ N3 ]] , [[ R3 ]]$.
         \begin{pfenum}
         \item $[[ R ]] = [[ R1 , R2 ]]$
-        \item $[[ C ; L ; subs ( N ) ; R1 |- subs ( seq_expr ) => ret1 ]]$
+        \item $[[ C ; L ; subs ( N ) ; R1 |- subs ( expr ) => ret1 ]]$
         \item $[[ subs ( N ) |- ret_pat : subs ( ret1 ) ~> C3 ; L3 ; N3 ; R3 ]]$
         \item $[[ C , C3 ; L , L3 ; subs ( N ) , N3 ; R2 , R3 |- subs ( texpr ) <= subs ( ret2 ) ]]$.
         \end{pfenum}}
-        \pf{} By \ExplTopSeqLet.}
+        \pf{} By \TExprLet.}
 
     \step{<2>6}{%
         \pflet{$[[ R1 ]]; [[ R2 ]]; [[ subs ( ret1 ) ]];
@@ -710,7 +708,7 @@ $[[ exists ]] [[ N1 ]], [[ N2 ]] [[ . ]] [[ subs ( N1 , N2 ) ]] = [[ subs ( N1 )
         \suffices{
             \begin{pfenum}
             \item $[[ R ]] = [[ R1 , R2 ]]$
-            \item $[[ C ; L ; subs ( N ) ; R1 |- subs ( seq_expr ) => subs ( ret1 ) ]]$
+            \item $[[ C ; L ; subs ( N ) ; R1 |- subs ( expr ) => subs ( ret1 ) ]]$
             \item $[[ subs ( N ) |- ret_pat : subs ( ret1 ) ~> C3 ; L3 ; subs ( N3 ) ; subs ( R3 ) ]]$
             \item $[[ C , C3 ; L , L3 ; subs ( N ) , subs ( N3 ) ; R2 , subs ( R3 ) |- subs ( texpr ) <= subs ( ret2 ) ]]$.
             \end{pfenum}}}
@@ -1279,7 +1277,7 @@ arbitrary (not normalised).
 \step{<1>1}{\case{\PatRetEmpty}{%
     $[[ C ; L ; N |- : I ~> cdot ; cdot ; cdot ; cdot ]]$\\
     which means $[[ fon ]] = [[ I ]]$ (by inversion, \RelRetI)\\
-    and so $[[ cdot ; L0 ; N ; cdot |- :; I >> cdot ; I ]]$ (by inversion, \ExplSpineRet),\\
+    and so $[[ cdot ; L0 ; N ; cdot |- :; I >> cdot ; I ]]$ (by inversion, \SpineRet),\\
     and $[[ h ]] = [[ cdot ]]$ (by lemma~\ref{subsec:norm_ctx_det_heap}).\\
     Let $[[ h' ]] = [[ cdot ]]$, to step with \SubsPatRetEmpty.\\
     Let $[[ nR' ]] = [[ cdot ]]$, to type $[[ h' ]]$ with
@@ -1289,7 +1287,7 @@ arbitrary (not normalised).
     $[[ C ; L ; N |- comp pat , </ ret_patj // j /> : sigma y : base_type . ret ~> C1 , C2 ; L2 ; N2 ; R2 ]]$\\
     which means $[[ fon ]] = [[ pi x : base_type . fon' ]]$ (by inversion, \RelRetComp),\\
     and so $[[ cdot ; L0 ; N ; nR |- to_param pval , </ ret_termj // j /> :; pi x : base_type . fon' >> psi ; I ]]$
-    (by inversion, \ExplSpineComp).\\[\baselineskip]
+    (by inversion, \SpineComp).\\[\baselineskip]
 
     $[[ pat : base_type ~> C1 with term1 ]]$ (from the pattern-matching assumption),\\
     $[[ pat ]]$ is exhaustive (from the exhaustive asumption),\\
@@ -1378,7 +1376,7 @@ arbitrary (not normalised).
     $[[ C ; L ; N |- log y' , </ ret_patj // j /> : exists y : base_type . ret ~> C2 ; y' : base_type , L2 ; N2 ; R2 ]]$\\
     which means $[[ fon ]] = [[ forall x : base_type . fon' ]]$ (by inversion, \RelRetLog)\\
     and so $[[ cdot ; L0 ; N ; nR |- to_param oarg , </ ret_termj // j /> :; forall x : base_type . fon' >> psi ; I ]]$
-    (by inversion, \ExplSpineLog).\\[\baselineskip]
+    (by inversion, \SpineLog).\\[\baselineskip]
 
     $[[ C ; L , y : base_type ; N |- </ ret_patj // j /> : ret' ~> C2 ; L2 ; N2 ; R2 ]]$
     (from the pattern-matching assumption),\\
@@ -1409,7 +1407,7 @@ arbitrary (not normalised).
     $[[ C ; L ; N |- </ ret_pati // i /> : term' /\ ret' ~> C' ; L' ; N' , term' ; R' ]]$\\
     which means $[[ fon ]] = [[ term -) fon' ]]$ (by inversion, \RelRetPhi),\\
     and so $[[ cdot ; L0 ; N ; nR |- to_param </ ret_termj // j /> :;  term --o fon' >> psi ; I ]]$
-    (by inversion, \ExplSpineRes).\\[\baselineskip]
+    (by inversion, \SpineRes).\\[\baselineskip]
 
     $[[ C ; L ; N |- </ ret_pati // i /> : ret' ~> C' ; L' ; N' , term' ; R' ]]$
     (from the pattern-matching assumption)\\
@@ -1423,7 +1421,7 @@ arbitrary (not normalised).
     $[[ C ; L ; N |- reso res_pat , ret_pat : res' *o ret' ~> C4 ; L3, L4 ; N3, N4 ; R3 , R4 ]]$\\
     which means $[[ fon ]] = [[ res --o fon' ]]$ (by inversion, \RelRetRes),\\
     and so $[[ cdot ; L0 ; N ; nR1 , nR2 |- to_param res_term , spine :;  res --o fon >> psi ; I ]]$
-    (by inversion, \ExplSpineRes),
+    (by inversion, \SpineRes),
     and $[[ h ]] = [[ h1 + h2 ]]$ where $[[ alloct |- h1 <= nR1 ]]$ and $[[ alloct |- h2 <= nR2 ]]$
     (by lemma~\ref{subsec:norm_ctx_det_heap}).\\[\baselineskip]
 
@@ -1625,7 +1623,7 @@ arbitrary (not normalised).
     \end{pfenum}\leavevmode\\}
 
 \prove{%
-    Either $[[ texpr ]]$ is a value $[[ tval ]]$, or it is unreachable,
+    Either $[[ texpr ]]$ is a value $[[ < ret_terms > ]]$, or it is unreachable,
     or $[[ forall ]] [[ s ]] [[.]] ( [[ s <= N ; nR ]] ) [[ => ]]
     [[ exists ]] [[ s' ]] , [[ texpr' ]] [[ . ]]
         [[ < s ; texpr > --> < s' ; texpr' > ]]$.\\[\baselineskip]}
@@ -1639,9 +1637,9 @@ arbitrary (not normalised).
     are no operational rules corresponding to them (see Section~\ref{sec:opsem_judge}).}}
 
 \step{<1>2}{\case{%
-    \PureTopValUndef, \PureTopValError,\ExplTopValUndef, \ExplTopValError.
+    \PureTopUB.
 }{%
-    \pf{} All these rules require inconsistent constraint context, and so would
+    \pf{} This rule requires an inconsistent constraint context, and so would
     be unreachable.}}
 
 \step{<1>3}{\case{%
@@ -1754,12 +1752,12 @@ arbitrary (not normalised).
     step with \PETPWrapI.}}
 
 \step{<1>14}{\case{%
-    \PureTopIf, \PureTopCase, \PureTopLet, \PureTopLetT.
+     \PureTopLet, \PureTopLetT, \PureTopIf, \PureTopCase.
 }{%
-    \pf{} See \ExplTopSeqIf, \ExplTopSeqCase, \ExplTopSeqLet, \ExplTopSeqLetT,
+    \pf{} See  \TExprLet, \TExprLetT, \TExprIf, \TExprCase,
     case for more general proofs.}}
 
-\step{<1>15}{\case{\ExplIsActionCreate.}{}}
+\step{<1>15}{\case{\ActionCreate.}{}}
 
     \begin{proof}
 
@@ -1772,14 +1770,14 @@ arbitrary (not normalised).
         \pf{} By \HeapEmpty.}
 
     \step{<2>3}{%
-        Step with \ActionIsCreate.\\
+        Step with \ActionTExprCreate.\\
         \pf{} Since we assume all allocations succeed, $[[ addr ]]$ is
         constructible.  $[[ alloc_id ]]$ is simply a fresh allocation ID, and so
         $[[ ptr ]]$ can be constructed to satisfy the requirements.}
 
     \end{proof}
 
-\step{<1>16}{\case{\ExplIsActionLoad.}{}}
+\step{<1>16}{\case{\ActionLoad.}{}}
 
     \begin{proof}
 
@@ -1810,12 +1808,12 @@ arbitrary (not normalised).
         \pf{} By inversion on the term typing assumption in \stepref{<2>3} using
         \stepref{<2>4}, $[[ alloct |- h' <= nR' ]]$ and \lemmaref{subsec:norm_ctx_det_heap}.}
 
-    \step{<2>6}{Step with \ActionIsLoad.}
+    \step{<2>6}{Step with \ActionTExprLoad.}
 
     \end{proof}
 
 
-\step{<1>17}{\case{\ExplIsActionStore.}{%
+\step{<1>17}{\case{\ActionStore.}{%
 }}
 
     \begin{proof}
@@ -1848,11 +1846,11 @@ arbitrary (not normalised).
         \pf{} By inversion on the term typing assumption in \stepref{<2>3},
         $[[ alloct |- h' <= nR' ]]$ and \lemmaref{subsec:norm_ctx_det_heap}.}
 
-    \step{<2>6}{Step with \ActionIsStore.}
+    \step{<2>6}{Step with \ActionTExprStore.}
 
     \end{proof}
 
-\step{<1>18}{\case{\ExplIsActionKillStatic}{}}
+\step{<1>18}{\case{\ActionKillStatic}{}}
 
     \begin{proof}
 
@@ -1883,11 +1881,11 @@ arbitrary (not normalised).
         \pf{} By inversion on the typing assumption in \stepref{<2>3},
         $[[ alloct |- h' <= nR' ]]$ and \lemmaref{subsec:norm_ctx_det_heap}.}
 
-    \step{<2>6}{Step with \ActionIsKillStatic.}
+    \step{<2>6}{Step with \ActionTExprKillStatic.}
 
     \end{proof}
 
-\step{<1>19}{\case{\ExplIsMemopRelBinop.}{}}
+\step{<1>19}{\case{\MemopRelBinop.}{}}
 
     \begin{proof}
 
@@ -1924,22 +1922,22 @@ arbitrary (not normalised).
         \pf{} By inversion on the typing assumption in \stepref{<2>3},
         $[[ alloct |- h' <= nR' ]]$ and \lemmaref{subsec:norm_ctx_det_heap}.}
 
-    \step{<2>7}{Step with \MemopIsRelBinop.}
+    \step{<2>7}{Step with \MemopTExprRelBinop.}
 
     \end{proof}
 
 \step{<1>20}{\case{%
-    \ExplIsMemopPtrDiff, \ExplIsMemopPtrDiffArr.
+    \MemopPtrDiff, \MemopPtrDiffArr.
 }{%
-    \pf{} Similar to \ExplIsMemopRelBinop, so step with \MemopIsPtrDiff/\MemopIsPtrDiffArr respectively.
+    \pf{} Similar to \MemopRelBinop, so step with \MemopTExprPtrDiff/\MemopTExprPtrDiffArr respectively.
 }}
 
 \step{<1>21}{\case{%
-    \ExplIsMemopIntFromPtr.
+    \MemopIntFromPtr.
 }{%
-    \pf{} Similar to \ExplIsMemopRelBinop, so step with \MemopIsIntFromPtr.}}
+    \pf{} Similar to \MemopRelBinop, so step with \MemopTExprIntFromPtr.}}
 
-\step{<1>22}{\case{\ExplIsMemopPtrFromInt.}{}}
+\step{<1>22}{\case{\MemopPtrFromInt.}{}}
 
     \begin{proof}
 
@@ -1973,26 +1971,26 @@ arbitrary (not normalised).
         \pf{} By inversion on the typing assumption in \stepref{<2>3},
         $[[ alloct |- h' <= nR' ]]$ and \lemmaref{subsec:norm_ctx_det_heap}.}
 
-    \step{<2>7}{Step with \MemopIsPtrFromInt.}
+    \step{<2>7}{Step with \MemopTExprPtrFromInt.}
 
     \end{proof}
 
-\step{<1>23}{\case{\ExplIsMemopPtrValidForDeref.}{
+\step{<1>23}{\case{\MemopPtrValidForDeref.}{
     \pf{} $[[ pval ]]$ must be a $[[ ptr ]]$, so step with
-    \MemopIsPtrValidForDeref.}}
+    \MemopTExprPtrValidForDeref.}}
 
 \step{<1>24}{\case{%
-    \ExplIsMemopPtrWellAligned.
+    \MemopPtrWellAligned.
 }{%
     \pf{} $[[ pval ]]$ must be a $[[ ptr ]]$, so step with
-    \MemopIsPtrWellAligned.}}
+    \MemopTExprPtrWellAligned.}}
 
 \step{<1>25}{\case{%
-    \ExplIsMemopPtrArrayShift.
+    \MemopPtrArrayShift.
 }{%
-    \pf{} Similar to \ExplIsMemopRelBinop, so step with \MemopIsPtrArrayShift.}}
+    \pf{} Similar to \MemopRelBinop, so step with \MemopTExprPtrArrayShift.}}
 
-\step{<1>26}{\case{\ExplSeqCCall.}{}}
+\step{<1>26}{\case{\ExprCCall.}{}}
 
     \begin{proof}
 
@@ -2005,58 +2003,51 @@ arbitrary (not normalised).
         $[[ alloct | </ xi = spine_elemi // i /> :; fon >> < subs ; ret > ]]$.\\
         \pf{} By \stepref{<2>1} and \lemmaref{subsec:wt_spine_sub}.}
 
-    \step{<2>3}{Step with \SeqTCCall.}
+    \step{<2>3}{Step with \ExprTCCall.}
 
     \end{proof}
 
-\step{<1>27}{\case{\ExplSeqProc, \ExplTopSeqRun.}{%
-    \pf{} Similar to \ExplSeqCCall, but step with \SeqTProc{} / \TSeqTRun.}}
+\step{<1>27}{\case{\ExprProc, \TExprRun.}{%
+    \pf{} Similar to \ExprCCall, but step with \ExprTProc{} / \TTRun.}}
 
-\step{<1>28}{\case{\ExplIsMemop.}{%
+\step{<1>28}{\case{\ExprMemop.}{%
     \pf{} By induction, if $[[memop]]$ is unreachable, then the whole expression
     is so. $[[memop]]$s are not values. Only stepping cases applies, so
-    step with \IsIsMemop.}}
+    step with \ExprTMemop.}}
 
-\step{<1>29}{\case{\ExplIsAction.}{%
+\step{<1>29}{\case{\ExprAction.}{%
     \pf{} By induction, if $[[action]]$ is unreachable, then the whole
     expression is so. $[[action]]$s are not values. Only stepping case applies, so
-    step with \IsIsAction{}.}}
+    step with \ExprTAction{}.}}
 
-\step{<1>30}{\case{\ExplTopSeqLetP, \ExplTopSeqLetTP.}{%
-    \pf{} See \ExplTopSeqLet{} / \ExplTopSeqLetT{} for more general cases and proofs.}}
+\step{<1>30}{\case{\TExprLetP, \TExprLetTP.}{%
+    \pf{} See \TExprLet{} / \TExprLetT{} for more general cases and proofs.}}
 
-\step{<1>31}{\case{\ExplTopSeqLet.}{%
-    \pf{} By induction, since $[[seq_expr]]$ is not value, if it is unreachable,
-    the whole expression is so. If $[[seq_expr]]$ takes a step, the whole
-    expression steps with \TSeqTLetLetT.}}
+\step{<1>31}{\case{\TExprLet.}{%
+    \pf{} By induction, since $[[expr]]$ is not value, if it is unreachable,
+    the whole expression is so. If $[[expr]]$ takes a step, the whole
+    expression steps with \TTLetLetT.}}
 
-\step{<1>32}{\case{\ExplTopSeqLetT.}{%
+\step{<1>32}{\case{\TExprLetT.}{%
     \pf{} By induction, if $[[texpr]]$ is unreachable, so is the whole
     expression.\\[\baselineskip]
 
-    If if it a $[[tval]]$, use \lemmaref{subsec:wt_values_pat_match}, with
+    If if it is $[[< ret_terms >]]$, use \lemmaref{subsec:wt_values_pat_match}, with
     \lemmaref{subsec:tofun_ret_rel_ret} and the assumption that all
     patterns are exhaustive, so the whole expression steps with
-    \TSeqTLetTSub.\\[\baselineskip]
+    \TTLetTSub.\\[\baselineskip]
 
     If $[[texpr]]$ takes a step, the whole expression steps with
-    \TSeqTLetTLetT.}}
+    \TTLetTLetT.}}
 
-\step{<1>33}{\case{\ExplTopSeqCase.}{%
+\step{<1>33}{\case{\TExprCase.}{%
     \pf{} By assumption that all patterns are exhaustive, and
     \lemmaref{subsec:wt_values_pat_match}, there is at least one pattern against
-    which $[[pval]]$ will match, so \TSeqTCase.}}
+    which $[[pval]]$ will match, so \TTCase.}}
 
-\step{<1>34}{\case{\ExplTopSeqIf.}{%
+\step{<1>34}{\case{\TExprIf.}{%
     \pf{} $[[pval]]$ must be a $[[bool_value]]$ and so
-    \TSeqTIfTrue / \TSeqTIfFalse.}}
-
-\step{<1>36}{\case{\ExplTopIsLetS.}{%
-    \pf{} Similar to \ExplTopSeqLetT, but step with \TIsTLetSSub{} /
-    \TIsTLetSLetS instead.}}
-
-\step{<1>37}{\case{\ExplTopSeq, \ExplTopIs.}{%
-    \pf{} Step with \TTTSeqT{} / \TTTIsT{} respectively.}}
+    \TTIfTrue / \TTIfFalse.}}
 
 \end{proof}
 
@@ -2078,10 +2069,10 @@ arbitrary (not normalised).
 If $[[ C ; L ; N ; R |- Owned < _init , ct > ( ptrt ) <= ptrt' |- _init - ct -> inj pval ]]$ then
 $[[ C |- pval => to_base ( ct ) ]]$.
 
-\pfsketch{ Induction over the typing judgements. Only \ExplIsActionStore{}
+\pfsketch{ Induction over the typing judgements. Only \ActionStore{}
     constrains $[[ oarg ]]$ of $[[ Owned < _init , ct > ]]$ resources, and its
-    premises ensure it has type $[[ to_base ( ct ) ]]$; \ExplIsActionLoad{} and
-    \ExplIsMemopPtrValidForDeref{} simply propagate the value.}
+    premises ensure it has type $[[ to_base ( ct ) ]]$; \ActionLoad{} and
+    \MemopPtrValidForDeref{} simply propagate the value.}
 
 \subsection{Type Preservation Statement and Proof}
 
@@ -2130,7 +2121,7 @@ to deduce that $[[ nR' ]]$ can only be what you would have supplied anyways.
         so $[[ heap ]] = [[ h' + f ]]$ trivially and $[[ alloct |- cdot <= cdot ]]$ (by \HeapEmpty).}
 
     $[[ ret ]] = [[ sigma y : integer . y = xor_uf ( int1 , int2 ) /\ I ]]$\\[\baselineskip]
-    \pf{} By \PureTopValDone, suffices to show $[[ cdot |- int => integer ]]$
+    \pf{} By \PureTopPVal, suffices to show $[[ cdot |- int => integer ]]$
     (true by \PureValObjInt).}}
 
 \step{<1>2}{\case{%
@@ -2142,7 +2133,7 @@ to deduce that $[[ nR' ]]$ can only be what you would have supplied anyways.
         so $[[ heap ]] = [[ h' + f ]]$ trivially and $[[ alloct |- cdot <= cdot ]]$ (by \HeapEmpty).}
 
     $[[ ret ]] = [[ sigma y : loc . y = inj ptr' /\ I ]]$\\[\baselineskip]
-    \pf{} By \PureTopValDone, suffices to show $[[ cdot |- ptr' => loc ]]$
+    \pf{} By \PureTopPVal, suffices to show $[[ cdot |- ptr' => loc ]]$
     (true by \PureValObjPtr) and
     $[[ smt ( N => inj ptr' = array_shift < ct > ( inj ptr , int ) ) ]]$
     (true by definition of \PETPArrayShift).}}
@@ -2157,30 +2148,30 @@ to deduce that $[[ nR' ]]$ can only be what you would have supplied anyways.
 \step{<1>4}{\case{%
     \PureExprCall
 }{%
-    \pf{} See \ExplSeqCCall{} for a more general case and proof.}}
+    \pf{} See \ExprCCall{} for a more general case and proof.}}
 
 \step{<1>5}{\case{%
     \PureTopIf.
 }{%
-    \pf{} See \ExplTopSeqIf{} for a more general case and proof.}}
+    \pf{} See \TExprIf{} for a more general case and proof.}}
 
 \step{<1>6}{\case{%
     \PureTopLet.
 }{%
-    \pf{} See \ExplTopSeqLet{} for a more general case and proof.}}
+    \pf{} See \TExprLet{} for a more general case and proof.}}
 
 \step{<1>7}{\case{%
     \PureTopLetT.
 }{%
-    \pf{} See \ExplTopSeqLetT{} for a more general case and proof.}}
+    \pf{} See \TExprLetT{} for a more general case and proof.}}
 
 \step{<1>8}{\case{%
     \PureTopCase.
 }{%
-    \pf{} See \ExplTopSeqCase{} for a more general case and proof.}}
+    \pf{} See \TExprCase{} for a more general case and proof.}}
 
 \step{<1>9}{\case{%
-    \ExplIsActionCreate.
+    \ActionCreate.
 }{%
     \pflet{%
         $[[ ret ]] = [[ sigma yp : loc . term /\ exists x : to_base ( ct ) . ( yp |- Uninit - ct -> x ) *o I  ]]$\\
@@ -2203,7 +2194,7 @@ to deduce that $[[ nR' ]]$ can only be what you would have supplied anyways.
     (by \HeapPredOwned, \AllocTy, \StateTy).\\[\baselineskip]
 
     \prove{%
-        $[[ cdot ; L0 ; N' ; nR' |- done < ptr , default to_base ( ct ) , Owned < Uninit, ct > (  inj ptr ) > : ret => ret ]]$.\\[\baselineskip]}}
+        $[[ cdot ; L0 ; N' ; nR' |- < ptr , default to_base ( ct ) , Owned < Uninit, ct > (  inj ptr ) > <= ret ]]$.\\[\baselineskip]}}
 
     \begin{proof}
 
@@ -2216,14 +2207,14 @@ to deduce that $[[ nR' ]]$ can only be what you would have supplied anyways.
     \step{<2>4}{$[[ cdot ; L0 ; N ; nR'  |- Owned < Uninit , ct > ( inj ptr ) <= pt ]]$ by
         \ResSynPred.}
 
-    \step{<2>5}{Prove typing with \ExplSpineRet; \stepref{<2>4} -- \stepref{<2>1} with
-        \ExplSpineRes, \ExplSpineLog, \ExplSpinePhi, \ExplSpineComp{}
-        respectively; \ExplIsTVal{}.}
+    \step{<2>5}{Prove typing with \SpineRet; \stepref{<2>4} -- \stepref{<2>1} with
+        \SpineRes, \SpineLog, \SpinePhi, \SpineComp{}
+        respectively; \TExprRetTerms{}.}
 
     \end{proof}
 
 \step{<1>10}{\case{%
-    \ExplIsActionLoad.
+    \ActionLoad.
 }{%
     \pflet{%
         $[[ ret ]] = [[ sigma y : to_base ( ct ) . y = inj pval /\ ( inj ptr |- Init - ct -> inj pval ) *o I ]]$\\
@@ -2241,7 +2232,7 @@ to deduce that $[[ nR' ]]$ can only be what you would have supplied anyways.
     This means $[[ heap ]] = [[ h' + f ]]$, $[[ alloct |- h' <= nR' ]]$
     and $[[ cdot ; L0 ; N ; nR' |- Owned < Init , ct > ( inj ptr ) => pt ]]$.\\[\baselineskip]
 
-    \prove{$[[ cdot ; L0 ; N ; nR' |- done < pval , Owned < Init , ct > (  inj ptr ) > : ret => ret ]]$.\\}}}
+    \prove{$[[ cdot ; L0 ; N ; nR' |- < pval , Owned < Init , ct > (  inj ptr ) > <= ret ]]$.\\}}}
 
     \begin{proof}
 
@@ -2252,13 +2243,13 @@ to deduce that $[[ nR' ]]$ can only be what you would have supplied anyways.
 
     \step{<2>3}{$[[ cdot ; L0 ; N ; nR' |- Owned < Init , ct > ( inj ptr ) => pt ]]$, already established.}
 
-    \step{<2>4}{Prove typing with \ExplSpineRet; \stepref{<2>3} -- \stepref{<2>1} with
-        \ExplSpineRes, \ExplSpineLog, \ExplSpineComp{} respectively; \ExplIsTVal{}.}
+    \step{<2>4}{Prove typing with \SpineRet; \stepref{<2>3} -- \stepref{<2>1} with
+        \SpineRes, \SpineLog, \SpineComp{} respectively; \TExprRetTerms{}.}
 
     \end{proof}
 
 \step{<1>11}{\case{%
-    \ExplIsActionStore.
+    \ActionStore.
 }{%
     \pflet{%
         $[[ ret ]] = [[ sigma _ : unit . ( inj ptr |- Init - ct -> inj pval ) *o I ]]$.\\
@@ -2282,7 +2273,7 @@ to deduce that $[[ nR' ]]$ can only be what you would have supplied anyways.
     This means $[[ heap ]] = [[ h' + f ]]$ and $[[ alloct |- h' <= nR' ]]$ (by \HeapPredOwned).\\[\baselineskip]
 
     \prove{%
-        $[[ cdot ; L0 ; N ; nR' |- done < Unit , Owned < Init , ct > ( inj ptr )  > : ret => ret ]]$.\\[\baselineskip]}}}
+        $[[ cdot ; L0 ; N ; nR' |- < Unit , Owned < Init , ct > ( inj ptr )  > <= ret ]]$.\\[\baselineskip]}}}
 
     \begin{proof}
 
@@ -2291,13 +2282,13 @@ to deduce that $[[ nR' ]]$ can only be what you would have supplied anyways.
     \step{<2>2}{$[[ cdot ; L0 ; N ; _ : pt' |- Owned < Init , ct > ( inj ptr ) <= pt' ]]$
         by \ResSynPred.}
 
-    \step{<2>3}{Prove typing with \ExplSpineRet; \stepref{<2>2} -- \stepref{<2>1} with
-        \ExplSpineRes, \ExplSpineComp{} respectively; \ExplIsTVal{}.}
+    \step{<2>3}{Prove typing with \SpineRet; \stepref{<2>2} -- \stepref{<2>1} with
+        \SpineRes, \SpineComp{} respectively; \TExprRetTerms{}.}
 
     \end{proof}
 
 \step{<1>12}{\case{%
-    \ExplIsActionKillStatic.
+    \ActionKillStatic.
 }{%
 
     \assume{%
@@ -2317,12 +2308,12 @@ to deduce that $[[ nR' ]]$ can only be what you would have supplied anyways.
     This means $[[ heap ]] = [[ h' + f ]]$ and $[[ alloct |- h' <= nR' ]]$ (by \HeapEmpty).\\[\baselineskip]
 
     \prove{%
-        $[[ cdot ; L0 ; N ; cdot |- done < Unit > : sigma _ : unit . I => sigma _ : unit . I ]]$}
+        $[[ cdot ; L0 ; N ; cdot |- < Unit > <= sigma _ : unit . I ]]$}
 
-    \pf{} By \ExplSpineRet, \PureValUnit, \ExplSpineComp, \ExplIsTVal.}}
+    \pf{} By \SpineRet, \PureValUnit, \SpineComp, \TExprRetTerms.}}
 
 \step{<1>13}{\case{%
-    \ExplIsMemopRelBinop.
+    \MemopRelBinop.
 }{%
 
     \assume{%
@@ -2341,46 +2332,46 @@ to deduce that $[[ nR' ]]$ can only be what you would have supplied anyways.
     This means $[[ heap ]] = [[ f ]]$ and $[[ alloct |- h' <= nR' ]]$ (by \HeapPredOther, \HeapConcat).\\[\baselineskip]
 
     \prove{%
-        $[[ cdot ; L0 ; N ; nR' |- done < bool_value , < pred_term1 , pred_term2 > > : ret => ret ]]$}
+        $[[ cdot ; L0 ; N ; nR' |- < bool_value , < pred_term1 , pred_term2 > > <= ret ]]$}
 
-    \pf{} By \ExplSpineRet, \PureValUnit, \ExplSpineComp, \ExplSpinePhi{} (by construction of $[[ bool_value ]]$), \ExplSpineRes, \ExplIsTVal.}}
+    \pf{} By \SpineRet, \PureValUnit, \SpineComp, \SpinePhi{} (by construction of $[[ bool_value ]]$), \SpineRes, \TExprRetTerms.}}
 
 \step{<1>14}{\case{%
-    \ExplIsMemopPtrDiffArr, \ExplIsMemopPtrDiff.
+    \MemopPtrDiffArr, \MemopPtrDiff.
 }{%
-    \pf{} Similar to \ExplIsMemopRelBinop, but with only one $[[ Alloc ( ptrt ) ]]$ resource.}}
+    \pf{} Similar to \MemopRelBinop, but with only one $[[ Alloc ( ptrt ) ]]$ resource.}}
 
 \step{<1>15}{\case{%
-    \ExplIsMemopIntFromPtr.
+    \MemopIntFromPtr.
 }{%
-    \pf{} Similar to \ExplIsMemopRelBinop, but with only one $[[ Alloc ( ptrt ) ]]$ resource.}}
+    \pf{} Similar to \MemopRelBinop, but with only one $[[ Alloc ( ptrt ) ]]$ resource.}}
 
 \step{<1>16}{\case{%
-    \ExplIsMemopPtrFromInt.
+    \MemopPtrFromInt.
 }{%
-    \pf{} Similar to \ExplIsMemopIntFromPtr, with resource $[[ Owned < _init , ct > ( ptrt ) ]]$
+    \pf{} Similar to \MemopIntFromPtr, with resource $[[ Owned < _init , ct > ( ptrt ) ]]$
     instead of $[[ Alloc ( ptrt ) ]]$.
 }}
 
 \step{<1>17}{\case{%
-    \ExplIsMemopPtrValidForDeref, \ExplIsMemopPtrWellAligned.
+    \MemopPtrValidForDeref, \MemopPtrWellAligned.
 }{%
-    \pf{} Similar to \ExplIsMemopIntFromPtr, but with no resources.
+    \pf{} Similar to \MemopIntFromPtr, but with no resources.
 }}
 
 \step{<1>18}{\case{%
-    \ExplIsMemopPtrArrayShift.
+    \MemopPtrArrayShift.
 }{%
-    \pf{} Similar to \ExplIsMemopRelBinop, but with only one $[[ Alloc ( ptrt ) ]]$ resource.}}
+    \pf{} Similar to \MemopRelBinop, but with only one $[[ Alloc ( ptrt ) ]]$ resource.}}
 
 \step{<1>19}{\case{%
-    \ExplSeqCCall.
+    \ExprCCall.
 }{%
     \assume{%
         $[[ id : fon eq </ xi // i  /> |-> texpr inEnv Globals ]]$\\
         $[[ cdot ; L0 ; N ; nR |- </ xi = spine_elemi // i /> :; fon >> subs1 ; ret1 ]]$.\\
         $[[ alloct <= N ]]$\\
-        $[[ alloct | ccall ( ct , id , </ spine_elemi // i /> ) --> subs2 ( texpr ) : ret2 ]]$\\
+        $[[ < alloct ; h ; ccall ( ct , id , </ spine_elemi // i /> ) > --> < alloct ; h ; subs2 ( texpr ) : ret2 > ]]$\\
         $[[ cdot ; L0 ; N ; nR |- subs1 ( texpr ) <= ret1 ]]$
         (all top-level functions are well-typed assumption).\\[\baselineskip]}
 
@@ -2390,32 +2381,32 @@ to deduce that $[[ nR' ]]$ can only be what you would have supplied anyways.
     \pf{} By \lemmaref{subsec:wt_spine_sub} and $[[ alloct <= N ]]$.}}
 
 \step{<1>20}{\case{%
-    \ExplSeqProc.
+    \ExprProc.
 }{%
-    \pf{}  Similar to \ExplSeqCCall.}}
+    \pf{}  Similar to \ExprCCall.}}
 
 \step{<1>21}{\case{%
-    \ExplIsMemop, \ExplIsAction.
+    \ExprMemop, \ExprAction.
 }{%
     \pf{} By induction.}}
 
 \step{<1>22}{\case{%
-    \ExplTopSeqLetP, \ExplTopSeqLetTP, \ExplTopSeqLet.
+    \TExprLetP, \TExprLetTP, \TExprLet.
 }{%
-    \pf{} See \ExplTopSeqLetT for a more general case and proof.}}
+    \pf{} See \TExprLetT for a more general case and proof.}}
 
 \step{<1>23}{\case{%
-    \ExplTopSeqLetT.
+    \TExprLetT.
 }{%
     \assume{%
-        $[[cdot ; L0 ; N ; nR1 , nR2 |- let </ ret_pati // i /> : ret1 = done < </ ret_termi // i /> > in texpr2 <= ret2]]$\\
-        so $[[ cdot ; L0 ; N ; nR1 |- done < </ ret_termi // i /> > <= ret1 ]]$\\
+        $[[cdot ; L0 ; N ; nR1 , nR2 |- let </ ret_pati // i /> : ret1 = < </ ret_termi // i /> > in texpr2 <= ret2]]$\\
+        so $[[ cdot ; L0 ; N ; nR1 |- < </ ret_termi // i /> > <= ret1 ]]$\\
         and $[[ N |- ret_pat : ret1 ~> C3 ; L3 ; N3 ; R3 ]]$\\
         and $[[ C3 ; L0 , L3 ; N , N3 ; nR2 , R3 |- texpr2 <= ret2 ]]$ (by inversion).\\[\baselineskip]}
 
     $[[ alloct |- h <= nR1, nR2 ]]$ so $[[ h ]] = [[ h1 + h2 ]]$ where $[[ alloct |- h1 <= nR1 ]]$ and $[[ alloct |- h2 <= nR2 ]]$
     by \lemmaref{subsec:norm_ctx_det_heap}.\\
-    $[[ < alloct ; h + f ; let </ ret_pati // i /> : ret1 = done < </ ret_termi // i /> > in texpr > --> < alloct' ; heap ; subs ( texpr ) > ]]$.\\
+    $[[ < alloct ; h + f ; let </ ret_pati // i /> : ret1 = < </ ret_termi // i /> > in texpr > --> < alloct' ; heap ; subs ( texpr ) > ]]$.\\
     where $[[ < h ; </ ret_pati = ret_termi // i /> > ~> < heap ; subs > ]]$.\\[\baselineskip]
 
     \prove{$[[ exists ]] [[ N' ]] , [[ h' ]] , [[ nR' ]] [[ . ]]$\\
@@ -2434,7 +2425,7 @@ to deduce that $[[ nR' ]]$ can only be what you would have supplied anyways.
     because it is well-formed w.r.t $[[ cdot ]] ; [[ L0 ]]$.}}
 
 \step{<1>24}{\case{%
-    \ExplTopSeqLetT.
+    \TExprLetT.
 }{%
     \assume{%
         $[[ cdot ; L0 ; N ; nR1 , nR2 |- let </ ret_pati // i /> : ret1 = texpr1 in texpr2 <= ret2 ]]$\\
@@ -2447,7 +2438,7 @@ to deduce that $[[ nR' ]]$ can only be what you would have supplied anyways.
     with $[[ h2 + f ]]$.\\}}
 
 \step{<1>25}{\case{%
-    \ExplTopSeqCase.
+    \TExprCase.
 }{%
     \assume{%
         $[[ cdot ; L0 ; N ; nR |- case pval of </ | pati => texpri // i /> end <= ret ]]$\\
@@ -2468,19 +2459,14 @@ to deduce that $[[ nR' ]]$ can only be what you would have supplied anyways.
     by \lemmaref{subsec:sub}.}}
 
 \step{<1>26}{\case{%
-    \ExplTopSeqIf.
+    \TExprIf.
 }{
-    See \ExplTopSeqCase{} for more general case and proof.}}
+    See \TExprCase{} for more general case and proof.}}
 
 \step{<1>27}{\case{%
-    \ExplTopSeqRun.
+    \TExprRun.
 }{%
-    \pf{} Similar to \ExplSeqCCall.}}
-
-\step{<1>29}{\case{%
-    \ExplTopIsLetS.
-}{%
-    \pf{} Similar to \ExplTopSeqLetT.}}
+    \pf{} Similar to \ExprCCall.}}
 
 \end{proof}
 
@@ -2495,7 +2481,7 @@ $[[ forall ]] i, j [[.]]$ if $[[ i != j ]] [[ /\ ]] [[ A [ i ] = ( ptrt1 , term1
 [ [[ ptrt2 ]] , [[ ptrt2 + term2 ]] ] = \emptyset$.
 
 \pfsketch{ Induction over the operational rules. The allocation histories are only extended
-in the \VipAlloc{} and \ActionIsCreate{}, both of which use $\mathtt{newAlloc}$ as defined
+in the \VipAlloc{} and \ActionTExprCreate{}, both of which use $\mathtt{newAlloc}$ as defined
 the VIP paper (Lepigre et.~al, 2022) to only allocate new addresses which (amongst other conditions)
 have ranges which are disjoint with allocations so far.}
 
@@ -2566,11 +2552,11 @@ have ranges which are disjoint with allocations so far.}
     transitions preserve that invariant.\\[\baselineskip]}
 
 \assume{\begin{pfenum}
-    \item $[[ cdot ; L0 ; N ; nR |- is_expr => ret ]]$
-    \item $[[ cdot ; L0 ; N' ; nR' |- is_expr' => ret ]]$
+    \item $[[ cdot ; L0 ; N ; nR |- expr => ret ]]$
+    \item $[[ cdot ; L0 ; N' ; nR' |- texpr <= ret ]]$
     \item $[[ alloct ; h <= N ; nR ]]$
     \item $[[ alloct' ; h' <= N' ; nR' ]]$
-    \item $[[ < alloct ; h ; is_expr > --> < alloct' ; h' ; is_expr' > ]]$
+    \item $[[ < alloct ; h ; expr > --> < alloct' ; h' ; texpr : ret > ]]$
     \item $[[ ( A , M ) |= h ]]$
 \end{pfenum}\leavevmode\\}
 
@@ -2581,7 +2567,7 @@ have ranges which are disjoint with allocations so far.}
     \end{pfenum}\leavevmode\\[\baselineskip]}
 
 \step{<1>1}{\case{%
-    \ActionIsCreate.
+    \ActionTExprCreate.
 }{%
     \pf{} \pflet{ $[[ A' ]] = [[ A [ alloc_id ] := ( addr , sizeof ct , true ) ]]$ \\
     $[[ M' ]] = [[ M [ addr dd addr + sizeof ct - 1 ] ]] :=
@@ -2595,7 +2581,7 @@ have ranges which are disjoint with allocations so far.}
     $[[ ( A , M ) |= h ]]$ by assumption and so \SatHeapConcat{} proves heap satisfation overall.}}
 
 \step{<1>2}{\case{%
-    \ActionIsKillStatic.
+    \ActionTExprKillStatic.
 }{%
     \pf{} Since $[[ h ]] = [[ h1 + { Alloc ( ptrt ) ( sizeof ct ) & None } + { Owned < _init , ct > ( ptrt ) ( _t ) & None } ]]$,
     where $[[ ptrt = ( @ alloc_id , addr ) ]]$ and \lemmaref{subsec:res_term_red_sat},
@@ -2607,7 +2593,7 @@ have ranges which are disjoint with allocations so far.}
     $[[ alloct ]]$ remains consistent with $[[ A' ]]$ (by premise 2 of \SatStateDef{}).}}
 
 \step{<1>3}{\case{%
-    \MemopIsPtrFromInt.
+    \MemopTExprPtrFromInt.
 }{%
     \pf{} Since $[[ h' ]] = [[ h1 + { Owned < _init , ct > ( ptrt ) ( _t ) & None } ]]$,
     \lemmaref{subsec:res_term_red_sat}, and $[[ alloct ]]$ and $[[ A ]]$ are
@@ -2621,7 +2607,7 @@ have ranges which are disjoint with allocations so far.}
     Since $[[ ( A , M ) ]]$ doesn't change, satisfaction is preserved.\\}}
 
 \step{<1>4}{\case{%
-    \MemopIsIntFromPtr.
+    \MemopTExprIntFromPtr.
 }{%
     \pf{} Since $[[ h' ]] = [[ h1 + { Alloc ( ptrt ) ( term ) & None } ]]$,
     \lemmaref{subsec:res_term_red_sat}, and $[[ alloct ]]$ and $[[ A ]]$ are
@@ -2640,7 +2626,7 @@ have ranges which are disjoint with allocations so far.}
     Since $[[ ( A , M ) ]]$ doesn't change, satisfaction is preserved.}}
 
 \step{<1>5}{\case{%
-    \ActionIsLoad.
+    \ActionTExprLoad.
 }{%
     \pf{} Since , $[[ h' ]] = [[ h1 + { ptrt |- init - ct -> inj pval & None } ]]$,
     \lemmaref{subsec:res_term_red_sat}, and $[[ alloct ]]$ and $[[ A ]]$ are
@@ -2656,9 +2642,9 @@ have ranges which are disjoint with allocations so far.}
     Since $[[ ( A , M ) ]]$ doesn't change, satisfaction is preserved.}}
 
 \step{<1>6}{\case{%
-    \ActionIsStore.
+    \ActionTExprStore.
 }{%
-    \pf{} Like \ActionIsLoad{}, but without the extra condition
+    \pf{} Like \ActionTExprLoad{}, but without the extra condition
     using $\mathtt{abst}$ (by \SatHeapOwned). Note that since
     $[[ ( A , M ) |= h1 + { pt & None } ]]$ (by \lemmaref{subsec:res_term_red_sat}),
     $[[ M = M1 + M2 ]]$ where $[[ ( A , M1 ) |= h1 ]]$ and $[[ ( A , M2 ) |= { pt & None } ]]$.\\[\baselineskip]
@@ -2674,7 +2660,7 @@ have ranges which are disjoint with allocations so far.}
 % Low priority
 
 \step{<1>7}{\case{%
-    \MemopIsPtrDiff, \MemopIsPtrDiffArr.
+    \MemopTExprPtrDiff, \MemopTExprPtrDiffArr.
 }{%
     \pf{} Since $[[ h' ]] = [[ h1 + { Alloc ( ptrt ) ( term ) & None } ]]$,
     \lemmaref{subsec:res_term_red_sat}, and $[[ alloct ]]$ and $[[ A ]]$ are
@@ -2688,9 +2674,9 @@ have ranges which are disjoint with allocations so far.}
     change, satisfaction is preserved.}}
 
 \step{<1>8}{\case{%
-    \PETPArrayShift, \MemopIsPtrArrayShift.
+    \PETPArrayShift, \MemopTExprPtrArrayShift.
 }{%
-    % \PETPArrayShift is not an is_expr but here for sake of completeness wrt VIP.
+    % \PETPArrayShift is not an expr but here for sake of completeness wrt VIP.
 
     In both cases, since $[[ alloct ]]$ and $[[ A ]]$ are consistent (by premise 2 of \SatStateDef),
     we have $[[ A [ alloc_id ] = ( addri , termi , _t ) ]]$.
@@ -2705,11 +2691,11 @@ have ranges which are disjoint with allocations so far.}
 \step{<1>9}{\case{%
     \PETPMemberShift.
 }{%
-    % \PETPMemberShift is not an is_expr but here for sake of completeness wrt VIP.
+    % \PETPMemberShift is not an expr but here for sake of completeness wrt VIP.
     Similar to \PETPArrayShift, but stepping with \VipMember{} instead.}}
 
 \step{<1>10}{\case{%
-    \MemopIsRelBinop.
+    \MemopTExprRelBinop.
 }{%
     \pf{} Since $[[ h' ]] = [[ h1 + { Alloc ( ptrt1 ) ( term1 ) & None } + { Alloc ( ptrt2 ) ( term2 ) & None } ]]$,
     \lemmaref{subsec:res_term_red_sat}, and \SatHeapAlloc, we must have
@@ -2726,14 +2712,14 @@ have ranges which are disjoint with allocations so far.}
 
 \step{<1>11}{\case{%
     \PETPPtrEq.
-    % \PETPPtrEq is not an is_expr but here for sake of completeness wrt VIP.
+    % \PETPPtrEq is not an expr but here for sake of completeness wrt VIP.
 }{%
     \pf{} Step with \VipEqOpPtr{}; since $[[ ( A , M ) ]]$ doesn't change,
     satisfaction is preserved.}}
 
 \step{<1>12}{\case{%
     \PETPRelBinop, \PETPArithBinop.
-    % \PETP{Rel,Arith}Binop are not is_expr but here for sake of completeness wrt VIP.
+    % \PETP{Rel,Arith}Binop are not expr but here for sake of completeness wrt VIP.
 }{%
     \pf{} Step with \VipRelOpInt{} and \VipArithBinOp{}; since $[[ ( A , M ) ]]$
     doesn't change, satisfaction is preserved.}}
@@ -2825,12 +2811,11 @@ have ranges which are disjoint with allocations so far.}
 \step{<0>85}{\case{\PureExprAssertUndef}{}}
 \step{<0>86}{\case{\PureExprBoolToInteger}{}}
 \step{<0>87}{\case{\PureExprWrapI}{}}
-\step{<0>88}{\case{\PureTopValDone}{}}
-\step{<0>89}{\case{\PureTopValUndef}{}}
-\step{<0>90}{\case{\PureTopValError}{}}
-\step{<0>91}{\case{\PureTopIf}{}}
+\step{<0>88}{\case{\PureTopPVal}{}}
+\step{<0>89}{\case{\PureTopUB}{}}
 \step{<0>92}{\case{\PureTopLet}{}}
 \step{<0>93}{\case{\PureTopLetT}{}}
+\step{<0>91}{\case{\PureTopIf}{}}
 \step{<0>94}{\case{\PureTopCase}{}}
 \step{<0>95}{\case{\ResSynPredOpsIterate}{}}
 \step{<0>96}{\case{\ResSynPredOpsCongeal}{}}
@@ -2854,42 +2839,35 @@ have ranges which are disjoint with allocations so far.}
 \step{<0>114}{\case{\ResChkIfTrue}{}}
 \step{<0>115}{\case{\ResChkIfFalse}{}}
 \step{<0>116}{\case{\ResChkSwitch}{}}
-\step{<0>117}{\case{\ExplSpineRet}{}}
-\step{<0>118}{\case{\ExplSpineComp}{}}
-\step{<0>119}{\case{\ExplSpineLog}{}}
-\step{<0>120}{\case{\ExplSpinePhi}{}}
-\step{<0>121}{\case{\ExplSpineRes}{}}
-\step{<0>122}{\case{\ExplIsActionCreate}{}}
-\step{<0>123}{\case{\ExplIsActionLoad}{}}
-\step{<0>124}{\case{\ExplIsActionStore}{}}
-\step{<0>125}{\case{\ExplIsActionKillStatic}{}}
-\step{<0>126}{\case{\ExplIsMemopRelBinop}{}}
-\step{<0>127}{\case{\ExplIsMemopPtrDiffArr}{}}
-\step{<0>128}{\case{\ExplIsMemopPtrDiff}{}}
-\step{<0>129}{\case{\ExplIsMemopIntFromPtr}{}}
-\step{<0>130}{\case{\ExplIsMemopPtrFromInt}{}}
-\step{<0>131}{\case{\ExplIsMemopPtrValidForDeref}{}}
-\step{<0>132}{\case{\ExplIsMemopPtrWellAligned}{}}
-\step{<0>133}{\case{\ExplIsMemopPtrArrayShift}{}}
-\step{<0>134}{\case{\ExplIsTVal}{}}
-\step{<0>135}{\case{\ExplIsMemop}{}}
-\step{<0>136}{\case{\ExplIsAction}{}}
-\step{<0>138}{\case{\ExplSeqCCall}{}}
-\step{<0>139}{\case{\ExplSeqProc}{}}
-\step{<0>140}{\case{\ExplTopValDone}{}}
-\step{<0>141}{\case{\ExplTopValUndef}{}}
-\step{<0>142}{\case{\ExplTopValError}{}}
-\step{<0>143}{\case{\ExplTopSeqVal}{}}
-\step{<0>144}{\case{\ExplTopSeqLetP}{}}
-\step{<0>145}{\case{\ExplTopSeqLetTP}{}}
-\step{<0>146}{\case{\ExplTopSeqLet}{}}
-\step{<0>147}{\case{\ExplTopSeqLetT}{}}
-\step{<0>148}{\case{\ExplTopSeqCase}{}}
-\step{<0>149}{\case{\ExplTopSeqIf}{}}
-\step{<0>150}{\case{\ExplTopSeqRun}{}}
-\step{<0>152}{\case{\ExplTopIsLetS}{}}
-\step{<0>153}{\case{\ExplTopIs}{}}
-\step{<0>154}{\case{\ExplTopSeq}{}}
+\step{<0>117}{\case{\SpineRet}{}}
+\step{<0>118}{\case{\SpineComp}{}}
+\step{<0>119}{\case{\SpineLog}{}}
+\step{<0>120}{\case{\SpinePhi}{}}
+\step{<0>121}{\case{\SpineRes}{}}
+\step{<0>122}{\case{\ActionCreate}{}}
+\step{<0>123}{\case{\ActionLoad}{}}
+\step{<0>124}{\case{\ActionStore}{}}
+\step{<0>125}{\case{\ActionKillStatic}{}}
+\step{<0>126}{\case{\MemopRelBinop}{}}
+\step{<0>127}{\case{\MemopPtrDiffArr}{}}
+\step{<0>128}{\case{\MemopPtrDiff}{}}
+\step{<0>129}{\case{\MemopIntFromPtr}{}}
+\step{<0>130}{\case{\MemopPtrFromInt}{}}
+\step{<0>131}{\case{\MemopPtrValidForDeref}{}}
+\step{<0>132}{\case{\MemopPtrWellAligned}{}}
+\step{<0>133}{\case{\MemopPtrArrayShift}{}}
+\step{<0>135}{\case{\ExprMemop}{}}
+\step{<0>136}{\case{\ExprAction}{}}
+\step{<0>138}{\case{\ExprCCall}{}}
+\step{<0>139}{\case{\ExprProc}{}}
+\step{<0>140}{\case{\TExprRetTerms}{}}
+\step{<0>144}{\case{\TExprLetP}{}}
+\step{<0>145}{\case{\TExprLetTP}{}}
+\step{<0>146}{\case{\TExprLet}{}}
+\step{<0>147}{\case{\TExprLetT}{}}
+\step{<0>148}{\case{\TExprCase}{}}
+\step{<0>149}{\case{\TExprIf}{}}
+\step{<0>150}{\case{\TExprRun}{}}
 
 % Inference
 \step{<0>155}{\case{\PinINameNeq}{}}
@@ -2924,23 +2902,23 @@ have ranges which are disjoint with allocations so far.}
 \step{<0>184}{\case{\OargAssert}{}}
 \step{<0>185}{\case{\OargTakePred}{}}
 \step{<0>186}{\case{\OargTakeIPred}{}}
-\step{<0>187}{\case{\ElabIsActionCreate}{}}
-\step{<0>188}{\case{\ElabIsActionLoad}{}}
-\step{<0>189}{\case{\ElabIsActionStore}{}}
-\step{<0>190}{\case{\ElabIsActionKillStatic}{}}
-\step{<0>191}{\case{\ElabIsMemopRest}{}}
-\step{<0>192}{\case{\ElabIsMemop}{}}
-\step{<0>193}{\case{\ElabIsAction}{}}
-\step{<0>195}{\case{\ElabIsFold}{}}
-\step{<0>196}{\case{\ElabIsUnfold}{}}
+\step{<0>187}{\case{\ElabActionCreate}{}}
+\step{<0>188}{\case{\ElabActionLoad}{}}
+\step{<0>189}{\case{\ElabActionStore}{}}
+\step{<0>190}{\case{\ElabActionKillStatic}{}}
+\step{<0>191}{\case{\ElabMemopRest}{}}
 \step{<0>197}{\case{\ElabSpineEmpty}{}}
 \step{<0>198}{\case{\ElabSpineComp}{}}
 \step{<0>199}{\case{\ElabSpineTakePred}{}}
 \step{<0>200}{\case{\ElabSpineTakeIPred}{}}
 \step{<0>201}{\case{\ElabSpineMiddleIf}{}}
 \step{<0>202}{\case{\ElabSpinePhi}{}}
-\step{<0>203}{\case{\ElabSeqCCall}{}}
-\step{<0>204}{\case{\ElabSeqProc}{}}
+\step{<0>192}{\case{\ElabExprMemop}{}}
+\step{<0>193}{\case{\ElabExprAction}{}}
+\step{<0>203}{\case{\ElabExprCCall}{}}
+\step{<0>204}{\case{\ElabExprProc}{}}
+\step{<0>195}{\case{\ElabExprFold}{}}
+\step{<0>196}{\case{\ElabExprUnfold}{}}
 \step{<0>205}{\case{\ElabResPatEmpty}{}}
 \step{<0>206}{\case{\ElabResPatPhi}{}}
 \step{<0>207}{\case{\ElabResPatIfTrue}{}}
@@ -2951,22 +2929,17 @@ have ranges which are disjoint with allocations so far.}
 \step{<0>212}{\case{\ElabRetPatI}{}}
 \step{<0>213}{\case{\ElabRetPatRes}{}}
 \step{<0>214}{\case{\ElabRetPatLog}{}}
-\step{<0>215}{\case{\ElabTopIsLetS}{}}
-\step{<0>216}{\case{\ElabTopValDone}{}}
-\step{<0>217}{\case{\ElabTopValUndef}{}}
 \step{<0>218}{\case{\ElabSimpCtxEmpty}{}}
 \step{<0>219}{\case{\ElabSimpCtxSimp}{}}
 \step{<0>220}{\case{\ElabSimpCtxSkip}{}}
-\step{<0>221}{\case{\ElabTopSeqTVal}{}}
-\step{<0>222}{\case{\ElabTopSeqLetP}{}}
-\step{<0>223}{\case{\ElabTopSeqLetTP}{}}
-\step{<0>224}{\case{\ElabTopSeqLet}{}}
-\step{<0>225}{\case{\ElabTopSeqLetT}{}}
-\step{<0>226}{\case{\ElabTopSeqCase}{}}
-\step{<0>227}{\case{\ElabTopSeqIf}{}}
-\step{<0>228}{\case{\ElabTopSeqRun}{}}
-\step{<0>230}{\case{\ElabTopSeq}{}}
-\step{<0>231}{\case{\ElabTopIs}{}}
+\step{<0>221}{\case{\ElabTExprRetTerms}{}}
+\step{<0>222}{\case{\ElabTExprLetP}{}}
+\step{<0>223}{\case{\ElabTExprLetTP}{}}
+\step{<0>224}{\case{\ElabTExprLet}{}}
+\step{<0>225}{\case{\ElabTExprLetT}{}}
+\step{<0>227}{\case{\ElabTExprIf}{}}
+\step{<0>226}{\case{\ElabTExprCase}{}}
+\step{<0>228}{\case{\ElabTExprRun}{}}
 
 % Operational
 \step{<0>232}{\case{\SubsSMTAlloc}{}}
@@ -3032,38 +3005,34 @@ have ranges which are disjoint with allocations so far.}
 \step{<0>295}{\case{\ResTResVPredOps}{}}
 \step{<0>296}{\case{\ResTResVFold}{}}
 \step{<0>297}{\case{\ResTResVPack}{}}
-\step{<0>298}{\case{\ActionIsCreate}{}}
-\step{<0>299}{\case{\ActionIsLoad}{}}
-\step{<0>300}{\case{\ActionIsStore}{}}
-\step{<0>301}{\case{\ActionIsKillStatic}{}}
-\step{<0>302}{\case{\MemopIsRelBinop}{}}
-\step{<0>303}{\case{\MemopIsPtrDiffArr}{}}
-\step{<0>304}{\case{\MemopIsPtrDiff}{}}
-\step{<0>305}{\case{\MemopIsIntFromPtr}{}}
-\step{<0>306}{\case{\MemopIsPtrFromInt}{}}
-\step{<0>307}{\case{\MemopIsPtrValidForDeref}{}}
-\step{<0>308}{\case{\MemopIsPtrWellAligned}{}}
-\step{<0>309}{\case{\MemopIsPtrArrayShift}{}}
-\step{<0>310}{\case{\IsIsMemop}{}}
-\step{<0>311}{\case{\IsIsAction}{}}
-\step{<0>313}{\case{\SeqTCCall}{}}
-\step{<0>314}{\case{\SeqTProc}{}}
-\step{<0>315}{\case{\TSeqTRun}{}}
-\step{<0>316}{\case{\TSeqTCase}{}}
-\step{<0>317}{\case{\TSeqTLetPSub}{}}
-\step{<0>318}{\case{\TSeqTLetPLetP}{}}
-\step{<0>319}{\case{\TSeqTLetPLetTP}{}}
-\step{<0>320}{\case{\TSeqTLetTPSub}{}}
-\step{<0>321}{\case{\TSeqTLetTPLetTP}{}}
-\step{<0>322}{\case{\TSeqTLetTSub}{}}
-\step{<0>323}{\case{\TSeqTLetLetT}{}}
-\step{<0>324}{\case{\TSeqTLetTLetT}{}}
-\step{<0>325}{\case{\TSeqTIfTrue}{}}
-\step{<0>326}{\case{\TSeqTIfFalse}{}}
-\step{<0>328}{\case{\TIsTLetSSub}{}}
-\step{<0>329}{\case{\TIsTLetSLetS}{}}
-\step{<0>330}{\case{\TTTSeqT}{}}
-\step{<0>331}{\case{\TTTIsT}{}}
+\step{<0>298}{\case{\ActionTExprCreate}{}}
+\step{<0>299}{\case{\ActionTExprLoad}{}}
+\step{<0>300}{\case{\ActionTExprStore}{}}
+\step{<0>301}{\case{\ActionTExprKillStatic}{}}
+\step{<0>302}{\case{\MemopTExprRelBinop}{}}
+\step{<0>303}{\case{\MemopTExprPtrDiffArr}{}}
+\step{<0>304}{\case{\MemopTExprPtrDiff}{}}
+\step{<0>305}{\case{\MemopTExprIntFromPtr}{}}
+\step{<0>306}{\case{\MemopTExprPtrFromInt}{}}
+\step{<0>307}{\case{\MemopTExprPtrValidForDeref}{}}
+\step{<0>308}{\case{\MemopTExprPtrWellAligned}{}}
+\step{<0>309}{\case{\MemopTExprPtrArrayShift}{}}
+\step{<0>310}{\case{\ExprTMemop}{}}
+\step{<0>311}{\case{\ExprTAction}{}}
+\step{<0>313}{\case{\ExprTCCall}{}}
+\step{<0>314}{\case{\ExprTProc}{}}
+\step{<0>317}{\case{\TTLetPSub}{}}
+\step{<0>318}{\case{\TTLetPLetP}{}}
+\step{<0>319}{\case{\TTLetPLetTP}{}}
+\step{<0>321}{\case{\TTLetTPLetTP}{}}
+\step{<0>320}{\case{\TTLetSLetS}{}}
+\step{<0>322}{\case{\TTLetTSub}{}}
+\step{<0>323}{\case{\TTLetLetT}{}}
+\step{<0>324}{\case{\TTLetTLetT}{}}
+\step{<0>325}{\case{\TTIfTrue}{}}
+\step{<0>326}{\case{\TTIfFalse}{}}
+\step{<0>316}{\case{\TTCase}{}}
+\step{<0>315}{\case{\TTRun}{}}
 
 % Misc
 \step{<0>332}{\case{\WeakEmpty}{}}
