@@ -1034,16 +1034,22 @@ defns
   expl_texpr :: '' ::=
 
   defn CLNR |- expr => out_ret :: :: Expr :: Expr_
-  {{ com seq. expression synthesises: given $[[CLNR]]$, $[[expr]]$ synthesises return type $[[out_ret]]$ }} by
+  {{ com expression synthesises: given $[[CLNR]]$, $[[expr]]$ synthesises return type $[[out_ret]]$ }} by
 
-    C ; L ; N ; R |- memop => ret
-    ----------------------------- :: Memop
-    C ; L ; N ; R |- memop => ret
+
+    C ; L ; N |- pexpr => pure_ret
+    ---------------------------------------------- :: Pure
+    C ; L ; N ; cdot |- pure ( pexpr ) => pure_ret
 
 
     C ; L ; N ; R |- action => ret
     ------------------------------- :: Action
     C ; L ; N ; R |- action => ret
+
+
+    C ; L ; N ; R |- memop => ret
+    ----------------------------- :: Memop
+    C ; L ; N ; R |- memop => ret
 
 
     id : fon eq </ xi // i /> |-> texpr  inEnv Globals
@@ -1073,18 +1079,9 @@ defns
     C ; L ; N ; R |- < ret_terms > <= ret
 
 
-    C ; L ; N |- pexpr => sigma y : base_type . term /\ I
-    pat : base_type ~> C1 with term1
-    C , C1 ; L ; N , term1 / y ( term ) ; R |- texpr <= ret
-    ---------------------------------------------------------- :: LetP
-    C ; L ; N ; R |- let pat = pexpr in texpr <= ret
-
-
     C ; L ; N |- tpexpr <= pure_ret
-    pat : base_type ~> C1 with term1
-    C , C1 ; L ; N , term1 / y ( term ) ; R |- texpr <= ret
-    -------------------------------------------------------------------- :: LetTP
-    C ; L ; N ; R |- let pat : pure_ret = tpexpr in texpr <= ret
+    ------------------------------------------------ :: Pure
+    C ; L ; N ; cdot |- pure ( tpexpr ) <= pure_ret
 
 
     C ; L ; N ; R' |- expr => ret1

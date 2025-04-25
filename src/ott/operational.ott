@@ -161,7 +161,7 @@ defns
 
 
 defns
-  pure_opsem_defns :: '' ::=
+  pure_opsem :: '' ::=
 
   defn term | < pexpr > --> < tpexpr : pure_ret > :: :: PE_TP :: PE_TP_ by
 
@@ -293,7 +293,7 @@ defns
 
 
 defns
-  opsem_defns :: '' ::=
+  opsem :: '' ::=
 
   defn term | < h ; pred_ops > ||v < h' ; res_val > :: :: PredOps_ResV :: PredOps_ResV_
   {{ com big-step resource (q)points-to operation reduction: given alloction history $[[ term ]]$, $[[ < ]] [[ h ]] [[ ; ]] [[ pred_ops ]] [[ > ]]$ reduces to $[[ < ]] [[ h' ]] [[ ; ]] [[ res_val ]] [[ > ]]$ }} by
@@ -555,14 +555,19 @@ defns
   defn < s ; expr > --> < s' ; texpr : ret > :: :: Expr_T :: Expr_T_ by
 
 
-    alloct | < h ; memop > --> < h' ; texpr : ret >
-    --------------------------------------------------------- :: Memop
-    < alloct ; h ; memop > --> < alloct ; h' ; texpr : ret >
+    alloct | < pexpr > --> < tpexpr : pure_ret >
+    --------------------------------------------------------- :: Pure
+    < alloct ; h ; memop > --> < alloct ; h ; pure ( tpexpr ) : pure_ret >
 
 
     < s ; action > --> < s' ; texpr : ret >
     ---------------------------------------- :: Action
     < s ; memop > --> < s' ; texpr : ret >
+
+
+    alloct | < h ; memop > --> < h' ; texpr : ret >
+    --------------------------------------------------------- :: Memop
+    < alloct ; h ; memop > --> < alloct ; h' ; texpr : ret >
 
 
     id : fon eq </ xi // i /> |-> texpr inEnv Globals
@@ -580,30 +585,13 @@ defns
   defn < s ; texpr > --> < s' ; texpr' > :: :: T_T :: T_T_ by
 
 
-    pat = pval ~> subs
-    --------------------------------------- :: LetP_Sub
-    < s ; let pat = pval in texpr > --> < s ; subs ( texpr ) >
+    ---------------------------------------- :: PVal_RetTerm
+    < s ; pure ( pval ) > --> < s ; < pval > >
 
 
-    alloct | < pexpr > --> < pval : pure_ret >
-    ------------------------------------------- :: LetP_LetP
-    < alloct ; h ; let pat = pexpr in texpr > --> < alloct ; h ; let pat : pure_ret = pval in texpr >
-
-
-    alloct | < pexpr > --> < tpexpr : pure_ret >
-    ------------------------------------------- :: LetP_LetTP
-    < alloct ; h ; let pat = pexpr in texpr > --> < alloct ; h ; let pat : pure_ret = tpexpr in texpr >
-
-
-    alloct | < tpexpr > --> < tpexpr' >
-    ------------------------------------------- :: LetTP_LetTP
-    < alloct ; h ; let pat : pure_ret = tpexpr in texpr > --> < alloct ; h ; let pat : pure_ret = tpexpr' in texpr >
-
-
-
-    < s ; expr  > --> < s' ; texpr : ret >
-    ----------------------------------------------------------------- :: LetS_LetS
-    < s ; let ret_pat = expr in texpr' > --> < s' ; let ret_pat : ret = texpr in texpr' >
+    alloct | < tpexpr >  --> < tpexpr' >
+    ----------------------------------------------------------- :: TP_TP
+    < alloct ; h ; pure ( tpexpr ) > --> < s ; pure ( tpexpr' ) >
 
 
     < h ; </ ret_pati = ret_termi // i /> > ~> < h' ; subs >

@@ -287,8 +287,8 @@ $[[ C ; L |- term => out_base_type ]]$) judgement.\\
 
 \grammartabularSTY{
 \cnsubsXXjudge\cninterrule%
-\cnpureXXopsemXXdefns\cninterrule%
-\cnopsemXXdefns\cnafterlastrule%
+\cnpureXXopsem\cninterrule%
+\cnopsem\cnafterlastrule%
 }
 
 \section{Proof Judgements}\label{sec:proof_judge}
@@ -344,7 +344,7 @@ argue for the soundness of pattern-matching
 
 \subsubsection{Rules which add constraints and computational or logical variables}
 
-\TExprLetP, \TExprLetTP, \TExprCase.\\
+\TExprCase.\\
 
 \subsubsection{Rules which restrict the resource context}
 
@@ -365,8 +365,8 @@ No-resource / ``pure'' rules: \IGCmpEq, \IGCmpLt, \IGCmpGt, \IGCmpNone,
 \PureValStruct, \PureExprVal, \PureExprCtorIvXOR, \PureExprArrayShift,
 \PureExprMemberShift, \PureExprNot, \PureExprArithBinop, \PureExprRelBinop,
 \PureExprBoolBinop, \PureExprCall, \PureExprAssertUndef, \PureExprBoolToInteger,
-\PureExprWrapI, \PureTopUB, \PureTopPVal,
-\MemopTExprPtrValidForDeref, \MemopTExprPtrWellAligned.\\[\baselineskip]
+\PureExprWrapI, \PureTopUB, \PureTopPVal, \MemopPtrValidForDeref,
+\MemopPtrWellAligned, \ExprPure, \TExprPure.\\[\baselineskip]
 
 Resource-mentioning rules: \ResSynEmp, \ResSynVar, \ResSynVarSimp, \ResSynPred,
 \ResSynIPred, \ResSynSepConj, \ResChkPhi, \ResChkSepConj, \SpineRet,
@@ -1757,6 +1757,10 @@ arbitrary (not normalised).
     \pf{} See  \TExprLet, \TExprLetT, \TExprIf, \TExprCase,
     case for more general proofs.}}
 
+\step{<1>14a}{\case{\ExprPure.}{%
+}{%
+    \pf{} By indunction.}}
+
 \step{<1>15}{\case{\ActionCreate.}{}}
 
     \begin{proof}
@@ -2020,8 +2024,8 @@ arbitrary (not normalised).
     expression is so. $[[action]]$s are not values. Only stepping case applies, so
     step with \ExprTAction{}.}}
 
-\step{<1>30}{\case{\TExprLetP, \TExprLetTP.}{%
-    \pf{} See \TExprLet{} / \TExprLetT{} for more general cases and proofs.}}
+\step{<1>30}{\case{\TExprPure.}{%
+    \pf{} By induction.}}
 
 \step{<1>31}{\case{\TExprLet.}{%
     \pf{} By induction, since $[[expr]]$ is not value, if it is unreachable,
@@ -2386,12 +2390,12 @@ to deduce that $[[ nR' ]]$ can only be what you would have supplied anyways.
     \pf{}  Similar to \ExprCCall.}}
 
 \step{<1>21}{\case{%
-    \ExprMemop, \ExprAction.
+    \ExprMemop, \ExprAction, \ExprPure, \TExprPure.
 }{%
     \pf{} By induction.}}
 
 \step{<1>22}{\case{%
-    \TExprLetP, \TExprLetTP, \TExprLet.
+    \TExprLet.
 }{%
     \pf{} See \TExprLetT for a more general case and proof.}}
 
@@ -2856,13 +2860,13 @@ have ranges which are disjoint with allocations so far.}
 \step{<0>131}{\case{\MemopPtrValidForDeref}{}}
 \step{<0>132}{\case{\MemopPtrWellAligned}{}}
 \step{<0>133}{\case{\MemopPtrArrayShift}{}}
-\step{<0>135}{\case{\ExprMemop}{}}
+\step{<0>134}{\case{\ExprPure}{}}
 \step{<0>136}{\case{\ExprAction}{}}
+\step{<0>135}{\case{\ExprMemop}{}}
 \step{<0>138}{\case{\ExprCCall}{}}
 \step{<0>139}{\case{\ExprProc}{}}
 \step{<0>140}{\case{\TExprRetTerms}{}}
-\step{<0>144}{\case{\TExprLetP}{}}
-\step{<0>145}{\case{\TExprLetTP}{}}
+\step{<0>144}{\case{\TExprPure}{}}
 \step{<0>146}{\case{\TExprLet}{}}
 \step{<0>147}{\case{\TExprLetT}{}}
 \step{<0>148}{\case{\TExprCase}{}}
@@ -2913,8 +2917,9 @@ have ranges which are disjoint with allocations so far.}
 \step{<0>200}{\case{\ElabSpineTakeIPred}{}}
 \step{<0>201}{\case{\ElabSpineMiddleIf}{}}
 \step{<0>202}{\case{\ElabSpinePhi}{}}
-\step{<0>192}{\case{\ElabExprMemop}{}}
+\step{<0>193}{\case{\ElabExprPure}{}}
 \step{<0>193}{\case{\ElabExprAction}{}}
+\step{<0>192}{\case{\ElabExprMemop}{}}
 \step{<0>203}{\case{\ElabExprCCall}{}}
 \step{<0>204}{\case{\ElabExprProc}{}}
 \step{<0>195}{\case{\ElabExprFold}{}}
@@ -2933,8 +2938,7 @@ have ranges which are disjoint with allocations so far.}
 \step{<0>219}{\case{\ElabSimpCtxSimp}{}}
 \step{<0>220}{\case{\ElabSimpCtxSkip}{}}
 \step{<0>221}{\case{\ElabTExprRetTerms}{}}
-\step{<0>222}{\case{\ElabTExprLetP}{}}
-\step{<0>223}{\case{\ElabTExprLetTP}{}}
+\step{<0>222}{\case{\ElabTExprPure}{}}
 \step{<0>224}{\case{\ElabTExprLet}{}}
 \step{<0>225}{\case{\ElabTExprLetT}{}}
 \step{<0>227}{\case{\ElabTExprIf}{}}
@@ -3017,15 +3021,13 @@ have ranges which are disjoint with allocations so far.}
 \step{<0>307}{\case{\MemopTExprPtrValidForDeref}{}}
 \step{<0>308}{\case{\MemopTExprPtrWellAligned}{}}
 \step{<0>309}{\case{\MemopTExprPtrArrayShift}{}}
-\step{<0>310}{\case{\ExprTMemop}{}}
+\step{<0>311}{\case{\ExprTPure}{}}
 \step{<0>311}{\case{\ExprTAction}{}}
+\step{<0>310}{\case{\ExprTMemop}{}}
 \step{<0>313}{\case{\ExprTCCall}{}}
 \step{<0>314}{\case{\ExprTProc}{}}
-\step{<0>317}{\case{\TTLetPSub}{}}
-\step{<0>318}{\case{\TTLetPLetP}{}}
-\step{<0>319}{\case{\TTLetPLetTP}{}}
-\step{<0>321}{\case{\TTLetTPLetTP}{}}
-\step{<0>320}{\case{\TTLetSLetS}{}}
+\step{<0>317}{\case{\TTPValRetTerm}{}}
+\step{<0>318}{\case{\TTTPTP}{}}
 \step{<0>322}{\case{\TTLetTSub}{}}
 \step{<0>323}{\case{\TTLetLetT}{}}
 \step{<0>324}{\case{\TTLetTLetT}{}}

@@ -451,14 +451,20 @@ defns
   defn CLNnR |- expr ~> bind out_res_bind for expr' : out_ret -| out_nRp :: :: Expr :: Expr_
   {{ com (effectful) expression elaboration: given $[[CLNnR]]$, $[[expr]]$ elaborates (via $[[out_res_bind]]$) to $[[expr']] [[:]] [[out_ret]]$, with $[[out_nRp]]$ leftover }} by
 
-    C ; L ; N ; nR |- memop ~> bind res_bind for memop' : norm_ret -| nR'
-    ------------------------------------------------------------------------- :: Memop
-    C ; L ; N ; nR |- memop ~> bind res_bind for memop' : norm_ret -| nR'
+
+    C ; L ; N |- pexpr => pure_ret
+    ---------------------------------------------------------------------------- :: Pure
+    C ; L ; N ; nR |- pure ( pexpr ) ~> bind cdot for pure ( pexpr ) : pure_ret -| nR
 
 
     C ; L ; N ; nR |- action ~> bind res_bind for action' : norm_ret -| nR'
     --------------------------------------------------------------------------- :: Action
     C ; L ; N ; nR |- action ~> bind res_bind for action' : norm_ret -| nR'
+
+
+    C ; L ; N ; nR |- memop ~> bind res_bind for memop' : norm_ret -| nR'
+    ------------------------------------------------------------------------- :: Memop
+    C ; L ; N ; nR |- memop ~> bind res_bind for memop' : norm_ret -| nR'
 
 
     % </ C ; L ; N ; nRi |- texpri <= reti // i />
@@ -583,18 +589,8 @@ defns
     C ; L ; N ; nR |- < ret_terms > <= norm_ret ~> insert_lets ( res_bind , < ret_terms' > )
 
 
-    C ; L ; N |- pexpr => sigma y : base_type . term /\ I
-    pat : base_type ~> C1 with term1
-    C , C1 ; L ; N , term1 / y ( term ) ; nR |- texpr <= norm_ret ~> texpr'
-    ---------------------------------------------------------------------------------- :: LetP
-    C ; L ; N ; nR |- let pat = pexpr in texpr <= norm_ret ~> let pat = pexpr in texpr'
-
-
-    C ; L ; N |- tpexpr <= pure_ret
-    pat : base_type ~> C1 with term1
-    C , C1 ; L ; N , term1 / y ( term ) ; nR |- texpr <= norm_ret ~> texpr'
-    ----------------------------------------------------------------------------------- :: LetTP
-    C ; L ; N ; nR |- let pat : pure_ret = tpexpr in texpr <= norm_ret ~> let pat : pure_ret = tpexpr in texpr'
+    ---------------------------------------------------------------- :: Pure
+    C ; L ; N ; nR |- pure ( tpexpr ) <= pure_ret ~> pure ( tpexpr )
 
 
     C ; L ; N ; nR |- expr ~> bind res_bind for expr' : ret -| nR'

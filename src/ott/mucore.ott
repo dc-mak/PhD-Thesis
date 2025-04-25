@@ -513,7 +513,7 @@ grammar
     | subs ( norm_ret )                :: M :: subs
 
 subrules
-    pure_ret <:: ret
+    pure_ret <:: norm_ret
     norm_ret <:: ret
 
 grammar
@@ -712,7 +712,8 @@ grammar
 grammar
 
   % There used to be an effectful value (val) `skip' - I (dcm41) removed it because it seemed redundant.
-  expr :: 'Expr_' ::= {{ com sequential (effectful) expressions }}
+  expr :: 'Expr_' ::= {{ com (effectful) expressions }}
+    | pure ( pexpr )            ::   :: pure      {{ com pure expressions                          }}
     | memop                     ::   :: memop     {{ com pointer op involving memory               }}
     | action                    ::   :: action    {{ com memory action                             }}
     | ccall ( ct , yf , spine ) ::   :: ccall     {{ com C function call                           }}
@@ -726,11 +727,8 @@ grammar
   % nd() is only used in the elab of if/loops for the case where the condiditional expression evaluates to unspecified()
   % We don't have unspecified() so we won't have nd()
   texpr :: 'TE_' ::= {{ com top-level (effectful) expressions }}
+    | pure ( tpexpr )                       ::     :: pure        {{ com pure top-level expressions                     }}
     | < ret_terms >                         ::     :: ret_terms   {{ com values (including logical and reosurces terms) }}
-    | let pat = pexpr in texpr              ::     :: letP        (+ bind binders( pat ) in texpr                       +)
-                                                                  {{ com pure let                                       }}
-    | let pat : pure_ret = tpexpr in texpr  ::     :: letTP       (+ bind binders( pat ) in texpr                       +)
-                                                                  {{ com annotated pure let                             }}
     | let ret_pat = expr in texpr           ::     :: let         (+ bind binders( ret_pat ) in texpr                   +)
                                                                   {{ com bind return pats                               }}
     | let ret_pat : ret = texpr1 in texpr2  ::     :: letT        (+ bind binders( ret_pat ) in texpr2                  +)
