@@ -556,7 +556,7 @@ grammar
 
 grammar
 
-  pstmt :: 'TPE_' ::= {{ com top-level pure expressions }}
+  pstmt :: 'TPE_' ::= {{ com pure statements }}
     | pval                                   ::   :: pval  {{ com pure value                            }}
     | undef UB_name                          ::   :: undef {{ com undefined behaviour                   }}
     | let pat = pexpr in pstmt               ::   :: let   (+ bind binders( pat ) in pstmt             +)
@@ -565,11 +565,10 @@ grammar
                                                            {{ com annoted pure let                      }}
     | if pval then pstmt1 else pstmt2        ::   :: if    {{ com pure if                               }}
     | case pval of </ | pbranchi // i /> end ::   :: case  {{ com pattern-matching                      }}
-    | subs ( pstmt )                         :: M :: subs  {{ com substitute $[[subs]]$ in $[[pstmt]]$ }}
+    | subs ( pstmt )                         :: M :: subs  {{ com substitute $[[subs]]$ in $[[pstmt]]$  }}
 
-  pbranch :: 'PBranch_' ::= {{ com pure case expression branch }}
-    | pat => pstmt :: :: branch (+ bind binders( pat ) in pstmt        +)
-                                 {{ com top-level case expression branch }}
+  pbranch :: 'PBranch_' ::= {{ com pure case statement branch }}
+    | pat => pstmt :: :: branch (+ bind binders( pat ) in pstmt +)
 
 grammar
 
@@ -714,7 +713,7 @@ grammar
 
   % There used to be an effectful value (val) `skip' - I (dcm41) removed it because it seemed redundant.
   expr :: 'Expr_' ::= {{ com (effectful) expressions }}
-    | pure ( pexpr )            ::   :: pure      {{ com pure expressions                          }}
+    | pure ( pexpr )            ::   :: pure      {{ com pure expression                           }}
     | memop                     ::   :: memop     {{ com pointer op involving memory               }}
     | action                    ::   :: action    {{ com memory action                             }}
     | ccall ( ct , yf , spine ) ::   :: ccall     {{ com C function call                           }}
@@ -727,8 +726,8 @@ grammar
 
   % nd() is only used in the elab of if/loops for the case where the condiditional expression evaluates to unspecified()
   % We don't have unspecified() so we won't have nd()
-  stmt :: 'TE_' ::= {{ com top-level (effectful) expressions }}
-    | pure ( pstmt )                        ::     :: pure        {{ com pure top-level expressions                     }}
+  stmt :: 'TE_' ::= {{ com (effectful) statement }}
+    | pure ( pstmt )                        ::     :: pure        {{ com pure statement                                 }}
     | < ret_terms >                         ::     :: ret_terms   {{ com values (including logical and reosurces terms) }}
     | let ret_pat = expr in stmt            ::     :: let         (+ bind binders( ret_pat ) in stmt                   +)
                                                                   {{ com bind return pats                               }}
