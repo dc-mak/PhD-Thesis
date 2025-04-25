@@ -89,12 +89,12 @@ grammar
 grammar
 
   ty_extra :: 'ty_extra_' ::= {{ com extra judgements for explicit and inference typing systems }}
-    | smt ( N => qterm )                                                     ::  :: smt                     {{ com check if $[[qterm]]$ is SMT-provable in constraint context $[[N]]$    }}
-    | x : out_base_type inEnv C                                              ::  :: x_in_C                  {{ com lookup type of $[[x]]$ in context $[[C]]$                             }}
-    | tagged tag & </ out_memberi : out_cti // i /> inEnv Globals            ::  :: struct_in_globals       {{ com lookup types of struct $[[tag]]$ members in $[[Globals]]$             }}
-    | a eq </ out_xi : out_base_typei // , // i /> |-> out_res inEnv Globals ::  :: res_pred_in_globals     {{ com lookup body of resource predicate $[[a]]$ in $[[Globals]]$            }}
-    | C ; L |- term => out_base_type                                         ::  :: term_synth_type         {{ com omitted/assumed: $[[ term ]]$ is has type $[[out_base_type]]$         }}
-    | pred_name1 != pred_name2                                               ::  :: pred_name_neq           {{ com check if $[[pred_name1]]$ and $[[pred_name2]]$ are unequal            }}
+    | smt ( N => qterm )                                                       ::  :: smt                 {{ com check if $[[qterm]]$ is SMT-provable in constraint context $[[N]]$    }}
+    | x : out_base_type inEnv C                                                ::  :: x_in_C              {{ com lookup type of $[[x]]$ in context $[[C]]$                             }}
+    | tagged tag & </ out_memberi : out_cti // i /> inEnv Globals              ::  :: struct_in_globals   {{ com lookup types of struct $[[tag]]$ members in $[[Globals]]$             }}
+    | a def= </ out_xi : out_base_typei // , // i /> |-> out_res inEnv Globals ::  :: res_pred_in_globals {{ com lookup body of resource predicate $[[a]]$ in $[[Globals]]$            }}
+    | C ; L |- term => out_base_type                                           ::  :: term_synth_type     {{ com omitted/assumed: $[[ term ]]$ is has type $[[out_base_type]]$         }}
+    | pred_name1 != pred_name2                                                 ::  :: pred_name_neq       {{ com check if $[[pred_name1]]$ and $[[pred_name2]]$ are unequal            }}
 
 grammar
 
@@ -104,14 +104,14 @@ grammar
     | opsem_extra                                                           ::   :: opsem_extra
     | misc_extra                                                            ::   :: misc_extra
     % both
-    | indexed </ formulai // i />                                           :: X :: indexed
-    | res eq res'                                                           ::   :: abbrev_res                {{ com resource type abbreviation                                           }}
-    | res_term eq res_term'                                                 ::   :: abbrev_res_term           {{ com resource term abbreviation                                           }}
-    | ret eq ret'                                                           ::   :: abbrev_ret                {{ com return type abbreviation                                             }}
-    | term eq term'                                                         ::   :: abbrev_term               {{ com SMT term / constraint abbrevation                                    }}
-    | stmt eq stmt'                                                       ::   :: abbrev_stmt              {{ com top-level expression abbrevation                                     }}
-    | name : out_pure_fun eq </ out_xi // i /> |-> out_pstmt inEnv Globals ::   :: pure_func_body_in_globals {{ com lookup type and body of pure function $[[name]]$ in $[[Globals]]$ }}
-    | name : out_fon      eq </ out_xi // i /> |-> out_stmt  inEnv Globals ::   :: func_body_in_globals      {{ com lookup type and body of function $[[name]]$ in $[[Globals]]$      }}
+    | indexed </ formulai // i />                                            :: X :: indexed
+    | res def= res'                                                          ::   :: abbrev_res                {{ com resource type abbreviation                                        }}
+    | res_term def= res_term'                                                ::   :: abbrev_res_term           {{ com resource term abbreviation                                        }}
+    | ret def= ret'                                                          ::   :: abbrev_ret                {{ com return type abbreviation                                          }}
+    | term def= term'                                                        ::   :: abbrev_term               {{ com SMT term / constraint abbrevation                                 }}
+    | stmt def= stmt'                                                        ::   :: abbrev_stmt               {{ com top-level expression abbrevation                                  }}
+    | name : out_pure_fun def= </ out_xi // i /> |-> out_pstmt inEnv Globals ::   :: pure_func_body_in_globals {{ com lookup type and body of pure function $[[name]]$ in $[[Globals]]$ }}
+    | name : out_fon      def= </ out_xi // i /> |-> out_stmt  inEnv Globals ::   :: func_body_in_globals      {{ com lookup type and body of function $[[name]]$ in $[[Globals]]$      }}
 
 
 defns
@@ -155,87 +155,87 @@ defns
 
 
     N |- cmp_min ( iguard , iguard' ) ~> cmp , iguard''
-    term eq iguard'' -> /\\ ( </ iargi = iarg'i // i /> )
+    term def= iguard'' -> /\\ ( </ iargi = iarg'i // i /> )
     smt ( N => exists x . neg term )
     --------------------------------------------------------------------------------------- :: IArg_Neq
     N |- each (integer x; iguard) { a ( </ iargi // i /> ) } [=? each (integer x ; iguard') { a ( </ iarg'i // i /> ) } ~> None
 
 
     N |- cmp_min ( iguard , iguard' ) ~> cmp , iguard''
-    term eq iguard'' -> /\\ ( </ iargi = iarg'i // i /> )
+    term def= iguard'' -> /\\ ( </ iargi = iarg'i // i /> )
     smt ( N => forall x . term )
     --------------------------------------------------------------------------------------- :: Comparable
     N |- each (integer x; iguard) { a ( </ iargi // i /> ) } [=? each (integer x ; iguard') { a ( </ iarg'i // i /> ) } ~> cmp
 
 
-  defn N |- res_req eq res_req' ~> ty_bool :: :: Req_Eq :: Req_Eq_
+  defn N |- res_req def= res_req' ~> ty_bool :: :: Req_Eq :: Req_Eq_
   {{ com resource equality: given constraints $[[N]]$, $[[res_req]]$ and $[[res_req']]$ are equal according to $[[ty_bool]]$ }} by
 
 
     a1 != a2
     ------------------------------------------------------ :: PP_Name_Neq
-    N |- a1 ( _iargs ) eq a2 ( _iargs ) ~> false
+    N |- a1 ( _iargs ) def= a2 ( _iargs ) ~> false
 
 
     smt ( N => neg ( /\\ ( </ iarg1i = iarg2i // i /> ) ) )
     ------------------------------------------------------------------ :: PP_IArg_Neq
-    N |- a ( </ iarg1i // i /> ) eq a (  </ iarg2i // i /> ) ~> false
+    N |- a ( </ iarg1i // i /> ) def= a (  </ iarg2i // i /> ) ~> false
 
 
     smt ( N => /\\ ( </ iarg1i = iarg2i // i /> ) )
     --------------------------------------------------------------- :: PP_Eq
-    N |- a ( </ iarg1i // i /> ) eq a ( </ iarg2i // i /> ) ~> true
+    N |- a ( </ iarg1i // i /> ) def= a ( </ iarg2i // i /> ) ~> true
 
 
     N |- ipred_term [=? ipred_term' ~> Eq
     -------------------------------------- :: II_Eq
-    N |- ipred_term eq ipred_term' ~> true
+    N |- ipred_term def= ipred_term' ~> true
 
 
     N |- ipred_term [=? ipred_term' ~> opt_cmp
     ------------------------------------------ :: II_Neq
-    N |- ipred_term eq ipred_term' ~> false
+    N |- ipred_term def= ipred_term' ~> false
 
 
-  defn N |- res eq res' :: :: Res_Eq :: Res_Eq_
+  defn N |- res def= res' :: :: Res_Eq :: Res_Eq_
   {{ com resource equality: given constraints $[[N]]$, $[[res]]$ is equal to $[[res']]$ }} by
 
     -------------------- :: Emp
-    N |- emp eq emp
+    N |- emp def= emp
 
 
     % DEFER weaken this to allow imp / subtyping e.g. Annot can be stronger than what is required
     smt ( N => term <-> term' )
     ----------------------------------- :: Phi
-    N |- term eq term'
+    N |- term def= term'
 
 
-    N |- pred_term eq pred_term' ~> true
+    N |- pred_term def= pred_term' ~> true
     --------------------------------------- :: Pred
-    N |- pred_term ( _t ) eq pred_term' ( _t )
+    N |- pred_term ( _t ) def= pred_term' ( _t )
 
 
-    N |- ipred_term eq ipred_term' ~> true
+    N |- ipred_term def= ipred_term' ~> true
     --------------------------------------- :: IPred
-    N |- ipred_term ( _t ) eq ipred_term' ( _t )
+    N |- ipred_term ( _t ) def= ipred_term' ( _t )
 
 
-    N |- res1 eq res'1
-    N |- res2 eq res'2
+    N |- res1 def= res'1
+    N |- res2 def= res'2
     ------------------------------------ :: SepConj
-    N |- res1 * res2 eq res'1 * res'2
+    N |- res1 * res2 def= res'1 * res'2
 
 
-    N |- res eq res'
+    N |- res def= res'
     -------------------------------------------------------------------------------- :: Exists
-    N |- exists x : base_type . res eq exists x : base_type . res'
+    N |- exists x : base_type . res def= exists x : base_type . res'
 
 
     smt ( N => term1 <-> term2 )
-    N , term1   |- res11 eq res21
-    N , neg term1 |- res21 eq res22
+    N , term1   |- res11 def= res21
+    N , neg term1 |- res21 def= res22
     ----------------------------------------------------------------------------- :: OrdDisj
-    N |- if term1 then res11 else res12 eq if term2 then res21 else res22
+    N |- if term1 then res11 else res12 def= if term2 then res21 else res22
 
 
   defn N |- simp_rec ( res ) ~> out_res' , out_ty_bool :: :: Res_SimpRec :: Res_SimpRec_
@@ -286,32 +286,32 @@ defns
 defns
   ret_judge :: 'Ret_' ::=
 
-  defn N |- ret eq ret' :: :: Eq :: Eq_
+  defn N |- ret def= ret' :: :: Eq :: Eq_
   {{ com return type equality: given constraints $[[N]]$, $[[ret]]$ is equal to $[[ret']]$ }} by
 
     ----------- :: End
-    N |- I eq I
+    N |- I def= I
 
 
-    N |- ret eq ret'
+    N |- ret def= ret'
     ------------------------------------------------------------ :: Comp
-    N |- sigma y : base_type . ret eq sigma y : base_type . ret'
+    N |- sigma y : base_type . ret def= sigma y : base_type . ret'
 
 
-    N |- ret eq ret'
+    N |- ret def= ret'
     -------------------------------------------------------------- :: Log
-    N |- exists y : base_type . ret eq exists y : base_type . ret'
+    N |- exists y : base_type . ret def= exists y : base_type . ret'
 
 
     smt ( N => term <-> term' )
     ----------------------------------------- :: Phi
-    N |- term /\ ret eq term' /\ ret'
+    N |- term /\ ret def= term' /\ ret'
 
 
-    N |- res eq res'
-    N |- ret eq ret'
+    N |- res def= res'
+    N |- ret def= ret'
     ------------------------------- :: Res
-    N |- res *o ret eq res' *o ret'
+    N |- res *o ret def= res' *o ret'
 
 defns
   pat_judge :: 'Pat_' ::=
@@ -390,7 +390,7 @@ defns
 
 
     a != Owned < _init , ct >
-    a eq </ xi : _bti // i /> , y : _bt  |-> res inEnv Globals
+    a def= </ xi : _bti // i /> , y : _bt  |-> res inEnv Globals
     L ; N |- res_pat : [ oarg / y , [ </ iargi / xi // i />  ] ] ( res ) ~> L' ; N' ; R'
     --------------------------------------------------------------------------------------------------- :: Fold
     L ; N |- fold ( res_pat ) : a ( </ iargi // i /> ) ( oarg ) ~> L' ; N' ; R'
@@ -563,15 +563,15 @@ defns
 
     C |- pval1 => loc
     C |- pval2 => integer
-    ptrt' eq array_shift < ct > ( inj pval1 , inj pval2 )
-    x eq allocv [ inj pval1 dot alloc_id ]
+    ptrt' def= array_shift < ct > ( inj pval1 , inj pval2 )
+    x def= allocv [ inj pval1 dot alloc_id ]
     smt ( N => x dot base =< ptrt' dot addr =< x dot base + x dot len )
     ----------------------------------------------------------------- :: Array_Shift
     C ; L ; N |- array_shift < ct > ( pval1 , pval2 ) => sigma y : loc . y = ptrt' /\ I
 
 
     C |- pval => loc
-    x eq allocv [ inj pval dot alloc_id ]
+    x def= allocv [ inj pval dot alloc_id ]
     tagged tag & </ memberi : cti // i /> inEnv Globals
     smt ( N => x dot base =< member_shift < tagged tag > ( inj pval , memberj ) dot addr =< x dot base + x dot len )
     ------------------------------------------------------------ :: Member_Shift
@@ -611,7 +611,7 @@ defns
     C ; L ; N |- pval1 bool_binop pval2 => sigma y : bool . y = ( inj pval1 ' bool_binop ' inj pval2 ) /\ I
 
 
-    name : pure_fun eq </ xi // i /> |-> pstmt inEnv Globals
+    name : pure_fun def= </ xi // i /> |-> pstmt inEnv Globals
     C ; L ; N ; cdot |- </ xi = pvali // i /> :; pure_fun >> subs ; pure_ret
     ------------------------------------------------------------------------ :: Call
     C ; L ; N |- name ( </ pvali // i /> ) => pure_ret
@@ -636,8 +636,8 @@ defns
 
 
     C |- pval => integer
-    abbrev1 eq max ct - min ct + 1
-    abbrev2 eq inj pval REM abbrev1
+    abbrev1 def= max ct - min ct + 1
+    abbrev2 def= inj pval REM abbrev1
     ------------------------------------------- :: WrapI
     C ; L ; N |- wrapI ( ct , pval ) => sigma y : integer . y = if abbrev2 =< max ct then abbrev2 else abbrev2 - abbrev1 /\ I
 
@@ -699,7 +699,7 @@ defns
 
     C ; L ; N ; R |- res_term => ( *S x . iguard => ptrt |- init - ct -> oarg  )
     smt ( N => forall x . iguard <-> ( 0 =< x =< n - 1 ) )
-    y1 eq allocv [ ptrt dot alloc_id ]
+    y1 def= allocv [ ptrt dot alloc_id ]
     smt ( N => y1 dot base =< ptrt dot addr /\ array_shift < ct > ( ptrt , n ) dot addr  =< y1 dot base + y1 dot len )
     --------------------------------------------------------------------------------------- :: Congeal
     C ; L ; N ; R |- congeal ( res_term , n ) => ops  ptrt |- init - array n ct -> oarg
@@ -713,9 +713,9 @@ defns
 
     C ; L ; N ; R |- res_term => *S ( </ ptrti |- init - cti -> oargi // i /> )
     tagged tag & </ memberi : cti // i /> inEnv Globals
-    term eq ptrt0 dot addr - offsetof tag member0
+    term def= ptrt0 dot addr - offsetof tag member0
     smt ( N => /\\ ( </ term = ptrti dot addr - offsetof tag memberi /\ ptrt0 dot alloc_id = ptrti dot alloc_id // i /> ) )
-    x eq allocv [ ptrt0 dot alloc_id ]
+    x def= allocv [ ptrt0 dot alloc_id ]
     smt ( N => x dot base =< term /\ term + sizeof tagged tag =< x dot base + x dot len )
     ----------------------------------------------------------------------------------------------- :: Implode
     C ; L ; N ; R |- implode ( res_term , tag ) => ops ( @ ptrt0 dot alloc_id , term ) |- init - struct tag -> { </ memberi = oargi // i /> }
@@ -724,27 +724,27 @@ defns
     C ; L |- term => integer
     C ; L ; N ; R |- res_term => each (integer x ; iguard) { a ( array_shift < ct >( ptrt , x ) , </ iargi // i /> ) } ( oarg )
     smt ( N => term / x ( iguard ) )
-    ipred eq each (integer x ; iguard /\ ( x != term )) { a ( array_shift < ct > ( ptrt , x ) , </ iargi // i /> ) } ( oarg )
-    pred eq a ( array_shift < ct > ( ptrt, term ) , term / x ( </ iargi // i /> ) ) ( oarg [ term ] )
+    ipred def= each (integer x ; iguard /\ ( x != term )) { a ( array_shift < ct > ( ptrt , x ) , </ iargi // i /> ) } ( oarg )
+    pred def= a ( array_shift < ct > ( ptrt, term ) , term / x ( </ iargi // i /> ) ) ( oarg [ term ] )
     --------------------------------------------------------------------------------- :: Break
     C ; L ; N ; R |- break ( res_term , term ) => ops ipred * pred
 
 
     C ; L ; N ; R |- res_term => each (integer x ; iguard) { a ( array_shift <ct> ( ptrt1 , x ) , </ iarg1i // i /> ) } ( oarg1 ) * a ( ptrt2 , </ iarg2i // i /> ) ( oarg2 )
-    term eq ( ptrt2 dot base - ptrt1 dot base ) / sizeof ct
+    term def= ( ptrt2 dot base - ptrt1 dot base ) / sizeof ct
     smt ( N => ptrt1 dot alloc_id = ptrt2 dot alloc_id /\ ( ptrt2 dot addr = array_shift < ct > ( ptrt1 , term ) dot addr ) )
     smt ( N => /\\ ( term / x ( </ iarg1i = iarg2i // i /> ) ) )
-    x eq allocv [ ptrt1 dot alloc_id ]
+    x def= allocv [ ptrt1 dot alloc_id ]
     smt ( N => x dot base =< ptrt2 dot addr /\ ptrt2 dot addr + sizeof ct =< x dot base + x dot len )
     ----------------------------------------------------------------- :: Glue
     C ; L ; N ; R |- glue ( res_term ) => ops each (integer x; iguard \/ x = term) { a ( array_shift < ct > ( ptrt1 , x ) , </ iarg1i // i /> ) } ( oarg1 [ term ] := oarg2 )
 
 
     C ; L ; N ; R |- res_term => a ( ptrt2 , </ iarg2i // i /> ) ( oarg )
-    term eq ( ptrt2 dot addr - ptrt1 dot addr ) / sizeof ct
+    term def= ( ptrt2 dot addr - ptrt1 dot addr ) / sizeof ct
     smt ( N => ptrt1 dot alloc_id = ptrt2 dot alloc_id /\ ( ptrt2 dot addr = ptrt1 dot addr + term * sizeof ct ) )
     smt ( N => /\\ ( term / x ( </ iarg1i = iarg2i // i /> ) ) )
-    x eq allocv [ ptrt1 dot alloc_id ]
+    x def= allocv [ ptrt1 dot alloc_id ]
     smt ( N => x dot base =< ptrt1 dot addr /\ ptrt2 dot addr + sizeof ct =< x dot base + x dot len )
     C ; L |- oarg => base_type
     ----------------------------------------------------------------- :: Inj
@@ -753,9 +753,9 @@ defns
 
     C ; L ; N ; R |- res_term => each (integer x ; iguard') { a ( array_shift < ct > ( ptrt , x ) , </ iargi // i /> ) } ( oarg )
     smt ( N => forall x. iguard -> iguard' )
-    iguard2 eq iguard' /\ neg iguard
-    ipred1 eq each ( integer x; iguard ) { a ( array_shift <ct> (ptrt, x) , </ iargi // i /> ) } ( oarg )
-    ipred2 eq each (integer x; iguard2) { a ( array_shift<ct>(ptrt, x) , </ iargi // i /> ) } ( oarg )
+    iguard2 def= iguard' /\ neg iguard
+    ipred1 def= each ( integer x; iguard ) { a ( array_shift <ct> (ptrt, x) , </ iargi // i /> ) } ( oarg )
+    ipred2 def= each (integer x; iguard2) { a ( array_shift<ct>(ptrt, x) , </ iargi // i /> ) } ( oarg )
     --------------------------------------------------------------------------------- :: Chop
     C ; L ; N ; R |- chop ( res_term , iguard ) => ops ipred1 * ipred2
 
@@ -780,17 +780,17 @@ defns
     C ; L ; N ; r : res |- r => res'
 
 
-    pred_term' eq a ( </ iarg'i // i /> )
-    a eq </ _ : base_typei // i  /> |-> _res inEnv Globals
+    pred_term' def= a ( </ iarg'i // i /> )
+    a def= </ _ : base_typei // i  /> |-> _res inEnv Globals
     indexed </ C ; L |- iarg'i => base_typei // i />
-    N |- pred_term eq pred_term' ~> true
+    N |- pred_term def= pred_term' ~> true
     -------------------------------------------------------------------- :: Pred
     C ; L ; N ; _ : pred_term ( oarg ) |- pred_term' => pred_term ( oarg )
 
 
-    pred_term eq a ( </ iargi // i /> )
+    pred_term def= a ( </ iargi // i /> )
     a != Owned < _init, ct >
-    a eq </ xi : base_typei // i  /> , y : base_type |-> res inEnv Globals
+    a def= </ xi : base_typei // i  /> , y : base_type |-> res inEnv Globals
     indexed </ C ; L |- iargi => base_typei // i />
     C ; L |- oarg => base_type
     C ; L ; N ; R |- res_term <= [ oarg / y , [ </ iargi / xi // i /> ] ] ( res )
@@ -798,10 +798,10 @@ defns
     C ; L ; N ; R |- fold res_term : pred_term ( oarg ) => pred_term ( oarg )
 
 
-    ipred_term' eq each (integer x ; iguard) { a ( </ iarg'i // i /> ) }
-    a eq </ _ : base_typei // i  /> |-> _res inEnv Globals
+    ipred_term' def= each (integer x ; iguard) { a ( </ iarg'i // i /> ) }
+    a def= </ _ : base_typei // i  /> |-> _res inEnv Globals
     indexed </ C ; L |- iarg'i => base_typei // i />
-    N |- ipred_term eq ipred_term' ~> true
+    N |- ipred_term def= ipred_term' ~> true
     ------------------------------------------------------------------------------ :: IPred
     C ; L ; N ; _ : ipred_term ( oarg ) |-  ipred_term' => ipred_term ( oarg )
 
@@ -860,7 +860,7 @@ defns
 
 
     C ; L ; N ; R |- res_term => res
-    N |- res eq res'
+    N |- res def= res'
     --------------------------------- :: Switch
     C ; L ; N ; R |- res_term <= res'
 
@@ -906,8 +906,8 @@ defns
 
 
     C |- pval => integer
-    term eq representable ( ct * , yp ) /\ alignedI ( inj pval , yp ) /\ allocv [ yp dot alloc_id ] = ( yp dot base , sizeof ct )
-    ret eq ( yp |- Uninit - ct -> x ) *o Alloc ( yp ) ( sizeof ct ) *o I
+    term def= representable ( ct * , yp ) /\ alignedI ( inj pval , yp ) /\ allocv [ yp dot alloc_id ] = ( yp dot base , sizeof ct )
+    ret def= ( yp |- Uninit - ct -> x ) *o Alloc ( yp ) ( sizeof ct ) *o I
     ------------------------------------------------------------------------- :: Create
     C ; L ; N ; cdot |- emp | create < ct >  ( pval ) => sigma yp : loc . term /\ exists x : to_base ( ct ) .  ret
 
@@ -954,7 +954,7 @@ defns
     C |- pval1 => loc
     C |- pval2 => loc
     C ; L ; N ; R |- res_term => res
-    res eq Alloc ( ptrt1 ) ( term1 ) * Alloc ( ptrt2 ) ( term2 )
+    res def= Alloc ( ptrt1 ) ( term1 ) * Alloc ( ptrt2 ) ( term2 )
     smt ( N => inj pval1 dot alloc_id = inj pval2 dot alloc_id = ptrt1 dot alloc_id = ptrt2 dot alloc_id )
     smt ( N => ptrt1 dot base =< inj pval1 dot addr =< ptrt1 dot base + term1 )
     smt ( N => ptrt2 dot base =< inj pval2 dot addr =< ptrt2 dot base + term2 )
@@ -965,7 +965,7 @@ defns
     % DEFER ask Kayvan when/how Ptrdiff can be called with an ct = array n ct'
     C |- pval1 => loc
     C |- pval2 => loc
-    res eq Alloc ( ptrt ) ( term )
+    res def= Alloc ( ptrt ) ( term )
     C ; L ; N ; R |- res_term => res
     smt ( N => ptrt dot alloc_id = inj pval1 dot alloc_id = inj pval2 dot alloc_id ) 
     smt ( N => ptrt dot base =< ( inj pval1 dot addr , inj pval2 dot addr ) =< ptrt dot base + term )
@@ -975,7 +975,7 @@ defns
 
     C |- pval1 => loc
     C |- pval2 => loc
-    res eq Alloc ( ptrt ) ( term )
+    res def= Alloc ( ptrt ) ( term )
     C ; L ; N ; R |- res_term => res
     smt ( N => ptrt dot alloc_id = inj pval1 dot alloc_id = inj pval2 dot alloc_id )
     smt ( N => ptrt dot base =< ( inj pval1 dot addr , inj pval2 dot addr ) =< ptrt dot base + term )
@@ -996,7 +996,7 @@ defns
     % its input - thus forcing an appropriate pointer to be in the context.
     C |- pval => integer
     C ; L ; N ; R |- res_term => ptrt |- init - ct1 -> _t
-    x eq allocv [ ptrt dot alloc_id ]
+    x def= allocv [ ptrt dot alloc_id ]
     smt ( N => x dot base =< inj pval =< x dot base + x dot len  )
     ----------------------------------- :: PtrFromInt
     C ; L ; N ; R |- res_term | ptrFromInt < ct1 , ct2 > ( pval ) => sigma y : loc . y = ( @ ptrt dot alloc_id , inj pval ) /\ res *o I
@@ -1020,7 +1020,7 @@ defns
 
     C |- pval1 => loc
     C |- pval2 => integer
-    ptrt' eq array_shift<ct>(inj pval1, inj pval2)
+    ptrt' def= array_shift<ct>(inj pval1, inj pval2)
     C ; L ; N ; R |- res_term => Alloc ( ptrt  ) ( term )
     smt ( N => inj pval dot alloc_id = ptrt dot alloc_id  /\ ptrt dot base =< ptrt' dot addr =< ptrt dot base + term )
     ----------------------------------------------------------------------------- :: PtrArrayShift
@@ -1054,13 +1054,13 @@ defns
     C ; L ; N ; R |- memop => ret
 
 
-    id : fon eq </ xi // i /> |-> stmt  inEnv Globals
+    id : fon def= </ xi // i /> |-> stmt  inEnv Globals
     C ; L ; N ; R |- </ xi = spine_elemi // i /> :; fon >> subs ; ret
     ------------------------------------------------------------------ :: CCall
     C ; L ; N ; R |- ccall ( ct , id , </ spine_elemi // i /> ) => ret
 
 
-    name : fon eq </ xi // i /> |-> stmt  inEnv Globals
+    name : fon def= </ xi // i /> |-> stmt  inEnv Globals
     C ; L ; N ; R |- </ xi = spine_elemi // i /> :; fon >> subs ; ret
     ------------------------------------------------------------------ :: Proc
     C ; L ; N ; R |- pcall ( name , </ spine_elemi // i /> ) => ret
@@ -1114,7 +1114,7 @@ defns
     C ; L ; N ; R |- if pval then stmt1 else stmt2 <= ret
 
 
-    id :  fon eq </ xi // i /> |-> stmt  inEnv Globals
+    id :  fon def= </ xi // i /> |-> stmt  inEnv Globals
     C ; L ; N ; cdot |- </ xi = pvali // i /> :; fon >> subs ; false /\ I
     ----------------------------------------------------------------- :: Run
     C ; L ; N ; cdot |- run id </ pvali // i /> <= false /\ I

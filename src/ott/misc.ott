@@ -123,35 +123,35 @@ defns
     cdot <= cdot
 
 
-    cdot |- pred eq pred'
-    pred eq ptrt |- init - ct -> oarg
+    cdot |- pred def= pred'
+    pred def= ptrt |- init - ct -> oarg
     cdot ; cdot |- oarg => to_base ( ct )
     ----------------------------------- :: Pred_Owned
     { pred & None } <= _ : pred'
 
 
-    pred_term ( oarg ) eq pred_term' ( oarg' )
-    pred_term eq a ( </ iargi // i /> )
+    pred_term ( oarg ) def= pred_term' ( oarg' )
+    pred_term def= a ( </ iargi // i /> )
     a != Owned < init , ct >
-    a eq </ xi : base_typei // i  /> , y : base_type |-> res inEnv Globals
+    a def= </ xi : base_typei // i  /> , y : base_type |-> res inEnv Globals
     cdot ; cdot ; cdot ; nR |- def <= [ oarg / y , [ </ iargi / xi // i /> ] ] ( res )
     heap <= nR
     ----------------------------------------------------------- :: Pred_Other
     { pred_term ( oarg ) & def & heap } <= _ : pred_term' ( oarg' )
 
 
-    ipred eq ipred'
-    ipred eq *S x . iguard => ptrt |- _init - ct -> oarg
+    ipred def= ipred'
+    ipred def= *S x . iguard => ptrt |- _init - ct -> oarg
     ------------------------------------------------- :: IPred_Owned
     { ipred & cdot } <= _ : ipred'
 
 
-    ipred_term ( oarg ) eq ipred_term' ( oarg' )
-    ipred_term' eq each (integer x; iguard) { a ( iargs ) }
+    ipred_term ( oarg ) def= ipred_term' ( oarg' )
+    ipred_term' def= each (integer x; iguard) { a ( iargs ) }
     a != Owned < _init , ct >
-    forall x . iguard => { a ( iargs ) ( oarg [ x ] ) & arr_def_heap [ x ] } <= _ : a ( iargs ) ( oarg [ x ] )
+    forall x . iguard => { a ( iargs ) ( oarg [ x ] ) & arr_heap [ x ] } <= _ : a ( iargs ) ( oarg [ x ] )
     ----------------------------------------------------------- :: IPred_Other
-    { ipred_term ( oarg ) & arr_def_heap } <= _ : ipred_term' ( oarg' )
+    { ipred_term ( oarg ) & arr_heap } <= _ : ipred_term' ( oarg' )
 
 
     h <= nR
@@ -292,14 +292,14 @@ defns
     [( if ( term ) { spec1 } else { spec2 } spec3 )] ( opt_ident ) = ( if term then res1 else res2 ) * res3
 
 
-    a eq </ _ : _bti // i  /> , _ : base_type |-> _res inEnv Globals
+    a def= </ _ : _bti // i  /> , _ : base_type |-> _res inEnv Globals
     [( spec )] ( opt_ident ) = res
     ------------------------------------------------------------------------------------- :: TakePred
     [( take y = a ( iargs ) ; spec )] ( opt_ident ) = exists y : base_type . a ( iargs ) ( y ) * res
 
 
-    ipred_term eq each (integer x; iguard) { a ( iargs ) }
-    a eq </ _ : _bti // i  /> , _ : base_type |-> _res inEnv Globals
+    ipred_term def= each (integer x; iguard) { a ( iargs ) }
+    a def= </ _ : _bti // i  /> , _ : base_type |-> _res inEnv Globals
     [( spec )] ( opt_ident ) = res
     ------------------------------------------------------------------------------------- :: TakeIPred
     [( take y = ipred_term ; spec )] ( opt_ident ) = exists y : array base_type . each (integer x ; iguard) { a ( iargs ) } ( y ) * res
@@ -328,14 +328,14 @@ defns
     [( if ( term ) { spec1 } else { spec2 } spec3 )] = norm_res *o norm_ret
 
 
-    a eq </ _ : _bti // i  /> , _ : base_type |-> _res inEnv Globals
+    a def= </ _ : _bti // i  /> , _ : base_type |-> _res inEnv Globals
     [( spec )] = norm_ret
     ------------------------------------------------------------------------------------- :: TakePred
     [( take y = a ( iargs ) ; spec )] = exists y : base_type . a ( iargs ) ( y ) *o norm_ret
 
 
-    ipred_term eq each (integer x; iguard) { a ( iargs ) }
-    a eq </ _ : _bti // i  /> , _ : base_type |-> _res inEnv Globals
+    ipred_term def= each (integer x; iguard) { a ( iargs ) }
+    a def= </ _ : _bti // i  /> , _ : base_type |-> _res inEnv Globals
     [( spec )] = norm_ret
     ------------------------------------------------------------------------------------- :: TakeIPred
     [( take y = ipred_term ; spec )] = exists y : array base_type . each (integer x; iguard) { a ( iargs ) } ( y ) *o norm_ret
@@ -364,14 +364,14 @@ defns
     [( if ( term ) { spec1 } else { spec2 } spec3 | norm_ret )] = norm_res --o norm_fun
 
 
-    a eq </ _ : _bti // i  /> , _ : base_type |-> _res inEnv Globals
+    a def= </ _ : _bti // i  /> , _ : base_type |-> _res inEnv Globals
     [( spec | norm_ret )] = norm_fun
     ------------------------------------------------------------------------------------------------------- :: TakePred
     [( take y = a ( iargs ) ; spec | norm_ret )] = forall y : base_type . a ( iargs ) ( y ) --o norm_fun
 
 
-    ipred_term eq each (integer x; iguard) { a ( iargs ) }
-    a eq </ _ : _bti // i  /> , _ : base_type |-> _res inEnv Globals
+    ipred_term def= each (integer x; iguard) { a ( iargs ) }
+    a def= </ _ : _bti // i  /> , _ : base_type |-> _res inEnv Globals
     [( spec | norm_ret )] = norm_fun
     ------------------------------------------------------------------------------------- :: TakeIPred
     [( take y = ipred_term ; spec | norm_ret )] = forall y : array base_type . each (integer x; iguard) { a ( iargs ) } ( y ) --o norm_fun
@@ -391,12 +391,12 @@ defns
     [( ct name( ct1 x1 , </ cti xi // i /> ) requires spec1 ensures spec2 )] = pi x1 : to_base ( ct1 ) . norm_fun
 
 
-  defn [( predicate { </ base_type'j Symbol_identifierj // j /> }  a ( </ base_typei xi // , // i /> ) { spec } )] = a' eq </ rk : base_type''k // , // k /> |-> res :: :: PredDef :: PredDef_
+  defn [( predicate { </ base_type'j Symbol_identifierj // j /> }  a ( </ base_typei xi // , // i /> ) { spec } )] = a' def= </ rk : base_type''k // , // k /> |-> res :: :: PredDef :: PredDef_
   {{ com user-defined resource predicate definition represents predicate }}  by
 
     [( spec )] ( y ) = res
     ---------------------- :: Pred
-    [( predicate { </ base_type'j Symbol_identifierj // j /> }  a ( loc xp , </ base_typei xi // i /> ) { spec } )] = a eq xp : loc , </ xi : base_typei // i /> , y : base_type |-> res
+    [( predicate { </ base_type'j Symbol_identifierj // j /> }  a ( loc xp , </ base_typei xi // i /> ) { spec } )] = a def= xp : loc , </ xi : base_typei // i /> , y : base_type |-> res
 
 
 defns
@@ -437,9 +437,9 @@ defns
 
   meta M = sum i . iguard => Mi
   meta A = sum i . iguard => Ai
-  forall i . iguard => ( Ai , Mi ) |= arr_def_heap [ i ] dot 1
+  forall i . iguard => ( Ai , Mi ) |= arr_heap [ i ] dot DEF
   --------------------------------------------------------------------------------------- :: IPred
-  ( A , M ) |= { each (integer x; iguard) { a ( iargs ) } ( oarg ) & arr_def_heap }
+  ( A , M ) |= { each (integer x; iguard) { a ( iargs ) } ( oarg ) & arr_heap }
 
 
   % M1 + M2 = disjoint over bytes

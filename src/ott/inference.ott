@@ -63,17 +63,17 @@ defns
     N |- a1 ( _iargs ) in? each (integer _; _t) { a2 ( _iargs ) } ~> None
 
 
-    term eq ( ptrt2 - ptrt1 ) / sizeof ct
-    term1 eq term / x ( iguard )
-    term2 eq /\\ ( </ iarg1i = [ term / x ] ( iarg2i ) // i /> )
+    term def= ( ptrt2 - ptrt1 ) / sizeof ct
+    term1 def= term / x ( iguard )
+    term2 def= /\\ ( </ iarg1i = [ term / x ] ( iarg2i ) // i /> )
     smt ( N => neg ( term1 /\ term2 ) )
     -------------------------------------------------------------------------- :: IG_Or_IArg_Neq
     N |- a ( ptrt2 , </ iarg1i // i /> ) in? each (integer x; iguard) { a ( array_shift < ct > ( ptrt1 , x ) , </ iarg2i // i /> ) }  ~> None
 
 
-    term eq ( ptrt2 - ptrt1 ) / sizeof ct
-    term1 eq term / x ( iguard )
-    term2 eq /\\ ( </  iarg1i = [ term / x ] ( iarg2i ) // i /> )
+    term def= ( ptrt2 - ptrt1 ) / sizeof ct
+    term1 def= term / x ( iguard )
+    term2 def= /\\ ( </  iarg1i = [ term / x ] ( iarg2i ) // i /> )
     smt ( N => term1 /\ term2 )
     -------------------------------------------------------------------------- :: Comp
     N |- a ( ptrt2 , </ iarg1i // i /> ) in? each (integer x; iguard) { a ( array_shift < ct > ( ptrt1 , x ) , </ iarg2i // i /> ) } ~> term
@@ -86,12 +86,12 @@ defns
     N |- _ : if term then res1 else res2 -? res_req ~> None
 
 
-    N |- pred_term eq pred_term' ~> false
+    N |- pred_term def= pred_term' ~> false
     ----------------------------------------------- :: PP_None
     N |- _ : pred_term' ( _ ) -? pred_term  ~> None
 
 
-    N |- pred_term eq pred_term' ~> true
+    N |- pred_term def= pred_term' ~> true
     -------------------------------------------------------- :: PP_Exact
     N |- r : pred_term' ( oarg ) -? pred_term ~> r and oarg
 
@@ -102,8 +102,8 @@ defns
 
 
     N |- pred_term in? ipred_term ~> term
-    ipred_term eq each (integer x; iguard) { a ( array_shift < ct > ( ptrt1 , x ) , </ iargi // i /> ) }
-    rem eq each (integer x; iguard /\ (x != term)) { a ( array_shift < ct > ( ptrt1 , x ) , </ iargi // i /> ) } ( oarg )
+    ipred_term def= each (integer x; iguard) { a ( array_shift < ct > ( ptrt1 , x ) , </ iargi // i /> ) }
+    rem def= each (integer x; iguard /\ (x != term)) { a ( array_shift < ct > ( ptrt1 , x ) , </ iargi // i /> ) } ( oarg )
     -------------------------------------------------------------------------- :: PI_Rem
     N |- r : ipred_term ( oarg ) -? pred_term ~> bind < r1 , r2 > : rem * pred_term ( oarg [ term ] ) = break ( r , term ) for r2 & oarg [ term ]  and r1 : rem
 
@@ -114,14 +114,14 @@ defns
 
 
     N |- pred_term in? ipred_term ~> term
-    ipred_term eq each (integer x; iguard) { a ( array_shift < ct > ( ptrt1 , x ) , </ iargi // i /> ) }
+    ipred_term def= each (integer x; iguard) { a ( array_shift < ct > ( ptrt1 , x ) , </ iargi // i /> ) }
     smt ( N => exists x . iguard /\ ( x != term ) )
     ------------------------------------------------------------------------------------------------ :: IP_More
     N |- r : pred_term ( oarg ) -? ipred_term ~> oarg and each (integer x; iguard /\ ( x != term ) ) { a ( array_shift < ct > ( ptrt1 , x ) , </ iargi // i /> ) }
 
 
     N |- pred_term in? ipred_term ~> term
-    ipred_term eq each (integer x; iguard) { a ( array_shift < ct > ( ptrt1 , x ) , </ iargi // i /> ) }
+    ipred_term def= each (integer x; iguard) { a ( array_shift < ct > ( ptrt1 , x ) , </ iargi // i /> ) }
     smt ( N => forall x . neg ( iguard /\ ( x != term ) ) )
     C ; L |- oarg => base_type
     ------------------------------------------------------------------------------------------------ :: IP_Last
@@ -140,9 +140,9 @@ defns
 
     N |- ipred_term' [=? ipred_term ~> Lt
     % ipred_term' < ipred_term
-    ipred_term eq each (integer x; iguard) { a ( array_shift<ct>(ptrt, x) , </ iargi // i /> ) }
-    ipred_term' eq each (integer x; iguard') { a ( array_shift<ct>(ptrt,x) , </ iargi // i />  ) }
-    rem eq each (integer x; iguard  /\ neg iguard') { a ( array_shift<ct>(ptrt,x) , </ iargi // i /> ) } ( oarg )
+    ipred_term def= each (integer x; iguard) { a ( array_shift<ct>(ptrt, x) , </ iargi // i /> ) }
+    ipred_term' def= each (integer x; iguard') { a ( array_shift<ct>(ptrt,x) , </ iargi // i />  ) }
+    rem def= each (integer x; iguard  /\ neg iguard') { a ( array_shift<ct>(ptrt,x) , </ iargi // i /> ) } ( oarg )
     ---------------------------------------------------------------------------------------- :: II_Lt
     N |- r : ipred_term ( oarg ) -? ipred_term' ~> bind < r1 , r2 > : res = chop ( r , iguard' ) for r1 & oarg [ k ] and r2 : rem
 
@@ -150,8 +150,8 @@ defns
     % This would require being able to merge arrays, which the implementation does not support
     % N |- ipred_term' [=? ipred_term ~> Gt
     % % ipred_term' > ipred_term
-    % ipred_term  eq { x ; iguard  . a ( ptrt + step , iargs ) }
-    % ipred_term' eq { x ; iguard' . a ( ptrt + step , iargs ) }
+    % ipred_term  def= { x ; iguard  . a ( ptrt + step , iargs ) }
+    % ipred_term' def= { x ; iguard' . a ( ptrt + step , iargs ) }
     % ------------------------------------------------------------------ :: II_Gt
     % N |- r : ipred_term & oarg -? ipred_term'  ~> oarg and { x ; iguard' /\ neg iguard . a ( ptrt + step , iargs ) }
 
@@ -196,7 +196,7 @@ defns
   defn N ; nR |- res_req ~> bind out_res_bind for out_res_term and out_oarg -| out_nRp :: :: Req_Wf :: Req_Wf_
   {{ com $[[N]] ; [[nR]]$ (check well-formedness of and then) fulfil request $[[res_req]]$ (via $[[out_res_bind]]$) for answer $[[out_res_term]]$ and $[[out_oarg]]$, with $[[out_nRp]]$ leftover }} by
 
-    a eq _ : loc , </ _i : base_typei // i  /> , y' : base_type |-> res inEnv Globals
+    a def= _ : loc , </ _i : base_typei // i  /> , y' : base_type |-> res inEnv Globals
     C ; L |- ptrt => loc
     indexed </ C ; L |- iargi => base_typei // i />
     N ; nR |- wf a ( ptrt , </ iargi // i /> ) ~> bind res_bind for res_term and oarg -| nR'
@@ -204,7 +204,7 @@ defns
     N ; nR |- a ( ptrt , </ iargi // i /> ) ~> bind res_bind for res_term and oarg -| nR'
 
 
-    a eq _ : loc , </ _i : base_typei // i  /> , y' : base_type |-> res inEnv Globals
+    a def= _ : loc , </ _i : base_typei // i  /> , y' : base_type |-> res inEnv Globals
     C ; L |- ptrt => loc
     indexed </ C ; L |- iargi => base_typei // i />
     N ; nR |- wf each (integer x; iguard) { a ( array_shift < ct > ( ptrt , x ) , </ iargi // i /> ) } ~> bind res_bind for res_term and oarg -| nR'
@@ -216,7 +216,7 @@ defns
   {{ com under-determined conditional resource request: $[[N]] ; [[nR]]$ fulfil request for $[[if]]$ $[[term]]$ $[[then]]$ $[[res1]]$ $[[else]]$ $[[res2]]$ with \textbf{synthesising} $[[out_x]]$ and $[[out_nRp]]$ leftover }} by
 
 
-    N |- norm_res eq if term then res1 else res2
+    N |- norm_res def= if term then res1 else res2
     -------------------------------------------------------------- :: Acc
     N ; nR , x : norm_res |- if term then res1 else res2 ~> x -| nR
 
@@ -269,14 +269,14 @@ defns
 
     N ; nR |- pred_term ~> bind res_bind1 for res_term1 and oarg' -| nR'
     N ; nR' |- calc y using oarg' / y' ( res ) ~> bind res_bind2 for res_term2 and oarg -| nR''
-    res_term eq pack ( oarg' , < res_term1 , res_term2 > )
+    res_term def= pack ( oarg' , < res_term1 , res_term2 > )
     -------------------------------------------------------------------------------------------------------------- :: TakePred
     N ; nR |- calc y using exists y' : base_type.  pred_term ( y' ) * res ~> bind res_bind1 , res_bind2 for res_term and oarg  -| nR''
 
 
     N ; nR |- ipred_term ~> bind res_bind1 for res_term1 and oarg' -| nR'
     N ; nR' |- calc y using oarg' / y' ( res ) ~> bind res_bind2 for res_term2 and oarg -| nR''
-    res_term eq pack ( oarg' , < res_term1 , res_term2 > )
+    res_term def= pack ( oarg' , < res_term1 , res_term2 > )
     -------------------------------------------------------------------------------------------------------------- :: TakeIPred
     N ; nR |- calc y using exists y' : array base_type . ipred_term ( y' ) * res ~> bind res_bind1 , res_bind2 for res_term and oarg  -| nR''
 
@@ -290,8 +290,8 @@ defns
 
 
     C ; L ; N ; nR |- emp | create < ct > ( pval ) => norm_ret
-    norm_ret eq sigma yp : loc . term /\ exists x : to_base ( ct ) . ( yp |- Uninit - ct -> x ) *o I
-    term eq representable ( ct * , yp ) /\ alignedI ( inj pval , yp )
+    norm_ret def= sigma yp : loc . term /\ exists x : to_base ( ct ) . ( yp |- Uninit - ct -> x ) *o I
+    term def= representable ( ct * , yp ) /\ alignedI ( inj pval , yp )
     ----------------------------------------------------------------------- :: Create
     C ; L ; N ; nR |- _rest | create < ct > ( pval ) ~> bind cdot for emp | create < ct > ( pval ) : norm_ret -| nR
 
@@ -303,7 +303,7 @@ defns
     % DEFER (not implemented) - memory order
     C |- pval0 => loc
     N ; nR |- Owned < Init , ct > ( inj pval0 ) ~> bind res_bind for res_term and oarg -| nR'
-    norm_ret eq sigma y : to_base ( ct ) . y = oarg /\ pt *o I
+    norm_ret def= sigma y : to_base ( ct ) . y = oarg /\ pt *o I
     -------------------------------------------------------------------------- :: Load
     C ; L ; N ; nR |- _rest | load < ct >  ( pval0 ) ~> bind res_bind for res_term | load < ct > ( pval0 ) : norm_ret -| nR'
 
@@ -313,7 +313,7 @@ defns
     % DEFER (not implemented) - locking boolean
     smt ( N => representable ( ct , inj pval1 ) )
     N ; nR |- Owned < _init , ct > ( inj pval0 ) ~> bind res_bind for res_term and _t -| nR'
-    norm_ret eq sigma _ : unit . ( inj pval0 |- Init - ct -> inj pval1 ) *o I
+    norm_ret def= sigma _ : unit . ( inj pval0 |- Init - ct -> inj pval1 ) *o I
     ------------------------------------------------------------------------------------------- :: Store
     C ; L ; N ; nR |- _rest | store < ct > ( pval0 , pval1 ) ~> bind res_bind for res_term | store < ct > ( pval0 , pval1 ) : norm_ret -| nR'
 
@@ -349,7 +349,7 @@ defns
     % C |- pval1 => loc
     % C |- pval2 => loc
     % C ; L ; N ; R |- res_term => res
-    % res eq Arr < ct > ( ptrt , _b , _b ) ( _t )
+    % res def= Arr < ct > ( ptrt , _b , _b ) ( _t )
     % N |- inj pval1 inEnv res
     % N |- inj pval2 inEnv res
     % -------------------------------- :: PtrDiff_Arr
@@ -381,7 +381,7 @@ defns
     % C |- pval1 => loc
     % C |- pval2 => integer
     % C ; L ; N ; R |- res_term => res
-    % res eq Arr < ct > ( ptrt , _b , _b ) ( _t )
+    % res def= Arr < ct > ( ptrt , _b , _b ) ( _t )
     % N |- inj pval1 inEnv res
     % N |- inj pval1 +ptr ( inj pval2 * sizeof ct ) inEnv res
     % ----------------------------------------------------- :: PtrArrayShift
@@ -472,30 +472,30 @@ defns
     % C ; L ; N ; </ nRi // i /> |- unseq ( </ stmti : reti // i /> ) => concat </ reti // i />
 
 
-    id :  norm_fun eq </ xi // i /> |-> stmt  inEnv Globals
+    id :  norm_fun def= </ xi // i /> |-> stmt  inEnv Globals
     C ; L ; N ; nR |- spine :; norm_fun ~> bind res_bind for </ spine_elemi // i /> and norm_ret -| nR'
     ---------------------------------------------------------------------------------------------------------------- :: CCall
     C ; L ; N ; nR |- ccall ( ct , id , spine ) ~> bind res_bind for ccall ( ct , id , </ spine_elemi // i /> ) : norm_ret -| nR'
 
 
-    name :  norm_fun eq </ xi // i /> |-> stmt  inEnv Globals
+    name :  norm_fun def= </ xi // i /> |-> stmt  inEnv Globals
     C ; L ; N ; nR |- spine :; norm_fun ~> bind res_bind for </ spine_elemi // i /> and norm_ret -| nR'
     ------------------------------------------------------------------------------------------------------------------ :: Proc
     C ; L ; N ; nR |- pcall ( name , spine ) ~> bind res_bind for pcall ( name , </ spine_elemi // i /> ) : norm_ret -| nR'
 
 
-    a eq </ xi : base_typei // i  /> , y : base_type |-> res inEnv Globals
+    a def= </ xi : base_typei // i  /> , y : base_type |-> res inEnv Globals
     indexed </ C |- pvali => base_typei // i />
     N ; nR |- calc y using [ </ pvali / xi // i /> ] ( res ) ~> bind res_bind for res_term and oarg -| nR'
-    pred eq a ( </ inj pvali // i /> ) ( oarg )
+    pred def= a ( </ inj pvali // i /> ) ( oarg )
     ---------------------------------------------------------------------------------------------------------- :: Fold
     C ; L ; N ; nR |- fold a ( </ pvali // i /> ) ~> bind res_bind for fold res_term : pred : pred *o I -| nR''
 
 
-    a eq </ xi : base_typei // i  /> , y : base_type |-> res inEnv Globals
+    a def= </ xi : base_typei // i  /> , y : base_type |-> res inEnv Globals
     indexed </ C |- pvali => base_typei // i />
     N ; nR |- a ( </ inj pvali // i /> ) ~> bind res_bind for res_term and oarg -| nR'
-    res' eq [ oarg / y , [ </ iargi / xi // i /> ] ] ( res )
+    res' def= [ oarg / y , [ </ iargi / xi // i /> ] ] ( res )
     ------------------------------------------------------------------------------------------------ :: Unfold
     C ; L ; N ; nR |- unfold a ( </ pvali // i /> ) ~> bind res_bind , fold ( r ) : a ( </ inj pvali // i /> ) ( oarg ) = res_term for r : res' *o I -| nR'
 
@@ -597,7 +597,7 @@ defns
     N |- ret ~> ret_pat
     N |- ret_pat : sigma y : base_type . ret ~> C1 ; L1 ; N1 ; nR1
     C , C1 ; L , L' , L1 ; N , N' , N1 ; nR' , nR1 |- stmt <= norm_ret2 ~> stmt'
-    stmt'' eq insert_lets ( res_bind , let ret_pat = expr' in stmt' )
+    stmt'' def= insert_lets ( res_bind , let ret_pat = expr' in stmt' )
     ---------------------------------------------------------------------------------------- :: Let
     C ; L ; N ; nR |- let _ret_pat = expr in stmt <= norm_ret2 ~> stmt''
 
@@ -606,7 +606,7 @@ defns
     N |- norm_ret1 ~> ret_pat
     N |- ret_pat : norm_ret1 ~> C1 ; L1 ; N1 ; nR1
     C , C1 ; L , L1 ; N , N1 ; nR , nR1 |- stmt2 <= norm_ret2 ~> stmt2'
-    stmt'' eq let ret_pat : norm_ret1 = stmt1' in stmt2'
+    stmt'' def= let ret_pat : norm_ret1 = stmt1' in stmt2'
     ---------------------------------------------------------------------- :: Annot
     C ; L ; N ; nR' , nR |- let _ret_pat : norm_ret1 = stmt1 in stmt2 <= norm_ret2 ~> stmt''
 
@@ -628,7 +628,7 @@ defns
     C ; L ; N ; nR |- case pval of </ | pati => stmti // i /> end <= norm_ret ~> case pval of </ | pati => stmt'i // i /> end
 
 
-    id : norm_fun eq </ xi // i /> |-> stmt inEnv Globals
+    id : norm_fun def= </ xi // i /> |-> stmt inEnv Globals
     C ; L ; N ; cdot |- </ xi = pvali // i /> :; norm_fun >> subs ; false /\ I
     ----------------------------------------------------------------------------- :: Run
     C ; L ; N ; cdot |- run id </ pvali // i /> <= false /\ I ~> run id </ pvali // i />

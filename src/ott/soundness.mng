@@ -136,14 +136,14 @@ context $[[ nR ]]$.
 \small
 \centering
 \cndrule{
-    \cnpremise{ [[ pred eq pred_term ( oarg ) ]] }%
+    \cnpremise{ [[ pred def= pred_term ( oarg ) ]] }%
     \cnpremise{ [[ < h + h' ; res_pat = def > ~> < h'' ; subs > ]] }%
 }{%
     [[ < h + { pred & def & h' } ; fold ( res_pat ) = pred_term > ~> < h'' ; subs > ]]
 }{}%
 \\[-\baselineskip]
 \cndrule{
-    \cnpremise{ [[ pred eq pred_term ( oarg ) ]] }%
+    \cnpremise{ [[ pred def= pred_term ( oarg ) ]] }%
     \cnpremise{ [[ alloct | < h ; res_term > ||v < h1 ; def > ]] }%
     \cnpremise{ [[ footprint_of def in h1 ~> h2 REM h3 ]] }%
 }{%
@@ -820,19 +820,19 @@ This is as simple inversion lemma.
     \pf{} By inversion, the assumption must be \HeapEmpty.}
 
 \step{<1>2}{If $[[ pred ]] = [[ ptrt |- init - ct -> oarg ]]$, $[[ nR ]] = [[ _ : pred ]]$,
-    then $[[ h ]] = [[ { pred' & None } ]]$ for $[[ cdot |- subs0 ( pred)  eq subs0 ( pred' ) ]]$.\\
+    then $[[ h ]] = [[ { pred' & None } ]]$ for $[[ cdot |- subs0 ( pred)  def= subs0 ( pred' ) ]]$.\\
     \pf{} By inversion, the assumption must be \HeapPredOwned{}.}
 
 \step{<1>3}{If $[[ nR ]] = [[ _ : pred ]]$, then $[[ h ]] = [[ { pred' & def & h' } ]]$.\\
-    for $[[ cdot |- subs0 ( pred ) eq subs0 ( pred' ) ]]$.\\
+    for $[[ cdot |- subs0 ( pred ) def= subs0 ( pred' ) ]]$.\\
     \pf{} By inversion, the assumption must be \HeapPredOther.}
 
 \step{<1>4}{If $[[ ipred ]] = [[ *S x . iguard => ptrt |- _init - ct -> oarg ]]$, $[[ nR ]] = [[ _ : ipred ]]$,
-    then $[[ h ]] = [[ { ipred' & cdot } ]]$ for $[[ cdot |- subs0 ( ipred ) eq subs0 ( ipred' ) ]]$.\\
+    then $[[ h ]] = [[ { ipred' & cdot } ]]$ for $[[ cdot |- subs0 ( ipred ) def= subs0 ( ipred' ) ]]$.\\
     \pf{} By inversion, the assumption must be \HeapIPredOwned.}
 
-\step{<1>5}{If $[[ nR ]] = [[ _ : ipred ]]$, then $[[ h ]] = [[ { ipred' & arr_def_heap } ]]$
-    for $[[ cdot |- subs0 ( ipred ) eq subs0 ( ipred' ) ]]$.\\
+\step{<1>5}{If $[[ nR ]] = [[ _ : ipred ]]$, then $[[ h ]] = [[ { ipred' & arr_heap } ]]$
+    for $[[ cdot |- subs0 ( ipred ) def= subs0 ( ipred' ) ]]$.\\
     \pf{} By inversion, the assumption must be \HeapIPredOther.}
 
 \step{<1>6}{If $[[ nR ]] = [[ nR1 , nR2 ]]$, then $[[ h ]] = [[ h1 + h2 ]]$,
@@ -860,8 +860,8 @@ This is as simple inversion lemma.
 
 \step{<1>2}{\case{\ResSynPred{} or \ResSynIPred}{%
     $[[ nR ]] = [[ _ : pred_term ( oarg ) ]] \textrm{ or } [[ _ : ipred_term ( oarg ) ]]$, and so
-    $[[ h ]] = [[ { pred_term ( oarg ) & opt_def_heap } ]] \textrm{ or }
-    [[ { ipred_term ( oarg ) & arr_def_heap } ]]$ by lemma~\ref{subsec:norm_ctx_det_heap}.\\
+    $[[ h ]] = [[ { pred_term ( oarg ) & def_heap } ]] \textrm{ or }
+    [[ { ipred_term ( oarg ) & arr_heap } ]]$ by lemma~\ref{subsec:norm_ctx_det_heap}.\\
     \pf{} \OpFootprintPred{} or \OpFootprintIPred{} respectively.}}
 
 \step{<1>3}{\case{$[[ pack ( oarg , res_val' ) ]]$.}{%
@@ -1030,9 +1030,9 @@ predicates in pattern-matching.\\[\baselineskip]
     (by lemma~\ref{subsec:norm_ctx_det_heap}),
     so let $[[ h' ]] = [[ { ipred_term ( oarg ) & cdot } + { pred_term ( oarg [ term ] ) & None } ]]$
     (by $[[ cdot [ term ] ]] = [[ None ]]$).\\
-    Otherwise, $[[ h'' ]] = [[ { ipred_term' ( oarg ) & arr_def_heap } ]]$,
+    Otherwise, $[[ h'' ]] = [[ { ipred_term' ( oarg ) & arr_heap } ]]$,
     (again by lemma~\ref{subsec:norm_ctx_det_heap}),
-    so let $[[ h' ]] = [[ { ipred_term ( oarg ) & arr_def_heap } + { pred_term ( oarg [ term ] ) & arr_def_heap [ term ] } ]]$.\\[\baselineskip]
+    so let $[[ h' ]] = [[ { ipred_term ( oarg ) & arr_heap } + { pred_term ( oarg [ term ] ) & arr_heap [ term ] } ]]$.\\[\baselineskip]
 
     Let $[[ res_val ]] = [[ < ipred_term , pred_term > ]]$ and
     $[[ nR' ]] = [[ _ : ipred_term ( oarg ) , _ : pred_term ( oarg [term ] ) ]]$ to prove:
@@ -1057,9 +1057,9 @@ predicates in pattern-matching.\\[\baselineskip]
     If predicate is $[[ Owned < _init , ct > ]]$, $[[ h'' ]] = [[ { ipred_term1 ( oarg1 ) & cdot } + { pred_term ( oarg2 ) & None } ]]$
     (by lemma~\ref{subsec:norm_ctx_det_heap}),
     so let $[[ h' ]] = [[ { ipred_term ( oarg ) & cdot } ]]$ (by $[[ cdot [ term ] := None ]] = [[ cdot ]]$).
-    Otherwise, $[[ h'' ]] = [[ { ipred_term1 ( oarg1 ) & arr_def_heap } + { pred_term ( oarg2 ) & def & heap } ]]$
+    Otherwise, $[[ h'' ]] = [[ { ipred_term1 ( oarg1 ) & arr_heap } + { pred_term ( oarg2 ) & def & heap } ]]$
     (again by lemma~\ref{subsec:norm_ctx_det_heap}),
-    so let $[[ h' ]] = [[ { ipred_term ( oarg ) & arr_def_heap [ term ] := def & heap } ]]$.\\[\baselineskip]
+    so let $[[ h' ]] = [[ { ipred_term ( oarg ) & arr_heap [ term ] := def & heap } ]]$.\\[\baselineskip]
 
     Let $[[ res_val ]] = [[ ipred_term ]]$ and
     $[[ nR ]] = [[ _ : ipred_term ( oarg1 [ term ] := oarg2 ) ]]$, to prove:
@@ -1108,9 +1108,9 @@ predicates in pattern-matching.\\[\baselineskip]
     If predicate is $[[ Owned < _init , ct > ]]$, $[[ h'' ]] = [[ { ipred_term ( oarg ) & cdot } ]]$
     (by lemma~\ref{subsec:norm_ctx_det_heap}),
     so let $[[ h' ]] = [[ { ipred_term1 ( oarg ) & cdot } + { ipred_term2 ( oarg ) & cdot } ]]$.
-    Otherwise, $[[ h'' ]] = [[ { ipred_term ( oarg ) & arr_def_heap } ]]$
+    Otherwise, $[[ h'' ]] = [[ { ipred_term ( oarg ) & arr_heap } ]]$
     (again by lemma~\ref{subsec:norm_ctx_det_heap}),
-    so let $[[ h' ]] = [[ { ipred_term1 ( oarg ) & arr_def_heap } + { ipred_term2 ( oarg ) & arr_def_heap } ]]$.\\[\baselineskip]
+    so let $[[ h' ]] = [[ { ipred_term1 ( oarg ) & arr_heap } + { ipred_term2 ( oarg ) & arr_heap } ]]$.\\[\baselineskip]
 
     Let $[[ res_val ]] = [[ < ipred_term1 , ipred_term2 > ]]$,
     and $[[ nR ]] = [[ _ : ipred_term1 ( oarg ) , _ : ipred_term2 ( oarg ) ]]$, to prove:
@@ -1163,7 +1163,7 @@ predicates in pattern-matching.\\[\baselineskip]
 
 \step{<1>13}{\case{\ResSynFold}{%
     \pf{} Like \ResSynPredOpsIterate, but with:\\
-    $[[ a eq </ xi : _bti // i /> , y : _bt  |-> res'' inEnv Globals ]]$\\
+    $[[ a def= </ xi : _bti // i /> , y : _bt  |-> res'' inEnv Globals ]]$\\
     $[[ res_term ]]= [[ fold res_term' : a ( </ iargi // i /> ) ( oarg ) ]]$\\
     $[[ res ]]     = [[ a ( </ iargi // i /> ) ( oarg ) ]]$\\
     $[[ res' ]]    = [[ [ oarg / y , [ </ iargi / xi // i /> ] ] ( res'' ) ]]$.\\[\baselineskip]
@@ -1507,7 +1507,7 @@ arbitrary (not normalised).
 
         \step{<3>2}{$[[ exists ]] [[ nR1' ]] [[ . ]]$
         \begin{pfenum}
-            \item $[[ a eq </ xi : base_typei // i  /> , y : base_type |-> res'' inEnv Globals ]]$
+            \item $[[ a def= </ xi : base_typei // i  /> , y : base_type |-> res'' inEnv Globals ]]$
             \item $[[ cdot ; cdot ; cdot ; nR1' |- def <= [ oarg / y , [ </ iarg / xi // i /> ] ] ( res'' ) ]]$
             \item $[[ alloct |- heap <= nR1' ]]$
         \end{pfenum}
@@ -1659,7 +1659,7 @@ arbitrary (not normalised).
         \pf{} By inversion on the typing assumption and \PureValObjPtr and \PureValObjInt.}
     
     \step{<2>2}{%
-        $[[ alloct |- smt ( x dot base =< inj ptr' =< x dot base + x dot len ) ]]$ for $[[x eq alloct [ inj ptr dot alloc_id ] ]]$.\\
+        $[[ alloct |- smt ( x dot base =< inj ptr' =< x dot base + x dot len ) ]]$ for $[[x def= alloct [ inj ptr dot alloc_id ] ]]$.\\
         \pf{} By inversion on the typing assumption and $[[ alloct <= N ]]$.}
 
     \step{<2>3}{%
@@ -1704,7 +1704,7 @@ arbitrary (not normalised).
 
     \step{<2>1}{%
         \begin{pfenum}
-        \item $[[name : pure_fun eq </ xi // i /> |-> pstmt inEnv Globals]]$.
+        \item $[[name : pure_fun def= </ xi // i /> |-> pstmt inEnv Globals]]$.
         \item $[[ cdot ; L0 ; N ; cdot |- </ xi = pvali // i /> :; pure_fun >> subs ; sigma y : base_type . term /\ I ]]$.
         \end{pfenum}
     \pf{} By inversion on the assumption.}
@@ -1954,7 +1954,7 @@ arbitrary (not normalised).
         \pf{} By inversion on the typing assumption.}
 
     \step{<2>3}{%
-        $[[ alloct |- smt ( x dot base =< addr =< x dot base + x dot len ) ]]$ for $[[ x eq alloct [ ptrt dot alloc_id ] ]]$.\\
+        $[[ alloct |- smt ( x dot base =< addr =< x dot base + x dot len ) ]]$ for $[[ x def= alloct [ ptrt dot alloc_id ] ]]$.\\
         \pf{} By inversion on the typing assumption and $[[ alloct <= N ]]$.}
 
     \step{<2>4}{%
@@ -1999,7 +1999,7 @@ arbitrary (not normalised).
     \begin{proof}
 
     \step{<2>1}{%
-        $[[ id : fon eq </ xi // i /> |-> stmt inEnv Globals]]$\\
+        $[[ id : fon def= </ xi // i /> |-> stmt inEnv Globals]]$\\
         $[[ cdot ; L0 ; N ; nR |- </ xi = spine_elemi // i /> :; fon >> subs ; ret ]]$.\\
         \pf{} By inversion.}
 
@@ -2102,7 +2102,7 @@ to deduce that $[[ nR' ]]$ can only be what you would have supplied anyways.
 \assume{\begin{pfenum}
     \item $[[ cdot ; L0 ; N ; nR |- stmt <= ret ]]$,
     \item $[[ alloct ; h <= N ; nR ]]$
-    \item for all $[[ id : fon eq </ xi // i /> |-> stmt inEnv Globals ]]$,
+    \item for all $[[ id : fon def= </ xi // i /> |-> stmt inEnv Globals ]]$,
             if $[[ C ; L ; N ; R |- param_spine :; fon >> subs ; ret ]]$
             then $[[ C ; L ; N ; R |- subs ( stmt ) <= ret ]]$
     \item $[[ forall ]] [[ f ]] [[ . ]] [[ < alloct ;  h + f ; stmt > -->  < alloct' ; heap ; stmt' > ]]$.
@@ -2321,7 +2321,7 @@ to deduce that $[[ nR' ]]$ can only be what you would have supplied anyways.
 }{%
 
     \assume{%
-      $[[ ret eq sigma y : bool . y = ( addr1 ' rel_binop ' addr2 ) /\ Alloc ( ptrt1 ) ( oarg1 ) * Alloc ( ptrt2 ) ( oarg2 ) *o I ]]$
+      $[[ ret def= sigma y : bool . y = ( addr1 ' rel_binop ' addr2 ) /\ Alloc ( ptrt1 ) ( oarg1 ) * Alloc ( ptrt2 ) ( oarg2 ) *o I ]]$
       $[[ cdot ; L0 ; N ; nR |- res_term | ( @ alloc_id1 , addr1 ) rel_binop ( @ alloc_id2 , addr2 ) => ret ]]$
       and $[[ alloct | < h + f ; res_term > ||v < heap + { Alloc ( ptrt1 ) ( oarg1 ) & None } + { Alloc ( ptrt2 ) ( oarg2 ) & None } ; < Alloc ( ptrt1 ) , Alloc ( ptrt2 ) > > ]]$.\\[\baselineskip]}
 
@@ -2372,7 +2372,7 @@ to deduce that $[[ nR' ]]$ can only be what you would have supplied anyways.
     \ExprCCall.
 }{%
     \assume{%
-        $[[ id : fon eq </ xi // i  /> |-> stmt inEnv Globals ]]$\\
+        $[[ id : fon def= </ xi // i  /> |-> stmt inEnv Globals ]]$\\
         $[[ cdot ; L0 ; N ; nR |- </ xi = spine_elemi // i /> :; fon >> subs1 ; ret1 ]]$.\\
         $[[ alloct <= N ]]$\\
         $[[ < alloct ; h ; ccall ( ct , id , </ spine_elemi // i /> ) > --> < alloct ; h ; subs2 ( stmt ) : ret2 > ]]$\\
@@ -2672,7 +2672,7 @@ have ranges which are disjoint with allocations so far.}
     $[[ alloc_id1 = alloc_id2  = ptrt dot alloc_id ]]$,
     $[[ A [ ptrt dot alloc_id ] = ( ptrt dot base , term , true ) ]]$,
     $[[ ptrt dot base =< ( addr1 , addr2 ) =< ptrt dot base + term ]]$,
-    and $[[ int eq ( addr1 - addr2 ) / sizeof ct ]]$.\\[\baselineskip]
+    and $[[ int def= ( addr1 - addr2 ) / sizeof ct ]]$.\\[\baselineskip]
 
     Hence we may step with \VipDiffPtr{}. Since $[[ ( A , M ) ]]$ doesn't
     change, satisfaction is preserved.}}
@@ -2686,7 +2686,7 @@ have ranges which are disjoint with allocations so far.}
     we have $[[ A [ alloc_id ] = ( addri , termi , _t ) ]]$.
     Also, from the premise of the CN steps, we know
     $[[ addri =< inj ptr' dot addr =< addri + termi ]]$
-    where $[[ inj ptr' eq array_shift < ct > ( inj ptr ,  int ) ]]$
+    where $[[ inj ptr' def= array_shift < ct > ( inj ptr ,  int ) ]]$
     $[[ inj ptr = ( @ alloc_id , _t ) ]]$.\\[\baselineskip]
 
     Hence we may step with \VipArray{}. Since $[[ ( A , M ) ]]$ doesn't
