@@ -140,7 +140,7 @@ computation.
 Whilst the rules for typing \emph{top-level} pure values and pure expressions
 share the same context as typing pure values and expressions, they differ in
 that they are \emph{checking} judgements instead of synthesising ones, of the
-form $[[ C ; L ; N |- tpexpr <= pure_ret ]]$ (and similarly for $[[ pval ]]$). % chktex 25
+form $[[ C ; L ; N |- pstmt <= pure_ret ]]$ (and similarly for $[[ pval ]]$). % chktex 25
 Given the computational, logical and constraint contexts, check the top-level
 value (or expression) satisfies this type.
 
@@ -167,16 +167,16 @@ assume all patterns are complete.
 \begin{figure*}[tp]
     \small
     \raggedright{}
-    \onlyUseRules{\cndefnPureXXTop{}}{%
-        \cndefnPureXXTopXXPVal{},
-        \cndefnPureXXTopXXUB{},
-        \cndrulePureXXTopXXIf{},
-        \cndrulePureXXTopXXLet{}
+    \onlyUseRules{\cndefnPureXXStmt{}}{%
+        \cndefnPureXXStmtXXPVal{},
+        \cndefnPureXXStmtXXUB{},
+        \cndrulePureXXStmtXXIf{},
+        \cndrulePureXXStmtXXLet{}
     }\\
     \cndefnPatXXComp{}%
     \caption{Selection of \kl{Kernel CN} typing rules for top-level pure values and
         expressions, including the translation of computational patterns into a
-        computational context used in the \coreinline{let} rule.}\label{fig:typing-tpval-tpexpr}
+        computational context used in the \coreinline{let} rule.}\label{fig:typing-tpval-pstmt}
 \end{figure*}
 
 \section{Resource terms}\label{sec:typing-res-terms}
@@ -436,8 +436,8 @@ against any type if the constraint context is inconsistent.
     \raggedright{}
     \cndefnExpr{}
     \\
-    \onlyUseRules{\cndefnTExpr{}}{
-        \cndefnTExprXXRetXXTerms{}
+    \onlyUseRules{\cndefnStmt{}}{
+        \cndefnStmtXXRetXXTerms{}
     }
     \caption{\kl{Kernel CN} typing rules for sequential expressions and top-level values.}\label{fig:typing-seq-expr-tval}
 \end{figure*}
@@ -454,7 +454,7 @@ synthesise computational, logical, constraint and resource contexts.
 Pattern matching for return types (\cref{fig:typing-ret-pat}) is complicated by
 the fact that they are dependent on computational and logical (ghost)
 variables, and complicated further by the fact that the computational values
-have their own patterns (\cref{fig:typing-tpval-tpexpr}).
+have their own patterns (\cref{fig:typing-tpval-pstmt}).
 
 \begin{figure*}[tp]
     \small
@@ -517,7 +517,7 @@ definition of that predicate (with the arguments substituted).
 \section{Effectful top-level expressions}
 
 With pattern matching in hand, I can explain the typing rules for effectful
-top-level expressions (\cref{fig:typing-seq-texpr}). For space, I will
+top-level expressions (\cref{fig:typing-seq-stmt}). For space, I will
 only talk about \coreinline{let} and \coreinline{run()} expressions, % chktex 36
 the remaining rules are as one would expect presented in the appendix.
 
@@ -535,12 +535,12 @@ type.\sidenote{Need to update the rule.}
 \begin{figure*}[tp]
     \small
     \raggedright{}
-    \onlyUseRules{\cndefnTExpr{}}{%
-        \cndruleExplXXTExprXXLet{},
-        \cndruleExplXXTExprXXRun{}
+    \onlyUseRules{\cndefnStmt{}}{%
+        \cndruleExplXXStmtXXLet{},
+        \cndruleExplXXStmtXXRun{}
     }
     \caption{Select \kl{Kernel CN} typing rules for effectful top-level
-        expressions.}\label{fig:typing-seq-texpr}
+        expressions.}\label{fig:typing-seq-stmt}
 \end{figure*}
 
 \section{Elaboration}\label{sec:elaboration}
@@ -572,10 +572,10 @@ I shall only present a small slice of the elaboration to highlight the key
 concepts, leaving the rest of the large system to the appendix. The main
 judgement for synthesising a resource term and an instantiation for a logical
 quantifier is as below and in \cref{fig:elab-res-oarg}.
+{\small
 \[
-    \small
     [[ N ; nR |- calc y using res ~> bind res_bind for res_term and oarg -| nR' ]] % chktex 25
-\]
+\]}
 Given a constraint context, a resource context, an
 output parameter, and a resource type, synthesise a series of bindings for an
 output argument and resource term and which will result in the updated resource
@@ -585,15 +585,15 @@ context.
     \small
     \raggedright{}
     \onlyUseRules{\cndefnOarg{}}{%
-	\cndruleOargXXEmpty{},
-	\cndruleOargXXReturn{},
-	\cndruleOargXXEndIfXXTrue{},
-	\cndruleOargXXEndIfXXFalse{},
-	\cndruleOargXXEndIfXXUnderDet{},
-	%\cndruleOargXXMiddleIf{},
-	%\cndruleOargXXAssert{},
-	\cndruleOargXXTakePred{}
-	%\cndruleOargXXTakeIPred{}
+        \cndruleOargXXEmpty{},
+        \cndruleOargXXReturn{},
+        \cndruleOargXXEndIfXXTrue{},
+        \cndruleOargXXEndIfXXFalse{},
+        \cndruleOargXXEndIfXXUnderDet{},
+        %\cndruleOargXXMiddleIf{},
+        %\cndruleOargXXAssert{},
+        \cndruleOargXXTakePred{}
+        %\cndruleOargXXTakeIPred{}
     }
     \caption{Select \kl{Kernel CN} rules for an elaboration pass which given
         contexts and a resource type, infers proof terms and logical quantifier
@@ -838,7 +838,7 @@ four parts to this proof.
     assumption until the variable used in the context appears, and then
     use the equational properties of substitution and the assumptions
     to prove the goal.
-\item \TExprRetTerms. $[[ to_fun ret ]]$ commutes with
+\item \StmtRetT. $[[ to_fun ret ]]$ commutes with
     substitution, but leaves terms unchanged, so induction proceeds
     straightforwardly.
 \item \textbf{Context change rules.} Split up substitutions as required by the
@@ -883,7 +883,7 @@ extended with the sub-heap associated with those values.
     \small
     \raggedright{}
     \cndruleSubsXXPatXXResXXFold{}
-    \cndruleResTXXResVXXFold{}
+    \cndruleOpXXResTXXFold{}
     \caption{\kl{ResCore} dynamics for folding and unfolding
         predicates.}\label{fig:kernel-fold-unfold}
 \end{figure*}
@@ -896,9 +896,9 @@ the sub-heap containing the (iterated) predicates referred to in said value.
 \begin{figure*}
     \small
     \raggedright{}
-    \onlyUseRules{\cndefnFootprint{}}{%
-        \cndruleFootprintXXPred{},
-        \cndruleFootprintXXIPred{}
+    \onlyUseRules{\cndefnOpXXFootprint{}}{%
+        \cndruleOpXXFootprintXXPred{},
+        \cndruleOpXXFootprintXXIPred{}
     }
     \caption{\kl{ResCore} dynamics definition of a footprint of a resource
         value in a heap.}\label{fig:kernel-footprint}
@@ -982,12 +982,12 @@ SMT-equivalent (with reference to a constraint context), so that pattern-match
 typing and resource term typing are consistent.
 
 \begin{theorem}[Progress for ResCore]
-If a top-level expression ($[[ texpr ]]$) is well-typed
-($[[ cdot ; cdot ; N ; nR |- texpr <= ret ]]$) and all computational patterns
+If a top-level expression ($[[ stmt ]]$) is well-typed
+($[[ cdot ; cdot ; N ; nR |- stmt <= ret ]]$) and all computational patterns
 in it are exhaustive, then either it is a value ($[[< ret_terms >]]$), or it is
 unreachable, or for all heaps ($[[ h ]]$), if the heap is well-typed
 ($[[ h <= nR ]]$) then there exists another heap ($[[ h' ]]$) and expression
-($[[ texpr' ]]$) which is stepped to ($[[ < _t ; h ; texpr > --> < _t ; h' ; texpr' > ]]$)
+($[[ stmt' ]]$) which is stepped to ($[[ < _t ; h ; stmt > --> < _t ; h' ; stmt' > ]]$)
 in the operational semantics.
 \end{theorem}
 
@@ -1022,13 +1022,13 @@ allocation history, all the constraints involve no variables
 
 \begin{theorem}[Type preservation for ResCore]
 For all closed and well-typed top-level expressions
-($[[ cdot ; cdot ; N ; nR |- texpr <= ret ]]$),
+($[[ cdot ; cdot ; N ; nR |- stmt <= ret ]]$),
 well typed heaps ($[[ h <= nR ]]$),
 frame-heaps ($[[ f ]]$),
 new heaps ($[[ heap ]]$),
-and new top-level expressions ($[[ texpr' ]]$),
+and new top-level expressions ($[[ stmt' ]]$),
 which are connected by a step in the operational semantics
-($[[ < _t ; h + f ; texpr > -->  < _t ; heap ; texpr' > ]]$),
+($[[ < _t ; h + f ; stmt > -->  < _t ; heap ; stmt' > ]]$),
 if all top-level functions are annotated correctly,
 there exists a constraint context ($[[ N' ]]$),
 sub-heap ($[[ h' ]]$),
@@ -1037,7 +1037,7 @@ such that the constraint context is $[[ N ]]$ extended,
 the frame is unaffected ($[[ heap ]] = [[ h' + f ]]$),
 the sub-heap is well-typed ($[[ h' <= nR' ]]$),
 and the top-level expression too
-($[[ cdot ; cdot ; N' ; nR' |- texpr' <= ret ]]$).
+($[[ cdot ; cdot ; N' ; nR' |- stmt' <= ret ]]$).
 \end{theorem}
 
 \begin{proof}

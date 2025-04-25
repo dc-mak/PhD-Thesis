@@ -3,11 +3,11 @@
 grammar
 
   res_diff {{ tex \outpol{\mathit{res\_diff} } }} :: 'Res_diff_' ::= {{ com resource difference }}
-    | None                                                                                                :: :: None
+    | None                                                                                        :: :: None
       {{ com not possible to take a difference }} {{ tex \outpol{[[None]]} }}
-    | out_res_term and out_oarg                                                                           :: :: Clean
+    | out_res_term and out_oarg                                                                   :: :: Clean
       {{ com request is satisfied exactly by $[[out_res_term]]$ and the output argument is $[[out_oarg]]$ }}
-    | out_oarg and out_res_req                                                                            :: :: More
+    | out_oarg and out_res_req                                                                    :: :: More
       {{ com request is satisfied partially with output argument $[[out_oarg]]$ with remaining $[[out_res_req]]$ }}
     | bind out_res_pat1 : out_res1 = out_res_term1 for out_x1 & out_oarg and out_x2 : out_rem     :: :: Rem
       {{ com deconstruct $[[out_res_term1]] [[:]] [[out_res1]]$ using $[[out_res_pat1]]$ to satisfy request exactly (using $[[out_x1]]$ and $[[out_oarg]]$) with remainder $[[out_x2]] [[:]] [[out_rem]]$ }}
@@ -467,18 +467,18 @@ defns
     C ; L ; N ; nR |- memop ~> bind res_bind for memop' : norm_ret -| nR'
 
 
-    % </ C ; L ; N ; nRi |- texpri <= reti // i />
+    % </ C ; L ; N ; nRi |- stmti <= reti // i />
     % -------------------------------------------------------------------------------------------- :: Unseq
-    % C ; L ; N ; </ nRi // i /> |- unseq ( </ texpri : reti // i /> ) => concat </ reti // i />
+    % C ; L ; N ; </ nRi // i /> |- unseq ( </ stmti : reti // i /> ) => concat </ reti // i />
 
 
-    id :  norm_fun eq </ xi // i /> |-> texpr  inEnv Globals
+    id :  norm_fun eq </ xi // i /> |-> stmt  inEnv Globals
     C ; L ; N ; nR |- spine :; norm_fun ~> bind res_bind for </ spine_elemi // i /> and norm_ret -| nR'
     ---------------------------------------------------------------------------------------------------------------- :: CCall
     C ; L ; N ; nR |- ccall ( ct , id , spine ) ~> bind res_bind for ccall ( ct , id , </ spine_elemi // i /> ) : norm_ret -| nR'
 
 
-    name :  norm_fun eq </ xi // i /> |-> texpr  inEnv Globals
+    name :  norm_fun eq </ xi // i /> |-> stmt  inEnv Globals
     C ; L ; N ; nR |- spine :; norm_fun ~> bind res_bind for </ spine_elemi // i /> and norm_ret -| nR'
     ------------------------------------------------------------------------------------------------------------------ :: Proc
     C ; L ; N ; nR |- pcall ( name , spine ) ~> bind res_bind for pcall ( name , </ spine_elemi // i /> ) : norm_ret -| nR'
@@ -579,56 +579,56 @@ defns
     N ; nR , _ : norm_res ~> res_bind
 
 
-  % DEFER out_texpr
-  defn CLNnR |- texpr <= norm_ret ~> texpr' :: :: TExpr :: TExpr_
-  {{ com (effectful) expression elaboration: given $[[CLNnR]]$, $[[texpr]]$ elaborates to $[[texpr']]$ }} by
+  % DEFER out_stmt
+  defn CLNnR |- stmt <= norm_ret ~> stmt' :: :: Stmt :: Stmt_
+  {{ com (effectful) expression elaboration: given $[[CLNnR]]$, $[[stmt]]$ elaborates to $[[stmt']]$ }} by
 
 
     C ; L ; N ; nR |- ret_terms :; to_fun norm_ret ~> bind res_bind for ret_terms' and I -| nR'
-    ----------------------------------------------------------------------------------------- :: RetTerms
+    ----------------------------------------------------------------------------------------- :: RetT
     C ; L ; N ; nR |- < ret_terms > <= norm_ret ~> insert_lets ( res_bind , < ret_terms' > )
 
 
     ---------------------------------------------------------------- :: Pure
-    C ; L ; N ; nR |- pure ( tpexpr ) <= pure_ret ~> pure ( tpexpr )
+    C ; L ; N ; nR |- pure ( pstmt ) <= pure_ret ~> pure ( pstmt )
 
 
     C ; L ; N ; nR |- expr ~> bind res_bind for expr' : ret -| nR'
     N |- ret ~> ret_pat
     N |- ret_pat : sigma y : base_type . ret ~> C1 ; L1 ; N1 ; nR1
-    C , C1 ; L , L' , L1 ; N , N' , N1 ; nR' , nR1 |- texpr <= norm_ret2 ~> texpr'
-    texpr'' eq insert_lets ( res_bind , let ret_pat = expr' in texpr' )
+    C , C1 ; L , L' , L1 ; N , N' , N1 ; nR' , nR1 |- stmt <= norm_ret2 ~> stmt'
+    stmt'' eq insert_lets ( res_bind , let ret_pat = expr' in stmt' )
     ---------------------------------------------------------------------------------------- :: Let
-    C ; L ; N ; nR |- let _ret_pat = expr in texpr <= norm_ret2 ~> texpr''
+    C ; L ; N ; nR |- let _ret_pat = expr in stmt <= norm_ret2 ~> stmt''
 
 
-    C ; L ; N ; nR' |- texpr1 <= norm_ret1 ~> texpr1'
+    C ; L ; N ; nR' |- stmt1 <= norm_ret1 ~> stmt1'
     N |- norm_ret1 ~> ret_pat
     N |- ret_pat : norm_ret1 ~> C1 ; L1 ; N1 ; nR1
-    C , C1 ; L , L1 ; N , N1 ; nR , nR1 |- texpr2 <= norm_ret2 ~> texpr2'
-    texpr'' eq let ret_pat : norm_ret1 = texpr1' in texpr2'
-    ---------------------------------------------------------------------- :: LetT
-    C ; L ; N ; nR' , nR |- let _ret_pat : norm_ret1 = texpr1 in texpr2 <= norm_ret2 ~> texpr''
+    C , C1 ; L , L1 ; N , N1 ; nR , nR1 |- stmt2 <= norm_ret2 ~> stmt2'
+    stmt'' eq let ret_pat : norm_ret1 = stmt1' in stmt2'
+    ---------------------------------------------------------------------- :: Annot
+    C ; L ; N ; nR' , nR |- let _ret_pat : norm_ret1 = stmt1 in stmt2 <= norm_ret2 ~> stmt''
 
 
     C |- pval => bool
     N , inj pval = true ; nR ~> res_bind1
-    C ; L ; N , inj pval = true  ; nR1 |- insert_lets ( res_bind1 , texpr1 ) <= norm_ret ~> texpr1'
+    C ; L ; N , inj pval = true  ; nR1 |- insert_lets ( res_bind1 , stmt1 ) <= norm_ret ~> stmt1'
     N , inj pval = false ; nR2 ~> res_bind2
-    C ; L ; N , inj pval = false ; nR2 |- insert_lets ( res_bind2 , texpr2 ) <= norm_ret ~> texpr2'
+    C ; L ; N , inj pval = false ; nR2 |- insert_lets ( res_bind2 , stmt2 ) <= norm_ret ~> stmt2'
     ------------------------------------------------------------------------- :: If
-    C ; L ; N ; nR |- if pval then texpr1 else texpr2 <= norm_ret ~> if pval then insert_lets ( res_bind1 , texpr1' ) else insert_lets ( res_bind2 , texpr2' )
+    C ; L ; N ; nR |- if pval then stmt1 else stmt2 <= norm_ret ~> if pval then stmt1' else stmt2'
 
 
     C |- pval => base_type1
     indexed pati : base_type1 ~> Ci with termi
     indexed </ N , termi = inj pval ; nR ~> res_bindi // i />
-    indexed </ C , Ci ; L ; N , termi = inj pval ; nR |- insert_lets ( res_bindi , texpri ) <= norm_ret ~> texpr'i // i />
+    indexed </ C , Ci ; L ; N , termi = inj pval ; nR |- insert_lets ( res_bindi , stmti ) <= norm_ret ~> stmt'i // i />
     ------------------------------------------------------------------------------------------------------ :: Case
-    C ; L ; N ; nR |- case pval of </ | pati => texpri // i /> end <= norm_ret ~> case pval of </ | pati => texpr'i // i /> end
+    C ; L ; N ; nR |- case pval of </ | pati => stmti // i /> end <= norm_ret ~> case pval of </ | pati => stmt'i // i /> end
 
 
-    id : norm_fun eq </ xi // i /> |-> texpr inEnv Globals
+    id : norm_fun eq </ xi // i /> |-> stmt inEnv Globals
     C ; L ; N ; cdot |- </ xi = pvali // i /> :; norm_fun >> subs ; false /\ I
     ----------------------------------------------------------------------------- :: Run
     C ; L ; N ; cdot |- run id </ pvali // i /> <= false /\ I ~> run id </ pvali // i />

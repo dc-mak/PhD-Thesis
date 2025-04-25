@@ -109,9 +109,9 @@ grammar
     | res_term eq res_term'                                                 ::   :: abbrev_res_term           {{ com resource term abbreviation                                           }}
     | ret eq ret'                                                           ::   :: abbrev_ret                {{ com return type abbreviation                                             }}
     | term eq term'                                                         ::   :: abbrev_term               {{ com SMT term / constraint abbrevation                                    }}
-    | texpr eq texpr'                                                       ::   :: abbrev_texpr              {{ com top-level expression abbrevation                                     }}
-    | name : out_pure_fun eq </ out_xi // i /> |-> out_tpexpr inEnv Globals ::   :: pure_func_body_in_globals {{ com lookup type and body of pure function $[[name]]$ in $[[Globals]]$ }}
-    | name : out_fon      eq </ out_xi // i /> |-> out_texpr  inEnv Globals ::   :: func_body_in_globals      {{ com lookup type and body of function $[[name]]$ in $[[Globals]]$      }}
+    | stmt eq stmt'                                                       ::   :: abbrev_stmt              {{ com top-level expression abbrevation                                     }}
+    | name : out_pure_fun eq </ out_xi // i /> |-> out_pstmt inEnv Globals ::   :: pure_func_body_in_globals {{ com lookup type and body of pure function $[[name]]$ in $[[Globals]]$ }}
+    | name : out_fon      eq </ out_xi // i /> |-> out_stmt  inEnv Globals ::   :: func_body_in_globals      {{ com lookup type and body of function $[[name]]$ in $[[Globals]]$      }}
 
 
 defns
@@ -611,7 +611,7 @@ defns
     C ; L ; N |- pval1 bool_binop pval2 => sigma y : bool . y = ( inj pval1 ' bool_binop ' inj pval2 ) /\ I
 
 
-    name : pure_fun eq </ xi // i /> |-> tpexpr inEnv Globals
+    name : pure_fun eq </ xi // i /> |-> pstmt inEnv Globals
     C ; L ; N ; cdot |- </ xi = pvali // i /> :; pure_fun >> subs ; pure_ret
     ------------------------------------------------------------------------ :: Call
     C ; L ; N |- name ( </ pvali // i /> ) => pure_ret
@@ -642,8 +642,8 @@ defns
     C ; L ; N |- wrapI ( ct , pval ) => sigma y : integer . y = if abbrev2 =< max ct then abbrev2 else abbrev2 - abbrev1 /\ I
 
 
-  defn CLN |- tpexpr <= pure_ret :: :: Top :: Top_
-  {{ com pure top-level expression checks: given $[[CLN]]$, $[[tpexpr]]$ checks against $[[pure_ret]]$ }} by
+  defn CLN |- pstmt <= pure_ret :: :: Stmt :: Stmt_
+  {{ com pure top-level expression checks: given $[[CLN]]$, $[[pstmt]]$ checks against $[[pure_ret]]$ }} by
 
     C |- pval => base_type
     smt ( N => pval / y ( term ) )
@@ -658,31 +658,31 @@ defns
 
     C ; L ; N |- pexpr => sigma y1 : base_type1 . term1 /\ I
     pat : base_type1 ~> C1 with term
-    C , C1 ; L ; N , term / y1 ( term1 ) |- tpexpr <= sigma y2 : base_type2 . term2 /\ I
+    C , C1 ; L ; N , term / y1 ( term1 ) |- pstmt <= sigma y2 : base_type2 . term2 /\ I
     -------------------------------------------------------------------------------------------- :: Let
-    C ; L ; N |- let pat = pexpr in tpexpr <= sigma y2 : base_type2 . term2 /\ I
+    C ; L ; N |- let pat = pexpr in pstmt <= sigma y2 : base_type2 . term2 /\ I
 
 
-    C ; L ; N |- tpexpr1 <= sigma y1 : base_type1 . term1 /\ I
+    C ; L ; N |- pstmt1 <= sigma y1 : base_type1 . term1 /\ I
     pat : base_type1 ~> C1 with term
-    C , C1 ; L ; N , term / y1 ( term1 ) |- tpexpr <= sigma y2 : base_type2 . term2 /\ I
-    --------------------------------------------------------------------------------------------------------------------- :: LetT
-    C ; L ; N |- let pat : pure_ret = tpexpr1 in tpexpr2 <= sigma y2 : base_type2 . term2 /\ I
+    C , C1 ; L ; N , term / y1 ( term1 ) |- pstmt <= sigma y2 : base_type2 . term2 /\ I
+    ---------------------------------------------------------------------------------------- :: Annot
+    C ; L ; N |- let pat : pure_ret = pstmt1 in pstmt2 <= sigma y2 : base_type2 . term2 /\ I
 
 
     % No need for propogating constraints
     C |- pval => bool
-    C ; L ; N , inj pval = true  |- tpexpr1 <= sigma y : base_type . term /\ I
-    C ; L ; N , inj pval = false |- tpexpr2 <= sigma y : base_type . term /\ I
+    C ; L ; N , inj pval = true  |- pstmt1 <= sigma y : base_type . term /\ I
+    C ; L ; N , inj pval = false |- pstmt2 <= sigma y : base_type . term /\ I
     -------------------------------------------------------------------------------------------- :: If
-    C ; L ; N |- if pval then tpexpr1 else tpexpr2 <= sigma y : base_type . term /\ I
+    C ; L ; N |- if pval then pstmt1 else pstmt2 <= sigma y : base_type . term /\ I
 
 
     C |- pval => base_type1
     indexed </ pati : base_type1 ~> Ci with termi // i />
-    indexed </ C , Ci ; L ; N , termi = inj pval |- tpexpri <= sigma y2 : base_type2 . term2 /\ I // i />
+    indexed </ C , Ci ; L ; N , termi = inj pval |- pstmti <= sigma y2 : base_type2 . term2 /\ I // i />
     ---------------------------------------------------------------------------------------------------------------- :: Case
-    C ; L ; N |- case pval of </ | pati => tpexpri // i /> end <= sigma y2 : base_type2 . term2 /\ I
+    C ; L ; N |- case pval of </ | pati => pstmti // i /> end <= sigma y2 : base_type2 . term2 /\ I
 
 
 defns
@@ -754,8 +754,10 @@ defns
     C ; L ; N ; R |- res_term => each (integer x ; iguard') { a ( array_shift < ct > ( ptrt , x ) , </ iargi // i /> ) } ( oarg )
     smt ( N => forall x. iguard -> iguard' )
     iguard2 eq iguard' /\ neg iguard
+    ipred1 eq each ( integer x; iguard ) { a ( array_shift <ct> (ptrt, x) , </ iargi // i /> ) } ( oarg )
+    ipred2 eq each (integer x; iguard2) { a ( array_shift<ct>(ptrt, x) , </ iargi // i /> ) } ( oarg )
     --------------------------------------------------------------------------------- :: Chop
-    C ; L ; N ; R |- chop ( res_term , iguard ) => ops each ( integer x; iguard ) { a ( array_shift <ct> (ptrt, x) , </ iargi // i /> ) } ( oarg ) * each (integer x; iguard2) { a ( array_shift<ct>(ptrt, x) , </ iargi // i /> ) } ( oarg )
+    C ; L ; N ; R |- chop ( res_term , iguard ) => ops ipred1 * ipred2
 
     % Implementation does not support un-chopping (array merging requires quantifiers).
     % split and join reserved for regions of dynamically allocated memory.
@@ -1031,7 +1033,7 @@ defns
 
 
 defns
-  expl_texpr :: '' ::=
+  expl_stmt :: '' ::=
 
   defn CLNR |- expr => out_ret :: :: Expr :: Expr_
   {{ com expression synthesises: given $[[CLNR]]$, $[[expr]]$ synthesises return type $[[out_ret]]$ }} by
@@ -1052,67 +1054,67 @@ defns
     C ; L ; N ; R |- memop => ret
 
 
-    id : fon eq </ xi // i /> |-> texpr  inEnv Globals
+    id : fon eq </ xi // i /> |-> stmt  inEnv Globals
     C ; L ; N ; R |- </ xi = spine_elemi // i /> :; fon >> subs ; ret
     ------------------------------------------------------------------ :: CCall
     C ; L ; N ; R |- ccall ( ct , id , </ spine_elemi // i /> ) => ret
 
 
-    name : fon eq </ xi // i /> |-> texpr  inEnv Globals
+    name : fon eq </ xi // i /> |-> stmt  inEnv Globals
     C ; L ; N ; R |- </ xi = spine_elemi // i /> :; fon >> subs ; ret
     ------------------------------------------------------------------ :: Proc
     C ; L ; N ; R |- pcall ( name , </ spine_elemi // i /> ) => ret
 
 
     % TODO add unseq rules
-    % </ C ; L ; N ; Ri |- texpri <= reti // i />
+    % </ C ; L ; N ; Ri |- stmti <= reti // i />
     % -------------------------------------------------------------------------------------------- :: Unseq
-    % C ; L ; N ; </ Ri // i /> |- unseq ( </ texpri : reti // i /> ) => concat </ reti // i />
+    % C ; L ; N ; </ Ri // i /> |- unseq ( </ stmti : reti // i /> ) => concat </ reti // i />
 
 
-  defn CLNR |- texpr <= ret :: :: TExpr :: TExpr_
-  {{ com top-level expression checks: given $[[CLNR]]$, $[[texpr]]$ checks against return type $[[ret]]$ }} by
+  defn CLNR |- stmt <= ret :: :: Stmt :: Stmt_
+  {{ com top-level expression checks: given $[[CLNR]]$, $[[stmt]]$ checks against return type $[[ret]]$ }} by
 
 
     C ; L ; N ; R |- to_param ret_terms :; to_fun ret >> subs ; I
-    -------------------------------------------- :: Ret_Terms
+    -------------------------------------------- :: RetT
     C ; L ; N ; R |- < ret_terms > <= ret
 
 
-    C ; L ; N |- tpexpr <= pure_ret
+    C ; L ; N |- pstmt <= pure_ret
     ------------------------------------------------ :: Pure
-    C ; L ; N ; cdot |- pure ( tpexpr ) <= pure_ret
+    C ; L ; N ; cdot |- pure ( pstmt ) <= pure_ret
 
 
     C ; L ; N ; R' |- expr => ret1
     N |- ret_pat : ret1 ~> C1 ; L1 ; N1 ; R1
-    C , C1 ; L , L1 ; N , N1 ; R , R1 |- texpr <= ret2
+    C , C1 ; L , L1 ; N , N1 ; R , R1 |- stmt <= ret2
     ---------------------------------------------------------- :: Let
-    C ; L ; N ; R' , R |- let ret_pat = expr in texpr <= ret2
+    C ; L ; N ; R' , R |- let ret_pat = expr in stmt <= ret2
 
 
-    C ; L ; N ; R' |- texpr1 <= ret1
+    C ; L ; N ; R' |- stmt1 <= ret1
     N |- ret_pat : ret1 ~> C1 ; L1 ; N1 ; R1
-    C , C1 ; L , L1 ; N , N1 ; R , R1 |- texpr2 <= ret2
-    -------------------------------------------------------------------- :: LetT
-    C ; L ; N ; R' , R |- let ret_pat : ret1 = texpr1 in texpr2 <= ret2
+    C , C1 ; L , L1 ; N , N1 ; R , R1 |- stmt2 <= ret2
+    -------------------------------------------------------------------- :: Annot
+    C ; L ; N ; R' , R |- let ret_pat : ret1 = stmt1 in stmt2 <= ret2
 
 
     C |- pval => base_type1
     indexed </ pati : base_type1 ~> Ci with termi // i />
-    indexed </ C , Ci ; L ; N , termi = inj pval ; R |- texpri <= ret // i />
+    indexed </ C , Ci ; L ; N , termi = inj pval ; R |- stmti <= ret // i />
     -------------------------------------------------------------------------- :: Case
-    C ; L ; N ; R |- case pval of </ | pati => texpri // i /> end <= ret
+    C ; L ; N ; R |- case pval of </ | pati => stmti // i /> end <= ret
 
 
     C |- pval => bool
-    C ; L ; N , inj pval = true  ; R |- texpr1 <= ret
-    C ; L ; N , inj pval = false ; R |- texpr2 <= ret
+    C ; L ; N , inj pval = true  ; R |- stmt1 <= ret
+    C ; L ; N , inj pval = false ; R |- stmt2 <= ret
     -------------------------------------------------------- :: If
-    C ; L ; N ; R |- if pval then texpr1 else texpr2 <= ret
+    C ; L ; N ; R |- if pval then stmt1 else stmt2 <= ret
 
 
-    id :  fon eq </ xi // i /> |-> texpr  inEnv Globals
+    id :  fon eq </ xi // i /> |-> stmt  inEnv Globals
     C ; L ; N ; cdot |- </ xi = pvali // i /> :; fon >> subs ; false /\ I
     ----------------------------------------------------------------- :: Run
     C ; L ; N ; cdot |- run id </ pvali // i /> <= false /\ I

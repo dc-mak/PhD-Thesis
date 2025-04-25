@@ -410,8 +410,8 @@ grammar
 
 grammar
   init , _init {{ tex \_ }}:: 'Init_' ::= {{ com initialisation status }}
-    | Init        :: :: init   {{ com initialised   }} {{ tex \surd  }}
-    | Uninit      :: :: uninit {{ com uninitialised }} {{ tex \times }}
+    | Init        :: :: init   {{ com initialised   }} {{ tex ✓        }}
+    | Uninit      :: :: uninit {{ com uninitialised }} {{ tex {\times} }}
 
   pred_name , a {{ tex { \alpha } }} :: 'Pred_name_' ::= {{ com names of predicates }}
     | Owned < init , ct > :: :: owned {{ com sep. logic points-to indexed by C type $[[ ct ]]$ }}
@@ -437,7 +437,7 @@ grammar
     | pred_term ( oarg )        ::   :: pred {{ com a predicate-type is simply the term with an output argument }}
     | ptrt |- init - ct -> term :: S :: points_to
       {{ com pretty-printing for points-to predicate $\symtt{Owned} \langle [[ init ]] , [[ ct ]] \rangle ( [[ ptrt ]] ) \& [[ term ]] $ }}
-      {{ tex \smash{ [[ ptrt ]] } \mathbin{ \overset{ [[ init ]] }{ \underset{ [[ ct ]] }{ {\mapsto} } } } \smash{ [[ term ]] } }}
+      {{ tex \smash{ [[ ptrt ]] } \mathbin{ \overset{ \ifthenelse{\equal{ [[ init ]] }{ \_ } }{}{ [[ init ]] } }{ \underset{ [[ ct ]] }{ {\mapsto} } } } \smash{ [[ term ]] } }}
 
 
   ipred , ipoints_to , ipt :: 'IPred_' ::= {{ com iterated (integer-indexed) seperation logic predicate }}
@@ -555,26 +555,26 @@ grammar
 
 grammar
 
-  tpexpr :: 'TPE_' ::= {{ com top-level pure expressions }}
-    | pval                                    ::    :: pval  {{ com pure value                            }}
-    | undef UB_name                           ::    :: undef {{ com undefined behaviour                   }}
-    | let pat = pexpr in tpexpr               ::   :: let    (+ bind binders( pat ) in tpexpr             +)
-                                                             {{ com pure let                              }}
-    | let pat : pure_ret = tpexpr1 in tpexpr2 ::   :: letT   (+ bind binders( pat ) in tpexpr2            +)
-                                                             {{ com annoted pure let                      }}
-    | if pval then tpexpr1 else tpexpr2       ::   :: if     {{ com pure if                               }}
-    | case pval of </ | pbranchi // i /> end  ::   :: case   {{ com pattern-matching                      }}
-    | subs ( tpexpr )                         :: M :: subs   {{ com substitute $[[subs]]$ in $[[tpexpr]]$ }}
+  pstmt :: 'TPE_' ::= {{ com top-level pure expressions }}
+    | pval                                   ::   :: pval  {{ com pure value                            }}
+    | undef UB_name                          ::   :: undef {{ com undefined behaviour                   }}
+    | let pat = pexpr in pstmt               ::   :: let   (+ bind binders( pat ) in pstmt             +)
+                                                           {{ com pure let                              }}
+    | let pat : pure_ret = pstmt1 in pstmt2  ::   :: letT  (+ bind binders( pat ) in pstmt2            +)
+                                                           {{ com annoted pure let                      }}
+    | if pval then pstmt1 else pstmt2        ::   :: if    {{ com pure if                               }}
+    | case pval of </ | pbranchi // i /> end ::   :: case  {{ com pattern-matching                      }}
+    | subs ( pstmt )                         :: M :: subs  {{ com substitute $[[subs]]$ in $[[pstmt]]$ }}
 
   pbranch :: 'PBranch_' ::= {{ com pure case expression branch }}
-    | pat => tpexpr :: :: branch (+ bind binders( pat ) in tpexpr        +)
+    | pat => pstmt :: :: branch (+ bind binders( pat ) in pstmt        +)
                                  {{ com top-level case expression branch }}
 
 grammar
 
-  % OUT_HACK|tpexpr
-  out_tpexpr {{ tex \outpol{ tpexpr } }}   :: 'Out_hack_' ::=  {{ com Ott-hack, ignore }}
-    | tpexpr :: :: tpexpr {{ tex \outpol{ [[tpexpr]] } }}
+  % OUT_HACK|pstmt
+  out_pstmt {{ tex \outpol{ pstmt } }}   :: 'Out_hack_' ::=  {{ com Ott-hack, ignore }}
+    | pstmt :: :: pstmt {{ tex \outpol{ [[pstmt]] } }}
 
 grammar
 
@@ -722,34 +722,34 @@ grammar
     | unfold a ( pvals )        ::   :: unfold    {{ com (pre-elaboration only) unfold a predicate }}
     | res_term                  ::   :: res_term  {{ com (elaboration only)                        }}
     | subs ( expr )             :: M :: subs      {{ com substitution                              }}
-    % unseq ( </ texpri : reti // i /> ) ::  :: unseq  {{ com unsequenced expressions      }}
+    % unseq ( </ stmti : reti // i /> ) ::  :: unseq  {{ com unsequenced expressions      }}
 
   % nd() is only used in the elab of if/loops for the case where the condiditional expression evaluates to unspecified()
   % We don't have unspecified() so we won't have nd()
-  texpr :: 'TE_' ::= {{ com top-level (effectful) expressions }}
-    | pure ( tpexpr )                       ::     :: pure        {{ com pure top-level expressions                     }}
+  stmt :: 'TE_' ::= {{ com top-level (effectful) expressions }}
+    | pure ( pstmt )                        ::     :: pure        {{ com pure top-level expressions                     }}
     | < ret_terms >                         ::     :: ret_terms   {{ com values (including logical and reosurces terms) }}
-    | let ret_pat = expr in texpr           ::     :: let         (+ bind binders( ret_pat ) in texpr                   +)
+    | let ret_pat = expr in stmt            ::     :: let         (+ bind binders( ret_pat ) in stmt                   +)
                                                                   {{ com bind return pats                               }}
-    | let ret_pat : ret = texpr1 in texpr2  ::     :: letT        (+ bind binders( ret_pat ) in texpr2                  +)
+    | let ret_pat : ret = stmt1 in stmt2    ::     :: annot       (+ bind binders( ret_pat ) in stmt2                  +)
                                                                   {{ com annotated bind return pats                     }}
-    | if pval then texpr1 else texpr2       ::     :: if          {{ com conditional                                    }}
+    | if pval then stmt1 else stmt2         ::     :: if          {{ com conditional                                    }}
     | case pval of </ | branchi // i /> end ::     :: case        {{ com pattern-matching                               }}
     | run id pvals                          ::     :: run         {{ com run from label                                 }}
-    | insert_lets ( res_bind , texpr )      :: M X :: insert_lets {{ com insert let expressions for binding resources   }}
-    | subs ( texpr )                        :: M   :: subs        {{ com substitute $[[subs]]$ in $[[texpr]]$           }}
+    | insert_lets ( res_bind , stmt )       :: M X :: insert_lets {{ com insert let expressions for binding resources   }}
+    | subs ( stmt )                         :: M   :: subs        {{ com substitute $[[subs]]$ in $[[stmt]]$           }}
 
 
   branch :: 'Branch_' ::=  {{ com (effectful) case-expression branch }}
-    | pat => texpr :: :: branch (+ bind binders( pat ) in texpr           +)
+    | pat => stmt :: :: branch (+ bind binders( pat ) in stmt           +)
                                 {{ com (effectful) case-expression branch }}
 
 
 grammar
 
-  % OUT_HACK|texpr
-  out_texpr {{ tex \outpol{ texpr } }}   :: 'Out_hack_' ::=  {{ com Ott-hack, ignore }}
-    | texpr :: :: texpr {{ tex \outpol{ [[texpr]] } }}
+  % OUT_HACK|stmt
+  out_stmt {{ tex \outpol{ stmt } }}   :: 'Out_hack_' ::=  {{ com Ott-hack, ignore }}
+    | stmt :: :: stmt {{ tex \outpol{ [[stmt]] } }}
 
 grammar
 

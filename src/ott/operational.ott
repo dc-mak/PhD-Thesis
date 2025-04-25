@@ -161,9 +161,9 @@ defns
 
 
 defns
-  pure_opsem :: '' ::=
+  pure_opsem :: 'Op_' ::=
 
-  defn term | < pexpr > --> < tpexpr : pure_ret > :: :: PE_TP :: PE_TP_ by
+  defn term | < pexpr > --> < pstmt : pure_ret > :: :: PExpr :: PExpr_ by
 
     int eq xor_uf ( int1 , int2 )
     pure_ret eq sigma y : integer . y = xor_uf ( int1 , int2 )  /\ I
@@ -245,57 +245,52 @@ defns
     _ | < wrapI ( ct , int ) > --> < int' : pure_ret >
 
 
-    name : pure_fun eq </ xi // i /> |-> tpexpr inEnv Globals
+    name : pure_fun eq </ xi // i /> |-> pstmt inEnv Globals
     alloct | </ xi = pvali // i /> :; pure_fun >> < subs ; pure_ret >
     ----------------------------------------------------------------------------- :: Call
-    alloct | < name ( </ pvali // i /> ) > --> < subs ( tpexpr ) : pure_ret >
+    alloct | < name ( </ pvali // i /> ) > --> < subs ( pstmt ) : pure_ret >
 
 
-  defn term | < tpexpr > --> < tpexpr' > :: :: TP_TP :: TP_TP_ by
+  defn term | < pstmt > --> < pstmt' > :: :: PStmt :: PStmt_ by
 
     patj = pval ~> subsj
     forall i lt j . not ( pati = pval ~> subsi )
     ------------------------------------------------------------------------------------------------------- :: Case
-    _ | < case pval of </ | pati => tpexpri // i /> end > --> < subsj ( tpexprj ) >
+    _ | < case pval of </ | pati => pstmti // i /> end > --> < subsj ( pstmtj ) >
 
 
     pat = pval ~> subs
-    ------------------------------------------------------------ :: Let_Sub
-    _ | < let pat = pval in tpexpr > --> < subs ( tpexpr ) >
+    ------------------------------------------------------------ :: PVal
+    _ | < let pat = pval in pstmt > --> < subs ( pstmt ) >
 
 
-    alloct | < pexpr > --> < pval : pure_ret >
-    ------------------------------------------- :: Let_Let
-    alloct | < let pat = pexpr in tpexpr > --> < let pat : pure_ret = pval in tpexpr >
-
-
-    alloct | < pexpr > --> < tpexpr1 : pure_ret >
-    ---------------------------------------------------------------------- :: Let_LetT
-    alloct | < let pat = pexpr in tpexpr2 > --> < let pat : pure_ret = tpexpr1 in tpexpr2 >
+    alloct | < pexpr > --> < pstmt1 : pure_ret >
+    ---------------------------------------------------------------------- :: PExpr
+    alloct | < let pat = pexpr in pstmt2 > --> < let pat : pure_ret = pstmt1 in pstmt2 >
 
 
     pat = pval ~> subs
-    ------------------------------------------- :: LetT_Sub
-    _ | < let pat : pure_ret = pval in tpexpr > --> < subs ( tpexpr ) >
+    ------------------------------------------- :: Annot_PVal
+    _ | < let pat : pure_ret = pval in pstmt > --> < subs ( pstmt ) >
 
 
-    alloct | < tpexpr1 > --> < tpexpr1' >
-    ------------------------------------------- :: LetT_LetT
-    alloct | < let pat : pure_ret = tpexpr1 in tpexpr2 > --> < let pat : pure_ret = tpexpr1' in tpexpr2 >
+    alloct | < pstmt1 > --> < pstmt1' >
+    ------------------------------------------- :: Annot
+    alloct | < let pat : pure_ret = pstmt1 in pstmt2 > --> < let pat : pure_ret = pstmt1' in pstmt2 >
 
 
     ------------------------------------------------------------------------------- :: If_True
-    _ | < if True then tpexpr1 else tpexpr2 > --> < tpexpr1 >
+    _ | < if True then pstmt1 else pstmt2 > --> < pstmt1 >
 
 
     -------------------------------------------------------------------------------- :: If_False
-    _ | < if False then tpexpr1 else tpexpr2 > --> < tpexpr2 >
+    _ | < if False then pstmt1 else pstmt2 > --> < pstmt2 >
 
 
 defns
-  opsem :: '' ::=
+  opsem :: 'Op_' ::=
 
-  defn term | < h ; pred_ops > ||v < h' ; res_val > :: :: PredOps_ResV :: PredOps_ResV_
+  defn term | < h ; pred_ops > ||v < h' ; res_val > :: :: PredOps :: PredOps_
   {{ com big-step resource (q)points-to operation reduction: given alloction history $[[ term ]]$, $[[ < ]] [[ h ]] [[ ; ]] [[ pred_ops ]] [[ > ]]$ reduces to $[[ < ]] [[ h' ]] [[ ; ]] [[ res_val ]] [[ > ]]$ }} by
 
 
@@ -379,9 +374,11 @@ defns
    ipred_term eq each (integer x; iguard') { a ( array_shift <ct> ( ptrt , x ) , </ iargi // i /> ) }
    alloct |- smt ( forall x . iguard -> iguard' )
    ipred_term1 eq each (integer x; iguard) { a ( array_shift < ct > ( ptrt , x ) , </ iargi // i /> ) }
+   h1 eq { ipred_term1 ( oarg ) & arr_def_heap }
    ipred_term2 eq each (integer x; iguard' /\ neg iguard) { a ( array_shift < ct > ( ptrt , x ) , </ iargi // i /> ) }
-   ---------------------------------------------------------------------------------------------------------------------------------------------- :: Chop
-   alloct | < h ; chop ( res_term , iguard ) > ||v < h' + { ipred_term1 ( oarg ) & arr_def_heap } + { ipred_term2 ( oarg ) & arr_def_heap } ; < ipred_term1 , ipred_term2 > >
+   h2 eq { ipred_term2 ( oarg ) & arr_def_heap }
+   ------------------------------------------------------------------------------------------------------------------- :: Chop
+   alloct | < h ; chop ( res_term , iguard ) > ||v < h' + h1 + h2  ; < ipred_term1 , ipred_term2 > >
 
 
   defn footprint_of res_val in h ~> h1 REM h2 :: :: Footprint :: Footprint_
@@ -409,7 +406,7 @@ defns
     footprint_of pack ( oarg , res_val ) in h ~> h' REM h''
 
 
-  defn term | < h ; res_term > ||v < h' ; res_val > :: :: ResT_ResV :: ResT_ResV_
+  defn term | < h ; res_term > ||v < h' ; res_val > :: :: ResT :: ResT_
   {{ com big-step resource term reduction: given alloction history $[[ term ]]$, $[[ < ]] [[ h ]] [[ ; ]] [[ res_term ]] [[ > ]]$ reduces to $[[ < ]] [[ h' ]] [[ ; ]] [[ res_val ]] [[ > ]]$ }} by
 
     --------------------------------------------- :: Val
@@ -438,7 +435,7 @@ defns
     alloct | < h ; pack ( oarg , res_term ) > ||v < h' ; pack ( oarg , res_val ) >
 
 
-  defn < s ; action  > --> < s' ; texpr : ret > :: :: Action_TExpr :: Action_TExpr_ by
+  defn < s ; action  > --> < s' ; stmt : ret > :: :: Action :: Action_ by
 
 
     addr inEnv newAlloc ( h , pval , sizeof ct )
@@ -479,7 +476,7 @@ defns
     ----------------------------------------------------------------------------------- :: Kill_Static
     < alloct ; h ; res_term | kill < ct > ( ptr ) > --> < alloct ; h' ; < Unit > : ret >
 
-  defn term | < h ; memop  > --> < h' ; texpr : ret > :: :: Memop_TExpr :: Memop_TExpr_ by
+  defn term | < h ; memop  > --> < h' ; stmt : ret > :: :: Memop :: Memop_ by
 
     alloct | < h ; res_term > ||v < h1 + h2 ;  < pred_term1 , pred_term2 > >
     h2 eq </ { pred_termi ( termi ) & None } // i />
@@ -552,78 +549,78 @@ defns
     alloct | < h ; res_term | ptrArrayShift < ct > ( ptr , int ) > --> < h ; < ptr' , pred_term > : ret >
 
 
-  defn < s ; expr > --> < s' ; texpr : ret > :: :: Expr_T :: Expr_T_ by
+  defn < s ; expr > --> < s' ; stmt : ret > :: :: Expr :: Expr_ by
 
 
-    alloct | < pexpr > --> < tpexpr : pure_ret >
+    alloct | < pexpr > --> < pstmt : pure_ret >
     --------------------------------------------------------- :: Pure
-    < alloct ; h ; memop > --> < alloct ; h ; pure ( tpexpr ) : pure_ret >
+    < alloct ; h ; memop > --> < alloct ; h ; pure ( pstmt ) : pure_ret >
 
 
-    < s ; action > --> < s' ; texpr : ret >
+    < s ; action > --> < s' ; stmt : ret >
     ---------------------------------------- :: Action
-    < s ; memop > --> < s' ; texpr : ret >
+    < s ; memop > --> < s' ; stmt : ret >
 
 
-    alloct | < h ; memop > --> < h' ; texpr : ret >
+    alloct | < h ; memop > --> < h' ; stmt : ret >
     --------------------------------------------------------- :: Memop
-    < alloct ; h ; memop > --> < alloct ; h' ; texpr : ret >
+    < alloct ; h ; memop > --> < alloct ; h' ; stmt : ret >
 
 
-    id : fon eq </ xi // i /> |-> texpr inEnv Globals
+    id : fon eq </ xi // i /> |-> stmt inEnv Globals
     alloct | </ xi = spine_elemi // i /> :; fon >> < subs ; ret >
     ------------------------------------------------------------- :: CCall
-    < alloct ; h ; ccall ( ct , id , </ spine_elemi // i /> ) > --> < alloct ; h ; subs ( texpr ) : ret >
+    < alloct ; h ; ccall ( ct , id , </ spine_elemi // i /> ) > --> < alloct ; h ; subs ( stmt ) : ret >
 
 
-    name : fon eq </ xi // i /> |-> texpr inEnv Globals
+    name : fon eq </ xi // i /> |-> stmt inEnv Globals
     alloct | </ xi = spine_elemi // i /> :; fon >> < subs ; ret >
     --------------------------------------------------------- :: Proc
-    < alloct ; h ; pcall ( name , </ spine_elemi // i /> ) > --> < alloct ; h ; subs ( texpr ) : ret >
+    < alloct ; h ; pcall ( name , </ spine_elemi // i /> ) > --> < alloct ; h ; subs ( stmt ) : ret >
 
 
-  defn < s ; texpr > --> < s' ; texpr' > :: :: T_T :: T_T_ by
+  defn < s ; stmt > --> < s' ; stmt' > :: :: Stmt :: Stmt_ by
 
 
-    ---------------------------------------- :: PVal_RetTerm
+    ---------------------------------------- :: Pure_PVal
     < s ; pure ( pval ) > --> < s ; < pval > >
 
 
-    alloct | < tpexpr >  --> < tpexpr' >
-    ----------------------------------------------------------- :: TP_TP
-    < alloct ; h ; pure ( tpexpr ) > --> < s ; pure ( tpexpr' ) >
+    alloct | < pstmt >  --> < pstmt' >
+    ----------------------------------------------------------- :: Pure_PStmt
+    < alloct ; h ; pure ( pstmt ) > --> < s ; pure ( pstmt' ) >
 
 
     < h ; </ ret_pati = ret_termi // i /> > ~> < h' ; subs >
-    --------------------------------------------- :: LetT_Sub
-    < alloct ; h ; let </ ret_pati // i /> : ret = < </ ret_termi // i /> > in texpr > --> < alloct ; h' ; subs ( texpr ) >
+    --------------------------------------------- :: RetT
+    < alloct ; h ; let </ ret_pati // i /> : ret = < </ ret_termi // i /> > in stmt > --> < alloct ; h' ; subs ( stmt ) >
 
 
-    < s ; expr > --> < s' ; texpr1 : ret >
-    -------------------------------------------------------- :: Let_LetT
-    < s ; let ret_pat = expr in texpr2 > --> < s' ; let ret_pat : ret = texpr1 in texpr2 >
+    < s ; expr > --> < s' ; stmt1 : ret >
+    -------------------------------------------------------- :: Expr
+    < s ; let ret_pat = expr in stmt2 > --> < s' ; let ret_pat : ret = stmt1 in stmt2 >
 
 
-    < s ; texpr1 > --> < s' ; texpr1' >
-    -------------------------------------------- :: LetT_LetT
-    < s ; let ret_pat : ret = texpr1 in texpr2 > --> < s' ; let ret_pat : ret = texpr1' in texpr2 >
+    < s ; stmt1 > --> < s' ; stmt1' >
+    -------------------------------------------- :: Annot
+    < s ; let ret_pat : ret = stmt1 in stmt2 > --> < s' ; let ret_pat : ret = stmt1' in stmt2 >
 
 
     ---------------------------------------------------------- :: If_True
-    < s ; if True then texpr1 else texpr2 > --> < s ; texpr1 >
+    < s ; if True then stmt1 else stmt2 > --> < s ; stmt1 >
 
 
     ----------------------------------------------------------- :: If_False
-    < s ; if False then texpr1 else texpr2 > --> < s ; texpr2 >
+    < s ; if False then stmt1 else stmt2 > --> < s ; stmt2 >
 
 
     patj = pval ~> subsj
     forall i lt j . not ( pati = pval ~> subsi )
     ------------------------------------------------------------ :: Case
-    < s ; case pval of </ | pati => texpri // i /> end > --> < s ; subsj ( texprj ) >
+    < s ; case pval of </ | pati => stmti // i /> end > --> < s ; subsj ( stmtj ) >
 
 
-    id : fon eq </ xi // i /> |-> texpr inEnv Globals
+    id : fon eq </ xi // i /> |-> stmt inEnv Globals
     alloct | </ xi = pvali // i /> :; fon >> < subs ; false /\ I >
     ------------------------------------------------------------ :: Run
-    < alloct ; h ; run id </ pvali // i /> > --> < alloct ; h ; subs ( texpr ) >
+    < alloct ; h ; run id </ pvali // i /> > --> < alloct ; h ; subs ( stmt ) >
