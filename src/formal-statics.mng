@@ -135,33 +135,33 @@ computation.
         expressions.}\label{fig:typing-pval-pexpr}
 \end{figure*}
 
-\section{Top-level pure values and expressions}
+\section{Pure statements}
 
-Whilst the rules for typing \emph{top-level} pure values and pure expressions
+Whilst the rules for typing pure \emph{statements}
 share the same context as typing pure values and expressions, they differ in
 that they are \emph{checking} judgements instead of synthesising ones, of the
-form $[[ C ; L ; N |- pstmt <= pure_ret ]]$ (and similarly for $[[ pval ]]$). % chktex 25
-Given the computational, logical and constraint contexts, check the top-level
-value (or expression) satisfies this type.
+form $[[ C ; L ; N |- pstmt <= pure_ret ]]$. % chktex 25
+Given the computational, logical and constraint contexts, check the pure
+statement satisfies this type.
 
 Here we start to see the let-normalisation (\cref{sec:rescore}) and the
-bidirectional (\cref{sec:bidir-subtyping}) approaches pay off. A top-level pure
-value (i.e.\ the result of evaluating a pure expression) is checked against a
-pure return type by checking if the constraint attached to it is true given the
-context by calling the SMT solver, which is another reason why the constraints
-being decidable is important and helpful. Similarly, the constructs we would
-like to avoid (\coreinline{undef()} and \coreinline{error()}) check against % chktex 36
+bidirectional (\cref{sec:bidir-subtyping}) approaches pay off. A pure statement
+value is checked against a pure return type by checking if the constraint
+attached to it is true given the context by calling the SMT solver, which is
+another reason why the constraints being decidable is important and helpful.
+Similarly, the \coreinline{undef()} which we wish to rule-out checks against % chktex 36
 \emph{any} type, so long as the constraint context is inconsistent (can prove
-$\mathsf{false}$). Top-level if-expressions synthesise a type for their condition,
-but then check the branches, with an extra constraint on the true or false
-value of the condition. Similarly, top-level let-expressions synthesise a type
-for the bound expression, add a constraint on the \emph{shape} bound value to
-the context, and then check the body of the let.
+$\mathsf{false}$). Conditional statements check each branch with an extra
+constraint on the condition being true or false. Let-statements sequence
+the evaluation of pure expressions. Typing them requires synthesising a type for
+the bound pure expression, adding a constraint to the context on the
+\emph{shape} of the value to which that expression reduces, and then checking
+the rest of the pure statement.
 
 The constraint on the shape of the bound value is produced by a judgement which,
 given a computational pattern (one inherited from Core) and a base type,
 produces a computational context and a term corresponding to the \emph{shape}
-of the value according to the pattern match. For the sake of simplicity, I
+of the value according to the pattern match. To simplify matters, I
 assume all patterns are complete.
 
 \begin{figure*}[tp]
@@ -174,9 +174,9 @@ assume all patterns are complete.
         \cndrulePureXXStmtXXLet{}
     }\\
     \cndefnPatXXComp{}%
-    \caption{Selection of \kl{Kernel CN} typing rules for top-level pure values and
-        expressions, including the translation of computational patterns into a
-        computational context used in the \coreinline{let} rule.}\label{fig:typing-tpval-pstmt}
+    \caption{Selection of \kl{Kernel CN} typing rules for pure statement,
+    including the translation of computational patterns into a computational
+    context used in the \coreinline{let} rule.}\label{fig:typing-pstmt}
 \end{figure*}
 
 \section{Resource terms}\label{sec:typing-res-terms}
@@ -375,10 +375,10 @@ prove the pointer is live.
 There are two parts of the grammar which use spines (lists of values). The first
 is its typical use in calls to pure Core functions, elaborated C functions, and
 effectful Core procedures, as well as to the \coreinline{run()} % chktex 36
-operator. Second is the less typical one, in \emph{top-level return values},
-usually marked with \coreinline{done()}. So far, I have been showing % chktex 36
-how expressions have return types, and so this is how to type the values to
-which those expressions step.
+operator. Second is the less typical one, in as values for statements corresponding to 
+return types $[[ ret ]]$, written $[[ < ret_terms > ]]$.  I showed % chktex 36
+how expressions have return types, now I will how to type the corresponding
+values to which those expressions reduce.
 
 Either way, the process for checking them is the same, and so the simplicity
 gained by desugaring the \kl{CN} types into kernel types
@@ -417,7 +417,7 @@ produced substitution with one for the resource too.
 
 The spine typing is used in the rules for calling elaborated C function
 \coreinline{ccall()}, and effectful Core procedures % chktex 36
-\coreinline{pcall()}, in \cref{fig:typing-seq-expr-tval}. Both are % chktex 36
+\coreinline{pcall()}, in \cref{fig:typing-ret-terms}. Both are % chktex 36
 syntactically effectful sequenced expressions, typed with a judgement of the
 form $[[ C ; L ; N ; R |- expr => ret ]]$, % chktex 25 
 which says that given the contexts and an effectful
@@ -425,13 +425,10 @@ sequenced expression, synthesise a return type. Both lookup a function type for
 the called function/procedure,\sidenote{\kl{CN} does not support
 computed/indirect function calls, so I assume the callee has already been
 resolved.} and produce the return type synthesised by the spine
-judgement. This is also identical to how the top-level values
-(and expressions) $[[< ret_terms > ]]$ are typed, with the main difference that
-(a) the judgement $[[ C ; L ; N ; R |- < ret_terms > <= ret ]]$
+judgement. This is also identical to how  $[[< ret_terms > ]]$ are typed, with
+the main difference that (a) the judgement $[[ C ; L ; N ; R |- < ret_terms > <= ret ]]$
 is checking and (b) the return type must be mapped to its dual
-function type before using the spine judgement. Similar to the pure case, the
-\coreinline{undef()} and \coreinline{error()} constructs % chktex 36 check
-against any type if the constraint context is inconsistent.
+function type before using the spine judgement.
 
 \begin{figure*}[tp]
     \small
@@ -439,9 +436,9 @@ against any type if the constraint context is inconsistent.
     \cndefnExpr{}
     \\
     \onlyUseRules{\cndefnStmt{}}{
-        \cndefnStmtXXRetXXTerms{}
+        \cndefnStmtXXRetT{}
     }
-    \caption{\kl{Kernel CN} typing rules for sequential expressions and top-level values.}\label{fig:typing-seq-expr-tval}
+    \caption{\kl{Kernel CN} typing rules for return-terms.}\label{fig:typing-ret-terms}
 \end{figure*}
 
 \section{Pattern matching}
@@ -456,7 +453,7 @@ synthesise computational, logical, constraint and resource contexts.
 Pattern matching for return types (\cref{fig:typing-ret-pat}) is complicated by
 the fact that they are dependent on computational and logical (ghost)
 variables, and complicated further by the fact that the computational values
-have their own patterns (\cref{fig:typing-tpval-pstmt}).
+have their own patterns (\cref{fig:typing-pstmt}).
 
 \begin{figure*}[tp]
     \small
@@ -516,14 +513,14 @@ will match against the type. For the latter, the pattern only destructs when
 the type is a predicate type and the nested pattern destructs against the
 definition of that predicate (with the arguments substituted).
 
-\section{Effectful top-level expressions}
+\section{Effectful statements}
 
 With pattern matching in hand, I can explain the typing rules for effectful
-top-level expressions (\cref{fig:typing-seq-stmt}). For space, I will
-only talk about \coreinline{let} and \coreinline{run()} expressions, % chktex 36
+statements (\cref{fig:typing-stmt}). I will focus only on
+\coreinline{let} and \coreinline{run()} statements, % chktex 36
 the remaining rules are as one would expect presented in the appendix.
 
-Top-level expressions are all checked, but the bound expression in the
+Statements are all checked, but the bound expression in the
 \coreinline{let} is synthesised, so that the type can be used as part of
 destructing the pattern it is bound against to synthesise extra contexts. Those
 contexts are then appended to the existing one to check the body of the
@@ -538,11 +535,10 @@ type.\sidenote{Need to update the rule.}
     \small
     \raggedright{}
     \onlyUseRules{\cndefnStmt{}}{%
-        \cndruleExplXXStmtXXLet{},
-        \cndruleExplXXStmtXXRun{}
+        \cndruleStmtXXLet{},
+        \cndruleStmtXXRun{}
     }
-    \caption{Select \kl{Kernel CN} typing rules for effectful top-level
-        expressions.}\label{fig:typing-seq-stmt}
+    \caption{Select \kl{Kernel CN} typing rules for effectful statements.}\label{fig:typing-stmt}
 \end{figure*}
 
 \section{Elaboration}\label{sec:elaboration}
@@ -983,7 +979,7 @@ SMT-equivalent (with reference to a constraint context), so that pattern-match
 typing and resource term typing are consistent.
 
 \begin{theorem}[Progress for ResCore]
-If a top-level expression ($[[ stmt ]]$) is well-typed
+If a statement ($[[ stmt ]]$) is well-typed
 ($[[ cdot ; cdot ; N ; nR |- stmt <= ret ]]$) and all computational patterns
 in it are exhaustive, then either it is a value ($[[< ret_terms >]]$), or it is
 unreachable, or for all heaps ($[[ h ]]$), if the heap is well-typed
@@ -999,7 +995,7 @@ Induction over the typing assumption. Full proof in appendix.
 Moving on to type preservation, a few things are noteworthy about its proof.
 
 First is that a frame-heap has to be explicitly passed around.  Whilst this is
-inconvenient, it becomes necessary in the \textsc{Expl\_Top\_Seq\_LetT} case.
+inconvenient, it becomes necessary in the \textsc{Stmt\_Let} case.
 
 Second is in the lemma ``Well-typed values pattern match successfully''. %\nameref{subsec:wt_values_pat_match}.
 There are two substitutions at play here. As an example, let
@@ -1022,12 +1018,12 @@ allocation history, all the constraints involve no variables
 , and so will be trivially decidable.
 
 \begin{theorem}[Type preservation for ResCore]
-For all closed and well-typed top-level expressions
+For all closed and well-typed statements
 ($[[ cdot ; cdot ; N ; nR |- stmt <= ret ]]$),
 well typed heaps ($[[ h <= nR ]]$),
 frame-heaps ($[[ f ]]$),
 new heaps ($[[ heap ]]$),
-and new top-level expressions ($[[ stmt' ]]$),
+and new statements ($[[ stmt' ]]$),
 which are connected by a step in the operational semantics
 ($[[ < _t ; h + f ; stmt > -->  < _t ; heap ; stmt' > ]]$),
 if all top-level functions are annotated correctly,
@@ -1037,7 +1033,7 @@ and resource context ($[[ nR' ]]$),
 such that the constraint context is $[[ N ]]$ extended,
 the frame is unaffected ($[[ heap ]] = [[ h' + f ]]$),
 the sub-heap is well-typed ($[[ h' <= nR' ]]$),
-and the top-level expression too
+and the statement too
 ($[[ cdot ; cdot ; N' ; nR' |- stmt' <= ret ]]$).
 \end{theorem}
 

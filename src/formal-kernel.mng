@@ -198,7 +198,7 @@ substitution.
 
 Specifically, it syntactically stratifies values and
 expressions from which we would like to \emph{synthesise} type information, and
-top-level values and expressions against which we would like to \emph{check} a
+statements against which we would like to \emph{check} a
 given type. This applies to both pure and effectful fragments, leading to a
 four-fold distinction in the let-normal form of the grammar.
 
@@ -232,7 +232,7 @@ removed.\sidenote{\href{https://github.com/rems-project/cerberus/commit/21808139
 
 The way that \kl{CN} currently manages the flow of information is by explicitly
 passing around continuations; when it comes across any expression which is
-treated as a top-level one in \kl{let-normal Core}, it simply does the appropriate
+treated as statement in \kl{ResCore}, it simply does the appropriate
 checks and then \emph{drops} the continuation.\sidenote{\href{https://github.com/rems-project/cerberus/commit/350fefc675626dcc69c7adc9edea30ff9687b752}{Commit 350fefc6.}}\label{sn:use-conts}
 This makes the code more fragile but saves the need for maintaining another large
 syntax tree which needs pretty-printers, debug printers, source location
@@ -246,26 +246,21 @@ let-normalising the constructs related to C's loose evaluation order.\sidenote{%
 over the fact that those constructs can contain each other in a semantically
 meaningful way, such that flattening out that nesting seems impossible. A
 solution would be to require type annotations on any situation which requires
-top-level expressions to be nested inside one another.
-
-Indeed, as I shall show in \nameref{chap:kernel-soundness}, annotations on
-nested top-level expressions are required, though only for proving type
-preservation for function calls to pure Core functions, effectful Core
-procedures, and elaborated C functions. And as I will demonstrate in
+statements to be nested inside one another.\sidenote{Nested (and therefore,
+annotated) statements are required only for proving type
+preservation for calls to pure Core functions, effectful Core
+procedures, and elaborated C functions.} I will demonstrate in
 \nameref{chap:kernel-alternative}, it seems very difficult to avoid some sort
 of normalisation (and associated control flow explosion) somewhere in the type
 system in the presence of join-points and early returns in sub-expressions.
 
-For now, I will confine my discussion of the let-normal grammar to top-level
-expressions (full details for both nested and top-level expressions are
-available in the appendix). Pure expressions include things such as pure values,
+Pure expressions include things such as pure values,
 datatype values, pointer arithmetic for arrays (in \kl{de facto}, not \kl{ISO})
 and struct/union members, boolean negation, binary operations and relations, function
-calls and assertions. Top-level values and expressions are in
+calls and assertions. Pure statements are shown in
 \cref{fig:kernel-pstmt}. As mentioned earlier, constructs where control flow
 should not reach, such as \coreinline{undef()} must be in a checking % chktex 36
-judgement, so top-level values consists of them and regular pure values lifted
-to the top.
+judgement, so are part of pure statement.
 
 \begin{figure*}
     \small
@@ -275,17 +270,8 @@ to the top.
     \caption{Pure statements in ResCore.}\label{fig:kernel-pstmt}
 \end{figure*}
 
-Top-level effectful values are the same as top-level pure values.
-Effectful values and expressions are further split into \intro{sequenced}
-expressions and \intro{indeterminately} sequenced expressions. Sequenced
-expression include only C function calls and Core procedure calls.
-As shown in \cref{fig:kernel-expr}, (effectful) expressions
-include memory actions, memory operations, C function calls and Core procedure
-calls. There are also additional constructs which are used only in a
-pre-elaboration syntax tree; I used these to show how annotations
-for manually folding and unfolding predicates are incorporated into
-\kl{ResCore}'s \kl{resource term} calculus (\cref{sec:res-terms}).\sidenote{See
-note~\ref{sn:new-inf-statics}.}
+Effectful expression (\cref{fig:kernel-expr}), include memory actions, memory
+operations, C function calls and Core procedure calls.
 
 \begin{figure}[h]
     \small
@@ -295,24 +281,16 @@ note~\ref{sn:new-inf-statics}.}
     \caption{(Effectful) Expressions in ResCore.}\label{fig:kernel-expr}
 \end{figure}
 
-Sequenced top-level effectful expressions (\cref{fig:kernel-stmt}) are
-simply the constructs which mention a pure expression inside them; you can see
-that the bound expression in a \coreinline{let}, the scrutinee of a
-\coreinline{case}, the condition of an \coreinline{if}, as well as the
-arguments to \coreinline{run} are contain pure expressions
-(\cref{fig:effectful-core-grammar}).
-
-However, these are mutually defined with \kl{indeterminately} sequenced
-top-level expressions (\coreinline{let weak} and \coreinline{let strong}), for
-which as I mentioned before, I do not have accurate support. The mutual
-recursion is achieved via the $[[ stmt ]]$ production.
+Effectful statements include \kl{return terms}, pure statements, bound effectful
+expressions, standard conditional and pattern-matching constructs and the
+\coreinline{run} operator (\cref{fig:effectful-core-grammar}).
 
 \begin{figure*}[tp]
     \small
     \grammartabularSTY{%
         \cnstmt{}\cnafterlastrule{}
     }
-    \caption{Top-level expressions in ResCore.}\label{fig:kernel-stmt}
+    \caption{Effectful statements in ResCore.}\label{fig:kernel-stmt}
 \end{figure*}
 
 \section{Resource terms}\label{sec:res-terms}
