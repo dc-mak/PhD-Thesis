@@ -104,7 +104,7 @@ grammar
     | int          :: :: integer {{ com C (signed) integer                          }} {{ tex \cnkw{int} }}
     | ct *         :: :: pointer {{ com pointer to type $[[ct]]$                    }}
     | struct tag   :: :: struct  {{ com C struct type                               }}
-    | tagged tag   :: :: tagged  {{ com C struct or union                           }}
+    | tagged tag   :: :: tagged  {{ com C struct or union                           }} {{ tex [[ tag ]]  }}
 
 metavar tag ::=  {{ com unique identifier for struct/union type }}
 
@@ -393,8 +393,10 @@ grammar
                                                 {{ com tranlate pure value $[[pval]]$ into corresponding SMT term }}
 
   iargs , _iargs {{ tex \_ }} :: 'Iargs_' ::= {{ com list of terms (predicate input-arguments) }}
+    | iarg , iargs              ::   :: cons
     | </ iargi // , // i />     ::   :: list
     | subs ( iargs )            :: M :: subs
+
 
   qterm :: 'QTerm_' ::= {{ com quantified SMT terms }}
     | term            ::   :: term   {{ com unquantified SMT term                  }}
@@ -423,8 +425,8 @@ grammar
     | a ( iargs ) :: :: pred_term
 
   ipred_term :: 'IPred_term_' ::= {{ com iterated predicate term/request }}
-    | each ( integer x ; iguard ) { a ( iargs ) } ::  :: ipred_term (+ bind x in iguard +) (+ bind x in iargs +)
-      {{ tex [[each]] \left(\![[integer]]\ x; [[iguard]] \right)\, \left\{ [[a]] \left( [[iargs]] \right) \, \right\} }}
+    | each ( integer x ; iguard ) { pred_term } ::  :: ipred_term (+ bind x in iguard +) (+ bind x in pred_term +)
+      {{ tex [[each]] \left(\![[integer]]\ x; [[iguard]] \right)\, \left\{ [[pred_term]] \, \right\} }}
 
   res_req :: 'Res_req_' ::= {{ com resource request }}
     | pred_term  :: :: pred  {{ com request a resource predicate            }}
@@ -434,19 +436,19 @@ grammar
   out_res_req {{ tex \outpol{ res\_req } }}   :: 'Out_hack_' ::=  {{ com Ott-hack, ignore }}
     | res_req :: :: res_req {{ tex \outpol{ [[res_req]] } }}
 
-  pred , points_to , pt :: 'Pred_' ::=  {{ com \emph{precise} seperation-logic predicates }}
-    | pred_term ( oarg )        ::   :: pred {{ com a predicate-type is simply the term with an output argument }}
+  pred , pt :: 'Pred_' ::=  {{ com \emph{precise} seperation-logic predicates }}
+    | pred_term ( oarg )        ::   :: pred {{ com a predicate is a term with an output argument }}
     | ptrt |- init - ct -> term :: S :: points_to
       {{ com pretty-printing for points-to predicate $\symtt{Owned} \langle [[ init ]] , [[ ct ]] \rangle ( [[ ptrt ]] ) \& [[ term ]] $ }}
-      {{ tex \smash{ [[ ptrt ]] } \mathbin{ \overset{ \ifthenelse{\equal{ [[ init ]] }{ \_ } }{}{ [[ init ]] } }{ \underset{ [[ ct ]] }{ {\mapsto} } } } \smash{ [[ term ]] } }}
+      {{ tex [[ ptrt ]] \overunderset{ \ifthenelse{\equal{ [[ init ]] }{ \_ } }{}{ [[ init ]] } }{ [[ ct ]] }{ \mapsto } [[ term ]] }}
 
 
-  ipred , ipoints_to , ipt :: 'IPred_' ::= {{ com iterated (integer-indexed) seperation logic predicate }}
-    | ipred_term ( oarg )                                                    ::   :: ipred
-      {{ com a ipredicate-type is simply the term with an array output argument }}
+  ipred :: 'IPred_' ::= {{ com iterated (integer-indexed) seperation logic predicate }}
+    | ipred_term ( oarg )                         ::   :: ipred
+      {{ com an iterated predicate is an iterated term with an array output argument }}
     | *S x . iguard => ptrt |- init - ct -> oarg  :: S :: ipoints_to
-      {{ com pretty-printing for iterated points-to predicate $\cnkw{each} ( \cnkw{integer} \, [[ x ]] ; [[ iguard ]] ) \{ \cnkw{Owned} \langle [[ init ]] , [[ ct ]] \rangle ( \cnkw{array\_shift} ( [[ ptrt ]] , [[ x ]] ) )  \} ( [[ oarg ]] )$ }}
-      {{ tex [[ *S ]]_{ [[ x ]] } { [[ iguard ]] [[ => ]] \left\{ [[ ptrt ]] \mathbin{ \overset{ [[ init ]] }{ \underset{ [[ ct ]] }{ {\mapsto}  } } } { [[ oarg ]] [ [[ x ]] ] } \right\}  } }}
+      {{ com pretty-printing for iterated points-to $\cnkw{each} \left(\!\cnkw{integer} \, [[ x ]] ; [[ iguard ]] \right) \{ \cnkw{Owned} \langle [[ init ]] , [[ ct ]] \rangle ( [[ ptrt ]] ) \} ( [[ oarg ]] )$ }}
+      {{ tex [[ *S ]]_{ [[ x ]] } { [[ iguard ]] [[ => ]] \left\{ [[ ptrt ]] \overunderset{ [[ init ]] }{ [[ ct ]] }{ \mapsto } { [[ oarg ]] [ [[ x ]] ] } \right\}  } }}
 
 
 grammar
@@ -527,8 +529,8 @@ grammar
   out_pure_ret {{ tex \outpol{ pure\_ret } }}   :: 'Out_hack_' ::=  {{ com Ott-hack, ignore }}
     | pure_ret :: :: pure_ret {{ tex \outpol{ [[pure_ret]] } }}
 
-  % OUT_HACK|norm_ret
-  out_norm_ret {{ tex \outpol{ norm\_ret } }}   :: 'Out_hack_' ::=  {{ com Ott-hack, ignore }}
+  % OUT_HACK|norm_ret,\norm{ret}
+  out_norm_ret {{ tex \outpol{ \norm{ret} } }}   :: 'Out_hack_' ::=  {{ com Ott-hack, ignore }}
     | norm_ret :: :: norm_ret {{ tex \outpol{ [[norm_ret]] } }}
 
 grammar
@@ -559,11 +561,11 @@ grammar
   pstmt :: 'TPE_' ::= {{ com pure statements }}
     | pval                                   ::   :: pval  {{ com pure value                            }}
     | undef UB_name                          ::   :: undef {{ com undefined behaviour                   }}
-    | let pat = pexpr in pstmt               ::   :: let   (+ bind binders( pat ) in pstmt             +)
-                                                           {{ com pure let                              }}
-    | let pat : pure_ret = pstmt1 in pstmt2  ::   :: letT  (+ bind binders( pat ) in pstmt2            +)
-                                                           {{ com annoted pure let                      }}
-    | if pval then pstmt1 else pstmt2        ::   :: if    {{ com pure if                               }}
+    | let pat = pexpr in pstmt               ::   :: pexpr (+ bind binders( pat ) in pstmt              +)
+                                                           {{ com pure expression binding               }}
+    | let pat : pure_ret = pstmt1 in pstmt2  :: X :: let   (+ bind binders( pat ) in pstmt2             +)
+                                                           {{ com pure let statment                     }}
+    | if pval then pstmt1 else pstmt2        ::   :: if    {{ com pure if statement                     }}
     | case pval of </ | pbranchi // i /> end ::   :: case  {{ com pattern-matching                      }}
     | subs ( pstmt )                         :: M :: subs  {{ com substitute $[[subs]]$ in $[[pstmt]]$  }}
 
@@ -600,28 +602,28 @@ grammar
   % branch you are proving. This applies to inference (requesting an
   % ordered-disjunction) too.
   res_term , _rest {{ tex \_ }} :: 'Res_term_' ::= {{ com resource terms }}
-    | r                             ::   :: var      {{ com variable                                    }}
-    | emp                           ::   :: empty    {{ com empty heap                                  }}
-    | TERM                          ::   :: phi      {{ com term for assertion                          }}
-    | pred_term                     ::   :: pred     {{ com heap predicate                              }}
-    | ipred_term                    ::   :: ipred    {{ com iterated (integer-indexed) heap predicate   }}
-    | < </ res_termi // , // i /> > ::   :: pair     {{ com (nested) seperating-conjunction pair        }}
-    | pack ( oarg , res_term )      ::   :: pack     {{ com packing for existentials                    }}
-    | fold res_term : pred          ::   :: fold     {{ com fold into recursive res. pred.              }}
-    | pred_ops                      ::   :: pred_ops {{ com (i)predicate operation terms                }}
-    | ( res_term )                  :: S :: paren    {{ com parentheses                                 }}
-    | subs ( res_term )             :: M :: subs     {{ com substitution for resource terms             }}
+    | r                             ::     :: var      {{ com variable                                    }}
+    | emp                           ::     :: empty    {{ com empty heap                                  }}
+    | TERM                          ::     :: phi      {{ com term for assertion                          }}
+    | pred_term                     ::     :: pred     {{ com heap predicate                              }}
+    | ipred_term                    ::     :: ipred    {{ com iterated (integer-indexed) heap predicate   }}
+    | < </ res_termi // , // i /> > ::     :: pair     {{ com (nested) seperating-conjunction pair        }}
+    | pack ( oarg , res_term )      ::     :: pack     {{ com packing for existentials                    }}
+    | fold res_term : pred          ::     :: fold     {{ com fold into recursive res. pred.              }}
+    | pred_ops                      ::     :: pred_ops {{ com (i)predicate operation terms                }}
+    | ( res_term )                  :: S X :: paren    {{ com parentheses                                 }}
+    | subs ( res_term )             :: M   :: subs     {{ com substitution for resource terms             }}
 
 
   res_val , def {{ tex \mathit{ def } }} :: 'ResT_Val' ::= {{ com resource terms values }}
-    | emp                          ::   :: empty   {{ com empty heap                                  }}
-    | TERM                         ::   :: phi     {{ com term for assertion                          }}
-    | pred_term                    ::   :: pred    {{ com heap predicate                              }}
-    | ipred_term                   ::   :: ipred   {{ com iterated (integer-indexed) heap predicate   }}
-    | < </ res_vali // , // i /> > ::   :: pair    {{ com (nested) seperating-conjunction pair        }}
-    | pack ( oarg , res_val )      ::   :: pack    {{ com packing for existentials                    }}
-    | ( res_val )                  :: S :: paren   {{ com parentheses                                 }}
-    | subs ( res_val )             :: M :: subs    {{ com substitution for resource terms             }}
+    | emp                          ::     :: empty   {{ com empty heap                                  }}
+    | TERM                         ::     :: phi     {{ com term for assertion                          }}
+    | pred_term                    ::     :: pred    {{ com heap predicate                              }}
+    | ipred_term                   ::     :: ipred   {{ com iterated (integer-indexed) heap predicate   }}
+    | < </ res_vali // , // i /> > ::     :: pair    {{ com (nested) seperating-conjunction pair        }}
+    | pack ( oarg , res_val )      ::     :: pack    {{ com packing for existentials                    }}
+    | ( res_val )                  :: S X :: paren   {{ com parentheses                                 }}
+    | subs ( res_val )             :: M   :: subs    {{ com substitution for resource terms             }}
 
 
 subrules
@@ -640,26 +642,32 @@ grammar
     | ct  :: :: static
 
   action :: 'Action_' ::= {{ com memory actions }}
-    | res_term | create < ct > ( pval )        ::  :: create
-    | res_term | alloc ( pval1 , pval2 )       ::  :: alloc
-    | res_term | kill < kill_kind > ( pval )   ::  :: kill
-    | res_term | store < ct > ( pval1 , pval ) ::  :: store
-    | res_term | load < ct > ( pval )          ::  :: load
+    | create < ct > ( pval )        ::  :: create
+    | alloc ( pval1 , pval2 )       ::  :: alloc
+    | load < ct > ( pval )          ::  :: load
+    | store < ct > ( pval1 , pval ) ::  :: store
+    | kill < kill_kind > ( pval )   ::  :: kill
+
+  res_action :: 'Res_action_' ::= {{ com memory actions with resource term annotation }}
+    | res_term | action :: :: res
 
 grammar
 
   % Factor out res_term proof for all of these (just use emp for the pure ones)
   memop :: 'Memop__' ::=  {{ com operations involving the memory state}}
-    | res_term | pval1 rel_binop pval2                   :: :: ptrRelBinop      {{ com pointer relational binary operations                   }}
-    | res_term | pval1 - ct - pval2                      :: :: ptrDiff          {{ com pointer subtraction                                    }}
-                                                                                {{ tex [[ res_term ]] \| [[ pval1 ]] -_{ [[ct]] } [[ pval2 ]] }}
-    | res_term | intFromPtr < ct1 , ct2 > ( pval )       :: :: intFromPtr       {{ com cast pointer value to integer value                    }}
-    | res_term | ptrFromInt < ct1 , ct2 > ( pval )       :: :: ptrFromInt       {{ com cast integer value to pointer value                    }}
-    | res_term | ptrValidForDeref < ct > ( pval )        :: :: ptrValidForDeref {{ com check pointer is valid for dereferencing               }}
-    | res_term | ptrWellAligned < ct > ( pval )          :: :: ptrWellAligned   {{ com check pointer is aligned for the type $[[ ct ]]$       }}
-    | res_term | ptrArrayShift < ct > ( pval1 ,  pval2 ) :: :: ptrArrayShift    {{ com pointer-arithmetic for indexing arrays                 }}
-    | res_term | memcpy ( pval1 , pval2 , pval3 )        :: :: memcpy
-    | res_term | memcmp ( pval1 , pval2 , pval3 )        :: :: memcmp
+    | pval1 rel_binop pval2                   :: :: ptrRelBinop      {{ com pointer relational binary operations             }}
+    | pval1 - ct - pval2                      :: :: ptrDiff          {{ com pointer subtraction                              }}
+                                                                     {{ tex [[ pval1 ]] -_{ [[ct]] } [[ pval2 ]]             }}
+    | intFromPtr < ct1 , ct2 > ( pval )       :: :: intFromPtr       {{ com cast pointer value to integer value              }}
+    | ptrFromInt < ct1 , ct2 > ( pval )       :: :: ptrFromInt       {{ com cast integer value to pointer value              }}
+    | ptrValidForDeref < ct > ( pval )        :: :: ptrValidForDeref {{ com check pointer is valid for dereferencing         }}
+    | ptrWellAligned < ct > ( pval )          :: :: ptrWellAligned   {{ com check pointer is aligned for the type $[[ ct ]]$ }}
+    | ptrArrayShift < ct > ( pval1 ,  pval2 ) :: :: ptrArrayShift    {{ com pointer-arithmetic for indexing arrays           }}
+    | memcpy ( pval1 , pval2 , pval3 )        :: :: memcpy
+    | memcmp ( pval1 , pval2 , pval3 )        :: :: memcmp
+
+  res_memop :: 'Res_memop_' ::= {{ com memory actions with resource term annotation }}
+    | res_term | memop :: :: res
 
 grammar
 
@@ -714,25 +722,25 @@ grammar
   % There used to be an effectful value (val) `skip' - I (dcm41) removed it because it seemed redundant.
   expr :: 'Expr_' ::= {{ com (effectful) expressions }}
     | pure ( pexpr )            ::   :: pure      {{ com pure expression                           }}
-    | memop                     ::   :: memop     {{ com pointer op involving memory               }}
-    | action                    ::   :: action    {{ com memory action                             }}
+    | res_memop                 ::   :: memop     {{ com pointer op involving memory               }}
+    | res_action                ::   :: action    {{ com memory action                             }}
     | ccall ( ct , yf , spine ) ::   :: ccall     {{ com C function call                           }}
     | pcall ( name , spine )    ::   :: proc      {{ com Core procedure call                       }}
-    | fold a ( pvals )          ::   :: fold      {{ com (pre-elaboration only) fold a predicate   }}
-    | unfold a ( pvals )        ::   :: unfold    {{ com (pre-elaboration only) unfold a predicate }}
-    | res_term                  ::   :: res_term  {{ com (elaboration only)                        }}
+    | fold a ( pvals )          :: X :: fold      {{ com (pre-elaboration only) fold a predicate   }}
+    | unfold a ( pvals )        :: X :: unfold    {{ com (pre-elaboration only) unfold a predicate }}
+    | res_term                  :: X :: res_term  {{ com (elaboration only)                        }}
     | subs ( expr )             :: M :: subs      {{ com substitution                              }}
     % unseq ( </ stmti : reti // i /> ) ::  :: unseq  {{ com unsequenced expressions      }}
 
   % nd() is only used in the elab of if/loops for the case where the condiditional expression evaluates to unspecified()
   % We don't have unspecified() so we won't have nd()
   stmt :: 'TE_' ::= {{ com (effectful) statement }}
-    | pure ( pstmt )                        ::     :: pure        {{ com pure statement                                 }}
     | < ret_terms >                         ::     :: ret_terms   {{ com values (including logical and reosurces terms) }}
-    | let ret_pat = expr in stmt            ::     :: let         (+ bind binders( ret_pat ) in stmt                   +)
-                                                                  {{ com bind return pats                               }}
-    | let ret_pat : ret = stmt1 in stmt2    ::     :: annot       (+ bind binders( ret_pat ) in stmt2                  +)
-                                                                  {{ com annotated bind return pats                     }}
+    | pure ( pstmt )                        ::     :: pure        {{ com pure statement                                 }}
+    | let ret_pat = expr in stmt            ::     :: expr        (+ bind binders( ret_pat ) in stmt                   +)
+                                                                  {{ com (effectful) expression binding                 }}
+    | let ret_pat : ret = stmt1 in stmt2    :: X   :: let         (+ bind binders( ret_pat ) in stmt2                  +)
+                                                                  {{ com let                                            }}
     | if pval then stmt1 else stmt2         ::     :: if          {{ com conditional                                    }}
     | case pval of </ | branchi // i /> end ::     :: case        {{ com pattern-matching                               }}
     | run id pvals                          ::     :: run         {{ com run from label                                 }}
@@ -791,15 +799,15 @@ grammar
     | cdot    :: :: cdot      {{ tex \cdot                            }}
     | |       :: :: bar       {{ tex \mid                             }}
     | |->     :: :: mapsto    {{ tex \mapsto                          }}
-    | cons    :: :: cons      {{ tex ::                               }}
-    | :       :: :: of_type   {{ tex {:}                              }}
+    | cons    :: :: cons      {{ tex \Colon                           }}
+    | :       :: :: of_type   {{ tex {\colon}                         }}
     | .       :: :: such_that {{ tex . \:                             }}
     | dot     :: :: dot       {{ tex \! {.} \!                        }}
     | >>      :: :: chevron   {{ tex \gg                              }}
-    | :;      :: :: doublecol {{ tex \mathbin{ {:} {:} }              }}
+    | :;      :: :: doublecol {{ tex \Colon                           }}
     | \/      :: :: or        {{ tex \vee                             }}
     | \//     :: :: big_or    {{ tex \bigvee                          }}
-    | def=    :: :: equiv     {{ tex \equiv                           }}
+    | def=    :: :: equiv     {{ tex \eqdef                           }}
     | <       :: :: langle    {{ tex \langle                          }}
     | >       :: :: rangle    {{ tex \rangle                          }}
     | reso    :: :: reso      {{ tex \symtt{res}                      }}
@@ -868,8 +876,8 @@ grammar
   out_pure_fun {{ tex \outpol{ pure\_fun } }}   :: 'Out_hack_' ::=  {{ com Ott-hack, ignore }}
     | pure_fun :: :: pure_fun {{ tex \outpol{ [[pure_fun]] } }}
 
-  % OUT_HACK|norm_fun
-  out_norm_fun {{ tex \outpol{ norm\_fun } }}   :: 'Out_hack_' ::=  {{ com Ott-hack, ignore }}
+  % OUT_HACK|norm_fun,\norm{fun}
+  out_norm_fun {{ tex \outpol{ \norm{fun} } }}   :: 'Out_hack_' ::=  {{ com Ott-hack, ignore }}
     | norm_fun :: :: norm_fun {{ tex \outpol{ [[norm_fun]] } }}
 
 grammar

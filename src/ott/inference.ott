@@ -102,10 +102,12 @@ defns
 
 
     N |- pred_term in? ipred_term ~> term
-    ipred_term def= each (integer x; iguard) { a ( array_shift < ct > ( ptrt1 , x ) , </ iargi // i /> ) }
-    rem def= each (integer x; iguard /\ (x != term)) { a ( array_shift < ct > ( ptrt1 , x ) , </ iargi // i /> ) } ( oarg )
+    ipred_term def= each (integer x; iguard) { pred_term }
+    rem def= each (integer x; iguard /\ (x != term)) { pred_term } ( oarg )
+    oarg' def= oarg [ term ]
+    res def= pred_term ( oarg' )
     -------------------------------------------------------------------------- :: PI_Rem
-    N |- r : ipred_term ( oarg ) -? pred_term ~> bind < r1 , r2 > : rem * pred_term ( oarg [ term ] ) = break ( r , term ) for r2 & oarg [ term ]  and r1 : rem
+    N |- r : ipred_term ( oarg ) -? pred_term ~> bind < r1 , r2 > : rem * res = break ( r , term ) for r2 & oarg' and r1 : rem
 
 
     N |- pred_term in? ipred_term ~> None
@@ -114,14 +116,16 @@ defns
 
 
     N |- pred_term in? ipred_term ~> term
-    ipred_term def= each (integer x; iguard) { a ( array_shift < ct > ( ptrt1 , x ) , </ iargi // i /> ) }
+    ipred_term def= each (integer x; iguard) { pred_term }
     smt ( N => exists x . iguard /\ ( x != term ) )
-    ------------------------------------------------------------------------------------------------ :: IP_More
-    N |- r : pred_term ( oarg ) -? ipred_term ~> oarg and each (integer x; iguard /\ ( x != term ) ) { a ( array_shift < ct > ( ptrt1 , x ) , </ iargi // i /> ) }
+    ipred_term' def= each (integer x; iguard /\ ( x != term ) ) { pred_term }
+    ----------------------------------------------------------------- :: IP_More
+    N |- r : pred_term ( oarg ) -? ipred_term ~> oarg and ipred_term'
 
 
+    pred_term def= r ( array_shift < ct > ( ptrt1 , x ) , iargs )
     N |- pred_term in? ipred_term ~> term
-    ipred_term def= each (integer x; iguard) { a ( array_shift < ct > ( ptrt1 , x ) , </ iargi // i /> ) }
+    ipred_term def= each (integer x; iguard) { pred_term }
     smt ( N => forall x . neg ( iguard /\ ( x != term ) ) )
     C ; L |- oarg => base_type
     ------------------------------------------------------------------------------------------------ :: IP_Last
@@ -140,9 +144,9 @@ defns
 
     N |- ipred_term' [=? ipred_term ~> Lt
     % ipred_term' < ipred_term
-    ipred_term def= each (integer x; iguard) { a ( array_shift<ct>(ptrt, x) , </ iargi // i /> ) }
-    ipred_term' def= each (integer x; iguard') { a ( array_shift<ct>(ptrt,x) , </ iargi // i />  ) }
-    rem def= each (integer x; iguard  /\ neg iguard') { a ( array_shift<ct>(ptrt,x) , </ iargi // i /> ) } ( oarg )
+    ipred_term def= each (integer x; iguard) { pred_term }
+    ipred_term' def= each (integer x; iguard') { pred_term }
+    rem def= each (integer x; iguard  /\ neg iguard') { pred_term } ( oarg )
     ---------------------------------------------------------------------------------------- :: II_Lt
     N |- r : ipred_term ( oarg ) -? ipred_term' ~> bind < r1 , r2 > : res = chop ( r , iguard' ) for r1 & oarg [ k ] and r2 : rem
 
@@ -284,16 +288,16 @@ defns
 defns
   elab_action :: 'Elab_' ::=
 
-  % DEFER out_action'
-  defn CLNnR |- action ~> bind out_res_bind for action' : out_norm_ret -| out_nRp :: :: Action :: Action_
-  {{ com memory action elaboration: given $[[CLNnR]]$, $[[action]]$ elaborates (via $[[out_res_bind]]$) to $[[action']] [[:]] [[out_norm_ret]]$, with $[[out_nRp]]$ leftover }} by
+  % DEFER out_res
+  defn CLNnR |- action ~> bind out_res_bind for out_res_term & out_norm_ret -| out_nRp :: :: Action :: Action_
+  {{ com memory action return-type inference: given $[[CLNnR]]$ and $[[action]]$, infer (via $[[out_res_bind]]$) $[[out_res_term]]$ and $[[out_norm_ret]]$, with $[[out_nRp]]$ leftover }} by
 
 
     C ; L ; N ; nR |- emp | create < ct > ( pval ) => norm_ret
     norm_ret def= sigma yp : loc . term /\ exists x : to_base ( ct ) . ( yp |- Uninit - ct -> x ) *o I
     term def= representable ( ct * , yp ) /\ alignedI ( inj pval , yp )
     ----------------------------------------------------------------------- :: Create
-    C ; L ; N ; nR |- _rest | create < ct > ( pval ) ~> bind cdot for emp | create < ct > ( pval ) : norm_ret -| nR
+    C ; L ; N ; nR |- create < ct > ( pval ) ~> bind cdot for emp & norm_ret -| nR
 
 
     % DEFER (not implemented)
@@ -305,7 +309,7 @@ defns
     N ; nR |- Owned < Init , ct > ( inj pval0 ) ~> bind res_bind for res_term and oarg -| nR'
     norm_ret def= sigma y : to_base ( ct ) . y = oarg /\ pt *o I
     -------------------------------------------------------------------------- :: Load
-    C ; L ; N ; nR |- _rest | load < ct >  ( pval0 ) ~> bind res_bind for res_term | load < ct > ( pval0 ) : norm_ret -| nR'
+    C ; L ; N ; nR |- load < ct >  ( pval0 ) ~> bind res_bind for res_term & norm_ret -| nR'
 
 
     C |- pval0 => loc
@@ -315,13 +319,13 @@ defns
     N ; nR |- Owned < _init , ct > ( inj pval0 ) ~> bind res_bind for res_term and _t -| nR'
     norm_ret def= sigma _ : unit . ( inj pval0 |- Init - ct -> inj pval1 ) *o I
     ------------------------------------------------------------------------------------------- :: Store
-    C ; L ; N ; nR |- _rest | store < ct > ( pval0 , pval1 ) ~> bind res_bind for res_term | store < ct > ( pval0 , pval1 ) : norm_ret -| nR'
+    C ; L ; N ; nR |- store < ct > ( pval0 , pval1 ) ~> bind res_bind for res_term & norm_ret -| nR'
 
 
     C |- pval0 => loc
     N ; nR |- Owned < _init , ct > ( inj pval ) ~> bind res_bind for res_term and _t -| nR'
     ---------------------------------------------------------------------------------------- :: Kill_Static
-    C ; L ; N ; nR |- _rest | kill < ct > ( pval ) ~> bind res_bind for res_term | kill < ct > ( pval ) : sigma _ : unit . I -| nR'
+    C ; L ; N ; nR |- kill < ct > ( pval ) ~> bind res_bind for res_term & sigma _ : unit . I -| nR'
 
 
     % DEFER (not implemented)
@@ -331,8 +335,8 @@ defns
   elab_memop :: 'Elab_' ::=
 
   % DEFER out_memop'
-  defn CLNnR |- memop ~> bind out_res_bind for memop' : out_norm_ret -| out_nRp :: :: Memop :: Memop_
-  {{ com memory operation elaboration: given $[[CLNnR]]$, $[[memop]]$ elaborates to (via $[[out_res_bind]]$) to $[[memop']] [[:]] [[out_norm_ret]]$, with $[[out_nRp]]$ leftover }} by
+  defn CLNnR |- memop ~> bind out_res_bind for out_res_term & out_norm_ret -| out_nRp :: :: Memop :: Memop_
+  {{ com memory operation return-type inference: given $[[CLNnR]]$ and $[[memop]]$, infer (via $[[out_res_bind]]$) $[[out_res_term]]$ and $[[out_norm_ret]]$, with $[[out_nRp]]$ leftover }} by
 
 
     % DEFER - how to infer provenances
@@ -388,9 +392,9 @@ defns
     % C ; L ; N ; R |- ptrArrayShift ( res_term | pval1 ,  ct , pval2 ) => sigma y : loc . y = inj pval1 +ptr ( inj pval2 * sizeof ct ) /\ res *o I
 
 
-    C ; L ; N ; nR |- memop => norm_ret
+    C ; L ; N ; nR |- _rest | memop => norm_ret
     --------------------------------------------------------------------- :: Rest
-    C ; L ; N ; nR |- memop ~> bind cdot for memop : norm_ret -| nR
+    C ; L ; N ; nR |- memop ~> bind cdot for res_term & norm_ret -| nR
 
 
     % DEFER (not implemented)
@@ -457,14 +461,14 @@ defns
     C ; L ; N ; nR |- pure ( pexpr ) ~> bind cdot for pure ( pexpr ) : pure_ret -| nR
 
 
-    C ; L ; N ; nR |- action ~> bind res_bind for action' : norm_ret -| nR'
+    C ; L ; N ; nR |- action ~> bind res_bind for res_term & norm_ret -| nR'
     --------------------------------------------------------------------------- :: Action
-    C ; L ; N ; nR |- action ~> bind res_bind for action' : norm_ret -| nR'
+    C ; L ; N ; nR |- _rest | action ~> bind res_bind for res_term | action : norm_ret -| nR'
 
 
-    C ; L ; N ; nR |- memop ~> bind res_bind for memop' : norm_ret -| nR'
+    C ; L ; N ; nR |- memop ~> bind res_bind for res_term & norm_ret -| nR'
     ------------------------------------------------------------------------- :: Memop
-    C ; L ; N ; nR |- memop ~> bind res_bind for memop' : norm_ret -| nR'
+    C ; L ; N ; nR |- _rest | memop ~> bind res_bind for res_term | memop : norm_ret -| nR'
 
 
     % </ C ; L ; N ; nRi |- stmti <= reti // i />

@@ -9,7 +9,7 @@ grammar
     | { ipred & arr_heap }    ::   :: ipred
     | </ heapi // + // i />   :: M :: concat
     | subs ( heap )           :: M :: subs
-    | def_heap dot member     :: M :: def_heap_proj {{ tex [[ def_heap ]] [[ dot ]] \mathrm{def} }}
+    | def_heap dot member     :: M :: def_heap_proj
 
   def_heap :: 'Def_heap_' ::= {{ com optional pair of definition (resource value) and heap }}
     | None              :: :: None
@@ -164,7 +164,13 @@ defns
 defns
   pure_opsem :: 'Op_' ::=
 
-  defn term | < pexpr > --> < pstmt : pure_ret > :: :: PExpr :: PExpr_ by
+  defn alloct | < pexpr > --> < pstmt : pure_ret > :: :: PExpr :: PExpr_ by
+
+
+    cdot |- pval => base_type
+    ------------------------------------------------------------------ :: PVal
+    _ | < pval > --> < pval : sigma y : base_type . y = inj pval /\ I >
+
 
     int def= xor_uf ( int1 , int2 )
     pure_ret def= sigma y : integer . y = xor_uf ( int1 , int2 )  /\ I
@@ -252,17 +258,12 @@ defns
     alloct | < name ( </ pvali // i /> ) > --> < subs ( pstmt ) : pure_ret >
 
 
-  defn term | < pstmt > --> < pstmt' > :: :: PStmt :: PStmt_ by
-
-    patj = pval ~> subsj
-    forall i lt j . not ( pati = pval ~> subsi )
-    ------------------------------------------------------------------------------------------------------- :: Case
-    _ | < case pval of </ | pati => pstmti // i /> end > --> < subsj ( pstmtj ) >
+  defn alloct | < pstmt > --> < pstmt' > :: :: PStmt :: PStmt_ by
 
 
     pat = pval ~> subs
-    ------------------------------------------------------------ :: PVal
-    _ | < let pat = pval in pstmt > --> < subs ( pstmt ) >
+    ------------------------------------------- :: PVal
+    _ | < let pat : pure_ret = pval in pstmt > --> < subs ( pstmt ) >
 
 
     alloct | < pexpr > --> < pstmt1 : pure_ret >
@@ -270,13 +271,8 @@ defns
     alloct | < let pat = pexpr in pstmt2 > --> < let pat : pure_ret = pstmt1 in pstmt2 >
 
 
-    pat = pval ~> subs
-    ------------------------------------------- :: Annot_PVal
-    _ | < let pat : pure_ret = pval in pstmt > --> < subs ( pstmt ) >
-
-
     alloct | < pstmt1 > --> < pstmt1' >
-    ------------------------------------------- :: Annot
+    ------------------------------------------- :: Let
     alloct | < let pat : pure_ret = pstmt1 in pstmt2 > --> < let pat : pure_ret = pstmt1' in pstmt2 >
 
 
@@ -286,6 +282,12 @@ defns
 
     -------------------------------------------------------------------------------- :: If_False
     _ | < if False then pstmt1 else pstmt2 > --> < pstmt2 >
+
+
+    patj = pval ~> subsj
+    forall i lt j . not ( pati = pval ~> subsi )
+    ------------------------------------------------------------------------------------------------------- :: Case
+    _ | < case pval of </ | pati => pstmti // i /> end > --> < subsj ( pstmtj ) >
 
 
 defns
@@ -436,7 +438,7 @@ defns
     alloct | < h ; pack ( oarg , res_term ) > ||v < h' ; pack ( oarg , res_val ) >
 
 
-  defn < s ; action  > --> < s' ; stmt : ret > :: :: Action :: Action_ by
+  defn < s ; res_action  > --> < s' ; stmt : ret > :: :: Action :: Action_ by
 
 
     addr inEnv newAlloc ( h , pval , sizeof ct )
@@ -477,7 +479,7 @@ defns
     ----------------------------------------------------------------------------------- :: Kill_Static
     < alloct ; h ; res_term | kill < ct > ( ptr ) > --> < alloct ; h' ; < Unit > : ret >
 
-  defn term | < h ; memop  > --> < h' ; stmt : ret > :: :: Memop :: Memop_ by
+  defn term | < h ; res_memop  > --> < h' ; stmt : ret > :: :: Memop :: Memop_ by
 
     alloct | < h ; res_term > ||v < h1 + h2 ;  < pred_term1 , pred_term2 > >
     h2 def= </ { pred_termi ( termi ) & None } // i />
@@ -555,17 +557,17 @@ defns
 
     alloct | < pexpr > --> < pstmt : pure_ret >
     --------------------------------------------------------- :: Pure
-    < alloct ; h ; memop > --> < alloct ; h ; pure ( pstmt ) : pure_ret >
+    < alloct ; h ; pure ( pexpr ) > --> < alloct ; h ; pure ( pstmt ) : pure_ret >
 
 
-    < s ; action > --> < s' ; stmt : ret >
+    < s ; res_action > --> < s' ; stmt : ret >
     ---------------------------------------- :: Action
-    < s ; memop > --> < s' ; stmt : ret >
+    < s ; res_action > --> < s' ; stmt : ret >
 
 
-    alloct | < h ; memop > --> < h' ; stmt : ret >
+    alloct | < h ; res_memop > --> < h' ; stmt : ret >
     --------------------------------------------------------- :: Memop
-    < alloct ; h ; memop > --> < alloct ; h' ; stmt : ret >
+    < alloct ; h ; res_memop > --> < alloct ; h' ; stmt : ret >
 
 
     id : fon def= </ xi // i /> |-> stmt inEnv Globals
@@ -603,7 +605,7 @@ defns
 
 
     < s ; stmt1 > --> < s' ; stmt1' >
-    -------------------------------------------- :: Annot
+    -------------------------------------------- :: Let
     < s ; let ret_pat : ret = stmt1 in stmt2 > --> < s' ; let ret_pat : ret = stmt1' in stmt2 >
 
 

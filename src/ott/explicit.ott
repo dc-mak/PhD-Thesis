@@ -542,7 +542,7 @@ defns
 
 
     C |- pval => base_type
-    ------------------------------------------------------------ :: Val
+    ------------------------------------------------------------ :: PVal
     C ; L ; N |- pval => sigma y : base_type . y = inj pval /\ I
 
 
@@ -659,14 +659,14 @@ defns
     C ; L ; N |- pexpr => sigma y1 : base_type1 . term1 /\ I
     pat : base_type1 ~> C1 with term
     C , C1 ; L ; N , term / y1 ( term1 ) |- pstmt <= sigma y2 : base_type2 . term2 /\ I
-    -------------------------------------------------------------------------------------------- :: Let
+    -------------------------------------------------------------------------------------------- :: PExpr
     C ; L ; N |- let pat = pexpr in pstmt <= sigma y2 : base_type2 . term2 /\ I
 
 
     C ; L ; N |- pstmt1 <= sigma y1 : base_type1 . term1 /\ I
     pat : base_type1 ~> C1 with term
     C , C1 ; L ; N , term / y1 ( term1 ) |- pstmt <= sigma y2 : base_type2 . term2 /\ I
-    ---------------------------------------------------------------------------------------- :: Annot
+    ---------------------------------------------------------------------------------------- :: Let
     C ; L ; N |- let pat : pure_ret = pstmt1 in pstmt2 <= sigma y2 : base_type2 . term2 /\ I
 
 
@@ -901,8 +901,8 @@ defns
 defns
   expl_action :: '' ::=
 
-  defn CLNR |- action => out_ret :: :: Action :: Action_
-  {{ com memory action synthesises: given $[[CLNR]]$, $[[action]]$ synthesises return type $[[out_ret]]$ }} by
+  defn CLNR |- res_action => out_ret :: :: Action :: Action_
+  {{ com memory action synthesises: given $[[CLNR]]$, $[[res_action]]$ synthesises return type $[[out_ret]]$ }} by
 
 
     C |- pval => integer
@@ -948,8 +948,8 @@ defns
 defns
   expl_memop :: '' ::=
 
-  defn CLNR |- memop => out_ret :: :: Memop :: Memop_
-  {{ com memory operation synthesises: given $[[CLNR]]$, $[[memop]]$ synthesises return type $[[out_ret]]$ }} by
+  defn CLNR |- res_memop => out_ret :: :: Memop :: Memop_
+  {{ com memory operation synthesises: given $[[CLNR]]$, $[[res_memop]]$ synthesises return type $[[out_ret]]$ }} by
 
     C |- pval1 => loc
     C |- pval2 => loc
@@ -1044,14 +1044,14 @@ defns
     C ; L ; N ; cdot |- pure ( pexpr ) => pure_ret
 
 
-    C ; L ; N ; R |- action => ret
+    C ; L ; N ; R |- res_action => ret
     ------------------------------- :: Action
-    C ; L ; N ; R |- action => ret
+    C ; L ; N ; R |- res_action => ret
 
 
-    C ; L ; N ; R |- memop => ret
+    C ; L ; N ; R |- res_memop => ret
     ----------------------------- :: Memop
-    C ; L ; N ; R |- memop => ret
+    C ; L ; N ; R |- res_memop => ret
 
 
     id : fon def= </ xi // i /> |-> stmt  inEnv Globals
@@ -1089,14 +1089,14 @@ defns
     C ; L ; N ; R' |- expr => ret1
     N |- ret_pat : ret1 ~> C1 ; L1 ; N1 ; R1
     C , C1 ; L , L1 ; N , N1 ; R , R1 |- stmt <= ret2
-    ---------------------------------------------------------- :: Let
+    ---------------------------------------------------------- :: Expr
     C ; L ; N ; R' , R |- let ret_pat = expr in stmt <= ret2
 
 
     C ; L ; N ; R' |- stmt1 <= ret1
     N |- ret_pat : ret1 ~> C1 ; L1 ; N1 ; R1
     C , C1 ; L , L1 ; N , N1 ; R , R1 |- stmt2 <= ret2
-    -------------------------------------------------------------------- :: Annot
+    -------------------------------------------------------------------- :: Let
     C ; L ; N ; R' , R |- let ret_pat : ret1 = stmt1 in stmt2 <= ret2
 
 

@@ -236,7 +236,7 @@ and the statement too
 A few things are noteworthy about the proof.
 
 First is that a frame-heap has to be explicitly passed around.  Whilst this is
-inconvenient, it becomes necessary in the \StmtAnnot{} case.
+inconvenient, it becomes necessary in the \StmtLet{} case.
 % Don't think this applies any more.
 % The next is that proof that well-typed spines produce well-typed substitutions
 % require quantifying over the substitutions done \emph{so far}, so that the
@@ -362,7 +362,7 @@ No-resource / ``pure'' rules: \IGCmpEq, \IGCmpLt, \IGCmpGt, \IGCmpNone,
 \PureValObjArr, \PureValObjStruct, \PureValVar, \PureValObj,
 \PureValUnit, \PureValTrue, \PureValFalse, \PureValList, \PureValTuple,
 \PureValCtorNil, \PureValCtorCons, \PureValCtorTuple, \PureValCtorArray,
-\PureValStruct, \PureExprVal, \PureExprCtorIvXOR, \PureExprArrayShift,
+\PureValStruct, \PureExprPVal, \PureExprCtorIvXOR, \PureExprArrayShift,
 \PureExprMemberShift, \PureExprNot, \PureExprArithBinop, \PureExprRelBinop,
 \PureExprBoolBinop, \PureExprCall, \PureExprAssertUndef, \PureExprBoolToInteger,
 \PureExprWrapI, \PureStmtUB, \PureStmtPVal, \MemopPtrValidForDeref,
@@ -381,7 +381,7 @@ Resource-mentioning rules: \ResSynEmp, \ResSynVar, \ResSynVarSimp, \ResSynPred,
 \subsubsection{Rules which add constraints and variables, and
 restrict the resource context}
 
-\PureStmtLet, \PureStmtAnnot, \PureStmtCase, \StmtLet, \StmtAnnot.
+\PureStmtPExpr, \PureStmtLet, \PureStmtCase, \StmtExpr, \StmtLet.
 
 \subsection{Value typing rules}\label{subsec:value_typing_rules}
 
@@ -633,7 +633,7 @@ $[[ exists ]] [[ N1 ]], [[ N2 ]] [[ . ]] [[ subs ( N1 , N2 ) ]] = [[ subs ( N1 )
 \step{<1>5}{\case{\nameref{subsec:ctx_change_rules}
         (see~\ref{subsec:ctx_change_rules}), except for
         \PureValVar, \ResSynVar, and \ResSynVarSimp.}{%
-    For brevity, I shall only go over \StmtLet, as it is one of the most
+    For brevity, I shall only go over \StmtExpr, as it is one of the most
     general rules; one which adds constraints and variables, and restricts the
     resource context.\\[\baselineskip]
 
@@ -699,7 +699,7 @@ $[[ exists ]] [[ N1 ]], [[ N2 ]] [[ . ]] [[ subs ( N1 , N2 ) ]] = [[ subs ( N1 )
         \item $[[ subs ( N ) |- ret_pat : subs ( ret1 ) ~> C3 ; L3 ; N3 ; R3 ]]$
         \item $[[ C , C3 ; L , L3 ; subs ( N ) , N3 ; R2 , R3 |- subs ( stmt ) <= subs ( ret2 ) ]]$.
         \end{pfenum}}
-        \pf{} By \StmtLet.}
+        \pf{} By \StmtExpr.}
 
     \step{<2>6}{%
         \pflet{$[[ R1 ]]; [[ R2 ]]; [[ subs ( ret1 ) ]];
@@ -1643,6 +1643,12 @@ arbitrary (not normalised).
     be unreachable.}}
 
 \step{<1>3}{\case{%
+    \PureExprPVal.
+}{%
+    \pf{} By assumption $[[ cdot |- pval1 => base_type]]$,
+    so step with \OpPExprPVal.}}
+
+\step{<1>3}{\case{%
     \PureExprCtorIvXOR.
 }{%
     \pf{} By inversion on $[[ cdot |- pval1 => integer]]$,
@@ -1752,9 +1758,9 @@ arbitrary (not normalised).
     step with \OpPExprWrapI.}}
 
 \step{<1>14}{\case{%
-     \PureStmtLet, \PureStmtAnnot, \PureStmtIf, \PureStmtCase.
+     \PureStmtPExpr, \PureStmtLet, \PureStmtIf, \PureStmtCase.
 }{%
-    \pf{} See  \StmtLet, \StmtAnnot, \StmtIf, \StmtCase,
+    \pf{} See  \StmtExpr, \StmtLet, \StmtIf, \StmtCase,
     case for more general proofs.}}
 
 \step{<1>15}{\case{\ExprPure.}{%
@@ -2027,12 +2033,12 @@ arbitrary (not normalised).
 \step{<1>31}{\case{\StmtPure.}{%
     \pf{} By induction.}}
 
-\step{<1>32}{\case{\StmtLet.}{%
+\step{<1>32}{\case{\StmtExpr.}{%
     \pf{} By induction, since $[[expr]]$ is not value, if it is unreachable,
     the whole expression is so. If $[[expr]]$ takes a step, the whole
     expression steps with \OpStmtExpr.}}
 
-\step{<1>33}{\case{\StmtAnnot.}{%
+\step{<1>33}{\case{\StmtLet.}{%
     \pf{} By induction, if $[[stmt]]$ is unreachable, so is the whole
     expression.\\[\baselineskip]
 
@@ -2042,7 +2048,7 @@ arbitrary (not normalised).
     \OpStmtRetT.\\[\baselineskip]
 
     If $[[stmt]]$ takes a step, the whole expression steps with
-    \OpStmtAnnot.}}
+    \OpStmtLet.}}
 
 \step{<1>34}{\case{\StmtCase.}{%
     \pf{} By assumption that all patterns are exhaustive, and
@@ -2117,12 +2123,22 @@ to deduce that $[[ nR' ]]$ can only be what you would have supplied anyways.
     \end{pfenum}\leavevmode\\[\baselineskip]}
 
 \step{<1>1}{\case{%
-    \PureExprCtorIvXOR.
+    \PureExprPVal.
 }{%
     For all pure expressions, $[[ nR ]] = [[ cdot ]]$, $[[ h ]] = [[ cdot ]]$,
     and $[[ heap ]] = [[ f ]]$.
     \pflet{$[[ h' ]] = [[ cdot ]]$ and $[[ nR' ]] = [[ cdot ]]$,
         so $[[ heap ]] = [[ h' + f ]]$ trivially and $[[ alloct |- cdot <= cdot ]]$ (by \HeapEmpty).}
+
+    $[[ ret ]] = [[ pure_ret ]]= [[ sigma y : base_type . y = inj pval /\ I ]]$\\[\baselineskip]
+    \pf{} By \PureStmtPExpr{} and \PureStmtPVal, suffices to show $[[ cdot ; L0 ; N |- pval <= pure_ret ]]$
+    which requires proving the trivial constraint $[[ inj pval = inj pval ]]$.}}
+
+\step{<1>1}{\case{%
+    \PureExprCtorIvXOR.
+}{%
+    As before, $[[ nR ]] = [[ cdot ]]$, $[[ h ]] = [[ cdot ]]$, and
+    $[[ heap ]] = [[ f ]]$.
 
     $[[ ret ]] = [[ sigma y : integer . y = xor_uf ( int1 , int2 ) /\ I ]]$\\[\baselineskip]
     \pf{} By \PureStmtPVal, suffices to show $[[ cdot |- int => integer ]]$
@@ -2160,14 +2176,14 @@ to deduce that $[[ nR' ]]$ can only be what you would have supplied anyways.
     \pf{} See \StmtIf{} for a more general case and proof.}}
 
 \step{<1>6}{\case{%
+    \PureStmtPExpr.
+}{%
+    \pf{} See \StmtExpr{} for a more general case and proof.}}
+
+\step{<1>7}{\case{%
     \PureStmtLet.
 }{%
     \pf{} See \StmtLet{} for a more general case and proof.}}
-
-\step{<1>7}{\case{%
-    \PureStmtAnnot.
-}{%
-    \pf{} See \StmtAnnot{} for a more general case and proof.}}
 
 \step{<1>8}{\case{%
     \PureStmtCase.
@@ -2395,12 +2411,12 @@ to deduce that $[[ nR' ]]$ can only be what you would have supplied anyways.
     \pf{} By induction.}}
 
 \step{<1>22}{\case{%
-    \StmtLet.
+    \StmtExpr.
 }{%
-    \pf{} See \StmtAnnot for a more general case and proof.}}
+    \pf{} See \StmtLet for a more general case and proof.}}
 
 \step{<1>23}{\case{%
-    \StmtAnnot.
+    \StmtLet.
 }{%
     \assume{%
         $[[cdot ; L0 ; N ; nR1 , nR2 |- let </ ret_pati // i /> : ret1 = < </ ret_termi // i /> > in stmt2 <= ret2]]$\\
@@ -2429,7 +2445,7 @@ to deduce that $[[ nR' ]]$ can only be what you would have supplied anyways.
     because it is well-formed w.r.t $[[ cdot ]] ; [[ L0 ]]$.}}
 
 \step{<1>24}{\case{%
-    \StmtAnnot.
+    \StmtLet.
 }{%
     \assume{%
         $[[ cdot ; L0 ; N ; nR1 , nR2 |- let </ ret_pati // i /> : ret1 = stmt1 in stmt2 <= ret2 ]]$\\
@@ -2802,7 +2818,7 @@ have ranges which are disjoint with allocations so far.}
 \step{<0>66}{\case{\PureValCtorTuple}{}}
 \step{<0>67}{\case{\PureValCtorArray}{}}
 \step{<0>68}{\case{\PureValStruct}{}}
-\step{<0>69}{\case{\PureExprVal}{}}
+\step{<0>69}{\case{\PureExprPVal}{}}
 \step{<0>70}{\case{\PureExprCtorIvXOR}{}}
 \step{<0>71}{\case{\PureExprArrayShift}{}}
 \step{<0>72}{\case{\PureExprMemberShift}{}}
@@ -2817,8 +2833,8 @@ have ranges which are disjoint with allocations so far.}
 \step{<0>81}{\case{\PureExprWrapI}{}}
 \step{<0>82}{\case{\PureStmtPVal}{}}
 \step{<0>83}{\case{\PureStmtUB}{}}
-\step{<0>84}{\case{\PureStmtLet}{}}
-\step{<0>85}{\case{\PureStmtAnnot}{}}
+\step{<0>84}{\case{\PureStmtPExpr}{}}
+\step{<0>85}{\case{\PureStmtLet}{}}
 \step{<0>86}{\case{\PureStmtIf}{}}
 \step{<0>87}{\case{\PureStmtCase}{}}
 \step{<0>88}{\case{\ResSynPredOpsIterate}{}}
@@ -2867,8 +2883,8 @@ have ranges which are disjoint with allocations so far.}
 \step{<0>131}{\case{\ExprProc}{}}
 \step{<0>132}{\case{\StmtRetT}{}}
 \step{<0>133}{\case{\StmtPure}{}}
-\step{<0>134}{\case{\StmtLet}{}}
-\step{<0>135}{\case{\StmtAnnot}{}}
+\step{<0>134}{\case{\StmtExpr}{}}
+\step{<0>135}{\case{\StmtLet}{}}
 \step{<0>136}{\case{\StmtCase}{}}
 \step{<0>137}{\case{\StmtIf}{}}
 \step{<0>138}{\case{\StmtRun}{}}
@@ -2968,6 +2984,7 @@ have ranges which are disjoint with allocations so far.}
 \step{<0>228}{\case{\SubsSpineLog}{}}
 \step{<0>229}{\case{\SubsSpineRes}{}}
 \step{<0>230}{\case{\SubsSpinePhi}{}}
+\step{<0>231}{\case{\OpPExprPVal}{}}
 \step{<0>231}{\case{\OpPExprCtorIvXOR}{}}
 \step{<0>232}{\case{\OpPExprArrayShift}{}}
 \step{<0>233}{\case{\OpPExprMemberShift}{}}
@@ -2982,13 +2999,12 @@ have ranges which are disjoint with allocations so far.}
 \step{<0>242}{\case{\OpPExprBoolToIntegerFalse}{}}
 \step{<0>243}{\case{\OpPExprWrapI}{}}
 \step{<0>244}{\case{\OpPExprCall}{}}
-\step{<0>245}{\case{\OpPStmtCase}{}}
 \step{<0>246}{\case{\OpPStmtPVal}{}}
 \step{<0>247}{\case{\OpPStmtPExpr}{}}
-\step{<0>248}{\case{\OpPStmtAnnotPVal}{}}
-\step{<0>249}{\case{\OpPStmtAnnot}{}}
+\step{<0>249}{\case{\OpPStmtLet}{}}
 \step{<0>250}{\case{\OpPStmtIfTrue}{}}
 \step{<0>251}{\case{\OpPStmtIfFalse}{}}
+\step{<0>245}{\case{\OpPStmtCase}{}}
 \step{<0>252}{\case{\OpPredOpsIterate}{}}
 \step{<0>253}{\case{\OpPredOpsCongeal}{}}
 \step{<0>254}{\case{\OpPredOpsExplode}{}}
@@ -3029,7 +3045,7 @@ have ranges which are disjoint with allocations so far.}
 \step{<0>289}{\case{\OpStmtPurePStmt}{}}
 \step{<0>290}{\case{\OpStmtRetT}{}}
 \step{<0>291}{\case{\OpStmtExpr}{}}
-\step{<0>292}{\case{\OpStmtAnnot}{}}
+\step{<0>292}{\case{\OpStmtLet}{}}
 \step{<0>293}{\case{\OpStmtIfTrue}{}}
 \step{<0>294}{\case{\OpStmtIfFalse}{}}
 \step{<0>295}{\case{\OpStmtCase}{}}
