@@ -17,6 +17,7 @@
 \usepackage[margin=1in]{geometry}
 \geometry{landscape}
 \usepackage{ifthen}
+\usepackage{xstring}
 
 % the un-wrapped (-tex_wrap false) generated LaTeX file for CN
 \include{cn_included.gen}
@@ -51,7 +52,7 @@
 %% CN is a type system for the C programming language.
 \noindent
 The formalisation is defined
-over a let-normalised version of the Core language of
+over \emph{ResCore}, a let-normalised version of the Core language of
 \href{https://github.com/rems-project/cerberus}{Cerberus}. A proof of soundness
 of type checking is given in a separate document.
 %% \end{abstract}
@@ -93,30 +94,27 @@ Logical terms are variously referred to as $[[ term ]]$, $[[ ptrt ]]$
 input-arguments), $[[ oarg ]]$ (output-arguments, of array type for
 iterated resources), and $[[ iguard ]]$ (for boolean guards of iterated resources).
 
-\begin{wrapfigure}{l}{.5\textwidth}
-\vspace{-1.5\baselineskip}
-\begin{align*}
-    [[ res ]] &::= [[ emp ]] \mid [[ term ]] \mid [[ pred ]] \mid [[ ipred ]] \mid [[ res1 * res2 ]]
-        \mid [[ exists y : base_type . res' ]] \mid [[ if term then res1 else res2 ]]\\
-    [[ pred ]] &::= [[ a ( iargs ) ( oarg ) ]] \\
-    [[ ipred ]] &::= [[ each (integer x; iguard) { a ( iargs ) } ( oarg ) ]] \\[1em]
-%     [[ ipred_term ]] &::= [[   ]]\\[1em]
-    [[ res_term ]] &::= [[ emp ]] \mid [[ TERM ]] \mid [[ pred_term ]] \mid [[ ipred_term ]] \mid [[ < res_term1 , res_term2 > ]]
-        \mid [[ pack ( oarg , res_term' ) ]]\\
-       & \qquad [[ r ]] \mid [[ fold res_term : pred ]] \mid [[ pred_ops ]] \\
-    [[ pred_ops ]] &::=
-           [[ explode ( res_term )                       ]]
-    \mid   [[ implode ( res_term , tag )              ]]
-    \mid   [[ iterate ( res_term , int )              ]]\\
-    &\quad [[ congeal ( res_term , int )              ]]
-    \mid   [[ break ( res_term , term )                  ]]
-    \mid   [[ glue ( res_term )                          ]]\\
-    &\quad [[ inj ( res_term , ptrt , ct , x . iargs ) ]]
-    \mid   [[ chop ( res_term , iguard )                 ]]
-\end{align*}
-\caption{\vspace{-2\baselineskip}Grammar of Resource Terms}
-\label{fig:resource-grammar}
-\end{wrapfigure}
+\begin{figure}[t]
+    \begingroup%
+    \renewcommand{\cngrammartabular}[1]{\begin{align*}#1\end{align*}}
+    \renewcommand{\cnrulehead}[3]{#1  &#2}
+    \renewcommand{\cnfirstprodline}[6]{\begingroup\begin{minipage}[t]{.8\textwidth}\ $#2$}
+    \renewcommand{\cnprodline}[6]{\ifthenelse{\equal{#3}{} \OR \equal{#3}{\textsf{S}}}{\ $#1$~$#2$}{}}
+    \renewcommand{\cnprodnewline}{}
+    \renewcommand{\cninterrule}{\end{minipage}\endgroup}
+    \renewcommand{\cnafterlastrule}{\end{minipage}\endgroup}
+    \cngrammartabular{%
+        \cnres{}\cninterrule{}\\
+        \cnpred{}\cninterrule{}\\
+        \cnpredXXterm{}\cninterrule{}\\
+        \cnipred{}\cninterrule{}\\
+        \cnipredXXterm{}\cninterrule{}\\[-.5\baselineskip]
+        \cnresXXterm{}\cninterrule{}\\
+        \cnpredXXops{}\cnafterlastrule{}
+    }
+    \endgroup%
+\caption{Grammar of Resource Terms}\label{fig:resource-grammar}
+\end{figure}
 
 In Figure~\ref{fig:resource-grammar}, we give the grammar of resource types
 (i.e., separation logic predicates) and resource terms (the proof terms used by
@@ -166,24 +164,24 @@ instead.
 
 Morally,
 $\cnkw{break}$ has type $[[ ipred ]] [[ -> ]] [[ ipred * pred ]]$: it
-extracts a single predicate from a quantified one, and must return the
+extracts a single predicate from a iterated one, and must return the
 remainder as well because resource terms are linearly typed;
 $\cnkw{glue}$ has type $[[ ipred * pred ]] [[ -> ]] [[ ipred ]]$: it
-is the inverse to $\cnkw{break}$; $\cnkw{split}$ has type
+is the inverse to $\cnkw{break}$; $\cnkw{glue}$ has type
 $[[ ipred * iguard ]] [[ -> ]] [[ ipred * ipred ]]$: given a
-quantified predicate of index-guard $[[ iguard' ]]$, and an
-$[[ iguard ]]$, if $[[ iguard -> iguard' ]]$ then it splits the given
-quantified predicate into two disjoint parts (one of index-guard
+iterated predicate of index-guard $[[ iguard' ]]$, and an
+$[[ iguard ]]$, if $[[ iguard -> iguard' ]]$ then it chops the given
+iterated predicate into two disjoint parts (one of index-guard
 $[[ iguard ]]$ and the other of $[[ iguard' /\ neg iguard ]]$);
 $\cnkw{inj}$ has type
 $[[ pred ]] [[ * ]] [[ ct ]] [[ * ]] [[ iargs ]] [[ -> ]] [[ ipred ]]$:
-it turns a predicate $[[ a ( iargs' ) ]]$ into a quantified
+it turns a predicate $[[ a ( iargs' ) ]]$ into a iterated
 predicate, with $[[ iguard = ( x = k ) ]]$, where
 $[[ k = ( ptrt' - ptrt ) / sizeof ct ]]$ and
 $[[ iargs' ]] = [[ k / x ( iargs ) ]]$. Because our inference
 algorithm does not support inferring merging
 arrays, there is no inverse to
-$\cnkw{split}$ of type $[[ ipred * ipred ]] [[ -> ]] [[ ipred ]]$.
+$\cnkw{chop}$ of type $[[ ipred * ipred ]] [[ -> ]] [[ ipred ]]$.
 
 \subsection{Judgements and Example Rules}
 \label{subsec:judgm_eg_rules}
@@ -191,9 +189,9 @@ $\cnkw{split}$ of type $[[ ipred * ipred ]] [[ -> ]] [[ ipred ]]$.
 The contexts for the rules consist of four parts: (1) $[[ C ]]$ containing the
 computational variables from the Core program; (2) $[[ L ]]$ containing purely
 logical variables mentioned in specifications; (3) $[[ N ]]$, the constraint
-context, containing a list of (non-quantified) SMT constraints; and (4) $[[ R ]]$ a
+context, containing a list of (non-iterated) SMT constraints; and (4) $[[ R ]]$ a
 \emph{linear} context containing the resources available at that point during
-type-checking. Assuming a constraint context of only non-quantified constraints
+type-checking. Assuming a constraint context of only non-iterated constraints
 is an acceptable simplification, because the elaboration pass can annotate terms
 with fully-instantiated constraints, whose quantifiers were either supplied
 by lemmas, annotations or default instantiation.
@@ -240,9 +238,9 @@ statements require checking judgements.
 \begin{minipage}{.45\textwidth}
 \vspace{-2\baselineskip}
 \cndrule{%
-    \cnpremise{ [[ pred def= a ( ptrt , </ iargi // i /> ) ( oarg ) ]] }%
-    \cnpremise{ [[ a def= xp : loc , </ xi : base_typei // i  /> , y : base_type |-> res inEnv Globals ]] }%
-    \cnpremise{ [[ C ; L ; N ; R |- res_term <= [ oarg / y , [ </ iargi / xi // i /> ] , ptrt / xp ] ( res ) ]] }%
+    \cnpremise{ [[ pred def= a ( </ iargi // i /> ) ( oarg ) ]] }%
+    \cnpremise{ [[ a def= </ xi : base_typei // i  /> , y : base_type |-> res inEnv Globals ]] }%
+    \cnpremise{ [[ C ; L ; N ; R |- res_term <= [ oarg / y , </ iargi / xi // i /> ] ( res ) ]] }%
 }{%
     [[ C ; L ; N ; R |- fold res_term : pred => pred ]]
 }{\ResSynPred}%

@@ -325,8 +325,8 @@ grammar
     | if term1 then term2 else term3   ::     :: iTE
     | term1 = term2                    ::     :: eq
     | term1 != term2                   :: M   :: neq
-    | term1 /\ term2                   :: X M :: and_binary
-    | term1 \/ term2                   :: X M :: or_binary
+    | term1 /\ term2                   :: M X :: and_binary
+    | term1 \/ term2                   :: M X :: or_binary
     | term1 ' bool_binop ' term2       :: M   :: bool_binop {{ tex [[term1]] [[bool_binop]] [[term2]] }}
 
 
@@ -387,7 +387,7 @@ grammar
     | map_op             ::     :: map_op
     | id ( terms )       ::     :: pred
     | ( base_type ) term ::     :: cast
-    | ( term )           :: X S :: paren   {{ com parentheses                                                }}
+    | ( term )           :: S X :: paren   {{ com parentheses                                                }}
     | subs ( term )      :: M   :: subs    {{ com substitute $[[subs]]$ in $[[term]]$                        }}
     | inj pval           :: M   :: of_pval {{ tex [[pval]]                                                   }}
                                            {{ com tranlate pure value $[[pval]]$ into corresponding SMT term }}
@@ -459,10 +459,10 @@ grammar
     | pred                        ::     :: pred     {{ com heap predicate                              }}
     | ipred                       ::     :: ipred    {{ com iterated (integer-indexed) heap predicate   }}
     | res1 * res2                 ::     :: sep_conj {{ com seperating conjunction                      }}
-    | *S ( </ resi // , // i /> ) :: M   :: big_conj {{ com notation for nested sep. conj.              }}
+    | *S ( </ resi // , // i /> ) :: S   :: big_conj {{ com notation for nested sep. conj.              }}
     | exists x : base_type . res  ::     :: exists   {{ com existential                                 }}
     | if term then res1 else res2 ::     :: if       {{ com conditional resource / ordered disjuction   }}
-    | ( res )                     :: X S :: paren    {{ com parentheses                                 }}
+    | ( res )                     :: S X :: paren    {{ com parentheses                                 }}
     | subs ( res )                :: M   :: subs     {{ com substitute $[[subs]]$ in $[[res]]$          }}
 
 
@@ -470,7 +470,7 @@ grammar
     | if term then res1 else res2 ::     :: if    {{ com conditional resource / ordered disjuction   }}
     | pred                        ::     :: pred  {{ com heap predicate                              }}
     | ipred                       ::     :: ipred {{ com quantified (integer-indexed) heap predicate }}
-    | ( norm_res )                :: X S :: paren {{ com parentheses }}
+    | ( norm_res )                :: S X :: paren {{ com parentheses }}
 
 subrules
   norm_res <:: res
@@ -563,8 +563,8 @@ grammar
     | undef UB_name                          ::   :: undef {{ com undefined behaviour                   }}
     | let pat = pexpr in pstmt               ::   :: pexpr (+ bind binders( pat ) in pstmt              +)
                                                            {{ com pure expression binding               }}
-    | let pat : pure_ret = pstmt1 in pstmt2  :: X :: let   (+ bind binders( pat ) in pstmt2             +)
-                                                           {{ com pure let statment                     }}
+    | let pat : pure_ret = pstmt1 in pstmt2  :: P :: let   (+ bind binders( pat ) in pstmt2             +)
+                                                           {{ com (proof-only) pure let statment        }}
     | if pval then pstmt1 else pstmt2        ::   :: if    {{ com pure if statement                     }}
     | case pval of </ | pbranchi // i /> end ::   :: case  {{ com pattern-matching                      }}
     | subs ( pstmt )                         :: M :: subs  {{ com substitute $[[subs]]$ in $[[pstmt]]$  }}
@@ -726,26 +726,26 @@ grammar
     | res_action                ::   :: action    {{ com memory action                             }}
     | ccall ( ct , yf , spine ) ::   :: ccall     {{ com C function call                           }}
     | pcall ( name , spine )    ::   :: proc      {{ com Core procedure call                       }}
-    | fold a ( pvals )          :: X :: fold      {{ com (pre-elaboration only) fold a predicate   }}
-    | unfold a ( pvals )        :: X :: unfold    {{ com (pre-elaboration only) unfold a predicate }}
-    | res_term                  :: X :: res_term  {{ com (elaboration only)                        }}
+    | fold a ( pvals )          :: P :: fold      {{ com (pre-elaboration only) fold a predicate   }}
+    | unfold a ( pvals )        :: P :: unfold    {{ com (pre-elaboration only) unfold a predicate }}
+    | res_term                  :: P :: res_term  {{ com (elaboration only)                        }}
     | subs ( expr )             :: M :: subs      {{ com substitution                              }}
     % unseq ( </ stmti : reti // i /> ) ::  :: unseq  {{ com unsequenced expressions      }}
 
   % nd() is only used in the elab of if/loops for the case where the condiditional expression evaluates to unspecified()
   % We don't have unspecified() so we won't have nd()
   stmt :: 'TE_' ::= {{ com (effectful) statement }}
-    | < ret_terms >                         ::     :: ret_terms   {{ com values (including logical and reosurces terms) }}
-    | pure ( pstmt )                        ::     :: pure        {{ com pure statement                                 }}
-    | let ret_pat = expr in stmt            ::     :: expr        (+ bind binders( ret_pat ) in stmt                   +)
-                                                                  {{ com (effectful) expression binding                 }}
-    | let ret_pat : ret = stmt1 in stmt2    :: X   :: let         (+ bind binders( ret_pat ) in stmt2                  +)
-                                                                  {{ com let                                            }}
-    | if pval then stmt1 else stmt2         ::     :: if          {{ com conditional                                    }}
-    | case pval of </ | branchi // i /> end ::     :: case        {{ com pattern-matching                               }}
-    | run id pvals                          ::     :: run         {{ com run from label                                 }}
-    | insert_lets ( res_bind , stmt )       :: M X :: insert_lets {{ com insert let expressions for binding resources   }}
-    | subs ( stmt )                         :: M   :: subs        {{ com substitute $[[subs]]$ in $[[stmt]]$           }}
+    | < ret_terms >                         ::   :: ret_terms   {{ com values (including logical and reosurces terms) }}
+    | pure ( pstmt )                        ::   :: pure        {{ com pure statement                                }}
+    | let ret_pat = expr in stmt            ::   :: expr        (+ bind binders( ret_pat ) in stmt                   +)
+                                                                {{ com (effectful) expression binding                }}
+    | let ret_pat : ret = stmt1 in stmt2    :: P :: let         (+ bind binders( ret_pat ) in stmt2                  +)
+                                                                {{ com let                                           }}
+    | if pval then stmt1 else stmt2         ::   :: if          {{ com conditional                                   }}
+    | case pval of </ | branchi // i /> end ::   :: case        {{ com pattern-matching                              }}
+    | run id pvals                          ::   :: run         {{ com run from label                                }}
+    | insert_lets ( res_bind , stmt )       :: M :: insert_lets {{ com insert let expressions for binding resources  }}
+    | subs ( stmt )                         :: M :: subs        {{ com substitute $[[subs]]$ in $[[stmt]]$           }}
 
 
   branch :: 'Branch_' ::=  {{ com (effectful) case-expression branch }}
@@ -800,7 +800,7 @@ grammar
     | |       :: :: bar       {{ tex \mid                             }}
     | |->     :: :: mapsto    {{ tex \mapsto                          }}
     | cons    :: :: cons      {{ tex \Colon                           }}
-    | :       :: :: of_type   {{ tex {\colon}                         }}
+    | :       :: :: of_type   {{ tex {\mathcolon}                     }}
     | .       :: :: such_that {{ tex . \:                             }}
     | dot     :: :: dot       {{ tex \! {.} \!                        }}
     | >>      :: :: chevron   {{ tex \gg                              }}
@@ -842,7 +842,7 @@ grammar
     | ret                         ::     :: ret     {{ com return a value of type $[[ret]]$    }}
     | to_fun ret                  :: M   :: of_ret  {{ com change a return to an arugment type }}
     | subs ( fon )                :: M   :: subs    {{ com substitute $[[subs]]$ in $[[fon]]$  }}
-    | ( fon  )                    :: X S :: paren   {{ tex [[ fon ]]                           }}
+    | ( fon  )                    :: S X :: paren   {{ tex [[ fon ]]                           }}
 
   pure_fun :: Pure_fun_ ::= {{ com pure function types }}
     | pi id : base_type . pure_fun :: :: comp
@@ -857,7 +857,7 @@ grammar
     | norm_ret                         ::     :: ret    {{ com return a value of type $[[norm_ret]]$        }}
     | to_fun norm_ret                  :: M   :: of_ret {{ com change a return to an arugment type          }}
     | subs ( norm_fun )                :: M   :: subs   {{ com substitute $[[subs]]$ in $[[norm_fun]]$      }}
-    | ( norm_fun  )                    :: X S :: paren  {{ tex [[norm_fun]]                                 }}
+    | ( norm_fun  )                    :: S X :: paren  {{ tex [[norm_fun]]                                 }}
 
   subrules
     pure_fun <:: fon
@@ -879,13 +879,14 @@ grammar
 
 grammar
 
-  % Given how this is used in the spine-judgements, this must be sequential substitutions
-  subs {{ tex \sigma }} , psi {{ tex \psi }} :: Subs_ ::= {{ com substitutions }}
-    | ret_term / x              ::     :: cons_ret_term {{ com sub $[[ret_term]]$ for $[[x]]$                }}
-    | [ </ subsi // , // i /> ] ::     :: concat        {{ com simultaneous substitution                     }}
-    | cdot                      :: M   :: empty         {{ com empty substitution                            }}
-    | id                        :: X M :: id            {{ com identity substitution                         }} {{ tex \symrm{id} }}
-    | subs ( psi )              :: M   :: subs          {{ com apply $[[subs]]$ to all elements in $[[psi]]$ }}
+  subs {{ tex \sigma }} , psi {{ tex \psi }} :: Subs_ ::=  {{ com simultaneous substitutions }}
+    | cdot              ::   :: empty    {{ com empty substitution                            }}
+    | id                :: M :: id       {{ com identity substitution    }} {{ tex \symrm{id} }}
+    | ret_term / x      ::   :: ret_term {{ com sub $[[ret_term]]$ for $[[x]]$                }}
+    | subs , subs'      ::   :: cons     {{ com concatenate two subsitutions                  }}
+    | </ subsi // i />  :: M :: concat   {{ com concatenate many substitutions                }}
+    | subs ( psi )      :: M :: compose  {{ com apply $[[subs]]$ to all elements in $[[psi]]$ }}
+    | [ subs ]          :: S :: bracket  {{ com brackets }} {{ tex \left[ [[subs]] \right]    }}
 
 
 grammar

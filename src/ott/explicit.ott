@@ -168,74 +168,74 @@ defns
     N |- each (integer x; iguard) { a ( iargs ) } [=? each (integer x ; iguard') { a ( iargs' ) } ~> cmp
 
 
-  defn N |- res_req def= res_req' ~> ty_bool :: :: Req_Eq :: Req_Eq_
+  defn N |- res_req = res_req' ~> ty_bool :: :: Req_Eq :: Req_Eq_
   {{ com resource equality: given constraints $[[N]]$, $[[res_req]]$ and $[[res_req']]$ are equal according to $[[ty_bool]]$ }} by
 
 
     a1 != a2
     ------------------------------------------------------ :: PP_Name_Neq
-    N |- a1 ( _iargs ) def= a2 ( _iargs ) ~> false
+    N |- a1 ( _iargs ) = a2 ( _iargs ) ~> false
 
 
     smt ( N => neg ( ( iargs ) = ( iargs' ) ) )
     ------------------------------------------------------------------ :: PP_IArg_Neq
-    N |- a ( iargs ) def= a ( iargs' ) ~> false
+    N |- a ( iargs ) = a ( iargs' ) ~> false
 
 
     smt ( N => ( iargs ) = ( iargs' ) )
     --------------------------------------------------------------- :: PP_Eq
-    N |- a ( iargs ) def= a ( iargs' ) ~> true
+    N |- a ( iargs ) = a ( iargs' ) ~> true
 
 
     N |- ipred_term [=? ipred_term' ~> Eq
     -------------------------------------- :: II_Eq
-    N |- ipred_term def= ipred_term' ~> true
+    N |- ipred_term = ipred_term' ~> true
 
 
     N |- ipred_term [=? ipred_term' ~> opt_cmp
     ------------------------------------------ :: II_Neq
-    N |- ipred_term def= ipred_term' ~> false
+    N |- ipred_term = ipred_term' ~> false
 
 
-  defn N |- res def= res' :: :: Res_Eq :: Res_Eq_
+  defn N |- res = res' :: :: Res_Eq :: Res_Eq_
   {{ com resource equality: given constraints $[[N]]$, $[[res]]$ is equal to $[[res']]$ }} by
 
     -------------------- :: Emp
-    N |- emp def= emp
+    N |- emp = emp
 
 
     % DEFER weaken this to allow imp / subtyping e.g. Annot can be stronger than what is required
     smt ( N => term <-> term' )
     ----------------------------------- :: Phi
-    N |- term def= term'
+    N |- term = term'
 
 
-    N |- pred_term def= pred_term' ~> true
+    N |- pred_term = pred_term' ~> true
     --------------------------------------- :: Pred
-    N |- pred_term ( _t ) def= pred_term' ( _t )
+    N |- pred_term ( _t ) = pred_term' ( _t )
 
 
-    N |- ipred_term def= ipred_term' ~> true
+    N |- ipred_term = ipred_term' ~> true
     --------------------------------------- :: IPred
-    N |- ipred_term ( _t ) def= ipred_term' ( _t )
+    N |- ipred_term ( _t ) = ipred_term' ( _t )
 
 
-    N |- res1 def= res'1
-    N |- res2 def= res'2
+    N |- res1 = res'1
+    N |- res2 = res'2
     ------------------------------------ :: SepConj
-    N |- res1 * res2 def= res'1 * res'2
+    N |- res1 * res2 = res'1 * res'2
 
 
-    N |- res def= res'
+    N |- res = res'
     -------------------------------------------------------------------------------- :: Exists
-    N |- exists x : base_type . res def= exists x : base_type . res'
+    N |- exists x : base_type . res = exists x : base_type . res'
 
 
     smt ( N => term1 <-> term2 )
-    N , term1   |- res11 def= res21
-    N , neg term1 |- res21 def= res22
+    N , term1   |- res11 = res21
+    N , neg term1 |- res21 = res22
     ----------------------------------------------------------------------------- :: OrdDisj
-    N |- if term1 then res11 else res12 def= if term2 then res21 else res22
+    N |- if term1 then res11 else res12 = if term2 then res21 else res22
 
 
   defn N |- simp_rec ( res ) ~> out_res' , out_ty_bool :: :: Res_SimpRec :: Res_SimpRec_
@@ -286,32 +286,32 @@ defns
 defns
   ret_judge :: 'Ret_' ::=
 
-  defn N |- ret def= ret' :: :: Eq :: Eq_
+  defn N |- ret = ret' :: :: Eq :: Eq_
   {{ com return type equality: given constraints $[[N]]$, $[[ret]]$ is equal to $[[ret']]$ }} by
 
     ----------- :: End
-    N |- I def= I
+    N |- I = I
 
 
-    N |- ret def= ret'
+    N |- ret = ret'
     ------------------------------------------------------------ :: Comp
-    N |- sigma y : base_type . ret def= sigma y : base_type . ret'
+    N |- sigma y : base_type . ret = sigma y : base_type . ret'
 
 
-    N |- ret def= ret'
+    N |- ret = ret'
     -------------------------------------------------------------- :: Log
-    N |- exists y : base_type . ret def= exists y : base_type . ret'
+    N |- exists y : base_type . ret = exists y : base_type . ret'
 
 
     smt ( N => term <-> term' )
     ----------------------------------------- :: Phi
-    N |- term /\ ret def= term' /\ ret'
+    N |- term /\ ret = term' /\ ret'
 
 
-    N |- res def= res'
-    N |- ret def= ret'
+    N |- res = res'
+    N |- ret = ret'
     ------------------------------- :: Res
-    N |- res *o ret def= res' *o ret'
+    N |- res *o ret = res' *o ret'
 
 defns
   pat_judge :: 'Pat_' ::=
@@ -391,7 +391,7 @@ defns
 
     a != Owned < _init , ct >
     a def= </ xi : _bti // i /> , y : _bt  |-> res inEnv Globals
-    L ; N |- res_pat : [ oarg / y , [ </ iargi / xi // i />  ] ] ( res ) ~> L' ; N' ; R'
+    L ; N |- res_pat : [ oarg / y , </ iargi / xi // i />  ] ( res ) ~> L' ; N' ; R'
     --------------------------------------------------------------------------------------------------- :: Fold
     L ; N |- fold ( res_pat ) : a ( </ iargi // i /> ) ( oarg ) ~> L' ; N' ; R'
 
@@ -783,7 +783,7 @@ defns
     pred_term' def= a ( </ iarg'i // i /> )
     a def= </ _ : base_typei // i  /> |-> _res inEnv Globals
     indexed </ C ; L |- iarg'i => base_typei // i />
-    N |- pred_term def= pred_term' ~> true
+    N |- pred_term = pred_term' ~> true
     -------------------------------------------------------------------- :: Pred
     C ; L ; N ; _ : pred_term ( oarg ) |- pred_term' => pred_term ( oarg )
 
@@ -793,7 +793,7 @@ defns
     a def= </ xi : base_typei // i  /> , y : base_type |-> res inEnv Globals
     indexed </ C ; L |- iargi => base_typei // i />
     C ; L |- oarg => base_type
-    C ; L ; N ; R |- res_term <= [ oarg / y , [ </ iargi / xi // i /> ] ] ( res )
+    C ; L ; N ; R |- res_term <= [ oarg / y , </ iargi / xi // i /> ] ( res )
     ----------------------------------------------------------------------------------------- :: Fold
     C ; L ; N ; R |- fold res_term : pred_term ( oarg ) => pred_term ( oarg )
 
@@ -801,7 +801,7 @@ defns
     ipred_term' def= each (integer x ; iguard) { a ( </ iarg'i // i /> ) }
     a def= </ _ : base_typei // i  /> |-> _res inEnv Globals
     indexed </ C ; L |- iarg'i => base_typei // i />
-    N |- ipred_term def= ipred_term' ~> true
+    N |- ipred_term = ipred_term' ~> true
     ------------------------------------------------------------------------------ :: IPred
     C ; L ; N ; _ : ipred_term ( oarg ) |-  ipred_term' => ipred_term ( oarg )
 
@@ -860,7 +860,7 @@ defns
 
 
     C ; L ; N ; R |- res_term => res
-    N |- res def= res'
+    N |- res = res'
     --------------------------------- :: Switch
     C ; L ; N ; R |- res_term <= res'
 
