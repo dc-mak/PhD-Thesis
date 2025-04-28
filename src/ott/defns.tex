@@ -16,7 +16,6 @@
 \usepackage{supertabular}
 \usepackage[margin=1in]{geometry}
 \geometry{landscape}
-\usepackage{ifthen}
 \usepackage{xstring}
 
 % the un-wrapped (-tex_wrap false) generated LaTeX file for CN
@@ -28,6 +27,35 @@
 \include{cn_override.gen}
 \include{cn_drulenames.gen}
 \ottstyledefaults{numberpremises=yes,premisenamelayout=topright,rulelayout=nobreaks}
+
+% Funnily enough, I did get the below to work correctly as a command.
+% The issue is that cnpremise is not called straightforwardly once
+% per premise because of the ottlayout package (e.g. to measure premises,
+% assign them numbers).
+% \ExplSyntaxOn%
+% \NewCommandCopy{\origcnpremise}{\cnpremise}%
+% \int_new:N \l_nthcnpremise
+% \NewDocumentCommand{\onlyUseNthCnPremise}{mm}
+% {
+%   % Counter for \cnpremise invocations
+%   \int_set:Nn \l_nthcnpremise { 0 }%
+%   % save the original command
+%   \group_begin:%
+%   % intercept \cnpremise to check if its argument is in the sequence,
+%   % and only call the original if so (otherwise do nothing)
+%   \renewcommand{\cnpremise}[1]{%
+%     \int_incr:N \l_nthcnpremise
+%     \clist_if_in:nVTF{#1}{\l_nthcnpremise}{$##1$ \\}{}
+%     %\clist_show:n {#1}
+%   }
+%   #2
+%   \group_end:%
+% }
+% \ExplSyntaxOff%
+
+\ExplSyntaxOn%
+\cs_new_eq:NN\StrIfInTF\str_if_in:nnTF
+\ExplSyntaxOff%
 
 \usepackage{titlesec}
 \newcommand{\sectionbreak}{\clearpage}
@@ -99,7 +127,11 @@ iterated resources), and $[[ iguard ]]$ (for boolean guards of iterated resource
     \renewcommand{\cngrammartabular}[1]{\begin{align*}#1\end{align*}}
     \renewcommand{\cnrulehead}[3]{#1  &#2}
     \renewcommand{\cnfirstprodline}[6]{\begingroup\begin{minipage}[t]{.8\textwidth}\ $#2$}
-    \renewcommand{\cnprodline}[6]{\ifthenelse{\equal{#3}{} \OR \equal{#3}{\textsf{S}}}{\ $#1$~$#2$}{}}
+    \renewcommand{\cnprodline}[6]{%
+        %\ifthenelse{\equal{#3}{} \OR \equal{#3}{\textsf{S}}}{\ $#1$~$#2$}{}
+        %\noexpandarg\IfSubStr*{#3}{M}{}{\ $#1$~$#2$}%
+        \StrIfInTF{#3}{M}{}{\ $#1$~$#2$}%
+    }
     \renewcommand{\cnprodnewline}{}
     \renewcommand{\cninterrule}{\end{minipage}\endgroup}
     \renewcommand{\cnafterlastrule}{\end{minipage}\endgroup}
@@ -292,13 +324,13 @@ $[[ Owned< init , ct > ]]$ resource, the resource itself
 notation), and a constraint that the points-to is not initialised.
 
 Loading from a memory location requires a correctly typed resource term,
-\emph{and} its output argument's initialisedness status $[[ init ]]$ to be
+\emph{and} its output argument's initialisation status $[[ init ]]$ to be
 true. Because the types are linear, it not only returns the pointed-to value,
 but also the same permission it consumed.
 
 Storing to a memory location is similar to loading: it requires a points-to permission,
-but without any constraints on its initialisedness. The permission it returns
-reflects the fact that the pointee is definitely initialised, and that a new
+but without any constraints on its initialisation. The permission it returns
+reflects the fact that the location is definitely initialised, and that a new
 value is pointed to by this location.
 
 De-allocating memory is the converse of allocating memory: a resource term is
