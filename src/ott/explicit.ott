@@ -155,17 +155,17 @@ defns
 
 
     N |- cmp_min ( iguard , iguard' ) ~> cmp , iguard''
-    term def= iguard'' -> /\\ ( </ iargi = iarg'i // i /> )
+    term def= iguard'' -> ( iargs ) = ( iargs' )
     smt ( N => exists x . neg term )
     --------------------------------------------------------------------------------------- :: IArg_Neq
-    N |- each (integer x; iguard) { a ( </ iargi // i /> ) } [=? each (integer x ; iguard') { a ( </ iarg'i // i /> ) } ~> None
+    N |- each (integer x; iguard) { a ( iargs ) } [=? each (integer x ; iguard') { a ( iargs' ) } ~> None
 
 
     N |- cmp_min ( iguard , iguard' ) ~> cmp , iguard''
-    term def= iguard'' -> /\\ ( </ iargi = iarg'i // i /> )
+    term def= iguard'' -> ( iargs ) = ( iargs' )
     smt ( N => forall x . term )
     --------------------------------------------------------------------------------------- :: Comparable
-    N |- each (integer x; iguard) { a ( </ iargi // i /> ) } [=? each (integer x ; iguard') { a ( </ iarg'i // i /> ) } ~> cmp
+    N |- each (integer x; iguard) { a ( iargs ) } [=? each (integer x ; iguard') { a ( iargs' ) } ~> cmp
 
 
   defn N |- res_req def= res_req' ~> ty_bool :: :: Req_Eq :: Req_Eq_
@@ -177,14 +177,14 @@ defns
     N |- a1 ( _iargs ) def= a2 ( _iargs ) ~> false
 
 
-    smt ( N => neg ( /\\ ( </ iarg1i = iarg2i // i /> ) ) )
+    smt ( N => neg ( ( iargs ) = ( iargs' ) ) )
     ------------------------------------------------------------------ :: PP_IArg_Neq
-    N |- a ( </ iarg1i // i /> ) def= a (  </ iarg2i // i /> ) ~> false
+    N |- a ( iargs ) def= a ( iargs' ) ~> false
 
 
-    smt ( N => /\\ ( </ iarg1i = iarg2i // i /> ) )
+    smt ( N => ( iargs ) = ( iargs' ) )
     --------------------------------------------------------------- :: PP_Eq
-    N |- a ( </ iarg1i // i /> ) def= a ( </ iarg2i // i /> ) ~> true
+    N |- a ( iargs ) def= a ( iargs' ) ~> true
 
 
     N |- ipred_term [=? ipred_term' ~> Eq
@@ -722,40 +722,40 @@ defns
 
 
     C ; L |- term => integer
-    C ; L ; N ; R |- res_term => each (integer x ; iguard) { a ( array_shift < ct >( ptrt , x ) , </ iargi // i /> ) } ( oarg )
+    C ; L ; N ; R |- res_term => each (integer x ; iguard) { a ( array_shift < ct >( ptrt , x ) , iargs ) } ( oarg )
     smt ( N => term / x ( iguard ) )
-    ipred def= each (integer x ; iguard /\ ( x != term )) { a ( array_shift < ct > ( ptrt , x ) , </ iargi // i /> ) } ( oarg )
-    pred def= a ( array_shift < ct > ( ptrt, term ) , term / x ( </ iargi // i /> ) ) ( oarg [ term ] )
+    ipred def= each (integer x ; iguard /\ ( x != term )) { a ( array_shift < ct > ( ptrt , x ) , iargs ) } ( oarg )
+    pred def= a ( array_shift < ct > ( ptrt, term ) , term / x ( iargs ) ) ( oarg [ term ] )
     --------------------------------------------------------------------------------- :: Break
     C ; L ; N ; R |- break ( res_term , term ) => ops ipred * pred
 
 
-    C ; L ; N ; R |- res_term => each (integer x ; iguard) { a ( array_shift <ct> ( ptrt1 , x ) , </ iarg1i // i /> ) } ( oarg1 ) * a ( ptrt2 , </ iarg2i // i /> ) ( oarg2 )
+    C ; L ; N ; R |- res_term => each (integer x ; iguard) { a ( array_shift <ct> ( ptrt1 , x ) , iargs1 ) } ( oarg1 ) * a ( ptrt2 , iargs2 ) ( oarg2 )
     term def= ( ptrt2 dot base - ptrt1 dot base ) / sizeof ct
     smt ( N => ptrt1 dot alloc_id = ptrt2 dot alloc_id /\ ( ptrt2 dot addr = array_shift < ct > ( ptrt1 , term ) dot addr ) )
-    smt ( N => /\\ ( term / x ( </ iarg1i = iarg2i // i /> ) ) )
+    smt ( N => term / x ( ( iargs1 ) = ( iargs2 ) ) )
     x def= allocv [ ptrt1 dot alloc_id ]
     smt ( N => x dot base =< ptrt2 dot addr /\ ptrt2 dot addr + sizeof ct =< x dot base + x dot len )
     ----------------------------------------------------------------- :: Glue
-    C ; L ; N ; R |- glue ( res_term ) => ops each (integer x; iguard \/ x = term) { a ( array_shift < ct > ( ptrt1 , x ) , </ iarg1i // i /> ) } ( oarg1 [ term ] := oarg2 )
+    C ; L ; N ; R |- glue ( res_term ) => ops each (integer x; iguard \/ x = term) { a ( array_shift < ct > ( ptrt1 , x ) , iargs1 ) } ( oarg1 [ term ] := oarg2 )
 
 
-    C ; L ; N ; R |- res_term => a ( ptrt2 , </ iarg2i // i /> ) ( oarg )
+    C ; L ; N ; R |- res_term => a ( ptrt2 , iargs2 ) ( oarg )
     term def= ( ptrt2 dot addr - ptrt1 dot addr ) / sizeof ct
     smt ( N => ptrt1 dot alloc_id = ptrt2 dot alloc_id /\ ( ptrt2 dot addr = ptrt1 dot addr + term * sizeof ct ) )
-    smt ( N => /\\ ( term / x ( </ iarg1i = iarg2i // i /> ) ) )
+    smt ( N => term / x ( ( iargs1 ) = ( iargs2 ) ) )
     x def= allocv [ ptrt1 dot alloc_id ]
     smt ( N => x dot base =< ptrt1 dot addr /\ ptrt2 dot addr + sizeof ct =< x dot base + x dot len )
     C ; L |- oarg => base_type
     ----------------------------------------------------------------- :: Inj
-    C ; L ; N ; R |- inj ( res_term , ptrt1 , ct , x . </ iarg1i // i /> ) => ops each (integer x ; x = term ) { a ( array_shift < ct > ( ptrt1 , x ) , </ iarg1i // i /> ) } ( const oarg )
+    C ; L ; N ; R |- inj ( res_term , ptrt1 , ct , x . iargs1 ) => ops each (integer x ; x = term ) { a ( array_shift < ct > ( ptrt1 , x ) , iargs2 ) } ( const oarg )
 
 
-    C ; L ; N ; R |- res_term => each (integer x ; iguard') { a ( array_shift < ct > ( ptrt , x ) , </ iargi // i /> ) } ( oarg )
+    C ; L ; N ; R |- res_term => each (integer x ; iguard') { a ( array_shift < ct > ( ptrt , x ) , iargs ) } ( oarg )
     smt ( N => forall x. iguard -> iguard' )
     iguard2 def= iguard' /\ neg iguard
-    ipred1 def= each ( integer x; iguard ) { a ( array_shift <ct> (ptrt, x) , </ iargi // i /> ) } ( oarg )
-    ipred2 def= each (integer x; iguard2) { a ( array_shift<ct>(ptrt, x) , </ iargi // i /> ) } ( oarg )
+    ipred1 def= each ( integer x; iguard ) { a ( array_shift <ct> (ptrt, x) , iargs ) } ( oarg )
+    ipred2 def= each (integer x; iguard2) { a ( array_shift<ct>(ptrt, x) , iargs ) } ( oarg )
     --------------------------------------------------------------------------------- :: Chop
     C ; L ; N ; R |- chop ( res_term , iguard ) => ops ipred1 * ipred2
 

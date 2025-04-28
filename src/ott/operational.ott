@@ -336,11 +336,11 @@ defns
 
 
    alloct | < h ; res_term > ||v < h' + { ipred_term ( oarg ) & arr_heap } ; ipred_term >
-   ipred_term def= each (integer x; iguard) { a ( array_shift < ct > ( ptrt , x ) , </ iargi // i /> ) }
+   ipred_term def= each (integer x; iguard) { a ( array_shift < ct > ( ptrt , x ) , iargs ) }
    alloct |- smt ( term / x ( iguard ) )
    ptrt' def=  array_shift <ct> ( ptrt , term )
-   ipred_term' def= each (integer x; iguard /\ ( x != term ) ) { a ( array_shift < ct > ( ptrt , x ) , </ iargi // i /> ) }
-   pred_term def= a ( ptrt' , term / x ( </ iarg // i /> ) )
+   ipred_term' def= each (integer x; iguard /\ ( x != term ) ) { a ( array_shift < ct > ( ptrt , x ) , iargs ) }
+   pred_term def= a ( ptrt' , term / x ( iargs ) )
    h'' def= h' + { ipred_term' ( oarg ) & arr_heap } + { pred_term ( oarg [ term ] ) & arr_heap [ term ] }
    ------------------------------------------------------------------------------------------------------------- :: Break
    alloct | < h ; break ( res_term , term ) > ||v < h'' ;  < ipred_term' , pred_term > >
@@ -348,37 +348,37 @@ defns
 
    alloct | < h ; res_term > ||v < h'' ;  < ipred_term , pred_term > >
    h'' def= h' + { ipred_term ( oarg1 ) & arr_heap } + { pred_term ( oarg2 ) & def_heap }
-   ipred_term def= each (integer x; iguard) { a ( array_shift < ct > ( ptrt1 , x ) , </ iarg1i // i /> ) }
-   pred_term def= a ( ptrt2  , </ iarg2i // i /> )
+   ipred_term def= each (integer x; iguard) { a ( array_shift < ct > ( ptrt1 , x ) , iargs1 ) }
+   pred_term def= a ( ptrt2  , iargs2 )
    term def= ( ptrt2 dot addr - ptrt1 dot addr ) / sizeof ct
    alloct |- smt ( ptrt1 = array_shift < ct > ( ptrt2 , term ) )
-   alloct |- smt ( /\\ ( </ term / x ( iarg1i ) = iarg2i // i /> ) )
+   alloct |- smt ( term / x ( ( iargs1 ) = ( iargs2 ) ) )
    x def= alloct [ ptrt1 dot alloc_id ]
    alloct |- smt ( x dot base =< ptrt1 dot addr /\ ptrt2 dot addr + sizeof ct =< x dot base + x dot len )
-   ipred_term' def= each (integer x; iguard \/ x = term) { a ( array_shift < ct > ( ptrt1 , x ) , </ iarg1i // i /> ) }
+   ipred_term' def= each (integer x; iguard \/ x = term) { a ( array_shift < ct > ( ptrt1 , x ) , iargs1 ) }
    ---------------------------------------------------------------------------------------------------------------------------- :: Glue
    alloct | < h ; glue ( res_term ) > ||v < h' + { ipred_term' ( oarg1 [ term ] := oarg2 ) & arr_heap [ term ] := def_heap } ; ipred_term' >
 
 
    alloct | < h ; res_term > ||v < h' + { pred_term ( oarg ) & def_heap } ; pred_term >
-   pred_term def= a ( ptrt2 , </ iarg2i // i /> )
+   pred_term def= a ( ptrt2 , iargs2 )
    term def= ( ptrt1 dot addr - ptrt2 dot addr ) / sizeof ct
    alloct |- smt ( ptrt1 = array_shift < ct > ( ptrt2 , term ) ) 
-   alloct |- smt ( /\\ ( </ term / x ( iarg1i ) = iarg2i // i /> ) )
+   alloct |- smt ( term / x ( ( iargs1 ) = ( iargs2 ) ) )
    x def= alloct [ ptrt1 dot alloc_id ]
    alloct |- smt ( x dot base =< ptrt1 dot addr /\ ptrt2 dot addr + sizeof ct =< x dot base + x dot len )
-   ipred_term def= each (integer x; x = term) { a ( array_shift<ct>(ptrt1, x) , </ iarg1i // i /> ) }
+   ipred_term def= each (integer x; x = term) { a ( array_shift<ct>(ptrt1, x) , iargs1 ) }
    cdot ; cdot |- oarg => base_type
    ----------------------------------------------------------------- :: Inj
-   alloct | < h ; inj ( res_term , ptrt1 , ct , x . </ iarg1 // i /> ) > ||v < h' + { ipred_term ( const oarg ) & cdot [ term ] := def_heap } ; ipred_term >
+   alloct | < h ; inj ( res_term , ptrt1 , ct , x . iargs1 ) > ||v < h' + { ipred_term ( const oarg ) & cdot [ term ] := def_heap } ; ipred_term >
 
 
    alloct | < h ; res_term > ||v < h' + { ipred_term ( oarg ) & arr_heap } ; ipred_term >
-   ipred_term def= each (integer x; iguard') { a ( array_shift <ct> ( ptrt , x ) , </ iargi // i /> ) }
+   ipred_term def= each (integer x; iguard') { a ( array_shift <ct> ( ptrt , x ) , iargs ) }
    alloct |- smt ( forall x . iguard -> iguard' )
-   ipred_term1 def= each (integer x; iguard) { a ( array_shift < ct > ( ptrt , x ) , </ iargi // i /> ) }
+   ipred_term1 def= each (integer x; iguard) { a ( array_shift < ct > ( ptrt , x ) , iargs ) }
    h1 def= { ipred_term1 ( oarg ) & arr_heap }
-   ipred_term2 def= each (integer x; iguard' /\ neg iguard) { a ( array_shift < ct > ( ptrt , x ) , </ iargi // i /> ) }
+   ipred_term2 def= each (integer x; iguard' /\ neg iguard) { a ( array_shift < ct > ( ptrt , x ) , iargs ) }
    h2 def= { ipred_term2 ( oarg ) & arr_heap }
    ------------------------------------------------------------------------------------------------------------------- :: Chop
    alloct | < h ; chop ( res_term , iguard ) > ||v < h' + h1 + h2  ; < ipred_term1 , ipred_term2 > >

@@ -317,8 +317,8 @@ grammar
 
 
   bool_op :: 'Bool_op_' ::= {{ com SMT term boolean operations }}
-    | /\\ ( </ termi // , // i />    ) ::     :: and
-    | \// ( </ termi // , // i />    ) ::     :: or
+    | /\\ ( terms )                    ::     :: and
+    | \// ( terms )                    ::     :: or
     | term1 -> term2                   ::     :: impl
     | term1 <-> term2                  :: M   :: biImp
     | neg term                         ::     :: not
@@ -331,8 +331,8 @@ grammar
 
 
   tuple_op :: 'Tuple_op_' ::= {{ com SMT term tuple constructor and projections }}
-    | ( </ termi // , // i /> ) :: :: lit
-    | int th_t term             :: :: nth {{ tex [[term]]^{([[int]])}       }}
+    | ( terms )      :: :: lit
+    | int th_t term  :: :: nth {{ tex [[term]]^{([[int]])}       }}
 
   record_op :: 'Record_op_' ::= {{ com SMT term for record operations }}
     % DEFER record update
@@ -364,38 +364,38 @@ grammar
 
 
   map_op :: 'Map_op_' ::= {{ com SMT term map operations }}
-    | [ | </ termi // , // i /> |]  :: M :: lit   {{ com array literal }}
-    | term1 [ term2 ]               ::   :: get
-    | term1 [ term2 dd term3 ]      ::   :: range
-    | const term                    ::   :: const
-    | term1 [ term2 ] := term3      ::   :: set
-    | x : base_type . term          ::   :: def
+    | [ | terms |]              :: M :: lit   {{ com array literal }}
+    | term1 [ term2 ]           ::   :: get
+    | term1 [ term2 dd term3 ]  ::   :: range
+    | const term                ::   :: const
+    | term1 [ term2 ] := term3  ::   :: set
+    | x : base_type . term      ::   :: def
 
   % DEFER align this with backend/cn/terms.ml
   term , _t {{ tex \_ }}, iguard , ptrt {{ tex ptr }} , iarg , oarg , alloct {{ tex alloc }} , A , M :: '' ::= {{ com SMT term grammar }}
-    | x                         ::   :: sym
-    | lit                       ::   :: lit
-    | arith_op                  ::   :: arith_op
-    | bool_op                   ::   :: bool_op
-    | cmp_op                    ::   :: cmp_op
-    | tuple_op                  ::   :: tuple_op
-    | struct_op                 ::   :: struct_op
-    | record_op                 ::   :: record_op
-    | pointer_op                ::   :: pointer_op
-    | list_op                   ::   :: list_op
-    | ct_pred                   ::   :: ct_pred
-    | map_op                    ::   :: map_op
-    | id ( term1 , .. , termn ) ::   :: pred
-    | ( base_type ) term        ::   :: cast
-    | ( term )                  :: S :: paren   {{ com parentheses                                                }}
-    | subs ( term )             :: M :: subs    {{ com substitute $[[subs]]$ in $[[term]]$                        }}
-    | inj pval                  :: M :: of_pval {{ tex [[pval]]                                                   }}
-                                                {{ com tranlate pure value $[[pval]]$ into corresponding SMT term }}
+    | x                  ::     :: sym
+    | lit                ::     :: lit
+    | arith_op           ::     :: arith_op
+    | bool_op            ::     :: bool_op
+    | cmp_op             ::     :: cmp_op
+    | tuple_op           ::     :: tuple_op
+    | struct_op          ::     :: struct_op
+    | record_op          ::     :: record_op
+    | pointer_op         ::     :: pointer_op
+    | list_op            ::     :: list_op
+    | ct_pred            ::     :: ct_pred
+    | map_op             ::     :: map_op
+    | id ( terms )       ::     :: pred
+    | ( base_type ) term ::     :: cast
+    | ( term )           :: X S :: paren   {{ com parentheses                                                }}
+    | subs ( term )      :: M   :: subs    {{ com substitute $[[subs]]$ in $[[term]]$                        }}
+    | inj pval           :: M   :: of_pval {{ tex [[pval]]                                                   }}
+                                           {{ com tranlate pure value $[[pval]]$ into corresponding SMT term }}
 
-  iargs , _iargs {{ tex \_ }} :: 'Iargs_' ::= {{ com list of terms (predicate input-arguments) }}
-    | iarg , iargs              ::   :: cons
-    | </ iargi // , // i />     ::   :: list
-    | subs ( iargs )            :: M :: subs
+  terms , iargs , _iargs {{ tex \_ }} :: 'Iargs_' ::= {{ com list of terms (predicate input-arguments) }}
+    | term , terms              ::   :: cons
+    | </ termi // , // i />     ::   :: list
+    | subs ( terms )            :: M :: subs
 
 
   qterm :: 'QTerm_' ::= {{ com quantified SMT terms }}
@@ -831,9 +831,6 @@ grammar
     | )       :: :: rparen    {{ tex \right)                          }}
     | 1       :: :: one
     | 0       :: :: zero
-
-metavar ty_bt {{ tex }} ::=
-  {{ com Ott-hack, ignore (OCaml type variable bt) }}
 
 grammar
 
