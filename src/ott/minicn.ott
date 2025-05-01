@@ -66,7 +66,7 @@ block :: 'B_' ::=                                              {{ com block }}
   | { decls e }                             :: :: block
 
 function_definition, func :: 'F_' ::=                                               {{ com function definition }}
-  | ct f ( ct1 id1 , .. , ctk idk ) function_spec block ::  :: funcD
+  | ct id ( ct1 id1 , .. , ctk idk ) function_spec block ::  :: funcD
 
 program, P :: 'P_' ::=                                         {{ com program }}
   | spec_decls decls func1 .. funcj                    :: :: prog
@@ -84,7 +84,7 @@ program, P :: 'P_' ::=                                         {{ com program }}
 
 
 function_spec :: 'FSP_' ::= {{ com spec }}
-  | /*@ requires spec1 ensures y. spec2 @*/ :: P :: spec
+  | /*@ requires spec1 ensures y . spec2 @*/ :: P :: spec
 
 % spec :: 'SP_' ::=  {{ com spec language for requires and ensures }}
 %    | cdot                              :: D :: noret  {{ com requires/ensures end with this }}
@@ -105,7 +105,7 @@ function_spec :: 'FSP_' ::= {{ com spec }}
 %    | Owned                              :: :: owned
 %    | id                                 :: :: user_defined_predicate_name
 %
-% spec_binary_operator, sbop :: 'Spec_' ::=         {{ com binary operator }}  % just enough for examples
+% spec_binary_operator, sbinop :: 'Spec_' ::=         {{ com binary operator }}  % just enough for examples
 %    | ==                                      :: :: eq          {{ tex \texttt{==} }}
 %    | &&                                      :: :: and         {{ tex \texttt{\&\&} }}
 %
@@ -118,7 +118,7 @@ function_spec :: 'FSP_' ::= {{ com spec }}
 %    | { t }                                   :: :: scoped      {{ com scoped term }}
 %    | id                                      :: :: var         {{ com spec-language or C variable }}
 %    | suop t                                  :: :: unary       {{ com unary operator }}
-%    | t1 sbop t2                              :: :: binary      {{ com binary operator }}
+%    | t1 sbinop t2                              :: :: binary      {{ com binary operator }}
 %    | if ( t ) t1 else t2                     :: :: if          {{ com conditional }} {{ tex [[if]]\ \texttt{(}[[t]]\texttt{)}\ [[t1]]\ [[else]]\ [[t2]] }}
 %    | f ( t1 , .. , ti )                      :: :: call        {{ com spec-language function application }} %{{ tex [[f]]\texttt{(}[[e1,..,ek]]\texttt{)} }}
 %    | STA . t                                 :: M :: ctx       {{ com apply evaluation context }} {{ tex [[STA]] \cdot [[t]] }}
@@ -142,8 +142,8 @@ function_spec :: 'FSP_' ::= {{ com spec }}
 %
 % spec_term_evaluation_context, STA :: 'STA_' ::=           {{ com spec language term evaluation contexts }}
 %    | suop __                                :: :: unary   {{ com unary operator }} {{ tex [[suop]] [[__]] }}
-%    | __ sbop t2                             :: :: binary  {{ com binary operator }}
-%    | v sbop __                              :: :: binary2 {{ com binary operator }}
+%    | __ sbinop t2                             :: :: binary  {{ com binary operator }}
+%    | v sbinop __                              :: :: binary2 {{ com binary operator }}
 %    | if ( __ ) t1 else t2                   :: :: if      {{ com conditional }} {{ tex [[if]]\ \texttt{(}[[__]]\texttt{)}\ [[t1]]\ [[else]]\ [[t2]] }}
 %    | f ( v1 , .. , vi , __ , t1 , .. , tk ) :: :: call    {{ com spec-language function call }}
 %    | { __ }                                 :: :: scoped  {{ com spec-language scoped term }}
@@ -157,7 +157,7 @@ function_spec :: 'FSP_' ::= {{ com spec }}
 % %    | hard coded lists?   So that we can write list examples in mini-CN without the generic recursive predicate definition mechanism
 %
 spec_function_def :: 'SF_' ::=                                               {{ com spec language function definition }}
-   | function bty f ( base_type1 x1 , .. , base_typek xk ) { term } :: :: func
+   | function bty id ( base_type1 x1 , .. , base_typek xk ) { term } :: :: func
 
 % spec_predicate_def :: 'SP_' ::=                                               {{ com spec language function definition }}
 %    | predicate bty p ( bty1 id1 , .. , btyk idk ) { spec } :: :: predicate
@@ -178,8 +178,8 @@ spec_decls :: 'SD_' ::=
 %
 % atomic_evaluation_context, A :: 'AV_' ::=                      {{ com atomic evaluation context}}
 %    | uop __                                  :: :: unary       {{ com unary operator }} {{ tex [[uop]]\, [[__]] }}
-%    | __ bop e2                               :: :: binaryL     {{ com binary operator }}
-%    | n bop __                                :: :: binaryR     {{ com binary operator }}
+%    | __ binop e2                               :: :: binaryL     {{ com binary operator }}
+%    | n binop __                                :: :: binaryR     {{ com binary operator }}
 %    | lve = __                                 :: :: assign      {{ com assignment }} {{ tex [[lve]]\, \texttt{=}\, [[__]] }}
 %    | if ( __ ) e1 else e2                    :: :: if          {{ com conditional }} {{ tex [[if]]\ \texttt{(}[[__]]\texttt{)}\ [[e1]]\ [[else]]\ [[e2]] }}
 %    | __ ; e'                                 :: :: seq         {{ com sequencing }} {{ tex [[__]]\texttt{;}[[e']] }}
@@ -334,9 +334,8 @@ spec_decls :: 'SD_' ::=
 %    | =<                                       :: :: leq       {{ tex \leq }}
 %    | PAPER                                    :: :: PAPER     {{ tex }}
 %
-% formula                                       :: formula_ ::=
+minicn_extra                                    :: mincn_extra_ ::=
 %    | judgement                                :: :: judgement
-%    | formula1 .... formulai                   :: :: dots
 %    | decls = decls'                           :: :: eq_decls
 %    | P = P'                                   :: :: eq_prog
 %    | E = E'                                   :: :: eq_env_mapping
@@ -354,7 +353,7 @@ spec_decls :: 'SD_' ::=
 %    | n notin ran ( E )                        :: :: E_notinran
 %    | H ( n ) = n'                             :: :: H_lookup
 %    | G ( n ) = n'                             :: :: G_lookup
-%    | P ( id ) = func                          :: :: P_lookup
+     | P ( id ) = func                          :: :: P_lookup
 %    | P ( id ) = spec_predicate_def          :: :: P_lookup_pred
 %    | P ( f ) = spec_function_def              :: :: P_lookup_func
 %    | n in R                                   :: :: R_in
@@ -364,12 +363,12 @@ spec_decls :: 'SD_' ::=
 %    | runtime_check_imp ( formula )            :: :: runtime_check_imp
 %    | color_res ( formula )                    :: :: color_res {{ tex {\color{resource}{[[formula]]} } }}
 %    | color_imp ( formula )                    :: :: color_imp {{ tex {\color{testing}{[[formula]]} } }}
-%    | id in Vc                                 :: :: lookup_var_in_context
-%    | Rc = Rc'                                 :: :: eq_resources
-%    | Rc , Phi => t                            :: :: smt_proof {{ com [[t]] is provable by SMT solver with constraints [[Phi]] and disjointness information [[Rc]] }}
-%    | Phi = Phi'                               :: :: eq_constraints
-%    | Vc = Vc'                                 :: :: eq_variable_contexts
-%    | ldots                                    :: :: ldots
+     | id inEnv Vc                              :: :: lookup_var_in_context
+     | Rc = Rc'                                 :: :: eq_resources
+     | Rc , Phi => term                         :: :: smt_proof {{ com $[[term]]$ is provable by SMT solver with constraints $[[Phi]]$ and disjointness information $[[Rc]]$ }}
+     | Phi = Phi'                               :: :: eq_constraints
+     | Vc = Vc'                                 :: :: eq_variable_contexts
+     | ldots                                    :: :: ldots
 %
 % %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 % %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
@@ -575,7 +574,7 @@ spec_decls :: 'SD_' ::=
 % P, Eg |- <!n, S, H, R, G> -->  <0, S, H, R, G>
 %
 %
-% {{ com Omitting the standard rules for $[[bop]]$s: $[[+]]$, $[[&&]]$, etc.
+% {{ com Omitting the standard rules for $[[binop]]$s: $[[+]]$, $[[&&]]$, etc.
 % \smallskip
 % }}
 %
@@ -664,7 +663,7 @@ spec_decls :: 'SD_' ::=
 % }
 % }}
 %
-% P(f) = cty f ( cty1 id1 , .. , ctyk idk ) /*@ requires spec ensures ret . spec' @*/ block ;
+% P(f) = cty f ( cty1 id1 , .. , ctyk idk ) /*@ requires spec ensures ret . spec' @*/ block
 % E' = id1 |-> m1, .. , idk |-> mk
 % H' = m1 |-> n1 * .. * mk |-> nk
 % V = id1 |-> n1 , .. , idk |-> nk
@@ -699,7 +698,7 @@ spec_decls :: 'SD_' ::=
 % H' = H \ dom (E1 , .. , Ei , E)
 % color_res( R1 = R \ dom ( E1 , .. , Ei , E) )
 % color_imp( G' = G \ dom ( E1 , .. , Ei , E) )
-% P(f) = cty f ( cty1 id1 , .. , ctyk idk ) /*@ requires spec ensures ret . spec' @*/ block ;
+% P(f) = cty f ( cty1 id1 , .. , ctyk idk ) /*@ requires spec ensures ret . spec' @*/ block
 % P , Eg , H , dec , stackdepth (S) |- < spec' , ( V , ret |-> n ) , used ( emp ) * R1 , G' > -->* < cdot , V' , used ( R1 ) * emp , G'' >
 % color_imp ( runtime_check_imp ( stackdepth (S') |- G'' ) )
 % -------------------------------------------------------------- :: return
@@ -897,7 +896,7 @@ constraint_context, Phi {{ tex \Phi }} :: 'Phi_' ::= {{ com constraint context }
    | term                    ::   :: term  {{ com singleton context with $[[term]]$ }}
    | Phi1 /\ ... /\ Phii     ::   :: union {{ com conjunction of constraint contexts }}
    | ( Phi )                 :: S :: parens
-   | cond ( t , Phi , Phi' ) ::   :: cond {{ com if $[[t]]$ then $[[Phi]]$ else $\cdot$ }}
+   | cond ( term , Phi , Phi' ) ::   :: cond {{ com if $[[term]]$ then $[[Phi]]$ else $\cdot$ }}
 
 conditional_resource , cond_res  :: 'CondRes_' ::= {{ com conditional typing resource }}
    | id = spec  ::   :: id_spec {{ com for specs which return a value }}
@@ -1139,86 +1138,86 @@ done_or_rerun {{ tex ( \cnkw{done} \mid \cnkw{rerun} ) }} :: 'DoR_' ::= {{ com f
 %    Vc , Rc , Phi |-lv * le -| id2 in [ id2 , Vc' ] , Rc' , ( id2 == id2' /\ Phi' )
 %
 
-  defn  P , Vc , Rc , Phi |- ret . spec e -| id inEnv Vc' ,  Rc' , Phi' :: :: Expr_ :: expr_ {{ tex [[P]] [[,]] [[Vc]] [[,]] [[Rc]] [[,]] [[Phi]] [[|-]]_{ [[ret]] [[.]] [[spec]] } [[e]] [[-|]] [[id]] [[inEnv]] [[Vc']] [[,]]  [[Rc']] [[,]] [[Phi']] }} {{ com typing for expressions $[[e]]$ with a post-condition $[[spec]]$ }} by
+  defn  P , Vc , Rc , Phi |- y . spec e -| id inEnv Vc' ,  Rc' , Phi' :: :: Expr_ :: expr_ {{ tex [[P]] [[,]] [[Vc]] [[,]] [[Rc]] [[,]] [[Phi]] [[|-]]_{ [[y]] [[.]] [[spec]] } [[e]] [[-|]] [[id]] [[inEnv]] [[Vc']] [[,]]  [[Rc']] [[,]] [[Phi']] }} {{ com typing for expressions $[[e]]$ with a post-condition $[[spec]]$ }} by
 
 
 {{ com
 \noindent Given variables $[[Vc]]$, resources $[[Rc]]$, constraints $[[Phi]]$ and postcondition $[[spec]]$, expression $[[e]]$ symbolically evaluates to $[[id]]$, with new variables $[[Vc']]$, updated resources $[[Rc']]$ and additional constraints $[[Phi']]$.
 }}
-%
-%    ---------------------------------------------------- :: constant
-%    P , Vc , Rc , Phi |- ret . spec n -| id in [ id ] , Rc , ( id == n )
-%
-%    id in Vc
-%    Rc = Rc' * id' |-> id2'
-%    Rc , Phi => id == id'
-%    --------------------------------- :: variable
-%    P , Vc , Rc , Phi |- ret . spec id -| id2 in [ id2 ] , Rc , ( id2 == id2' )
-%
-%
-%    id in Vc
-%    -------- :: address_of
-%    P , Vc , Rc , Phi |- ret . spec &id -| id' in [ id' ] , Rc , ( id' == id )
-%
-%
-%    P , Vc , Rc , Phi |- ret . spec e -| id in Vc' , Rc' , Phi'
-%    ----------------------------------------------- :: not
-%    P , Vc , Rc , Phi |- ret . spec ! e -| id' in [ id' , Vc' ] , Rc , ( id' == if ( id == 0 ) 1 else 0 /\ Phi' )
-%
-%
-%    P , Vc , Rc , Phi |- ret . spec e -| id in Vc' , Rc' , Phi'
-%    Rc' = Rc'' * id' |-> id2'
-%    % @ TODO fix resource lookup
-%    Rc , Phi => id == id'
-%    ----------------------------------------------- :: deref
-%    P , Vc , Rc , Phi |- ret . spec * e -| id2 in [ id2 , Vc' ] , Rc , ( id2 == id2' /\ Phi' )
-%
-%
-%    P , Vc , Rc , Phi |- ret . spec e1 -| id1 in Vc1 , Rc1 , Phi1
-%    P , Vc , Vc1 , Rc1 , Phi /\ Phi1 |- ret . spec e2 -| id2 in Vc2 , Rc2 , Phi2
-%    ------------------------------------------------------------------ :: bop
-%    P , Vc , Rc , Phi |- ret . spec e1 bop e2 -| id in [ id , Vc1 , Vc2 ] , Rc2 , ( id == ( id1 sbop id2 )  /\ Phi1 /\ Phi2 )
-%
-%
-%    P , Vc , Rc , Phi |- ret . spec e -| id1 in Vc1 , Rc1 , Phi1
-%    Vc , Vc1 , Rc1 , Phi /\ Phi1 |-lv le -| id2 in Vc2 , Rc2 , Phi2
-%    Rc2 = Rc2' * id2' |-> _id
-%    % @ TODO fix resource lookup
-%    Rc1 , Phi /\ Phi1 => id2 == id2'
-%    ------------------------------------------------------------- :: assign
-%    P , Vc , Rc , Phi |- ret . spec le = e -| id in [ id , Vc1 , Vc2 ] , Rc2 * id2 |-> id , Phi1 /\ Phi2 /\ ( id == id1 )
-%
-%
-%    P , Vc , Rc , Phi |- ret . spec e1 -| id1 in Vc1 , Rc1 , Phi1
-%    P , Vc , Vc1 , Rc1 , Phi /\ Phi1 |- ret . spec e2 -| id2 in Vc2 , Rc2 , Phi2
-%    P , Vc , Vc1 , Rc1 , Phi /\ Phi1 |- ret . spec e3 -| id3 in Vc3 , Rc3 , Phi3
-%    Rc' = cond ( id1 , Rc2 , Rc3 )
-%    Phi' = Phi1 /\ cond ( id1 , Phi2 , Phi3 ) /\ ( id == if ( id1 ) id2 else id3 )
-%    ----------------------------------------------------------------------------------------- :: if
-%    P , Vc , Rc , Phi |- ret . spec if ( e1 ) e2 else e3 -| id in [ id , Vc1 , Vc2 , Vc3 ] , Rc' , Phi'
-%
-%
-%    P , Vc , Rc , Phi |- ret . spec e1 -| id1 in Vc1 , Rc1 , Phi1
-%    P , Vc , Vc1 , Rc1 , Phi /\ Phi1 |- ret . spec e2 -| id2 in Vc2 , Rc2 , Phi2
-%    ------------------------------------------------------------------ :: seq
-%    P , Vc , Rc , Phi |- ret . spec e1 ; e2 -| id in [ id , Vc1 , Vc2 ] , Rc2 , ( id == id2  /\ Phi1 /\ Phi2 )
-%
-%
-%    Vc0' = Vc0 Vcj' = [ Vcj-1' , Vcj  ] Phi0' = Phi0 Phij' = Phij-1' /\ Phij
-%    P , Vc0' , Rc0 , Phi0' |- ret . spec e1 -| id1 in Vc1 , Rc1 , Phi1 ldots P , Vck-1' , Rck-1 , Phik-1' |- ret . spec ek -| idk in Vck , Rck , Phik
-%    P(f) = cty f ( cty1 id1 , .. , ctyk idk ) /*@ requires spec1 ensures ret' . spec2 @*/ block ;
-%    P , Vck' , Rck , Phik' |- cdot , cdot , cdot | spec1 -| cdot , Vc' , used ( Rc1' ) * Rc2' , Phi'
-%    P , [ Vck' , Vc' ]  , Rc2' , Phik' /\ Phi' |- ret' , cdot | spec2 ~> cdot  , Vc'' , Rc3' , Phi''
-%    ------------------------------------------------------------------ :: call
-%    P , Vc0 , Rc0 , Phi0 |- ret . spec f ( e1 , .. , ek ) -| ret' in [ Vc1 , .. , Vck , Vc' , Vc'' ] , Rc3' , ( Phi1 /\ .. /\ Phik /\ Phi' /\ Phi'' )
-%
-%
-%    P , [ Vc , id1 , .. , idk ] , Rc , Phi |- ret . spec e -| id1 in Vc1 , Rc1 , Phi1
-%    -------------------------------------------------------------------------------- :: block
-%    P , Vc , Rc , Phi |- ret . spec { cty1 id1 ; .. ctyk idk ; e } -| id1 in [ id1 , .. , idk , Vc1 ] , Rc1 , Phi1
-%
-%
-%    P , Vc , Rc , Phi |- ret . spec e -| id1 in Vc1 , Rc1 , Phi1
-%    P , [ Vc , Vc1 , ret ] , Rc1 , Phi /\ Phi1 /\ ret == id1 |- cdot , cdot , cdot | spec -| cdot , Vc' , used ( Rc' ) * cdot , Phi'
-%    ------------------------------------------------------------------ :: return
-%    P , Vc , Rc , Phi |- ret . spec return e -| ret in [ ret ] , cdot , false
+
+    ---------------------------------------------------- :: constant
+    P , Vc , Rc , Phi |- y . spec n -| id inEnv [ id ] , Rc , ( id = n )
+
+    id inEnv Vc
+    Rc = Rc' * id' |-> id2'
+    Rc , Phi => id = id'
+    --------------------------------- :: variable
+    P , Vc , Rc , Phi |- y . spec id -| id2 inEnv [ id2 ] , Rc , ( id2 = id2' )
+
+
+    id inEnv Vc
+    -------- :: address_of
+    P , Vc , Rc , Phi |- y . spec &id -| id' inEnv [ id' ] , Rc , ( id' = id )
+
+
+    P , Vc , Rc , Phi |- y . spec e -| id inEnv Vc' , Rc' , Phi'
+    ----------------------------------------------- :: not
+    P , Vc , Rc , Phi |- y . spec ! e -| id' inEnv [ id' , Vc' ] , Rc , ( id' = if id = 0 then 1 else 0 /\ Phi' )
+
+
+    P , Vc , Rc , Phi |- y . spec e -| id inEnv Vc' , Rc' , Phi'
+    Rc' = Rc'' * id' |-> id2'
+    {{ @ TODO fix resource lookup }}
+    Rc , Phi => id = id'
+    ----------------------------------------------- :: deref
+    P , Vc , Rc , Phi |- y . spec * e -| id2 inEnv [ id2 , Vc' ] , Rc , ( id2 = id2' /\ Phi' )
+
+
+    P , Vc , Rc , Phi |- y . spec e1 -| id1 inEnv Vc1 , Rc1 , Phi1
+    P , Vc , Vc1 , Rc1 , Phi /\ Phi1 |- y . spec e2 -| id2 inEnv Vc2 , Rc2 , Phi2
+    ------------------------------------------------------------------ :: binop
+    P , Vc , Rc , Phi |- y . spec e1 arith_binop e2 -| id inEnv [ id , Vc1 , Vc2 ] , Rc2 , ( id = ( id1 ' arith_binop ' id2 )  /\ Phi1 /\ Phi2 )
+
+
+    P , Vc , Rc , Phi |- y . spec e -| id1 inEnv Vc1 , Rc1 , Phi1
+    Vc , Vc1 , Rc1 , Phi /\ Phi1 |-lv lve -| id2 inEnv Vc2 , Rc2 , Phi2
+    Rc2 = Rc2' * id2' |-> _
+    {{ @ TODO fix resource lookup }}
+    Rc1 , Phi /\ Phi1 => id2 = id2'
+    ------------------------------------------------------------- :: assign
+    P , Vc , Rc , Phi |- y . spec lve = e -| id inEnv [ id , Vc1 , Vc2 ] , Rc2 * id2 |-> id , Phi1 /\ Phi2 /\ ( id = id1 )
+
+
+    P , Vc , Rc , Phi |- y . spec e1 -| id1 inEnv Vc1 , Rc1 , Phi1
+    P , Vc , Vc1 , Rc1 , Phi /\ Phi1 |- y . spec e2 -| id2 inEnv Vc2 , Rc2 , Phi2
+    P , Vc , Vc1 , Rc1 , Phi /\ Phi1 |- y . spec e3 -| id3 inEnv Vc3 , Rc3 , Phi3
+    Rc' = cond ( id1 , Rc2 , Rc3 )
+    Phi' = Phi1 /\ cond ( id1 , Phi2 , Phi3 ) /\ ( id = if id1 then id2 else id3 )
+    ----------------------------------------------------------------------------------------- :: if
+    P , Vc , Rc , Phi |- y . spec if ( e1 ) e2 else e3 -| id inEnv [ id , Vc1 , Vc2 , Vc3 ] , Rc' , Phi'
+
+
+    P , Vc , Rc , Phi |- y . spec e1 -| id1 inEnv Vc1 , Rc1 , Phi1
+    P , Vc , Vc1 , Rc1 , Phi /\ Phi1 |- y . spec e2 -| id2 inEnv Vc2 , Rc2 , Phi2
+    ------------------------------------------------------------------ :: seq
+    P , Vc , Rc , Phi |- y . spec e1 ; e2 -| id inEnv [ id , Vc1 , Vc2 ] , Rc2 , ( id = id2  /\ Phi1 /\ Phi2 )
+
+
+    Vc0' = Vc0 Vcj' = [ Vcj-1' , Vcj  ] Phi0' = Phi0 Phij' = Phij-1' /\ Phij
+    P , Vc0' , Rc0 , Phi0' |- y . spec e1 -| id1 inEnv Vc1 , Rc1 , Phi1 ldots P , Vck-1' , Rck-1 , Phik-1' |- y . spec ek -| idk inEnv Vck , Rck , Phik
+    P(yf) = ct yf ( ct1 id1 , .. , ctk idk ) /*@ requires spec1 ensures y' . spec2 @*/ block
+    P , Vck' , Rck , Phik' |- cdot , cdot , cdot | spec1 -| cdot , Vc' , used ( Rc1' ) * Rc2' , Phi'
+    P , [ Vck' , Vc' ]  , Rc2' , Phik' /\ Phi' |- y' , cdot | spec2 ~> cdot  , Vc'' , Rc3' , Phi''
+    ------------------------------------------------------------------ :: call
+    P , Vc0 , Rc0 , Phi0 |- y . spec yf ( e1 , .. , ek ) -| y' inEnv [ Vc1 , .. , Vck , Vc' , Vc'' ] , Rc3' , ( Phi1 /\ .. /\ Phik /\ Phi' /\ Phi'' )
+
+
+    P , [ Vc , id1 , .. , idk ] , Rc , Phi |- y . spec e -| id1 inEnv Vc1 , Rc1 , Phi1
+    -------------------------------------------------------------------------------- :: block
+    P , Vc , Rc , Phi |- y . spec { ct1 id1 ; .. ctk idk ; e } -| id1 inEnv [ id1 , .. , idk , Vc1 ] , Rc1 , Phi1
+
+
+    P , Vc , Rc , Phi |- y . spec e -| id1 inEnv Vc1 , Rc1 , Phi1
+    P , [ Vc , Vc1 , y ] , Rc1 , Phi /\ Phi1 /\ y = id1 |- cdot , cdot , cdot | spec -| cdot , Vc' , used ( Rc' ) * cdot , Phi'
+    ------------------------------------------------------------------ :: return
+    P , Vc , Rc , Phi |- y . spec return e -| y inEnv [ y ] , cdot , false
