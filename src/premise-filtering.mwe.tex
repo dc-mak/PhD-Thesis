@@ -141,28 +141,10 @@
    % \seq_show:N \l_indices
 
    % Backup original \cndrule
-   \cs_set_eq:NN \orig_cndrule: \cndrule
-
-  % Using \seq_map_indexed_inline caused weird scoping issues inside the body
-  % Couldn't figure out how to get ##2 to refer to the inner rather than outer
-  % version (###2 didn't work - maybe because the \cs_set_protected should
-  % really be a RenewDocumentCommand
-  \cs_set_protected:Nn \handle_premise:nn
-    {
-      % #1 - index
-      % #2 - item (a token list like { \symrm{\Phi} \vdash ... })
-      \seq_if_in:NnTF \l_indices { ##1 }
-        {
-          \seq_put_right:Nn \l_filtered { \cnpremise { ##2 } }
-          % \iow_term:x { Adding~premise~\int_to_arabic:n {##1}:~\tl_to_str:n {##2} }
-        }
-        {
-          % \iow_term:x { Skipping~premise~\int_to_arabic:n {##1}:~\tl_to_str:n {##2} }
-        }
-    }
+   \NewCommandCopy{\origcndrule}{\cndrule}
 
    % Locally override \cndrule
-   \cs_set_protected:Npn \cndrule [##1]##2##3##4
+   \RenewDocumentCommand{\cndrule}{O{}mmm}
      {
        % Split on \cnpremise
        \seq_set_split:Nnn \l_premises { \cnpremise } { ##2 }
@@ -171,13 +153,23 @@
        % \seq_show:N \l_premises
 
        \seq_clear_new:N \l_filtered
-       \seq_map_indexed_function:NN \l_premises \handle_premise:nn
+       \seq_map_indexed_inline:Nn \l_premises
+         {
+           \seq_if_in:NnTF \l_indices { ####1 }
+             {
+               \seq_put_right:Nn \l_filtered { \cnpremise { ####2 } }
+               % \iow_term:x { Adding~premise~####1:~\tl_to_str:n {####2} }
+             }
+             {
+               % \iow_term:x { Skipping~premise~####1:~\tl_to_str:n {####2} }
+             }
+         }
        % \seq_show:N \l_filtered
 
-       \orig_cndrule: [##1]{\seq_use:Nn \l_filtered {}}{##3}{##4}
+       \origcndrule [##1]{\seq_use:Nn \l_filtered {}}{##3}{##4}
      }
 
-   #2
+   #2%
    \group_end:
  }
 
