@@ -468,7 +468,7 @@ the second assumption) instantiations of its free variables.
 
 If $[[ C ; L ; N ; R |- subs <= ( C' ; L' ; R1' , R2' ) ]]$
 then $[[ exists ]] [[ R1 ]], [[ R2 ]], [[ subs1 ]], [[ subs2 ]].\
-[[ C ; L ; N ; R1 |- subs1 <= ( C' ; L' ; R1' ) ]] [[ /\ ]]
+[[ C ; L ; N ; R1 |- subs1 <= ( C' ; L' ; R1' ) ]] \wedge
 [[ C ; L ; N ; R2 |- subs2 <= ( C' ; L' ; R2' ) ]]$.
 
 \begin{proof}
@@ -624,7 +624,7 @@ $[[ exists ]] [[ N1 ]], [[ N2 ]] [[ . ]] [[ subs ( N1 , N2 ) ]] = [[ subs ( N1 )
     $\cnkw{to\_fun}$ recursively maps
     $[[ sigma ]]$ to $[[ pi ]]$,
     $[[ exists ]]$ to $[[ forall ]]$,
-    $[[ /\ ]]$ to $[[ -) ]]$ and
+    $\wedge$ to $[[ -) ]]$ and
     $[[ *o ]]$ to $[[ --o ]]$,
     and otherwise keeps any $[[ term ]]$ and $[[ res ]]$ the same.
     Hence, $[[ subs ( to_fun ret ) ]] = [[ to_fun subs ( ret ) ]]$, and the case
@@ -1135,8 +1135,8 @@ predicates in pattern-matching.\\[\baselineskip]
     \begin{proof}
 
     \step{<2>1}{%
-        $ [[ exists ]] [[ h1' ]] , [[ nR1' ]] , [[ res_val1 ]] \ldots [[ /\ ]] ( [[ forall ]] [[ f1 ]] \ldots )$\\
-        $ [[ exists ]] [[ h2' ]] , [[ nR2' ]] , [[ res_val2 ]] \ldots [[ /\ ]] ( [[ forall ]] [[ f2 ]] \ldots )$\\
+        $ [[ exists ]] [[ h1' ]] , [[ nR1' ]] , [[ res_val1 ]] \ldots \wedge ( [[ forall ]] [[ f1 ]] \ldots )$\\
+        $ [[ exists ]] [[ h2' ]] , [[ nR2' ]] , [[ res_val2 ]] \ldots \wedge ( [[ forall ]] [[ f2 ]] \ldots )$\\
         \pf{} By induction.}
 
     \step{<2>2}{%
@@ -1203,8 +1203,8 @@ If $[[ res_term ]]$ is closed, $[[ cdot ; L0 ; N ; nR |- res_term <= res ]]$,
 $[[ alloct |- h <= nR ]]$ and $[[ alloct | < h + f ; res_term > ||v < heap ; res_val > ]]$
 then $[[ exists ]] [[ h' ]] , [[ nR' ]] [[ . ]]
 [[ heap ]] = [[ h' + f ]]
-[[ /\ ]] ( [[ alloct |- h' <=  nR' ]] )
-[[ /\ ]] ( [[ cdot ; L0 ; N ; nR' |- res_val <= res ]] )$.
+\wedge ( [[ alloct |- h' <=  nR' ]] )
+\wedge ( [[ cdot ; L0 ; N ; nR' |- res_val <= res ]] )$.
 
 \pf{} This simply the composition of \lemmaref{subsec:res_term_red_det} and \lemmaref{subsec:res_term_progress}.
 
@@ -1263,7 +1263,7 @@ arbitrary (not normalised).
 \prove{$[[ exists ]] [[ h' ]] , [[ subs ]] [[.]]$\\
     $\quad [[ forall ]] [[ f ]] [[ . ]] [[ < h + f ; </ ret_pati = ret_termi // i /> > ~> < h' + f ; subs > ]]$\\
     $\quad [[ exists ]] [[ nR' ]] [[ . ]]$\\
-    $\qquad [[ alloct |- h' <= nR' ]] [[ /\ ]] [[ cdot ; L0 ; N ; nR' |- subs <= ( C' ; L' ; R' )  ]]$.\\[\baselineskip]}
+    $\qquad [[ alloct |- h' <= nR' ]] \wedge [[ cdot ; L0 ; N ; nR' |- subs <= ( C' ; L' ; R' )  ]]$.\\[\baselineskip]}
 
 \pfsketch{ Induction over the pattern-matching judgement.\\[\baselineskip]}
 
@@ -1482,14 +1482,14 @@ arbitrary (not normalised).
         \item $[[ L ; N |- res_pat : res' ~> L' ; N' ; R' ]]$
         \item $[[ res ~ res' ]]$
         \item $[[ exists ]] [[ nR ]] . ( [[ cdot ; L0 ; N ; nR |- res_val <= res ]] )
-            [[ /\ ]] ( [[ alloct ; h <= N ; nR ]] )$
+            \wedge ( [[ alloct ; h <= N ; nR ]] )$
     \end{pfenum}\leavevmode\\}
 
     \prove{$[[ exists ]] [[ h' ]] , [[ subs ]] [[ . ]]$\\
         $\quad [[ forall ]] [[ f ]] [[ . ]] [[ < h + f ; res_pat = res_val > ~> < h' + f ; subs > ]]$\\
         $\quad [[ exists ]] [[ nR' ]] [[ . ]]
             [[ alloct |- h' <= nR' ]]
-            [[ /\ ]] [[ cdot ; L0 ; N ; nR' |- subs <= ( cdot ; L' ; R' ) ]]$.\\[\baselineskip]}
+            \wedge [[ cdot ; L0 ; N ; nR' |- subs <= ( cdot ; L' ; R' ) ]]$.\\[\baselineskip]}
 
     \step{<2>1}{\case{\PatResMatchFold}{%
         $[[ L0 ; N |- fold ( res_pat' ) : a ( </ iarg'i // i /> ) ( oarg' ) ~> L' ; N' ; R' ]]$\\
@@ -2091,9 +2091,9 @@ $[[ alloct ; h <= N ; nR ]]$, and all functions are well-typed
 then $[[ forall ]] [[ f ]] [[ . ]] [[ < alloct ; h + f ; stmt > -->  < alloct' ; heap ; stmt' > ]] [[ => ]]
 [[ exists ]] [[ N' ]] , [[ h' ]] , [[ nR' ]] [[ . ]]
 ( [[ cdot ; L0 ; N ; cdot [= cdot ; L0 ; N' ; cdot ]] )
-[[ /\ ]] [[ heap ]] = [[ h' + f ]]
-[[ /\ ]] ( [[ alloct' ; h' <= N' ; nR' ]] )
-[[ /\ ]] ( [[ cdot ; L0 ; N' ; nR' |- stmt' <= ret ]] )$.\\[\baselineskip]
+\wedge [[ heap ]] = [[ h' + f ]]
+\wedge ( [[ alloct' ; h' <= N' ; nR' ]] )
+\wedge ( [[ cdot ; L0 ; N' ; nR' |- stmt' <= ret ]] )$.\\[\baselineskip]
 
 You can equally well prove $[[ forall ]] [[ nR' ]] [[ . ]] [[ alloct ; h' <= N' ; nR' ]]
 [[ => ]] [[ cdot ; L0 ; N ; nR' |- stmt' <= ret ]]$ instead. Instead of
@@ -2496,8 +2496,8 @@ to deduce that $[[ nR' ]]$ can only be what you would have supplied anyways.
 
 Define an allocation history ($[[ A ]]$ , $[[ alloct ]]$) to be \emph{partitioned}:
 
-$[[ forall ]] i, j [[.]]$ if $[[ i != j ]] [[ /\ ]] [[ A [ i ] = ( ptrt1 , term1 , true ) ]]
-[[/\]] [[ A [ j ] = ( ptrt2 , term2, true ) ]]$ then $[ [[ ptrt1 ]] ,  [[ ptrt1 + term1 ]] ] \cap
+$[[ forall ]] i, j [[.]]$ if $[[ i != j ]] \wedge [[ A [ i ] = ( ptrt1 , term1 , true ) ]]
+\wedge [[ A [ j ] = ( ptrt2 , term2, true ) ]]$ then $[ [[ ptrt1 ]] ,  [[ ptrt1 + term1 ]] ] \cap
 [ [[ ptrt2 ]] , [[ ptrt2 + term2 ]] ] = \emptyset$.
 
 \pfsketch{ Induction over the operational rules. The allocation histories are only extended

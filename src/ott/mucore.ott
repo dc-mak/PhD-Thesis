@@ -80,9 +80,36 @@ grammar
     | inc    ::  :: inc {{ com increment a number by 1 }}
     | dec    ::  :: dec {{ com decrement a number by 1 }}
 
+grammar
+metavar tag ::=  {{ com unique identifier for struct/union type }}
+
+grammar
+
+  member :: 'Member_' ::= {{ com record or C struct/union member name }}
+    | id        :: :: user_def {{ com user-defined member }}
+    | alloc_id  :: :: alloc_id {{ tex \mathrm{alloc\_id} }}
+    | addr      :: :: addr     {{ tex \mathrm{addr}      }}
+    | base      :: :: base     {{ tex \mathrm{base}      }}
+    | len       :: :: len      {{ tex \mathrm{len}       }}
+    | DEF       :: :: def      {{ tex \mathrm{def}       }}
+
+grammar
+
+  % OUT_HACK|member
+  out_member {{ tex \outpol{ member } }}   :: 'Out_hack_' ::=  {{ com Ott-hack, ignore }}
+    | member :: :: member {{ tex \outpol{ [[member]] } }}
+
+grammar
+
+  ct {{ tex \tau }} :: 'Ct_' ::=  {{ com partial/relevant grammar of C types }}
+    | array int ct :: :: arrayN  {{ com fixed-length array of element type $[[ct]]$ }}
+    | int          :: :: integer {{ com C (signed) integer                          }} {{ tex \cnkw{int} }}
+    | ct *         :: :: pointer {{ com pointer to type $[[ct]]$                    }}
+    | struct tag   :: :: struct  {{ com C struct type                               }}
+    | tagged tag   :: :: tagged  {{ com C struct or union                           }} {{ tex [[ tag ]]  }}
 
   int , _int {{ tex \_ }} , addr , alloc_id :: 'Int_' ::=    {{ com integer }}
-    | n                   ::   :: index      {{ com literal integer                        }}
+    | i                   ::   :: index      {{ com literal integer                        }}
     | 1                   :: X :: one
     | 0                   :: X :: zero
     | sizeof ct           :: M :: sizeof     {{ tex \symrm{sizeof}( [[ct]] )               }}
@@ -96,33 +123,7 @@ grammar
     | min ct              :: M :: Min        {{ tex \min{ [[ct]] }                         }}
                                              {{ com minimum of numeric type $[[ct]]$       }}
 
-
 grammar
-
-  ct {{ tex \tau }} :: 'Ct_' ::=  {{ com partial/relevant grammar of C types }}
-    | array int ct :: :: arrayN  {{ com fixed-length array of element type $[[ct]]$ }}
-    | int          :: :: integer {{ com C (signed) integer                          }} {{ tex \cnkw{int} }}
-    | ct *         :: :: pointer {{ com pointer to type $[[ct]]$                    }}
-    | struct tag   :: :: struct  {{ com C struct type                               }}
-    | tagged tag   :: :: tagged  {{ com C struct or union                           }} {{ tex [[ tag ]]  }}
-
-metavar tag ::=  {{ com unique identifier for struct/union type }}
-
-grammar
-
-  member :: 'Member_' ::= {{ com record or C struct/union member name }}
-    | id        :: :: user_def {{ com user-defined member }}
-    | alloc_id  :: :: alloc_id {{ tex \mathrm{alloc\_id} }}
-    | addr      :: :: addr     {{ tex \mathrm{addr}      }}
-    | base      :: :: base     {{ tex \mathrm{base}      }}
-    | len       :: :: len      {{ tex \mathrm{len}       }}
-    | DEF       :: :: def      {{ tex \mathrm{def}       }}
-
-
-  % OUT_HACK|member
-  out_member {{ tex \outpol{ member } }}   :: 'Out_hack_' ::=  {{ com Ott-hack, ignore }}
-    | member :: :: member {{ tex \outpol{ [[member]] } }}
-
 
   base_type {{ tex \beta }} , _bt {{ tex \_ }} :: 'Bt_' ::= {{ com base types }}
     | unit                                   ::   :: unit     {{ com unit                        }}
@@ -136,12 +137,8 @@ grammar
     | array base_type                        :: M :: array    {{ com array (integer-indexed map) }}
     | list base_type                         ::   :: list     {{ com list                        }}
     | </ base_typei // * // i />             ::   :: tuple    {{ com tuple                       }}
-    | bool_of ( ct )                         :: M :: bool_of  {{ com boolean from C type         }}
-                                                              {{ tex bool_{ [[ ct ]] }           }}
-
-    | to_base ( ct )                         :: M :: of_ctype {{ com of a C type                 }}
-                                                              {{ tex \beta_{ [[ct]] }            }}
-
+    | bool_of ( ct )                         :: M :: bool_of  {{ com boolean from C type         }} {{ tex bool_{ [[ ct ]] }           }}
+    | to_base ( ct )                         :: M :: of_ctype {{ com of a C type                 }} {{ tex \beta_{ [[ct]] }            }}
 
 grammar
 
@@ -169,7 +166,7 @@ grammar
     | >=  :: :: ge    {{ tex \mathbin{ \mathTT{>=} } }} {{ com greater than or equal to, similarly defined    }}
     | <=  :: :: le    {{ tex \mathbin{ \mathTT{<=} } }} {{ com less than or equal to, similarly defined       }}
     % logical connectives ( bool -> bool -> bool)
-    | /\  :: :: and   {{ tex \mathbin{ \mathTT{/\char`\\} } }} {{ com conjucntion }}
+    | /\  :: :: and   {{ tex \mathbin{ \mathTT{/\char`\\} } }} {{ com conjunction }}
     | \/  :: :: or    {{ tex \mathbin{ \mathTT{\char`\\/} } }} {{ com disjunction }}
 
   arith_binop {{ tex \mathbin{ binop_{arith} } }} :: 'Arith_Binop_' ::= {{ com arithmentic binary operators }}
@@ -831,8 +828,9 @@ grammar
     | )       :: :: rparen    {{ tex \right)                          }}
     | 1       :: :: one
     | 0       :: :: zero
-
-grammar
+    | |-lv    :: :: lv_turnst {{ tex \vdash_{\mathrm{lv} }            }}
+ 
+ grammar
 
   fon {{ tex \mathit{fun} }} :: Fun_ ::= {{ com function types }}
     | pi id : base_type . fon     ::     :: comp    {{ com assume a computational value        }}
@@ -902,15 +900,25 @@ grammar
     | x :: :: Some
 
   spec :: 'Spec_' ::= {{ com alternative, C-programmer friendly syntax for defining predicates and writing specifications }}
-    | cdot                                        ::  :: empty  {{ com empty specification                             }}
-    | return term ;                               ::  :: ret    {{ com specify output arguments                        }}
-    | let x = term ; spec                         ::  :: let    {{ com bind (pure) term                                }}
-    | take x = res_req ; spec                     ::  :: take   {{ com bind output arguments of resource (i)predicates }}
-    | assert ( term ) ; spec                      ::  :: assert {{ com assert specification                            }}
-    | if ( term ) { spec1 } else { spec2 } spec3  ::  :: if     {{ com conditional specification                       }}
+    | cdot                                        ::  :: empty  {{ com empty specification              }}
+    | return term ;                               ::  :: ret    {{ com specify output arguments         }}
+    | res_req                                     ::  :: res    {{ com name of (i)predicated            }}
+    | let x = term ; spec                         ::  :: let    (+ bind x in spec +)
+                                                                {{ com bind (pure) term                 }}
+    | take x = spec1 ; spec2                      ::  :: take   (+ bind x in spec1 +)
+                                                                {{ com bind output value of $[[spec1]]$ }}
+    | assert ( term ) ; spec                      ::  :: assert {{ com assert specification             }}
+    | if ( term ) { spec1 } else { spec2 } spec3  ::  :: if     {{ com conditional specification        }}
 
-spec_predicate_def :: 'Spec_pred_def_' ::=
-    | predicate base_type a ( </ base_typei xi // i /> ) { spec } :: :: Pred
+  spec_value , sval :: 'Spec_val_' ::=  {{ com specifications terminators }}
+    | cdot          :: :: empty
+    | return term ; :: :: ret
+
+  spec_predicate_def :: 'Spec_pred_def_' ::=
+      | predicate base_type a ( </ base_typei xi // i /> ) { spec } :: :: Pred
 
   user_def :: 'User_def_' ::= {{ com syntax for user-defined predicates and function specifications (pre- and post-conditions) }}
     | ct name ( </ cti xi // , // i /> ) requires spec1 ensures spec2                     :: :: CFunc
+
+  subrules
+    spec_value <:: spec

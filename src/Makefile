@@ -13,7 +13,7 @@ GEN := gen
 
 CACHE := $(BUILD)/ott.cache
 
-OTTS := mucore.ott explicit.ott inference.ott operational.ott misc.ott
+OTTS := mucore.ott explicit.ott inference.ott operational.ott misc.ott minicn.ott
 OTTS := $(addprefix ott/, $(OTTS))
 
 PDFS := $(BUILD)/defns.pdf $(BUILD)/soundness.pdf
