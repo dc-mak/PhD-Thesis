@@ -368,8 +368,8 @@ minicn_extra                                    :: mincn_extra_ ::=
      | Rc , Phi => term                         :: :: smt_proof {{ com $[[term]]$ is provable by SMT solver with constraints $[[Phi]]$ and disjointness information $[[Rc]]$ }}
      | Phi = Phi'                               :: :: eq_constraints
      | Vc = Vc'                                 :: :: eq_variable_contexts
-     | ldots                                    :: :: ldots
-%
+%    | ldots                                    :: :: ldots
+ 
 % %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 % %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 % %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
@@ -919,7 +919,7 @@ done_or_rerun {{ tex ( \cnkw{done} \mid \cnkw{rerun} ) }} :: 'DoR_' ::= {{ com f
 
  defns
 
-  minicn :: 'MiniCN_' ::=
+  mini :: 'Mini_' ::=
 
    defn P , Vc , Rc , Phi |- expand ( cond_res ) ~> Vc' , Rc' , Phi' :: :: CondRes_ :: CondRes_
    {{ com expand conditional resource $[[cond_res]]$ into contexts $[[Vc']] , [[Rc']] , [[Phi']]$ }} by
@@ -1115,53 +1115,53 @@ done_or_rerun {{ tex ( \cnkw{done} \mid \cnkw{rerun} ) }} :: 'DoR_' ::= {{ com f
 %    P , Vc , Rc , Phi |- Vc' , Phi' | if ( t ) { spec1 } else { spec2 } ~> cdot , Vc' , Rc' , Phi'
 %
 %
-  defn Vc , Rc , Phi |-lv lve -| id inEnv Vc' ,  Rc' , Phi' :: :: Lv_Expr_ :: lv_expr_ {{ com typing for lvalue-expressions $[[lve]]$ }} by
+  defn Vc , Rc , Phi |-lv lve -| id inEnv Vc' ,  Rc' , Phi' :: :: Lve_ :: Lve_ {{ com typing for lvalue-expressions $[[lve]]$ }} by
 
 {{ com
 \noindent Given variables $[[Vc]]$, resources $[[Rc]]$ and constraints $[[Phi]]$, typing lvalue-expression $[[lve]]$ symbolically evaluates to $[[id]]$, with new variables $[[Vc']]$, updated resources $[[Rc']]$ and additional constraints $[[Phi']]$ .
 }}
-%
-%    ---------------------------------------------------- :: constant
-%    Vc , Rc , Phi |-lv n -| id in [ id ] , Rc , ( id == n )
-%
-%
-%    id in Vc
-%    -------------------------------------------------------- :: variable
-%    Vc , Rc , Phi |-lv id -| id' in [ id' ] , Rc , ( id' == id )
-%
-%
-%    Vc , Rc , Phi |-lv le -| id1 in Vc' , Rc' , Phi'
-%    % @ TODO fix resource lookup
-%    Rc' = Rc'' * id1' |-> id2'
-%    Rc' , Phi' => id1 == id1'
-%    ----------------------------------------------------------------- :: deref
-%    Vc , Rc , Phi |-lv * le -| id2 in [ id2 , Vc' ] , Rc' , ( id2 == id2' /\ Phi' )
-%
 
-  defn  P , Vc , Rc , Phi |- y . spec e -| id inEnv Vc' ,  Rc' , Phi' :: :: Expr_ :: expr_ {{ tex [[P]] [[,]] [[Vc]] [[,]] [[Rc]] [[,]] [[Phi]] [[|-]]_{ [[y]] [[.]] [[spec]] } [[e]] [[-|]] [[id]] [[inEnv]] [[Vc']] [[,]]  [[Rc']] [[,]] [[Phi']] }} {{ com typing for expressions $[[e]]$ with a post-condition $[[spec]]$ }} by
+    ---------------------------------------------------- :: Const
+    Vc , Rc , Phi |-lv n -| id inEnv [ id ] , Rc , ( id = n )
+
+
+    id inEnv Vc
+    -------------------------------------------------------- :: Var
+    Vc , Rc , Phi |-lv id -| id' inEnv [ id' ] , Rc , ( id' = id )
+
+
+    Vc , Rc , Phi |-lv lve -| id1 inEnv Vc' , Rc' , Phi'
+    % @ TODO fix resource lookup
+    Rc' = Rc'' * id1' |-> id2'
+    Rc' , Phi' => id1 = id1'
+    ----------------------------------------------------------------- :: Deref
+    Vc , Rc , Phi |-lv * lve -| id2 inEnv [ id2 , Vc' ] , Rc' , ( id2 = id2' /\ Phi' )
+
+
+  defn  P , Vc , Rc , Phi |- y . spec e -| id inEnv Vc' ,  Rc' , Phi' :: :: Expr_ :: Expr_ {{ tex [[P]] [[,]] [[Vc]] [[,]] [[Rc]] [[,]] [[Phi]] [[|-]]_{ [[y]] [[.]] [[spec]] } [[e]] [[-|]] [[id]] [[inEnv]] [[Vc']] [[,]]  [[Rc']] [[,]] [[Phi']] }} {{ com typing for expressions $[[e]]$ with a post-condition $[[spec]]$ }} by
 
 
 {{ com
 \noindent Given variables $[[Vc]]$, resources $[[Rc]]$, constraints $[[Phi]]$ and postcondition $[[spec]]$, expression $[[e]]$ symbolically evaluates to $[[id]]$, with new variables $[[Vc']]$, updated resources $[[Rc']]$ and additional constraints $[[Phi']]$.
 }}
 
-    ---------------------------------------------------- :: constant
+    ---------------------------------------------------- :: Const
     P , Vc , Rc , Phi |- y . spec n -| id inEnv [ id ] , Rc , ( id = n )
 
     id inEnv Vc
     Rc = Rc' * id' |-> id2'
     Rc , Phi => id = id'
-    --------------------------------- :: variable
+    --------------------------------- :: Var
     P , Vc , Rc , Phi |- y . spec id -| id2 inEnv [ id2 ] , Rc , ( id2 = id2' )
 
 
     id inEnv Vc
-    -------- :: address_of
+    -------- :: Addr
     P , Vc , Rc , Phi |- y . spec &id -| id' inEnv [ id' ] , Rc , ( id' = id )
 
 
     P , Vc , Rc , Phi |- y . spec e -| id inEnv Vc' , Rc' , Phi'
-    ----------------------------------------------- :: not
+    ----------------------------------------------- :: Not
     P , Vc , Rc , Phi |- y . spec ! e -| id' inEnv [ id' , Vc' ] , Rc , ( id' = if id = 0 then 1 else 0 /\ Phi' )
 
 
@@ -1169,13 +1169,13 @@ done_or_rerun {{ tex ( \cnkw{done} \mid \cnkw{rerun} ) }} :: 'DoR_' ::= {{ com f
     Rc' = Rc'' * id' |-> id2'
     {{ @ TODO fix resource lookup }}
     Rc , Phi => id = id'
-    ----------------------------------------------- :: deref
+    ----------------------------------------------- :: Deref
     P , Vc , Rc , Phi |- y . spec * e -| id2 inEnv [ id2 , Vc' ] , Rc , ( id2 = id2' /\ Phi' )
 
 
     P , Vc , Rc , Phi |- y . spec e1 -| id1 inEnv Vc1 , Rc1 , Phi1
     P , Vc , Vc1 , Rc1 , Phi /\ Phi1 |- y . spec e2 -| id2 inEnv Vc2 , Rc2 , Phi2
-    ------------------------------------------------------------------ :: binop
+    ------------------------------------------------------------------ :: Binop
     P , Vc , Rc , Phi |- y . spec e1 arith_binop e2 -| id inEnv [ id , Vc1 , Vc2 ] , Rc2 , ( id = ( id1 ' arith_binop ' id2 )  /\ Phi1 /\ Phi2 )
 
 
@@ -1184,7 +1184,7 @@ done_or_rerun {{ tex ( \cnkw{done} \mid \cnkw{rerun} ) }} :: 'DoR_' ::= {{ com f
     Rc2 = Rc2' * id2' |-> _
     {{ @ TODO fix resource lookup }}
     Rc1 , Phi /\ Phi1 => id2 = id2'
-    ------------------------------------------------------------- :: assign
+    ------------------------------------------------------------- :: Assign
     P , Vc , Rc , Phi |- y . spec lve = e -| id inEnv [ id , Vc1 , Vc2 ] , Rc2 * id2 |-> id , Phi1 /\ Phi2 /\ ( id = id1 )
 
 
@@ -1193,13 +1193,13 @@ done_or_rerun {{ tex ( \cnkw{done} \mid \cnkw{rerun} ) }} :: 'DoR_' ::= {{ com f
     P , Vc , Vc1 , Rc1 , Phi /\ Phi1 |- y . spec e3 -| id3 inEnv Vc3 , Rc3 , Phi3
     Rc' = cond ( id1 , Rc2 , Rc3 )
     Phi' = Phi1 /\ cond ( id1 , Phi2 , Phi3 ) /\ ( id = if id1 then id2 else id3 )
-    ----------------------------------------------------------------------------------------- :: if
+    ----------------------------------------------------------------------------------------- :: If
     P , Vc , Rc , Phi |- y . spec if ( e1 ) e2 else e3 -| id inEnv [ id , Vc1 , Vc2 , Vc3 ] , Rc' , Phi'
 
 
     P , Vc , Rc , Phi |- y . spec e1 -| id1 inEnv Vc1 , Rc1 , Phi1
     P , Vc , Vc1 , Rc1 , Phi /\ Phi1 |- y . spec e2 -| id2 inEnv Vc2 , Rc2 , Phi2
-    ------------------------------------------------------------------ :: seq
+    ------------------------------------------------------------------ :: Seq
     P , Vc , Rc , Phi |- y . spec e1 ; e2 -| id inEnv [ id , Vc1 , Vc2 ] , Rc2 , ( id = id2  /\ Phi1 /\ Phi2 )
 
 
@@ -1208,16 +1208,16 @@ done_or_rerun {{ tex ( \cnkw{done} \mid \cnkw{rerun} ) }} :: 'DoR_' ::= {{ com f
     P(yf) = ct yf ( ct1 id1 , .. , ctk idk ) /*@ requires spec1 ensures y' . spec2 @*/ block
     P , Vck' , Rck , Phik' |- cdot , cdot , cdot | spec1 -| cdot , Vc' , used ( Rc1' ) * Rc2' , Phi'
     P , [ Vck' , Vc' ]  , Rc2' , Phik' /\ Phi' |- y' , cdot | spec2 ~> cdot  , Vc'' , Rc3' , Phi''
-    ------------------------------------------------------------------ :: call
+    ------------------------------------------------------------------ :: Call
     P , Vc0 , Rc0 , Phi0 |- y . spec yf ( e1 , .. , ek ) -| y' inEnv [ Vc1 , .. , Vck , Vc' , Vc'' ] , Rc3' , ( Phi1 /\ .. /\ Phik /\ Phi' /\ Phi'' )
 
 
     P , [ Vc , id1 , .. , idk ] , Rc , Phi |- y . spec e -| id1 inEnv Vc1 , Rc1 , Phi1
-    -------------------------------------------------------------------------------- :: block
+    -------------------------------------------------------------------------------- :: Block
     P , Vc , Rc , Phi |- y . spec { ct1 id1 ; .. ctk idk ; e } -| id1 inEnv [ id1 , .. , idk , Vc1 ] , Rc1 , Phi1
 
 
     P , Vc , Rc , Phi |- y . spec e -| id1 inEnv Vc1 , Rc1 , Phi1
     P , [ Vc , Vc1 , y ] , Rc1 , Phi /\ Phi1 /\ y = id1 |- cdot , cdot , cdot | spec -| cdot , Vc' , used ( Rc' ) * cdot , Phi'
-    ------------------------------------------------------------------ :: return
+    ------------------------------------------------------------------ :: Return
     P , Vc , Rc , Phi |- y . spec return e -| y inEnv [ y ] , cdot , false
