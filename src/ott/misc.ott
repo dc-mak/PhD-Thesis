@@ -265,11 +265,23 @@ defns
     [( cdot )] ( None ) = emp
 
     ----------------------------------------- :: Return
-    [( return term ; )] ( y ) = (  y = term )
+    [( return term )] ( y ) = (  y = term )
+
+
+%   pred_term def= a ( </ iargi // i /> )
+%   a def= </ _ : _bti // i  /> , _ : base_type |-> _res inEnv Globals
+    ------------------------------------------------------------------ :: Pred
+    [( pred_term )] ( y ) = pred_term ( y )
+
+
+%   ipred_term def= each (integer x; iguard) { a ( </ iargi // i /> ) }
+%   a def= </ _ : _bti // i  /> , _ : base_type |-> _res inEnv Globals
+    -------------------------------------------------------------------- :: IPred
+    [( ipred_term )] ( y ) = ipred_term ( y )
 
 
     [( spec )] ( opt_ident ) = res
-    ------------------------------------------------------------------ :: LetTerm
+    ---------------------------------------------------------- :: Let
     [( let y = term ; spec )] ( opt_ident ) = term / y ( res )
 
 
@@ -280,29 +292,14 @@ defns
 
     [( spec1 )] ( opt_ident ) = res1
     [( spec2 )] ( opt_ident ) = res2
-    ------------------------------------------------------------------------------------------------- :: EndIf
-    [( if ( term ) { spec1 } else { spec2 } cdot )] ( opt_ident ) = if term then res1 else res2
+    -------------------------------------------------------------------------------------- :: If
+    [( if ( term ) { spec1 } else { spec2 } )] ( opt_ident ) = if term then res1 else res2
 
 
-    [( spec1 )] ( None ) = res1
-    [( spec2 )] ( None ) = res2
-    [( spec3 )] ( opt_ident ) = res3
-    --------------------------------------------------------------------------------------------------------------- :: MiddleIf
-    [( if ( term ) { spec1 } else { spec2 } spec3 )] ( opt_ident ) = ( if term then res1 else res2 ) * res3
-
-
-    pred_term def= a ( </ iargi // i /> )
-    a def= </ _ : _bti // i  /> , _ : base_type |-> _res inEnv Globals
-    [( spec )] ( opt_ident ) = res
-    ------------------------------------------------------------------------------------- :: TakePred
-    [( take y = pred_term ; spec )] ( opt_ident ) = exists y : base_type . pred_term ( y ) * res
-
-
-    ipred_term def= each (integer x; iguard) { a ( </ iargi // i /> ) }
-    a def= </ _ : _bti // i  /> , _ : base_type |-> _res inEnv Globals
-    [( spec )] ( opt_ident ) = res
-    ------------------------------------------------------------------------------------- :: TakeIPred
-    [( take y = ipred_term ; spec )] ( opt_ident ) = exists y : array base_type . ipred_term ( y ) * res
+    [( spec )] ( y ) = res
+    [( spec' )] ( opt_ident ) = res'
+    ----------------------------------------------------------------------------- :: Take
+    [( take y = spec ; spec' )] ( opt_ident ) = exists y : base_type . res * res'
 
 
   defn [( spec )] = out_norm_ret :: :: NormRet :: NormRet_
@@ -313,33 +310,19 @@ defns
 
 
     [( spec )] = norm_ret
-    -------------------------------------------------------- :: LetTerm
+    -------------------------------------------------------- :: Let
     [( let y = term ; spec )] = term / y ( norm_ret )
 
 
     [( spec )] = norm_ret
-    --------------------------------------------------------------- :: Assert
+    ----------------------------------------------- :: Assert
     [( assert ( term ) ; spec )] = term /\ norm_ret
 
 
-    [( if ( term ) { spec1 } else { spec2 } cdot )] ( None ) = norm_res
-    [( spec3 )] = norm_ret
-    ------------------------------------------------------------------------------------------------- :: If
-    [( if ( term ) { spec1 } else { spec2 } spec3 )] = norm_res *o norm_ret
-
-
-    pred_term def= a ( </ iargi // i /> )
-    a def= </ _ : _bti // i  /> , _ : base_type |-> _res inEnv Globals
-    [( spec )] = norm_ret
-    ------------------------------------------------------------------------------------- :: TakePred
-    [( take y = pred_term ; spec )] = exists y : base_type . pred_term ( y ) *o norm_ret
-
-
-    ipred_term def= each (integer x; iguard) { a ( iargs ) }
-    a def= </ _ : _bti // i  /> , _ : base_type |-> _res inEnv Globals
-    [( spec )] = norm_ret
-    ------------------------------------------------------------------------------------- :: TakeIPred
-    [( take y = ipred_term ; spec )] = exists y : array base_type . ipred_term ( y ) *o norm_ret
+    [( spec )] ( y ) = norm_res
+    [( spec' )] = norm_ret
+    ------------------------------------------------------------------------- :: Take
+    [( take y = spec ; spec' )] = exists y : base_type . norm_res *o norm_ret
 
 
   defn [( spec | norm_ret )] = out_norm_fun :: :: NormArg :: NormArg_
@@ -350,7 +333,7 @@ defns
 
 
     [( spec | norm_ret )] = norm_fun
-    ---------------------------------------------------------------------- :: LetTerm
+    ---------------------------------------------------------------------- :: Let
     [( let y = term ; spec | norm_ret )] = term / y ( norm_fun )
 
 
@@ -359,24 +342,10 @@ defns
     [( assert ( term ) ; spec | norm_ret )] = term -) norm_fun
 
 
-    [( if ( term ) { spec1 } else { spec2 } cdot )] ( None ) = norm_res
-    [( spec3 | norm_ret )] = norm_fun
-    -------------------------------------------------------------------------------------- :: If
-    [( if ( term ) { spec1 } else { spec2 } spec3 | norm_ret )] = norm_res --o norm_fun
-
-
-    pred_term def= a ( </ iargi // i /> )
-    a def= </ _ : _bti // i  /> , _ : base_type |-> _res inEnv Globals
-    [( spec | norm_ret )] = norm_fun
-    ------------------------------------------------------------------------------------------------ :: TakePred
-    [( take y = pred_term ; spec | norm_ret )] = forall y : base_type . pred_term ( y ) --o norm_fun
-
-
-    ipred_term def= each (integer x; iguard) { a ( iargs ) }
-    a def= </ _ : _bti // i  /> , _ : base_type |-> _res inEnv Globals
-    [( spec | norm_ret )] = norm_fun
-    ------------------------------------------------------------------------------------- :: TakeIPred
-    [( take y = ipred_term ; spec | norm_ret )] = forall y : array base_type . ipred_term ( y ) --o norm_fun
+    [( spec )] ( y ) = norm_res
+    [( spec' | norm_ret )] = norm_fun
+    ------------------------------------------------------------------------------------- :: Take
+    [( take y = spec ; spec' | norm_ret )] = forall y : base_type . norm_res --o norm_fun
 
 
   defn [( ct name ( </ cti xi // , // i /> ) requires spec1 ensures spec2 )] = out_norm_fun :: :: UserDef :: UserDef_
@@ -393,12 +362,12 @@ defns
     [( ct name( ct1 x1 , </ cti xi // i /> ) requires spec1 ensures spec2 )] = pi x1 : to_base ( ct1 ) . norm_fun
 
 
-  defn [( predicate { </ base_type'j Symbol_identifierj // j /> }  a ( </ base_typei xi // , // i /> ) { spec } )] = a' def= </ rk : base_type''k // , // k /> |-> res :: :: PredDef :: PredDef_
+  defn [( predicate base_type  a ( </ base_typei xi // , // i /> ) { spec } )] = a' def= </ rk : base_type''k // , // k /> |-> res :: :: PredDef :: PredDef_
   {{ com user-defined resource predicate definition represents predicate }}  by
 
     [( spec )] ( y ) = res
     ---------------------- :: Pred
-    [( predicate { </ base_type'j Symbol_identifierj // j /> }  a ( loc xp , </ base_typei xi // i /> ) { spec } )] = a def= xp : loc , </ xi : base_typei // i /> , y : base_type |-> res
+    [( predicate base_type  a ( </ base_typei xi // i /> ) { spec } )] = a def= </ xi : base_typei // i /> , y : base_type |-> res
 
 
 defns

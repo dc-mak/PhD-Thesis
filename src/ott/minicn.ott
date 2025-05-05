@@ -13,7 +13,7 @@ embed  {{ tex-preamble
 
 }}
 
-metavar p, main {{ tex \mathTT{main} }} , top {{ tex \mathTT{top} }} , _id {{ tex \_ }} ::= {{ com MiniCN identifiers }}
+metavar main {{ tex \mathTT{main} }} , top {{ tex \mathTT{top} }} , _id {{ tex \_ }} ::= {{ com MiniCN identifiers }}
 % deleted: f   (kernel: heap frames, here: function name)
 %          ret (kernel: return type, here: return value binder)
 %          id  (kernel: struct/union name, here: identifier)
@@ -354,10 +354,10 @@ minicn_extra                                    :: mincn_extra_ ::=
 %    | H ( n ) = n'                             :: :: H_lookup
 %    | G ( n ) = n'                             :: :: G_lookup
      | P ( id ) = func                          :: :: P_lookup
-%    | P ( id ) = spec_predicate_def          :: :: P_lookup_pred
+     | P ( id ) = spec_predicate_def            :: :: P_lookup_pred
 %    | P ( f ) = spec_function_def              :: :: P_lookup_func
 %    | n in R                                   :: :: R_in
-%    | not ( formula )                          :: :: not
+     | neg ( minicn_extra )                     :: :: not
 %    | isvalue ( e )                            :: :: isvalue
 %    | runtime_check_res ( formula )            :: :: runtime_check_res
 %    | runtime_check_imp ( formula )            :: :: runtime_check_imp
@@ -1049,72 +1049,72 @@ done_or_rerun {{ tex ( \cnkw{done} \mid \cnkw{rerun} ) }} :: 'DoR_' ::= {{ com f
 %    ------------------------------------------------------------------------------ :: noret_undet
 %    P , Vc , Rc , Phi |- Vc' , Rc' , Phi' | if ( t ) { spec1 } else { spec2 } -| cdot , Vc' , used ( Rc1 ) * Rc2 , Phi'
 %
-   defn  P , Vc , Rc , Phi |- Vc' , Phi' | spec ~> sval , Vc'' , Rc'' , Phi'' :: :: Spec_ctx_ :: spec_ctx_ {{ com deconstruct $[[spec]]$ into $[[sval]]$ and contexts $[[Vc'']] , [[Rc'']] , [[Phi'']]$ }} by
+   defn  P , Vc , Rc , Phi |- Vc' , Phi' | spec ~> sval , Vc'' , Rc'' , Phi'' :: :: Elim_ :: Elim_ {{ com deconstruct $[[spec]]$ into $[[sval]]$ and contexts $[[Vc'']] , [[Rc'']] , [[Phi'']]$ }} by
 
  {{ com
  \noindent Given program $[[P]]$, variables $[[Vc]]$, resources $[[Rc]]$ and constraints $[[Phi]]$, (and accumulating contexts $[[Vc']]$ and $[[Phi']]$, post-condition $[[spec]]$ represents a $[[sval]]$, and additional variables $[[Vc'']]$, additional resources $[[Rc'']]$, and additional constraints $[[Phi'']]$.
  }}
 
-%    ------------------------------------------------------ :: value
-%    P , Vc , Rc , Phi |- Vc' , Phi' | sval  ~>  sval  , Vc' , Rc ,  Phi'
-%
-%
-%    --------------------------------------------------------------- :: return
-%    P , Vc , Rc , Phi |- Vc' , Phi' | return t ~>  return t , Vc' , Rc ,  Phi'
-%
-%
-%    P , Vc , Rc , Phi |- Vc' , Phi' /\ t | spec ~> sval , Vc'' , Rc' , Phi''
-%    --------------------------------------------------------------- :: assert
-%    P , Vc , Rc , Phi |- Vc' , Phi' | assert ( t ) ; spec ~> sval , Vc'' , Rc' , Phi''
-%
-%
-%    P , Vc , Rc , Phi |- [ id, Vc' ] , Phi' /\ id == t | spec ~> sval ,  Vc'' , Rc' , Phi''
-%    ------------------------------------------------------- :: let
-%    P , Vc , Rc , Phi |- Vc' , Phi' | let id = t; spec ~> sval , Vc'' , Rc' , Phi''
-%
-%
-%    -------------------------------------------------------------------- :: owned
-%    P , Vc , Rc , Phi |- Vc' , Phi' | Owned ( t ) ~> return id , [ id , Vc' ] ,  t |-> id * Rc , Phi'
-%
-%
-%    P ( f ) = predicate bty f ( bty1 id1 , .. , btyk idk ) { spec }
-%    Vc1 = [ id1 , .. , idk , Vc' ]
-%    Phi1 = ( id1 == t1 /\ .. /\ idk == tk /\ Phi' )
-%    P , Vc , Rc , Phi |- Vc1 , Phi1 | spec ~> return t , Vc'' , Rc' , Phi''
-%    ---------------------------------------------------------------------------------- :: user_pred
-%    P , Vc , Rc , Phi |- Vc' , Phi' | f ( t1 , .. , tk ) ~> sval , Vc'' , Rc' , Phi''
-%
-%
-%    P , Vc , Rc  , Phi |- Vc1 , Phi1 | spec ~> return t   , Vc2 , Rc2 , Phi2
-%    P , Vc , Rc2 , Phi |- Vc2 , Phi2 | spec    ~> sval , Vc3 , Rc3 , Phi3
-%    ---------------------------------------------------------------------------------- :: take
-%    P , Vc , Rc , Phi |- Vc1 , Phi2 | take id = spec ; spec ~> sval , Vc3 , Rc3 , Phi3
-%
-%
-%    Rc , Phi /\ Phi' => t
-%    P , Vc , Rc , Phi  |- Vc' , Phi' | spec1 ~> sval1 , Vc'' , Rc' , Phi''
-%    -------------------------------------------------------------- :: if_true
-%    P , Vc , Rc , Phi |- Vc' , Phi' | if ( t ) { spec1 } else { spec2 } ~> sval1 , Vc'' , Rc' , Phi''
-%
-%
-%    Rc , Phi /\ Phi' => ! t
-%    P , Vc , Rc , Phi |- Vc' , Phi' | spec2 ~> sval2 , Vc'' , Rc' , Phi''
-%    -------------------------------------------------------------- :: if_false
-%    P , Vc , Rc , Phi |- Vc' , Phi' | if ( t ) { spec1 } else { spec2 } ~> sval2 , Vc'' , Rc' , Phi''
-%
-%
-%    not ( Rc , Phi /\ Phi' => t ) not ( Rc , Phi /\ Phi' => ! t )
-%    Rc' = Rc *  cond ( t , id = spec1 , id = spec2 )
-%    ------------------------------------------------------------------------------ :: ret_undet
-%    P , Vc , Rc , Phi |- Vc' , Phi' | if ( t ) { spec1 } else { spec2 } ~> return id , [ id , Vc' ] , Rc' , Phi'
-%
-%
-%    not ( Rc , Phi /\ Phi' => t ) not ( Rc , Phi /\ Phi' => ! t )
-%    Rc' = Rc *  cond ( t , spec1 , spec2 )
-%    ------------------------------------------------------------------------------ :: noret_undet
-%    P , Vc , Rc , Phi |- Vc' , Phi' | if ( t ) { spec1 } else { spec2 } ~> cdot , Vc' , Rc' , Phi'
-%
-%
+    ------------------------------------------------------ :: Value
+    P , Vc , Rc , Phi |- Vc' , Phi' | sval  ~>  sval  , Vc' , Rc ,  Phi'
+
+
+    --------------------------------------------------------------- :: Return
+    P , Vc , Rc , Phi |- Vc' , Phi' | return term ~>  return term , Vc' , Rc ,  Phi'
+
+
+    P , Vc , Rc , Phi |- Vc' , Phi' /\ term | spec ~> sval , Vc'' , Rc' , Phi''
+    --------------------------------------------------------------- :: Assert
+    P , Vc , Rc , Phi |- Vc' , Phi' | assert ( term ) ; spec ~> sval , Vc'' , Rc' , Phi''
+
+
+    P , Vc , Rc , Phi |- [ id, Vc' ] , Phi' /\ id = term | spec ~> sval ,  Vc'' , Rc' , Phi''
+    ------------------------------------------------------- :: Let
+    P , Vc , Rc , Phi |- Vc' , Phi' | let id = term; spec ~> sval , Vc'' , Rc' , Phi''
+
+
+    -------------------------------------------------------------------- :: Owned
+    P , Vc , Rc , Phi |- Vc' , Phi' | Owned < Init , int > ( term ) ~> return id , [ id , Vc' ] ,  term |-> id * Rc , Phi'
+
+
+    P ( yf ) = predicate base_type yf ( base_type1 id1 , .. , base_typek idk ) { spec }
+    Vc1 = [ id1 , .. , idk , Vc' ]
+    Phi1 = ( id1 = term1 /\ .. /\ idk = termk /\ Phi' )
+    P , Vc , Rc , Phi |- Vc1 , Phi1 | spec ~> return term , Vc'' , Rc' , Phi''
+    ---------------------------------------------------------------------------------- :: Pred
+    P , Vc , Rc , Phi |- Vc' , Phi' | yf ( term1 , .. , termk ) ~> sval , Vc'' , Rc' , Phi''
+
+
+    P , Vc , Rc  , Phi |- Vc1 , Phi1 | spec ~> return term   , Vc2 , Rc2 , Phi2
+    P , Vc , Rc2 , Phi |- Vc2 , Phi2 | spec    ~> sval , Vc3 , Rc3 , Phi3
+    ---------------------------------------------------------------------------------- :: Take
+    P , Vc , Rc , Phi |- Vc1 , Phi2 | take id = spec ; spec ~> sval , Vc3 , Rc3 , Phi3
+
+
+    Rc , Phi /\ Phi' => term
+    P , Vc , Rc , Phi  |- Vc' , Phi' | spec1 ~> sval1 , Vc'' , Rc' , Phi''
+    -------------------------------------------------------------- :: If_True
+    P , Vc , Rc , Phi |- Vc' , Phi' | if ( term ) { spec1 } else { spec2 } ~> sval1 , Vc'' , Rc' , Phi''
+
+
+    Rc , Phi /\ Phi' => neg term
+    P , Vc , Rc , Phi |- Vc' , Phi' | spec2 ~> sval2 , Vc'' , Rc' , Phi''
+    -------------------------------------------------------------- :: If_False
+    P , Vc , Rc , Phi |- Vc' , Phi' | if ( term ) { spec1 } else { spec2 } ~> sval2 , Vc'' , Rc' , Phi''
+
+
+    neg ( Rc , Phi /\ Phi' => term ) neg ( Rc , Phi /\ Phi' => neg term )
+    Rc' = Rc *  cond ( term , id = spec1 , id = spec2 )
+    ------------------------------------------------------------------------------ :: Ret_Undet
+    P , Vc , Rc , Phi |- Vc' , Phi' | if ( term ) { spec1 } else { spec2 } ~> return id , [ id , Vc' ] , Rc' , Phi'
+
+
+    neg ( Rc , Phi /\ Phi' => term ) neg ( Rc , Phi /\ Phi' => neg term )
+    Rc' = Rc *  cond ( term , spec1 , spec2 )
+    ------------------------------------------------------------------------------ :: NoRet_Undet
+    P , Vc , Rc , Phi |- Vc' , Phi' | if ( term ) { spec1 } else { spec2 } ~> cdot , Vc' , Rc' , Phi'
+
+
   defn Vc , Rc , Phi |-lv lve -| id inEnv Vc' ,  Rc' , Phi' :: :: Lve_ :: Lve_ {{ com typing for lvalue-expressions $[[lve]]$ }} by
 
 {{ com
