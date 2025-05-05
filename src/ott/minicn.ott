@@ -985,70 +985,70 @@ done_or_rerun {{ tex ( \cnkw{done} \mid \cnkw{rerun} ) }} :: 'DoR_' ::= {{ com f
 %   P , Vc , Rc , Phi |- simplify ( Vc' , Rc' , Phi' ) ~> Vc'' , Rc'' , Phi''
 %
 %
-   defn  P , Vc , Rc , Phi |- Vc' , Rc' , Phi' | spec -| sval , Vc'' , used ( Rc1 ) * Rc2 , Phi'' :: :: Spine_ :: spine_ {{ com check context implies $[[spec]]$ and produce contexts $[[Vc']] , [[ Rc1 ]], [[Rc2]] , [[Phi']]$ }} by
+   defn  P , Vc , Rc , Phi |- Vc' , Rc' , Phi' | spec -| sval , Vc'' , used ( Rc1 ) * Rc2 , Phi'' :: :: Spine_ :: Spine_ {{ com check context implies $[[spec]]$ and produce contexts $[[Vc']] , [[ Rc1 ]], [[Rc2]] , [[Phi']]$ }} by
 
-%    ------------------------------------------------------ :: value
-%    P , Vc , Rc , Phi |- Vc' , Rc' , Phi' | sval -| sval , Vc' , used ( Rc' ) * Rc , Phi'
-%
-%
-%    % @ TODO fix resource lookup
-%    Rc , Phi => t == id1
-%    ---------------------------------------------------------------------------- :: owned
-%    P , Vc , Rc * (id1 |-> id2) , Phi |- Vc' , Rc' , Phi' | Owned ( t ) -| return id2 , Vc' , used ( Rc' * ( id1 |-> id2 ) ) * Rc , Phi'
-%
-%
-%    P ( f ) = predicate bty f ( bty1 id1 , .. , btyk idk ) { spec }
-%    Vc1 = [ id1 , .. , idk , Vc' ]
-%    Phi1 = ( Phi' /\ id1 == t1 /\ .. /\ idk == tk )
-%    P , Vc , Rc , Phi |- Vc1 , Rc' , Phi1 | spec -| return t , Vc2 , used ( Rc1 ) * Rc2 , Phi2
-%    --------------------------------------------------------------------------- :: user_pred
-%    P , Vc , Rc , Phi |- Vc' , Rc' , Phi' | f ( t1 , .. , tk ) -| return t , Vc2 , used ( Rc1 ) * Rc2 , Phi2
-%
-%
-%    Rc , Phi /\ Phi' => t
-%    P , Vc , Rc , Phi |- Vc' , Rc' , Phi' | spec -| sval , Vc'' , used ( Rc1 ) * Rc2 , Phi''
-%    ------------------------------------------------------------ :: assert
-%    P , Vc , Rc , Phi |- Vc' , Rc' , Phi' | assert ( t ) ; spec -| sval , Vc'' , used ( Rc1 ) * Rc2 , Phi''
-%
-%
-%    P , Vc , Rc , Phi |-  [ id , Vc' ] , Rc' , Phi' /\ id == t | spec -| sval , Vc'' , used ( Rc1 ) * Rc2 , Phi''
-%    ---------------------------------------------------------------------------------- :: let
-%    P , Vc , Rc , Phi |- Vc' , Rc', Phi' | let id = t ; spec -| sval , Vc'' , used ( Rc1 ) * Rc2 , Phi''
-%
-%
-%    P , Vc , Rc , Phi |- Vc1 , Rc1 ,  Phi1 | spec -| return t , Vc2 , used ( Rc21 ) * Rc22 , Phi2
-%    P , Vc , Rc22 , Phi |- [ id, Vc2 ] , Rc21 , ( Phi2 /\ id == t ) | spec' -| sval , Vc3 , used ( Rc31 ) * Rc32 , Phi3
-%    --------------------------------------------------------------------------- :: take
-%    P , Vc , Rc , Phi |- Vc1 , Rc1 , Phi1 | take id = spec ; spec' -| sval , Vc3 , used ( Rc31 ) * Rc32 , Phi3
-%
-%
-%    Rc , Phi /\ Phi' => t
-%    P , Vc , Rc , Phi |- Vc' , Rc' ,  Phi' | spec1 -| sval , Vc'' , used ( Rc''1 ) * Rc''2 , Phi''
-%    ------------------------------------------------------------------------------ :: if_true
-%    P , Vc , Rc , Phi |- Vc' , Rc' , Phi' | if ( t ) { spec1 } else { spec2 } -| sval , Vc'' , used ( Rc''1 ) * Rc''2 , Phi''
-%
-%
-%    Rc , Phi /\ Phi' => ! t
-%    P , Vc , Rc , Phi |- Vc' , Rc' ,  Phi' | spec2 -| sval , Vc'' , used ( Rc''1) * Rc''2 , Phi''
-%    ------------------------------------------------------------------------------ :: if_false
-%    P , Vc , Rc , Phi |- Vc' , Rc' , Phi' | if ( t ) { spec1 } else { spec2 } -| sval , Vc'' , used ( Rc'' ) * Rc''2 , Phi''
-%
-%
-%    not ( Rc , Phi /\ Phi' => t ) not ( Rc , Phi /\ Phi' => !t )
-%    % @ TODO fix resource lookup
-%    Rc = Rc2 *  cond ( t , id = spec1 , id = spec2 )
-%    Rc1 = Rc' * cond ( t , id = spec1 , id = spec2 )
-%    ------------------------------------------------------------------------------ :: ret_undet
-%    P , Vc , Rc , Phi |- Vc' , Rc' , Phi' | if ( t ) { spec1 } else { spec2 } -| return id , Vc' , used ( Rc1 ) * Rc2 , Phi'
-%
-%
-%    not ( Rc , Phi /\ Phi' => t ) not ( Rc , Phi /\ Phi' => !t )
-%    % @ TODO fix resource lookup
-%    Rc = Rc2 *  cond ( t , id = spec1 , id = spec2 )
-%    Rc1 = Rc' *  cond ( t, id = spec1 , id = spec2 )
-%    ------------------------------------------------------------------------------ :: noret_undet
-%    P , Vc , Rc , Phi |- Vc' , Rc' , Phi' | if ( t ) { spec1 } else { spec2 } -| cdot , Vc' , used ( Rc1 ) * Rc2 , Phi'
-%
+    ------------------------------------------------------ :: Val
+    P , Vc , Rc , Phi |- Vc' , Rc' , Phi' | sval -| sval , Vc' , used ( Rc' ) * Rc , Phi'
+
+
+    {{ @ TODO fix resource lookup }}
+    Rc , Phi => term = id1
+    ---------------------------------------------------------------------------- :: Owned
+    P , Vc , Rc * (id1 |-> id2) , Phi |- Vc' , Rc' , Phi' | Owned < Init , int > ( term ) -| return id2 , Vc' , used ( Rc' * ( id1 |-> id2 ) ) * Rc , Phi'
+
+
+    P ( yf ) = predicate base_type yf ( base_type1 id1 , .. , base_typek idk ) { spec }
+    Vc1 = [ id1 , .. , idk , Vc' ]
+    Phi1 = ( Phi' /\ id1 = term1 /\ .. /\ idk = termk )
+    P , Vc , Rc , Phi |- Vc1 , Rc' , Phi1 | spec -| return term , Vc2 , used ( Rc1 ) * Rc2 , Phi2
+    --------------------------------------------------------------------------- :: Pred
+    P , Vc , Rc , Phi |- Vc' , Rc' , Phi' | yf ( term1 , .. , termk ) -| return term , Vc2 , used ( Rc1 ) * Rc2 , Phi2
+
+
+    Rc , Phi /\ Phi' => term
+    P , Vc , Rc , Phi |- Vc' , Rc' , Phi' | spec -| sval , Vc'' , used ( Rc1 ) * Rc2 , Phi''
+    ------------------------------------------------------------ :: Assert
+    P , Vc , Rc , Phi |- Vc' , Rc' , Phi' | assert ( term ) ; spec -| sval , Vc'' , used ( Rc1 ) * Rc2 , Phi''
+
+
+    P , Vc , Rc , Phi |-  [ id , Vc' ] , Rc' , Phi' /\ id = term | spec -| sval , Vc'' , used ( Rc1 ) * Rc2 , Phi''
+    ---------------------------------------------------------------------------------- :: Let
+    P , Vc , Rc , Phi |- Vc' , Rc', Phi' | let id = term ; spec -| sval , Vc'' , used ( Rc1 ) * Rc2 , Phi''
+
+
+    P , Vc , Rc , Phi |- Vc1 , Rc1 ,  Phi1 | spec -| return term , Vc2 , used ( Rc21 ) * Rc22 , Phi2
+    P , Vc , Rc22 , Phi |- [ id, Vc2 ] , Rc21 , ( Phi2 /\ id = term ) | spec' -| sval , Vc3 , used ( Rc31 ) * Rc32 , Phi3
+    --------------------------------------------------------------------------- :: Take
+    P , Vc , Rc , Phi |- Vc1 , Rc1 , Phi1 | take id = spec ; spec' -| sval , Vc3 , used ( Rc31 ) * Rc32 , Phi3
+
+
+    Rc , Phi /\ Phi' => term
+    P , Vc , Rc , Phi |- Vc' , Rc' ,  Phi' | spec1 -| sval , Vc'' , used ( Rc''1 ) * Rc''2 , Phi''
+    ------------------------------------------------------------------------------ :: If_True
+    P , Vc , Rc , Phi |- Vc' , Rc' , Phi' | if ( term ) { spec1 } else { spec2 } -| sval , Vc'' , used ( Rc''1 ) * Rc''2 , Phi''
+
+
+    Rc , Phi /\ Phi' => neg term
+    P , Vc , Rc , Phi |- Vc' , Rc' ,  Phi' | spec2 -| sval , Vc'' , used ( Rc''1) * Rc''2 , Phi''
+    ------------------------------------------------------------------------------ :: If_False
+    P , Vc , Rc , Phi |- Vc' , Rc' , Phi' | if ( term ) { spec1 } else { spec2 } -| sval , Vc'' , used ( Rc'' ) * Rc''2 , Phi''
+
+
+    neg ( Rc , Phi /\ Phi' => term ) neg ( Rc , Phi /\ Phi' => neg term )
+    {{ @ TODO fix resource lookup }}
+    Rc = Rc2 *  cond ( term , id = spec1 , id = spec2 )
+    Rc1 = Rc' * cond ( term , id = spec1 , id = spec2 )
+    ------------------------------------------------------------------------------ :: Ret_Undet
+    P , Vc , Rc , Phi |- Vc' , Rc' , Phi' | if ( term ) { spec1 } else { spec2 } -| return id , Vc' , used ( Rc1 ) * Rc2 , Phi'
+
+
+    neg ( Rc , Phi /\ Phi' => term ) neg ( Rc , Phi /\ Phi' => neg term )
+    {{ @ TODO fix resource lookup }}
+    Rc = Rc2 *  cond ( term , id = spec1 , id = spec2 )
+    Rc1 = Rc' *  cond ( term , id = spec1 , id = spec2 )
+    ------------------------------------------------------------------------------ :: NoRet_Undet
+    P , Vc , Rc , Phi |- Vc' , Rc' , Phi' | if ( term ) { spec1 } else { spec2 } -| cdot , Vc' , used ( Rc1 ) * Rc2 , Phi'
+
    defn  P , Vc , Rc , Phi |- Vc' , Phi' | spec ~> sval , Vc'' , Rc'' , Phi'' :: :: Elim_ :: Elim_ {{ com deconstruct $[[spec]]$ into $[[sval]]$ and contexts $[[Vc'']] , [[Rc'']] , [[Phi'']]$ }} by
 
  {{ com
@@ -1104,12 +1104,14 @@ done_or_rerun {{ tex ( \cnkw{done} \mid \cnkw{rerun} ) }} :: 'DoR_' ::= {{ com f
 
 
     neg ( Rc , Phi /\ Phi' => term ) neg ( Rc , Phi /\ Phi' => neg term )
+    {{ @ TODO fix resource lookup }}
     Rc' = Rc *  cond ( term , id = spec1 , id = spec2 )
     ------------------------------------------------------------------------------ :: Ret_Undet
     P , Vc , Rc , Phi |- Vc' , Phi' | if ( term ) { spec1 } else { spec2 } ~> return id , [ id , Vc' ] , Rc' , Phi'
 
 
     neg ( Rc , Phi /\ Phi' => term ) neg ( Rc , Phi /\ Phi' => neg term )
+    {{ @ TODO fix resource lookup }}
     Rc' = Rc *  cond ( term , spec1 , spec2 )
     ------------------------------------------------------------------------------ :: NoRet_Undet
     P , Vc , Rc , Phi |- Vc' , Phi' | if ( term ) { spec1 } else { spec2 } ~> cdot , Vc' , Rc' , Phi'
@@ -1131,7 +1133,7 @@ done_or_rerun {{ tex ( \cnkw{done} \mid \cnkw{rerun} ) }} :: 'DoR_' ::= {{ com f
 
 
     Vc , Rc , Phi |-lv lve -| id1 inEnv Vc' , Rc' , Phi'
-    % @ TODO fix resource lookup
+    {{ @ TODO fix resource lookup }}
     Rc' = Rc'' * id1' |-> id2'
     Rc' , Phi' => id1 = id1'
     ----------------------------------------------------------------- :: Deref
