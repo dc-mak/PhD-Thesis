@@ -941,36 +941,36 @@ done_or_rerun {{ tex ( \cnkw{done} \mid \cnkw{rerun} ) }} :: 'DoR_' ::= {{ com f
    defn  P , Vc , Rc , Phi |- simplify ( Rc' ) ~> done_or_rerun , Vc' , Rc'' , Phi' :: :: Res_ :: Res_
    {{ com simplify $[[Rc']]$ and produce contexts $[[Vc']] , [[Rc'']] , [[Phi']]$ (think concat-map with an extra flag for change or no-change) }} by
 
-%
-%   ------------------------------------------------------------- :: emp
-%    P , Vc , Rc , Phi |- simplify ( cdot ) ~>  done , cdot , cdot , cdot
-%
-%
-%    P , Vc , Rc , Phi |- simplify ( Rc' ) ~> done_or_rerun , Vc' , Rc'' , Phi'
-%    -------------------------------------------------- :: owned
-%    P , Vc , Rc , Phi |- simplify ( ( t |-> t' ) * Rc' ) ~> done_or_rerun , Vc' ,  ( t |-> t' ) * Rc'' , Phi'
-%
-%
-%    Rc , Phi => t
-%    P , Vc , Rc , Phi |- expand ( cond_res1 ) ~> Vc' , Rc1 , Phi'
-%    P , Vc , Rc , Phi |- simplify ( Rc' ) ~> done_or_rerun , Vc'' , Rc'' , Phi''
-%    -------------------------------------------------- :: cond_true
-%    P , Vc , Rc , Phi |- simplify ( cond ( t , cond_res1 , cond_res2 ) *  Rc' ) ~> rerun , [ Vc' , Vc'' ] ,  Rc1 * Rc'' , Phi' /\ Phi''
-%
-%
-%    Rc , Phi => ! t
-%    P , Vc , Rc , Phi |- expand ( cond_res2 ) ~> Vc' , Rc2 , Phi'
-%    P , Vc , Rc , Phi |- simplify ( Rc' ) ~> done_or_rerun , Vc'' , Rc'' , Phi''
-%    -------------------------------------------------- :: cond_false
-%    P , Vc , Rc , Phi |- simplify ( cond ( t , cond_res1 , cond_res2 ) *  Rc' ) ~> rerun , [ Vc' , Vc'' ] ,  Rc2 * Rc'' , Phi' /\ Phi''
-%
-%
-%    not ( Rc , Phi => t ) not ( Rc , Phi => ! t )
-%    P , Vc , Rc , Phi |- simplify ( Rc' ) ~> done_or_rerun , Vc'' , Rc'' , Phi''
-%    -------------------------------------------------- :: cond_under
-%    P , Vc , Rc , Phi |- simplify ( cond ( t , cond_res1 , cond_res2 ) *  Rc' ) ~> done_or_rerun , Vc'' ,  cond ( t , cond_res1 , cond_res2 ) * Rc'' , Phi''
-%
-%
+
+   ------------------------------------------------------------- :: Emp
+    P , Vc , Rc , Phi |- simplify ( cdot ) ~>  done , cdot , cdot , cdot
+
+
+    P , Vc , Rc , Phi |- simplify ( Rc' ) ~> done_or_rerun , Vc' , Rc'' , Phi'
+    -------------------------------------------------- :: Owned
+    P , Vc , Rc , Phi |- simplify ( ( term |-> term' ) * Rc' ) ~> done_or_rerun , Vc' ,  ( term |-> term' ) * Rc'' , Phi'
+
+
+    Rc , Phi => term
+    P , Vc , Rc , Phi |- expand ( cond_res1 ) ~> Vc' , Rc1 , Phi'
+    P , Vc , Rc , Phi |- simplify ( Rc' ) ~> done_or_rerun , Vc'' , Rc'' , Phi''
+    -------------------------------------------------- :: Cond_True
+    P , Vc , Rc , Phi |- simplify ( cond ( term , cond_res1 , cond_res2 ) *  Rc' ) ~> rerun , [ Vc' , Vc'' ] ,  Rc1 * Rc'' , Phi' /\ Phi''
+
+
+    Rc , Phi => neg term
+    P , Vc , Rc , Phi |- expand ( cond_res2 ) ~> Vc' , Rc2 , Phi'
+    P , Vc , Rc , Phi |- simplify ( Rc' ) ~> done_or_rerun , Vc'' , Rc'' , Phi''
+    -------------------------------------------------- :: Cond_False
+    P , Vc , Rc , Phi |- simplify ( cond ( term , cond_res1 , cond_res2 ) *  Rc' ) ~> rerun , [ Vc' , Vc'' ] ,  Rc2 * Rc'' , Phi' /\ Phi''
+
+
+    neg ( Rc , Phi => term ) neg ( Rc , Phi => neg term )
+    P , Vc , Rc , Phi |- simplify ( Rc' ) ~> done_or_rerun , Vc'' , Rc'' , Phi''
+    -------------------------------------------------- :: Cond_Undet
+    P , Vc , Rc , Phi |- simplify ( cond ( term , cond_res1 , cond_res2 ) *  Rc' ) ~> done_or_rerun , Vc'' ,  cond ( term , cond_res1 , cond_res2 ) * Rc'' , Phi''
+
+
   defn P , Vc , Rc , Phi |- simplify ( Vc' , Rc' , Phi' ) ~> Vc'' , Rc'' , Phi'' :: :: SimpRes_ :: SimpRes_ {{ com repeatedly simplify }} by
 
 
