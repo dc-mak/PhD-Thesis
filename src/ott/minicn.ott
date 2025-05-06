@@ -368,6 +368,7 @@ minicn_extra                                    :: mincn_extra_ ::=
      | Rc , Phi => term                         :: :: smt_proof {{ com $[[term]]$ is provable by SMT solver with constraints $[[Phi]]$ and disjointness information $[[Rc]]$ }}
      | Phi = Phi'                               :: :: eq_constraints
      | Vc = Vc'                                 :: :: eq_variable_contexts
+     | mres = mres'                             :: :: eq_mres
 %    | ldots                                    :: :: ldots
  
 % %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
@@ -886,17 +887,17 @@ minicn_extra                                    :: mincn_extra_ ::=
 
 grammar
 variable_context, Vc {{ tex \Gamma }} :: 'V_' ::= {{ com variable context }}
-   | cdot               :: :: empty {{ com empty variable context }}
-   | id                 :: :: var   {{ com singleton context with $[[id]]$ }}
-   | Vc1 , ... , Vci    :: :: union {{ com union of variable contexts }}
-   | [ Vc ]             :: S :: parens
+   | cdot            ::   :: empty {{ com empty variable context }}
+   | id              ::   :: var   {{ com singleton context with $[[id]]$ }}
+   | Vc1 , ... , Vci ::   :: union {{ com union of variable contexts }}
+   | [ Vc ]          :: S :: parens
 
 constraint_context, Phi {{ tex \Phi }} :: 'Phi_' ::= {{ com constraint context }}
-   | cdot                    ::   :: empty {{ com empty constraint context }}
-   | term                    ::   :: term  {{ com singleton context with $[[term]]$ }}
-   | Phi1 /\ ... /\ Phii     ::   :: union {{ com conjunction of constraint contexts }}
-   | ( Phi )                 :: S :: parens
-   | cond ( term , Phi , Phi' ) ::   :: cond {{ com if $[[term]]$ then $[[Phi]]$ else $\cdot$ }}
+   | cdot                       ::   :: empty {{ com empty constraint context }}
+   | term                       ::   :: term  {{ com singleton context with $[[term]]$ }}
+   | Phi1 /\ ... /\ Phii        ::   :: union {{ com conjunction of constraint contexts }}
+   | cond ( term , Phi , Phi' ) ::   :: cond  {{ com if $[[term]]$ then $[[Phi]]$ else $\cdot$ }}
+   | ( Phi )                    :: S :: parens
 
 conditional_resource , cond_res  :: 'CondRes_' ::= {{ com conditional typing resource }}
    | id = spec  ::   :: id_spec {{ com for specs which return a value }}
@@ -904,14 +905,14 @@ conditional_resource , cond_res  :: 'CondRes_' ::= {{ com conditional typing res
    | Rc         ::   :: cond    {{ com resource contexts  }}
 
 typing_resource, mres :: 'Res_' ::= {{ com typing resources }}
-   | term |-> term'                     ::   :: owned {{ com ownership of $[[term']]$ mapping to $[[term']]$ }}
+   | term |-> term'                        ::   :: owned {{ com ownership of $[[term']]$ mapping to $[[term']]$ }}
    | cond ( term , cond_res1 , cond_res2 ) ::   :: cond {{ com if $[[term]]$ then $[[cond_res1]]$ else $[[cond_res2]]$ }}
 
 resource_context, Rc {{ tex \mathcal{ R } }} :: 'Rc_' ::= {{ com resource context }}
-   | cdot                                             ::   :: empty
-   | mres                                             ::   :: res
-   | Rc1 * .. * Rci                                   ::   :: star  {{ com TODO - we need to simplify before deconstructing }}
-   | ( Rc )                                           :: S :: parens
+   | cdot           ::   :: empty
+   | mres           ::   :: res
+   | Rc1 * .. * Rci ::   :: star  {{ com TODO - we need to simplify before deconstructing }}
+   | ( Rc )         :: S :: parens
 
 done_or_rerun {{ tex ( \cnkw{done} \mid \cnkw{rerun} ) }} :: 'DoR_' ::= {{ com for use resoruce simplification }}
    | done  :: :: done
@@ -922,7 +923,7 @@ done_or_rerun {{ tex ( \cnkw{done} \mid \cnkw{rerun} ) }} :: 'DoR_' ::= {{ com f
   mini :: 'Mini_' ::=
 
    defn P , Vc , Rc , Phi |- expand ( cond_res ) ~> Vc' , Rc' , Phi' :: :: CondRes_ :: CondRes_
-   {{ com expand conditional resource $[[cond_res]]$ into contexts $[[Vc']] , [[Rc']] , [[Phi']]$ }} by
+   {{ com given definitions in program $[[P]]$, variables $[[Vc]]$, resources $[[Rc]]$ and constraints $[[Phi]]$, expand conditional resource $[[cond_res]]$ into $[[Vc']] , [[Rc']] , [[Phi']]$ }} by
 
     ---------------------------------------------------- :: Emp
     P , Vc , Rc , Phi |- expand ( Rc' ) ~> cdot , Rc' , cdot
@@ -939,7 +940,7 @@ done_or_rerun {{ tex ( \cnkw{done} \mid \cnkw{rerun} ) }} :: 'DoR_' ::= {{ com f
 
 
    defn  P , Vc , Rc , Phi |- simplify ( Rc' ) ~> done_or_rerun , Vc' , Rc'' , Phi' :: :: Res_ :: Res_
-   {{ com simplify $[[Rc']]$ and produce contexts $[[Vc']] , [[Rc'']] , [[Phi']]$ (think concat-map with an extra flag for change or no-change) }} by
+   {{ com given definitions in program $[[P]]$, variables $[[Vc]]$, resources $[[Rc]]$ and constraints $[[Phi]]$, simplify resources $[[Rc']]$ and produce contexts $[[Vc']] , [[Rc'']] , [[Phi']]$ (try expand any conditional resources in the context, re-run if any expanded) }} by
 
 
    ------------------------------------------------------------- :: Emp
@@ -971,30 +972,33 @@ done_or_rerun {{ tex ( \cnkw{done} \mid \cnkw{rerun} ) }} :: 'DoR_' ::= {{ com f
     P , Vc , Rc , Phi |- simplify ( cond ( term , cond_res1 , cond_res2 ) *  Rc' ) ~> done_or_rerun , Vc'' ,  cond ( term , cond_res1 , cond_res2 ) * Rc'' , Phi''
 
 
-  defn P , Vc , Rc , Phi |- simplify ( Vc' , Rc' , Phi' ) ~> Vc'' , Rc'' , Phi'' :: :: SimpRes_ :: SimpRes_ {{ com repeatedly simplify }} by
+  defn P , Vc , Rc , Phi |- simplify ( Vc' , Rc' , Phi' ) ~> Vc'' , Rc'' , Phi'' :: :: SimpRes_ :: SimpRes_
+  {{ com given definitions in program $[[P]]$, variables $[[Vc]]$, resources $[[Rc]]$ and constraints $[[Phi]]$, repeatedly simplify $[[Vc']], [[Rc']], [[Phi']]$ until no change, and produce contexts $[[Vc'']] , [[Rc'']] , [[Phi'']]$ }} by
+ 
+
+    P , [ Vc , Vc' ] , Rc * Rc' , Phi /\ Phi' |- simplify ( Rc * Rc' ) ~> done , cdot , Rc * Rc' , cdot
+    ---------------------------------------------------------------------- :: Done
+    P , Vc , Rc , Phi |- simplify ( Vc' , Rc' , Phi' ) ~> Vc' , Rc' , Phi'
+ 
+
+    P , [ Vc , Vc' ] , Rc * Rc' , Phi /\ Phi' |- simplify ( Rc * Rc' ) ~> rerun , Vc1 , Rc1 , Phi1
+    P , Vc , Rc , Phi |- simplify ( [ Vc' , Vc1 ] , Rc' * Rc1 , Phi' /\ Phi1 ) ~> Vc'' , Rc'' , Phi''
+    ---------------------------------------------------------------------- :: Rerun
+    P , Vc , Rc , Phi |- simplify ( Vc' , Rc' , Phi' ) ~> Vc'' , Rc'' , Phi''
 
 
-   P , [ Vc , Vc' ] , Rc * Rc' , Phi /\ Phi' |- simplify ( Rc * Rc' ) ~> done , cdot , Rc * Rc' , cdot
-   ---------------------------------------------------------------------- :: Done
-   P , Vc , Rc , Phi |- simplify ( Vc' , Rc' , Phi' ) ~> Vc' , Rc' , Phi'
-
-
-   P , [ Vc , Vc' ] , Rc * Rc' , Phi /\ Phi' |- simplify ( Rc * Rc' ) ~> rerun , Vc1 , Rc1 , Phi1
-   P , Vc , Rc , Phi |- simplify ( [ Vc' , Vc1 ] , Rc' * Rc1 , Phi' /\ Phi1 ) ~> Vc'' , Rc'' , Phi''
-   ---------------------------------------------------------------------- :: Rerun
-   P , Vc , Rc , Phi |- simplify ( Vc' , Rc' , Phi' ) ~> Vc'' , Rc'' , Phi''
-
-
-   defn  P , Vc , Rc , Phi |- Vc' , Rc' , Phi' | spec -| sval , Vc'' , used ( Rc1 ) * Rc2 , Phi'' :: :: Spine_ :: Spine_ {{ com check context implies $[[spec]]$ and produce contexts $[[Vc']] , [[ Rc1 ]], [[Rc2]] , [[Phi']]$ }} by
+   defn  P , Vc , Rc , Phi |- Vc' , Rc' , Phi' | spec -| sval , Vc'' , used ( Rc1 ) * Rc2 , Phi'' :: :: Prove_ :: Prove_
+   {{ com given definitions in program $[[P]]$, variables $[[Vc]]$, resources $[[Rc]]$ and constraints $[[Phi]]$ (and accumulating contexts $[[Vc']], [[Rc']], [[Phi']]$) prove $[[spec]]$ and evaluate it to $[[sval]]$, with $[[Rc1]]$ as used, and new contexts $[[Vc']] , [[Rc2]] , [[Phi']]$ }} by
 
     ------------------------------------------------------ :: Val
     P , Vc , Rc , Phi |- Vc' , Rc' , Phi' | sval -| sval , Vc' , used ( Rc' ) * Rc , Phi'
 
 
-    {{ @ TODO fix resource lookup }}
-    Rc , Phi => term = id1
+    P , [ Vc , Vc' ]  , Rc , Phi /\ Phi' |- simplify ( cdot , Rc , cdot ) ~> Vc1 , Rc1 , Phi1
+    Rc1 = Rc1' * id1 |-> id2
+    Rc1 , Phi /\ Phi1 => term = id1
     ---------------------------------------------------------------------------- :: Owned
-    P , Vc , Rc * (id1 |-> id2) , Phi |- Vc' , Rc' , Phi' | Owned < Init , int > ( term ) -| return id2 , Vc' , used ( Rc' * ( id1 |-> id2 ) ) * Rc , Phi'
+    P , Vc , Rc , Phi |- Vc' , Rc' , Phi' | Owned < Init , int > ( term ) -| return id2 , [ Vc1 , Vc' ] , used ( Rc' * ( id1 |-> id2 ) ) * Rc1' , Phi1 /\ Phi'
 
 
     P ( yf ) = predicate base_type yf ( base_type1 id1 , .. , base_typek idk ) { spec }
@@ -1005,8 +1009,9 @@ done_or_rerun {{ tex ( \cnkw{done} \mid \cnkw{rerun} ) }} :: 'DoR_' ::= {{ com f
     P , Vc , Rc , Phi |- Vc' , Rc' , Phi' | yf ( term1 , .. , termk ) -| return term , Vc2 , used ( Rc1 ) * Rc2 , Phi2
 
 
-    Rc , Phi /\ Phi' => term
-    P , Vc , Rc , Phi |- Vc' , Rc' , Phi' | spec -| sval , Vc'' , used ( Rc1 ) * Rc2 , Phi''
+    P , [ Vc , Vc' ]  , Rc , Phi /\ Phi' |- simplify ( cdot , Rc , cdot ) ~> Vc1 , Rc1 , Phi1
+    Rc1 , Phi /\ Phi1  /\ Phi'=> term
+    P , Vc , Rc , Phi |- [ Vc1 , Vc' ] , Rc' , Phi' /\ Phi1 | spec -| sval , Vc'' , used ( Rc1 ) * Rc2 , Phi''
     ------------------------------------------------------------ :: Assert
     P , Vc , Rc , Phi |- Vc' , Rc' , Phi' | assert ( term ) ; spec -| sval , Vc'' , used ( Rc1 ) * Rc2 , Phi''
 
@@ -1022,45 +1027,39 @@ done_or_rerun {{ tex ( \cnkw{done} \mid \cnkw{rerun} ) }} :: 'DoR_' ::= {{ com f
     P , Vc , Rc , Phi |- Vc1 , Rc1 , Phi1 | take id = spec ; spec' -| sval , Vc3 , used ( Rc31 ) * Rc32 , Phi3
 
 
-    Rc , Phi /\ Phi' => term
-    P , Vc , Rc , Phi |- Vc' , Rc' ,  Phi' | spec1 -| sval , Vc'' , used ( Rc''1 ) * Rc''2 , Phi''
+    P , [ Vc , Vc' ]  , Rc , Phi /\ Phi' |- simplify ( cdot , Rc , cdot ) ~> Vc1 , Rc1 , Phi1
+    Rc1 , Phi /\ Phi' /\ Phi1 => term
+    P , Vc , Rc , Phi |- [ Vc1 , Vc' ] , Rc' ,  Phi' /\ Phi1 | spec1 -| sval , Vc'' , used ( Rc''1 ) * Rc''2 , Phi''
     ------------------------------------------------------------------------------ :: If_True
     P , Vc , Rc , Phi |- Vc' , Rc' , Phi' | if ( term ) { spec1 } else { spec2 } -| sval , Vc'' , used ( Rc''1 ) * Rc''2 , Phi''
 
 
-    Rc , Phi /\ Phi' => neg term
-    P , Vc , Rc , Phi |- Vc' , Rc' ,  Phi' | spec2 -| sval , Vc'' , used ( Rc''1) * Rc''2 , Phi''
+    P , [ Vc , Vc' ]  , Rc , Phi /\ Phi' |- simplify ( cdot , Rc , cdot ) ~> Vc1 , Rc1 , Phi1
+    Rc1 , Phi /\ Phi' /\ Phi1 => term
+    P , Vc , Rc , Phi |- [ Vc1 , Vc' ] , Rc' ,  Phi' /\ Phi1 | spec2 -| sval , Vc'' , used ( Rc''1 ) * Rc''2 , Phi''
     ------------------------------------------------------------------------------ :: If_False
     P , Vc , Rc , Phi |- Vc' , Rc' , Phi' | if ( term ) { spec1 } else { spec2 } -| sval , Vc'' , used ( Rc'' ) * Rc''2 , Phi''
 
 
-    neg ( Rc , Phi /\ Phi' => term ) neg ( Rc , Phi /\ Phi' => neg term )
-    {{ @ TODO fix resource lookup }}
-    Rc = Rc2 *  cond ( term , id = spec1 , id = spec2 )
-    Rc1 = Rc' * cond ( term , id = spec1 , id = spec2 )
-    ------------------------------------------------------------------------------ :: Ret_Undet
-    P , Vc , Rc , Phi |- Vc' , Rc' , Phi' | if ( term ) { spec1 } else { spec2 } -| return id , Vc' , used ( Rc1 ) * Rc2 , Phi'
+    P , [ Vc , Vc' ]  , Rc , Phi /\ Phi' |- simplify ( cdot , Rc , cdot ) ~> Vc1 , Rc1 * mres , Phi1
+    mres = cond ( term , id = spec1 , id = spec2 )
+    neg ( Rc1 * mres , Phi /\ Phi' /\ Phi1 => term ) neg ( Rc , Phi /\ Phi' /\ Phi1 => neg term )
+    ------------------------------------------------------------------------------ :: Ret_If
+    P , Vc , Rc , Phi |- Vc' , Rc' , Phi' | if ( term ) { spec1 } else { spec2 } -| return id , [ Vc' , Vc1 ] , used ( Rc' * mres ) * Rc1 , Phi' /\ Phi1
 
 
-    neg ( Rc , Phi /\ Phi' => term ) neg ( Rc , Phi /\ Phi' => neg term )
-    {{ @ TODO fix resource lookup }}
-    Rc = Rc2 *  cond ( term , id = spec1 , id = spec2 )
-    Rc1 = Rc' *  cond ( term , id = spec1 , id = spec2 )
-    ------------------------------------------------------------------------------ :: NoRet_Undet
-    P , Vc , Rc , Phi |- Vc' , Rc' , Phi' | if ( term ) { spec1 } else { spec2 } -| cdot , Vc' , used ( Rc1 ) * Rc2 , Phi'
+    P , [ Vc , Vc' ]  , Rc , Phi /\ Phi' |- simplify ( cdot , Rc , cdot ) ~> Vc1 , Rc1 * mres , Phi1
+    mres = cond ( term , spec1 , spec2 )
+    neg ( Rc1 * mres , Phi /\ Phi' /\ Phi1 => term ) neg ( Rc , Phi /\ Phi' /\ Phi1 => neg term )
+    ------------------------------------------------------------------------------ :: NoRet_If
+    P , Vc , Rc , Phi |- Vc' , Rc' , Phi' | if ( term ) { spec1 } else { spec2 } -| cdot , [ Vc' , Vc1 ] , used ( Rc' * mres ) * Rc1 , Phi' /\ Phi1
 
-   defn  P , Vc , Rc , Phi |- Vc' , Phi' | spec ~> sval , Vc'' , Rc'' , Phi'' :: :: Elim_ :: Elim_ {{ com deconstruct $[[spec]]$ into $[[sval]]$ and contexts $[[Vc'']] , [[Rc'']] , [[Phi'']]$ }} by
 
- {{ com
- \noindent Given program $[[P]]$, variables $[[Vc]]$, resources $[[Rc]]$ and constraints $[[Phi]]$, (and accumulating contexts $[[Vc']]$ and $[[Phi']]$, post-condition $[[spec]]$ represents a $[[sval]]$, and additional variables $[[Vc'']]$, additional resources $[[Rc'']]$, and additional constraints $[[Phi'']]$.
- }}
+   defn  P , Vc , Rc , Phi |- Vc' , Phi' | spec ~> sval , Vc'' , Rc'' , Phi'' :: :: Assume_ :: Assume_
+   {{ com given definitions in program $[[P]]$, variables $[[Vc]]$, resources $[[Rc]]$ and constraints $[[Phi]]$, (and accumulating contexts $[[Vc']]$ and $[[Phi']]$) assume $[[spec]]$ and evaluate it to $[[sval]]$, with new context $[[Vc'']], [[Rc'']], [[Phi'']]$ }} by
 
     ------------------------------------------------------ :: Value
     P , Vc , Rc , Phi |- Vc' , Phi' | sval  ~>  sval  , Vc' , Rc ,  Phi'
-
-
-    --------------------------------------------------------------- :: Return
-    P , Vc , Rc , Phi |- Vc' , Phi' | return term ~>  return term , Vc' , Rc ,  Phi'
 
 
     P , Vc , Rc , Phi |- Vc' , Phi' /\ term | spec ~> sval , Vc'' , Rc' , Phi''
@@ -1091,37 +1090,36 @@ done_or_rerun {{ tex ( \cnkw{done} \mid \cnkw{rerun} ) }} :: 'DoR_' ::= {{ com f
     P , Vc , Rc , Phi |- Vc1 , Phi2 | take id = spec ; spec ~> sval , Vc3 , Rc3 , Phi3
 
 
-    Rc , Phi /\ Phi' => term
-    P , Vc , Rc , Phi  |- Vc' , Phi' | spec1 ~> sval1 , Vc'' , Rc' , Phi''
+    P , [ Vc , Vc' ]  , Rc , Phi /\ Phi' |- simplify ( cdot , Rc , cdot ) ~> Vc1 , Rc1 , Phi1
+    Rc1 , Phi /\ Phi' /\ Phi1 => term
+    P , Vc , Rc , Phi  |- [ Vc1 , Vc' ] , Phi' /\ Phi1 | spec1 ~> sval1 , Vc'' , Rc' , Phi''
     -------------------------------------------------------------- :: If_True
     P , Vc , Rc , Phi |- Vc' , Phi' | if ( term ) { spec1 } else { spec2 } ~> sval1 , Vc'' , Rc' , Phi''
 
 
-    Rc , Phi /\ Phi' => neg term
-    P , Vc , Rc , Phi |- Vc' , Phi' | spec2 ~> sval2 , Vc'' , Rc' , Phi''
+    P , [ Vc , Vc' ]  , Rc , Phi /\ Phi' |- simplify ( cdot , Rc , cdot ) ~> Vc1 , Rc1 , Phi1
+    Rc1 , Phi /\ Phi' /\ Phi1 => neg term
+    P , Vc , Rc , Phi  |- [ Vc1 , Vc' ] , Phi' /\ Phi1 | spec2 ~> sval2 , Vc'' , Rc' , Phi''
     -------------------------------------------------------------- :: If_False
     P , Vc , Rc , Phi |- Vc' , Phi' | if ( term ) { spec1 } else { spec2 } ~> sval2 , Vc'' , Rc' , Phi''
 
 
-    neg ( Rc , Phi /\ Phi' => term ) neg ( Rc , Phi /\ Phi' => neg term )
-    {{ @ TODO fix resource lookup }}
-    Rc' = Rc *  cond ( term , id = spec1 , id = spec2 )
-    ------------------------------------------------------------------------------ :: Ret_Undet
-    P , Vc , Rc , Phi |- Vc' , Phi' | if ( term ) { spec1 } else { spec2 } ~> return id , [ id , Vc' ] , Rc' , Phi'
+    P , [ Vc , Vc' ]  , Rc , Phi /\ Phi' |- simplify ( cdot , Rc , cdot ) ~> Vc1 , Rc1 , Phi1
+    neg ( Rc1 , Phi /\ Phi' /\ Phi1 => term ) neg ( Rc1 , Phi /\ Phi' /\ Phi1 => neg term )
+    mres = cond ( term , id = spec1 , id = spec2 )
+    ------------------------------------------------------------------------------ :: Ret_If
+    P , Vc , Rc , Phi |- Vc' , Phi' | if ( term ) { spec1 } else { spec2 } ~> return id , [ id , Vc1 , Vc' ] , Rc1 * mres , Phi1 /\ Phi'
 
 
-    neg ( Rc , Phi /\ Phi' => term ) neg ( Rc , Phi /\ Phi' => neg term )
-    {{ @ TODO fix resource lookup }}
-    Rc' = Rc *  cond ( term , spec1 , spec2 )
-    ------------------------------------------------------------------------------ :: NoRet_Undet
-    P , Vc , Rc , Phi |- Vc' , Phi' | if ( term ) { spec1 } else { spec2 } ~> cdot , Vc' , Rc' , Phi'
+    P , [ Vc , Vc' ]  , Rc , Phi /\ Phi' |- simplify ( cdot , Rc , cdot ) ~> Vc1 , Rc1 , Phi1
+    neg ( Rc1 , Phi /\ Phi' /\ Phi1 => term ) neg ( Rc1 , Phi /\ Phi' /\ Phi1 => neg term )
+    mres = cond ( term , spec1 , spec2 )
+    ------------------------------------------------------------------------------ :: NoRet_If
+    P , Vc , Rc , Phi |- Vc' , Phi' | if ( term ) { spec1 } else { spec2 } ~> cdot , [ Vc1 , Vc' ] , Rc1 * mres , Phi1 /\ Phi'
 
 
-  defn Vc , Rc , Phi |-lv lve -| id inEnv Vc' ,  Rc' , Phi' :: :: Lve_ :: Lve_ {{ com typing for lvalue-expressions $[[lve]]$ }} by
-
-{{ com
-\noindent Given variables $[[Vc]]$, resources $[[Rc]]$ and constraints $[[Phi]]$, typing lvalue-expression $[[lve]]$ symbolically evaluates to $[[id]]$, with new variables $[[Vc']]$, updated resources $[[Rc']]$ and additional constraints $[[Phi']]$ .
-}}
+  defn Vc , Rc , Phi |-lv lve -| id inEnv Vc' ,  Rc' , Phi' :: :: Lve_ :: Lve_
+  {{ com given definitions in program $[[P]]$, variables $[[Vc]]$, resources $[[Rc]]$ and constraints $[[Phi]]$, symbolically evaluate lvalue-expressions $[[lve]]$ to $[[id]]$ and new context $[[Vc']], [[Rc']], [[Phi']]$ }} by
 
     ---------------------------------------------------- :: Const
     Vc , Rc , Phi |-lv n -| id inEnv [ id ] , Rc , ( id = n )
@@ -1132,29 +1130,27 @@ done_or_rerun {{ tex ( \cnkw{done} \mid \cnkw{rerun} ) }} :: 'DoR_' ::= {{ com f
     Vc , Rc , Phi |-lv id -| id' inEnv [ id' ] , Rc , ( id' = id )
 
 
+   % assuming the caller has simplified the resource context
     Vc , Rc , Phi |-lv lve -| id1 inEnv Vc' , Rc' , Phi'
-    {{ @ TODO fix resource lookup }}
     Rc' = Rc'' * id1' |-> id2'
     Rc' , Phi' => id1 = id1'
     ----------------------------------------------------------------- :: Deref
     Vc , Rc , Phi |-lv * lve -| id2 inEnv [ id2 , Vc' ] , Rc' , ( id2 = id2' /\ Phi' )
 
 
-  defn  P , Vc , Rc , Phi |- y . spec e -| id inEnv Vc' ,  Rc' , Phi' :: :: Expr_ :: Expr_ {{ tex [[P]] [[,]] [[Vc]] [[,]] [[Rc]] [[,]] [[Phi]] [[|-]]_{ [[y]] [[.]] [[spec]] } [[e]] [[-|]] [[id]] [[inEnv]] [[Vc']] [[,]]  [[Rc']] [[,]] [[Phi']] }} {{ com typing for expressions $[[e]]$ with a post-condition $[[spec]]$ }} by
+  defn  P , Vc , Rc , Phi |- y . spec e -| id inEnv Vc' ,  Rc' , Phi' :: :: Expr_ :: Expr_ {{ tex [[P]] [[,]] [[Vc]] [[,]] [[Rc]] [[,]] [[Phi]] [[|-]]_{ [[y]] [[.]] [[spec]] } [[e]] [[-|]] [[id]] [[inEnv]] [[Vc']] [[,]]  [[Rc']] [[,]] [[Phi']] }}
+  {{ com given definitions in program $[[P]]$, variables $[[Vc]]$, resources $[[Rc]]$, constraints $[[Phi]]$ and post-condition $[[spec]]$, expression $[[e]]$ symbolically evaluates to $[[id]]$, with new context $[[Vc']], [[Rc']], [[Phi']]$ }} by
 
-
-{{ com
-\noindent Given variables $[[Vc]]$, resources $[[Rc]]$, constraints $[[Phi]]$ and postcondition $[[spec]]$, expression $[[e]]$ symbolically evaluates to $[[id]]$, with new variables $[[Vc']]$, updated resources $[[Rc']]$ and additional constraints $[[Phi']]$.
-}}
 
     ---------------------------------------------------- :: Const
     P , Vc , Rc , Phi |- y . spec n -| id inEnv [ id ] , Rc , ( id = n )
 
     id inEnv Vc
-    Rc = Rc' * id' |-> id2'
-    Rc , Phi => id = id'
+    P , Vc , Rc , Phi |- simplify ( cdot , Rc , cdot ) ~> Vc1 , Rc1 * mres , Phi1
+    mres = id' |-> id2'
+    Rc1 * mres , Phi /\ Phi1 => id = id'
     --------------------------------- :: Var
-    P , Vc , Rc , Phi |- y . spec id -| id2 inEnv [ id2 ] , Rc , ( id2 = id2' )
+    P , Vc , Rc , Phi |- y . spec id -| id2 inEnv [ id2 , Vc1 ] , Rc1 * mres , ( id2 = id2' /\ Phi1 )
 
 
     id inEnv Vc
@@ -1164,15 +1160,15 @@ done_or_rerun {{ tex ( \cnkw{done} \mid \cnkw{rerun} ) }} :: 'DoR_' ::= {{ com f
 
     P , Vc , Rc , Phi |- y . spec e -| id inEnv Vc' , Rc' , Phi'
     ----------------------------------------------- :: Not
-    P , Vc , Rc , Phi |- y . spec ! e -| id' inEnv [ id' , Vc' ] , Rc , ( id' = if id = 0 then 1 else 0 /\ Phi' )
+    P , Vc , Rc , Phi |- y . spec ! e -| id' inEnv [ id' , Vc' ] , Rc , ( id' = ( if id = 0 then 1 else 0 ) /\ Phi' )
 
 
     P , Vc , Rc , Phi |- y . spec e -| id inEnv Vc' , Rc' , Phi'
-    Rc' = Rc'' * id' |-> id2'
-    {{ @ TODO fix resource lookup }}
-    Rc , Phi => id = id'
+    P , [ Vc , Vc' ] , Rc' , Phi /\ Phi' |- simplify ( cdot , Rc' , cdot ) ~> Vc1 , Rc1 * mres , Phi1
+    mres = id' |-> id2'
+    Rc1 * mres , Phi /\ Phi' /\ Phi1 => id = id'
     ----------------------------------------------- :: Deref
-    P , Vc , Rc , Phi |- y . spec * e -| id2 inEnv [ id2 , Vc' ] , Rc , ( id2 = id2' /\ Phi' )
+    P , Vc , Rc , Phi |- y . spec * e -| id2 inEnv [ id2 , Vc1 , Vc' ] , Rc1 * mres , ( id2 = id2' /\ Phi1 /\ Phi' )
 
 
     P , Vc , Rc , Phi |- y . spec e1 -| id1 inEnv Vc1 , Rc1 , Phi1
@@ -1182,12 +1178,12 @@ done_or_rerun {{ tex ( \cnkw{done} \mid \cnkw{rerun} ) }} :: 'DoR_' ::= {{ com f
 
 
     P , Vc , Rc , Phi |- y . spec e -| id1 inEnv Vc1 , Rc1 , Phi1
-    Vc , Vc1 , Rc1 , Phi /\ Phi1 |-lv lve -| id2 inEnv Vc2 , Rc2 , Phi2
-    Rc2 = Rc2' * id2' |-> _
-    {{ @ TODO fix resource lookup }}
-    Rc1 , Phi /\ Phi1 => id2 = id2'
+    P , [ Vc , Vc1 ] , Rc1 , Phi /\ Phi1 |- simplify ( cdot , Rc1 , cdot ) ~> Vc2 , Rc2 , Phi2
+    [ Vc , Vc1 , Vc2 ] , Rc2 , Phi /\ Phi1 /\ Phi2 |-lv lve -| id3 inEnv Vc3 , Rc3 * mres , Phi3
+    mres = id3' |-> _
+    Rc3 * mres , Phi /\ Phi1 /\ Phi2 /\ Phi3 => id3 = id3'
     ------------------------------------------------------------- :: Assign
-    P , Vc , Rc , Phi |- y . spec lve = e -| id inEnv [ id , Vc1 , Vc2 ] , Rc2 * id2 |-> id , Phi1 /\ Phi2 /\ ( id = id1 )
+    P , Vc , Rc , Phi |- y . spec lve = e -| id inEnv [ id , Vc3, Vc2 , Vc1 ] , Rc3 * mres , ( id = id1 /\ Phi3 /\ Phi2 /\ Phi1 )
 
 
     P , Vc , Rc , Phi |- y . spec e1 -| id1 inEnv Vc1 , Rc1 , Phi1
