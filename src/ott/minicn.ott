@@ -1,929 +1,98 @@
-% category D for real definition only, not in paper
-% category P for paper typeset version only, not in real definition
-
-
-embed  {{ tex-preamble
-\definecolor{testing}{rgb}{0.85, 0.25, 0.12}
-\definecolor{resource}{rgb}{0.47, 0.36, 0.81}
-\newcommand{\ruleheading}[1]{\paragraph{#1} }
-\newcommand{\testingdoc}[1]{\noindent{\color{testing}Testing: #1} }
-\newcommand{\resourcedoc}[1]{\noindent{\color{resource}Resource passing: #1} }
-
-\renewenvironment{[[TEX_NAME_PREFIX]]defnblock}[3][]{\noindent\framebox{\mbox{#2} } \quad #3 \\[0pt]}{}
-
-}}
-
-metavar main {{ tex \mathTT{main} }} , top {{ tex \mathTT{top} }} , _id {{ tex \_ }} ::= {{ com MiniCN identifiers }}
-% deleted: f   (kernel: heap frames, here: function name)
-%          ret (kernel: return type, here: return value binder)
-%          id  (kernel: struct/union name, here: identifier)
-
-% metavar bty ::= {{ com specification language term basetypes }}
-
 grammar
 
-%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+  declaration, decl :: '' ::= {{ com variable declaration }}
+    | ct id ;       ::    :: decl
 
-% object language grammar
+  declarations, decls :: '' ::= {{ com variable declarations }}
+    | decl1 .. decli  ::    :: decls
 
-declaration, decl :: '' ::=                                    {{ com variable declaration }}
-   | ct id ;                                 :: :: decl
+  lvalue_expression, lve :: 'Lve_' ::= {{ com lvalue expression }}
+    | n     ::  :: constant    {{ com constant }}
+    | id    ::  :: var         {{ com variable }}
+    | * lve ::  :: indirect    {{ com indirection }}
 
-grammar
+  expression, e :: 'E_' ::=                                      {{ com expression }}
+    | n                   ::   :: constant    {{ com constant }}
+    | id                  ::   :: var         {{ com variable }}
+    | & id                ::   :: address     {{ com address of variable }}
+    | * e                 ::   :: unary_star  {{ com unary operator -- deref}}
+    | ! e                 ::   :: unary_not   {{ com unary operator -- not}}
+    | e1 binop e2         ::   :: binary      {{ com binary operator }}
+    | lve = e             ::   :: assign      {{ com assignment }}
+    | if ( e ) e1 else e2 ::   :: if          {{ com conditional }}
+    | e ; e'              ::   :: seq         {{ com sequencing }}
+    | id ( e1 , .. , ek ) ::   :: call        {{ com function call }}
+    | block               ::   :: block       {{ com block }}
+    | return e            ::   :: return      {{ com function return }}
+    | ( e )               :: S :: parens
 
-declarations, decls :: '' ::=                                  {{ com variable declarations }}
-   | decl1 .. decli                          :: :: decls
+  block :: 'B_' ::= {{ com block }}
+    | { decls e } :: :: block
 
-grammar
+  function_definition, func :: 'F_' ::= {{ com function definition }}
+    | ct id ( ct1 id1 , .. , ctk idk ) function_spec block ::  :: funcD
 
-value_expression, lve :: 'LE_' ::=                             {{ com lvalue expression }}
- | n                                       :: :: constant    {{ com constant }}
- | id                                      :: :: var         {{ com variable }}
- | * lve                                    :: :: indirect    {{ com indirection }}
+  program, P :: 'P_' ::= {{ com program }}
+    | spec_decls decls func1 .. funcj                    :: :: prog
 
-grammar
+  function_spec :: 'FSP_' ::= {{ com spec }}
+    | /*@ requires spec1 ensures y . spec2 @*/ :: P :: spec
 
- expression, e :: 'E_' ::=                                      {{ com expression }}
-   | n                                       ::   :: constant    {{ com constant }}
-   | id                                      ::   :: var         {{ com variable }}
-   | & id                                    ::   :: address     {{ com address of variable }}
-   | * e                                     ::   :: unary_star  {{ com unary operator -- deref}}
-   | ! e                                     ::   :: unary_not   {{ com unary operator -- not}}
-   | e1 binop e2                             ::   :: binary      {{ com binary operator }}
-   | lve = e                                 ::   :: assign      {{ com assignment }}
-   | if ( e ) e1 else e2                     ::   :: if          {{ com conditional }}
-   | e ; e'                                  ::   :: seq         {{ com sequencing }}
-   | id ( e1 , .. , ek )                     ::   :: call        {{ com function call }}
-   | block                                   ::   :: block       {{ com block }}
-   | return e                                ::   :: return      {{ com function return }}
-   | ( e )                                   :: S :: parens
-%  | while ( e ) s ;                         ::   :: while   % omit this until we want loop invariants
-%  | A . e                                   :: M :: ctx       {{ com apply evaluation context }}
+  spec_function_def :: 'SF_' ::= {{ com spec language function definition }}
+     | function bty id ( base_type1 x1 , .. , base_typek xk ) { term } :: :: func
 
-block :: 'B_' ::=                                              {{ com block }}
-  | { decls e }                             :: :: block
+  spec_decls :: 'SD_' ::=
+     | </ spec_function_defi // i /> </ spec_predicate_defj // j /> :: :: decls
 
-function_definition, func :: 'F_' ::=                                               {{ com function definition }}
-  | ct id ( ct1 id1 , .. , ctk idk ) function_spec block ::  :: funcD
+  minicn_extra :: mincn_extra_ ::=
+    | P ( id ) = func               ::  :: P_lookup
+    | P ( id ) = spec_predicate_def ::  :: P_lookup_pred
+    | neg ( minicn_extra )          ::  :: not
+    | id inEnv Vc                   ::  :: lookup_var_in_context
+    | Rc = Rc'                      ::  :: eq_resources
+    | Rc , Phi => term              ::  :: smt_proof {{ com $[[term]]$ is provable by SMT solver with constraints $[[Phi]]$ and disjointness information $[[Rc]]$ }}
+    | Phi = Phi'                    ::  :: eq_constraints
+    | Vc = Vc'                      ::  :: eq_variable_contexts
+    | mres = mres'                  ::  :: eq_mres
 
-program, P :: 'P_' ::=                                         {{ com program }}
-  | spec_decls decls func1 .. funcj                    :: :: prog
+  variable_context, Vc {{ tex \Gamma }} :: 'V_' ::= {{ com variable context }}
+    | cdot            ::   :: empty {{ com empty variable context }}
+    | id              ::   :: var   {{ com singleton context with $[[id]]$ }}
+    | Vc1 , ... , Vci ::   :: union {{ com union of variable contexts }}
+    | [ Vc ]          :: S :: parens
 
+  constraint_context, Phi {{ tex \Phi }} :: 'Phi_' ::= {{ com constraint context }}
+    | cdot                       ::   :: empty {{ com empty constraint context }}
+    | term                       ::   :: term  {{ com singleton context with $[[term]]$ }}
+    | Phi1 /\ ... /\ Phii        ::   :: union {{ com conjunction of constraint contexts }}
+    | cond ( term , Phi , Phi' ) ::   :: cond  {{ com if $[[term]]$ then $[[Phi]]$ else $\cdot$ }}
+    | ( Phi )                    :: S :: parens
 
-% %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-% %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-% %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+  conditional_resource , cond_res  :: 'CondRes_' ::= {{ com conditional typing resource }}
+    | id = spec  ::   :: id_spec {{ com for specs which return a value }}
+    | spec       ::   :: spec    {{ com for specs which don't return a value }}
+    | Rc         ::   :: cond    {{ com resource contexts  }}
 
-%  spec language grammar
+  typing_resource, mres :: 'Res_' ::= {{ com typing resources }}
+    | term |-> term'                        ::   :: owned {{ com ownership of $[[term']]$ mapping to $[[term']]$ }}
+    | cond ( term , cond_res1 , cond_res2 ) ::   :: cond {{ com if $[[term]]$ then $[[cond_res1]]$ else $[[cond_res2]]$ }}
 
-% opt_func_spec :: 'OPT_FSP_' ::= {{ com optional spec }}
-%   |                                            :: :: emp
-%   | /*@ requires spec1 ensures ret . spec2 @*/ :: :: spec
+  resource_context, Rc {{ tex \mathcal{ R } }} :: 'Rc_' ::= {{ com resource context }}
+    | cdot           ::   :: empty
+    | mres           ::   :: res
+    | Rc1 * .. * Rci ::   :: star  {{ com TODO - we need to simplify before deconstructing }}
+    | ( Rc )         :: S :: parens
 
+  done_or_rerun {{ tex ( \cnkw{done} \mid \cnkw{rerun} ) }} :: 'DoR_' ::= {{ com for use resoruce simplification }}
+    | done  :: :: done
+    | rerun :: :: rerun
 
-function_spec :: 'FSP_' ::= {{ com spec }}
-  | /*@ requires spec1 ensures y . spec2 @*/ :: P :: spec
-
-% spec :: 'SP_' ::=  {{ com spec language for requires and ensures }}
-%    | cdot                              :: D :: noret  {{ com requires/ensures end with this }}
-%    | return t                          ::   :: return {{ com predicate definitions end with this    }}
-%    | pred_name ( t1 , .. , ti )        ::   :: predicates
-%    | assert ( t ) ; spec               ::   :: assert
-%    | let id = t ; spec                 ::   :: let
-%    | take id = spec ; spec'            ::   :: pred
-%    | if ( t ) { spec1 } else { spec2 } ::   :: if
-%    | SSA . t                           :: M :: ctx      {{ com apply evaluation context }} {{ tex [[SSA]] \cdot [[t]] }}
-%    | { t1 .. ti / id1 .. idk } spec    :: M :: subst
-%
-% spec_value , sval :: 'SPE_' ::=  {{ com specifications terminators }}
-%    | cdot                                        :: :: noret
-%    | return t                                    :: :: return
-%
-% pred_name {{ tex p }} :: 'SPN_' ::=                 {{ com predicate names }}
-%    | Owned                              :: :: owned
-%    | id                                 :: :: user_defined_predicate_name
-%
-% spec_binary_operator, sbinop :: 'Spec_' ::=         {{ com binary operator }}  % just enough for examples
-%    | ==                                      :: :: eq          {{ tex \texttt{==} }}
-%    | &&                                      :: :: and         {{ tex \texttt{\&\&} }}
-%
-% spec_unary_operator, suop :: 'Spec_' ::=     {{ com unary operator }}
-%    | !                                       :: :: logical_not {{ tex \texttt{!} }} {{ com not }}
-%
-% spec_term, t :: 'ST_' ::=           {{ com spec language term }}
-%    | ( t )                                   :: S :: parens
-%    | v                                       :: :: value       {{ com constant unit }}
-%    | { t }                                   :: :: scoped      {{ com scoped term }}
-%    | id                                      :: :: var         {{ com spec-language or C variable }}
-%    | suop t                                  :: :: unary       {{ com unary operator }}
-%    | t1 sbinop t2                              :: :: binary      {{ com binary operator }}
-%    | if ( t ) t1 else t2                     :: :: if          {{ com conditional }} {{ tex [[if]]\ \texttt{(}[[t]]\texttt{)}\ [[t1]]\ [[else]]\ [[t2]] }}
-%    | f ( t1 , .. , ti )                      :: :: call        {{ com spec-language function application }} %{{ tex [[f]]\texttt{(}[[e1,..,ek]]\texttt{)} }}
-%    | STA . t                                 :: M :: ctx       {{ com apply evaluation context }} {{ tex [[STA]] \cdot [[t]] }}
-%    | { v1 .. vi / id1 .. idk } t             :: M :: subst
-%
-%
-% spec_term_value , v :: 'STV_' ::=           {{ com spec language value }}
-%    | ()                                      ::   :: unit        {{ com constant unit }}
-%    | true                                    ::   :: true        {{ com constant true }}
-%    | false                                   ::   :: false       {{ com constant false}}
-%    | n                                       ::   :: constant    {{ com constant integer}}
-%    | id                                      :: M :: value       {{ com logical variable (not mutable) }}
-%
-%
-% spec_evaluation_context, SSA :: 'SSA_' ::=          {{ com spec language spec evaluation contexts with term holes }}
-%    | assert ( __ ) ; spec                              :: :: assert
-%    | let id = __  ; spec                               :: :: let
-%    | pred_name ( t1 , .. , ti , __ , t'1 , .. , t'k )  :: :: pred
-%    | if ( __ ) { spec1 } else { spec2 }                :: :: if
-%    | return __                                         :: :: return
-%
-% spec_term_evaluation_context, STA :: 'STA_' ::=           {{ com spec language term evaluation contexts }}
-%    | suop __                                :: :: unary   {{ com unary operator }} {{ tex [[suop]] [[__]] }}
-%    | __ sbinop t2                             :: :: binary  {{ com binary operator }}
-%    | v sbinop __                              :: :: binary2 {{ com binary operator }}
-%    | if ( __ ) t1 else t2                   :: :: if      {{ com conditional }} {{ tex [[if]]\ \texttt{(}[[__]]\texttt{)}\ [[t1]]\ [[else]]\ [[t2]] }}
-%    | f ( v1 , .. , vi , __ , t1 , .. , tk ) :: :: call    {{ com spec-language function call }}
-%    | { __ }                                 :: :: scoped  {{ com spec-language scoped term }}
-%
-%
-% % spec_language_base_type, bty :: 'SBT_' ::=                   {{ com spec language base type }}
-% %    | unit                                    :: :: unit
-% %    | bool                                    :: :: bool
-% %    | integer                                 :: :: integer
-% %    | pointer ?
-% %    | hard coded lists?   So that we can write list examples in mini-CN without the generic recursive predicate definition mechanism
-%
-spec_function_def :: 'SF_' ::=                                               {{ com spec language function definition }}
-   | function bty id ( base_type1 x1 , .. , base_typek xk ) { term } :: :: func
-
-% spec_predicate_def :: 'SP_' ::=                                               {{ com spec language function definition }}
-%    | predicate bty p ( bty1 id1 , .. , btyk idk ) { spec } :: :: predicate
-%
-spec_decls :: 'SD_' ::=
-   | </ spec_function_defi // i /> </ spec_predicate_defj // j /> :: :: decls
-
-% %if p=null then return [] else take head = owned(p) ; take tail = list(p+1); return head::tail
-% %
-% %if p=null then [] else take head = owned(p) ; take tail = list(p+1); return head::tail
-%
-%
-% %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-% %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-% %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-%
-% % machinery for the semantics
-%
-% atomic_evaluation_context, A :: 'AV_' ::=                      {{ com atomic evaluation context}}
-%    | uop __                                  :: :: unary       {{ com unary operator }} {{ tex [[uop]]\, [[__]] }}
-%    | __ binop e2                               :: :: binaryL     {{ com binary operator }}
-%    | n binop __                                :: :: binaryR     {{ com binary operator }}
-%    | lve = __                                 :: :: assign      {{ com assignment }} {{ tex [[lve]]\, \texttt{=}\, [[__]] }}
-%    | if ( __ ) e1 else e2                    :: :: if          {{ com conditional }} {{ tex [[if]]\ \texttt{(}[[__]]\texttt{)}\ [[e1]]\ [[else]]\ [[e2]] }}
-%    | __ ; e'                                 :: :: seq         {{ com sequencing }} {{ tex [[__]]\texttt{;}[[e']] }}
-%    | f ( n1 , .. , ni , __ , e1 , .. , ek )  :: :: call       {{ com function call }}
-% %  | while ( e ) s ;                         :: :: while   % omit this until we want loop invariants
-%    | return __                               :: :: return      {{ com function return }}
-%
-% % note that there's no evaluation context for blocks, eg {{ decls __ }}, as that's handled explicitly
-%
-% evaluation_context, C                         :: 'C_' ::=      {{ com evaluation context}}
-%    | emp                                      :: :: empty      {{ com empty stack }}
-%    | C . A                                    :: :: expr       {{ com cons expr }} {{ tex [[C]] \cdot [[A]] }}
-%
-% subrules
-%    sval <:: spec
-%    spec_val_config <:: spec_config
-%
-% contextrules
-%   atomic_evaluation_context _:: expression    :: expression
-%   spec_term_evaluation_context _:: spec_term :: spec_term
-%   spec_evaluation_context _:: spec :: spec_term
-%
-% grammar
-%
-% heap, H, G                                    :: 'H_' ::=      {{ com heaps and ghost states $\mathbb{N}\rightharpoonup \mathbb{N}$}}
-%    | emp                                      :: :: empty      {{ com empty heap }}
-%    | n |-> n'                                 :: :: mapsto     {{ com heap mapping $[[n]]$ to $[[n']]$ }}
-%    | H1 * .. * Hi                             :: :: star       {{ com disjoint union of heaps }}
-%    | H \ dom ( E )                            :: :: restrictE  {{ com heap $[[H]]$ minus mappings for the domain of  $[[E]]$ }}
-%
-% environment, E, Eg                                             {{ tex E_{\mathrm{g} } }}  :: 'E_' ::= {{ com environment mapping $\mathit{Id}\rightharpoonup \mathbb{N}$ }}
-%    | ( E )                                    :: S :: environmentParens
-%    | emp                                      :: :: empty      {{ com empty environment }}
-%    | id |-> n                                 :: :: id         {{ com environment mapping $[[id]]$ to $[[n]]$ }}
-%    | E1 , .. , Ei                             :: :: union      {{ com disjoint union of environments }}
-%
-% spec_term_value_env, V :: 'Term_env_' ::= {{ com environment mapping $\mathit{Id}\rightharpoonup \mathbb{V}$ }}
-%    | ( V )                                    :: S :: environmentParens
-%    | cdot                                     :: :: empty      {{ com empty environment }}
-%    | id |-> v                                 :: :: id         {{ com environment mapping $[[id]]$ to $[[v]]$ }}
-%    | V1 , .. , Vi                             :: :: union      {{ com disjoint union of environments }}
-%    | V1 '::' .. '::' Vi                       :: :: stack      {{ com stack of environments }}
-%    | E                                        :: :: env        {{ com global l-values }}
-%
-% % block frame environments are effectively unioned, while function frames start a new one
-%
-% stack_frame_kind, K                           :: 'K_' ::=      {{ com stack frame kind }}
-%    | Func ( f , V , R )                      :: :: func       {{ com function }} {{ tex \cnkw{Func}( [[f]] , [[V]], {\color{resource}[[R]]} ) }} % we'll use the f to get post-conditions
-%    | Block                                    :: :: block      {{ com block }}  {{ tex \cnkw{Block} }}
-%
-% stack_frame, F                                :: 'F_' ::=      {{ com stack frame }}
-%    | < K , C , E >                            :: :: frame      {{ com stack frame, of a kind, context, and env }}
-%
-% stack, S , Sr {{ tex S_r }}                   :: 'S_' ::=      {{ com stack }}
-%    | ( S )                                    :: S :: parens
-%    | emp                                      :: :: empty      {{ com empty stack }}
-%    | F '::' S                                 :: :: cons       {{ com cons }}
-%    | F1 '::' .... '::' Fi '::' S              :: M :: list     {{ com list }}
-%
-% resource, R                                    :: 'R_' ::=      {{ com resources, finite subsets of $\mathbb{N}$ }}
-%    | emp                                      :: :: empty      {{ com empty resource }}
-%    | Owned ( n )                              :: :: owned      {{ com ownership of $[[n]]$ }}
-%    | R1 * .. * Ri                             :: :: star       {{ com disjoint union of resources }}
-%    | dom ( E )                                :: :: domE       {{ com resources for the domain of $[[E]]$ }}
-%    | R \ R'                                   :: :: restrict   {{ com resources $[[R]]$ minus $[[R']]$ }}
-%
-% configuration_le, cle                            :: 'CONFIG_LE' ::= {{ com configurations }}
-%    | < lve , S , H , R , G >                      :: :: config  {{ tex \langle [[lve]],\, [[S]],\, [[H]],\, {\color{resource}{[[R]]} },\, {\color{testing}{[[G]]} } \rangle }}
-%
-% spec_res_config , scr {{ tex sc_r }}          :: 'SPR_CONFIG_' ::= {{ com resource passing configuration for specification evaluation }}
-%    | < spec , V , used ( R1 ) * R2 >          :: :: config {{ tex \langle [[spec]],\, [[V]],\, {\color{resource}{[[R1]],\, [[R2]]} } \rangle }}
-%
-% spec_ghost_config , scg {{ tex sc_g }}       :: 'SPG_CONFIG_' ::= {{ com ghost mapping configuration for specification evaluation }}
-%    | < spec , V , G >                        :: :: config {{ tex \langle [[spec]],\, [[V]],\, {\color{testing}{[[G]]} } \rangle }}
-%
-% spec_val_config , svc                          :: 'SPV_CONFIG_' ::= {{ com configuration for specification values }}
-%    | < spec_value , V , used ( R1 ) * R2 , G >   ::   :: config {{ tex \langle [[spec_value]],\, [[V]],\, {\color{resource}{[[R1]],\, [[R2]]} },\, {\color{testing}{[[G]]} } \rangle }}
-% %  | PAPER < spec_value , V , used ( R1 ) * R2 > :: P :: resource {{ tex \langle [[spec_value]],\, [[V]],\, {\color{resource}{[[R1]],\, [[R2]]} } \rangle }}
-% %  | PAPER < spec_value , V , G >                :: P :: ghost  {{ tex \langle [[spec_value]],\, [[V]],\, {\color{testing}{[[G]]} } \rangle }}
-%
-% spec_config , sc                             :: 'SP_CONFIG_' ::= {{ com configuration for specification evaluation }}
-%    | < spec , V , used ( R1 ) * R2 , G >     ::   :: config   {{ tex \langle [[spec]],\, [[V]],\, {\color{resource}{[[R1]],\, [[R2]]} },\, {\color{testing}{[[G]]} } \rangle }}
-%    | PAPER spec_res_config                   :: P :: resource
-%    | PAPER spec_ghost_config                 :: P :: ghost
-%
-% resource_config, cr {{ tex c_r }}           :: 'CONFIG_ER' ::= {{ com resource passing configuration }}
-%    | < e , S , H , R >                      :: :: config  {{ tex \langle [[e]],\, [[S]],\, [[H]],\, {\color{resource}{[[R]]} } \rangle }}
-%
-% ghost_config, cg {{ tex c_g }}              :: 'CONFIG_EG' ::= {{ com ghost mapping configuration }}
-%    | < e , S , H , G >                      :: :: config  {{ tex \langle [[e]],\, [[S]],\, [[H]],\, {\color{testing}{[[G]]} } \rangle }}
-%
-% configuration, c                            :: 'CONFIG_E' ::= {{ com configurations }}
-%    | < e , S , H , R , G >                  ::   :: config  {{ tex \langle [[e]],\, [[S]],\, [[H]],\, {\color{resource}{[[R]]} },\, {\color{testing}{[[G]]} } \rangle }}
-%    | PAPER resource_config                  :: P :: resource
-%    | PAPER ghost_config                     :: P :: ghost
-%
-% % or  < P , Eg , S , H , e > ?   This (more standard) order has sort-of left-to-right scoping, which is good, but the above makes the interestingly changing parts more visible, which is better?  Pulling the P and Eg out, as they don't change, is _probably_ also good for noise reduction; not totally sure.
-%
-% %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-% %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-% %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-% % machinery for ghost state
-%
-% % ...reuse notation for heaps
-%
-%
-% %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-% %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-% %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-% % ott plumbing
-%
-% terminals                                     :: 'terminals_' ::=
-%    | __                                       :: :: hole       {{ tex \raisebox{0.5ex}{\_} }}
-%    | <                                        :: :: langle     {{ tex \langle }}
-%    | >                                        :: :: rangle     {{ tex \rangle }}
-%    | |->                                      :: :: mapsto     {{ tex \mapsto }}
-%    | -->                                      :: :: red        {{ tex \longrightarrow }}
-%    | -->lv                                    :: :: redlv      {{ tex \longrightarrow_{\mathrm{lv} } }}
-%    | -->*                                     :: :: reds       {{ tex \mathrel{ {\longrightarrow}^{*} } }}
-%    | |/                                       :: :: rest       {{ tex \downharpoonright }}
-%    | =/=                                      :: :: noteq      {{ tex \not= }}
-%    | ~                                        :: :: tilde      {{ tex \sim }}
-%    | \/                                       :: :: vee        {{ tex \vee }}
-%    | /\                                       :: :: wedge      {{ tex \wedge }}
-%    | |-                                       :: :: turnstile  {{ tex \vdash }}
-%    | in                                       :: :: in         {{ tex \in }}
-%    | notin                                    :: :: notin      {{ tex \not\in }}
-%    | not                                      :: :: not        {{ tex \neg }}
-%    | emp                                      :: :: emp        {{ tex \mathrm{emp} }}
-%    | dom                                      :: :: dom        {{ tex \mathrm{dom} }}
-%    | ran                                      :: :: ran        {{ tex \mathrm{ran} }}
-%    | stackdepth                               :: :: stackdepth {{ tex \mathrm{stackdepth} }}
-%    | isvalue                                  :: :: isvalue    {{ tex \mathrm{isvalue} }}
-%    | lookup                                   :: :: lookup     {{ tex \mathrm{lookup} }}
-%    | 0                                        :: :: zero       {{ tex \texttt{0} }}
-%    | 1                                        :: :: one        {{ tex \texttt{1} }}
-%    | main                                     :: :: main       {{ tex \texttt{main} }}
-%    | runtime_check_imp                        :: :: runtime_check_imp {{ tex \mathrm{runtime\_check\_imp} }}
-%    | runtime_check_res                        :: :: runtime_check_res {{ tex \mathrm{runtime\_check\_res} }}
-%    | ;                                        :: :: semicolon  {{ tex \texttt{;} }}
-%    | |-lv                                     :: :: lv_entails {{ tex \vdash_{\mathrm{lv} }  }}
-%    | -|                                       :: :: results    {{ tex \dashv  }}
-%    | in                                       :: :: mem        {{ tex \in  }}
-%    | <-                                       :: :: bind       {{ tex \leftarrow }}
-%    | =>                                       :: :: implies    {{ tex \Rightarrow }}
-%    | ~>                                       :: :: leadsto    {{ tex \rightsquigarrow }}
-%    | cdot                                     :: :: cdot       {{ tex \cdot }}
-%    | ldots                                    :: :: ldots       {{ tex \ldots }}
-%    | /*@                                      :: :: start_com {{ tex \texttt{\slash{*}@ } }}
-%    | @*/                                      :: :: end_com   {{ tex \texttt{ @{*}\slash} }}
-%    | |                                        :: :: mid       {{ tex \mid }}
-%    | =<                                       :: :: leq       {{ tex \leq }}
-%    | PAPER                                    :: :: PAPER     {{ tex }}
-%
-minicn_extra                                    :: mincn_extra_ ::=
-%    | judgement                                :: :: judgement
-%    | decls = decls'                           :: :: eq_decls
-%    | P = P'                                   :: :: eq_prog
-%    | E = E'                                   :: :: eq_env_mapping
-%    | V = V'                                   :: :: eq_term_env_mapping
-%    | H = H'                                   :: :: eq_heap
-%    | R = R'                                   :: :: eq_res
-%    | S = S'                                   :: :: eq_stack
-%    | v = v'                                   :: :: eq_term
-%    | block = block'                           :: :: eq_block
-%    | n =/= 0                                  :: :: neq_zero
-%    | n =< n'                                  :: :: leq_const
-%    | E ( id ) = n                             :: :: E_lookup
-%    | V ( id ) = v                             :: :: T_lookup
-%    | id notin dom ( E )                       :: :: E_notin
-%    | n notin ran ( E )                        :: :: E_notinran
-%    | H ( n ) = n'                             :: :: H_lookup
-%    | G ( n ) = n'                             :: :: G_lookup
-     | P ( id ) = func                          :: :: P_lookup
-     | P ( id ) = spec_predicate_def            :: :: P_lookup_pred
-%    | P ( f ) = spec_function_def              :: :: P_lookup_func
-%    | n in R                                   :: :: R_in
-     | neg ( minicn_extra )                     :: :: not
-%    | isvalue ( e )                            :: :: isvalue
-%    | runtime_check_res ( formula )            :: :: runtime_check_res
-%    | runtime_check_imp ( formula )            :: :: runtime_check_imp
-%    | color_res ( formula )                    :: :: color_res {{ tex {\color{resource}{[[formula]]} } }}
-%    | color_imp ( formula )                    :: :: color_imp {{ tex {\color{testing}{[[formula]]} } }}
-     | id inEnv Vc                              :: :: lookup_var_in_context
-     | Rc = Rc'                                 :: :: eq_resources
-     | Rc , Phi => term                         :: :: smt_proof {{ com $[[term]]$ is provable by SMT solver with constraints $[[Phi]]$ and disjointness information $[[Rc]]$ }}
-     | Phi = Phi'                               :: :: eq_constraints
-     | Vc = Vc'                                 :: :: eq_variable_contexts
-     | mres = mres'                             :: :: eq_mres
-%    | ldots                                    :: :: ldots
- 
-% %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-% %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-% %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-% % the dynamic semantics
-%
-% defns
-%  opsem :: '' ::=
-%
-% %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-% %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-%
-%   defn lookup Eg S id = n :: :: Lookup_ :: lookup_ {{ com lookup $[[id]]$ in the local or global environment }} by
-%
-% {{ com
-% Lookup of an identifier has to look in the environments of the current block and any enclosing blocks, and then the environment of the function parameters, and then (ignoring any other function frames and their blocks) the environment for the global variables. \\
-% }}
-%
-%
-% E(id)=n
-% --------------------------------- :: block_found
-% lookup Eg (<Block, C, E> :: S) id = n
-%
-%
-% id notin dom(E)
-% lookup Eg S id = n
-% --------------------------------- :: block_recurse
-% lookup Eg (<Block, C, E> :: S) id = n
-%
-% E(id)=n
-% --------------------------------- :: func_found
-% lookup Eg (<Func ( f, V , R ) , C, E> :: S) id = n
-%
-% id notin dom(E)
-% Eg(id)=n
-% --------------------------------- :: func_global
-% lookup Eg (<Func ( f, V , R ) , C, E> :: S) id = n
-%
-%
-% %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-% %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-%
-%   defn P , Eg  |- cle -->lv cle' :: :: Exp_lv_ :: exp_lv_ {{ com lvalue configuration $[[cle]]$ reduces to $[[cle']]$, as an lvalue}} by
-%
-% {{ com
-% \ruleheading{L-value identifier lookup} \ \\
-% }}
-% %{{ com
-% %\testingdoc{nothing to do}
-% %}}
-%
-% lookup Eg S id = n
-% --------------------------- :: var
-% P, Eg |- <id, S, H, R, G> -->lv <n, S, H, R, G>
-%
-% %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-%
-% {{ com
-% \ruleheading{L-value indirection} \ \\
-% \resourcedoc{
-% do the same thing as the dereference rule
-% } \\
-% \testingdoc{
-% do the same thing as the dereference rule
-% } \\
-% }}
-%
-% H(n) = n'
-% color_res( runtime_check_res(n in R) )
-% color_imp( runtime_check_imp(G(n) = stackdepth(S)) )
-% --------------------------- :: indirect
-% P, Eg |- <*n, S, H, R, G> -->lv <n', S, H, R, G>
-%
-% %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-%
-% {{ com
-% \ruleheading{L-value evaluation under context} \ \\
-% }}
-% %{{ com
-% %\testingdoc{nothing to do}
-% %}}
-%
-% P, Eg |- <le, S, H, R, G> -->lv <le', S', H', R', G'>
-% --------------------------- :: ctx_indirect
-% P, Eg |- <*le, S, H, R, G> -->lv <*le', S', H', R', G'>
-%
-%
-% %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-% %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-%
-%   defn P , Eg  |- c --> c' :: :: Exp_ :: '' {{ com configuration $[[c]]$ reduces to $[[c']]$ }} by
-%
-% %  defn P , Eg  |- c --> c' :: :: Exp_ :: exp_ {{ com configuration $[[c]]$ reduces to $[[c']]$ }} by
-%
-% %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-%
-% {{ com
-% \ruleheading{R-value coercion from an identifier to an explicit dereference of the assocated address} \ \\
-% }}
-% %{{ com
-% %\testingdoc{nothing to do}
-% %}}
-%
-% lookup Eg S id = n
-% --------------------------- :: var
-% P, Eg |- <id, S, H, R, G > -->  < *n, S, H, R, G>
-%
-% %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-%
-% {{ com
-% \newpage
-% \ruleheading{Dereference an address} \ \\
-% }}
-% {{ com
-% \resourcedoc{
-% \begin{itemize}
-% \item %If $[[n]]$ is not a global, i.e. $[[n notin ran(Eg)]]$, then
-% assert $[[n in R]]$
-% %\item If $[[n]]$ is a global, I'm not sure what the CN proof semantics is that we should match.
-% %if we're allowing free access to globals, check $[[G(n)=0]]$. If we're checking that global accesses are gated by CN \texttt{accesses}, then we need to remember those in the ghost state -- either dynamically, or, if they will always be per-function, use that.
-% \end{itemize}
-% }
-% }}
-% {{ com
-% \testingdoc{
-% \begin{itemize}
-% \item %If $[[n]]$ is not a global, i.e. $[[n notin ran(Eg)]]$, then
-% assert $[[G(n)=stackdepth(S)]]$ (note that these dynamic testing asserts don't have to stop the program; one could optionally warn and continue)
-% %\item If $[[n]]$ is a global, I'm not sure what the CN proof semantics is that we should match.
-% %, if we're allowing free access to globals, check $[[G(n)=0]]$. If we're checking that global accesses are gated by CN \texttt{accesses}, then we need to remember those in the ghost state -- either dynamically, or, if they will always be per-function, use that.
-% \end{itemize}
-% }
-% }}
-%
-% color_res( runtime_check_res(n in R) )
-% color_imp( runtime_check_imp(G(n) = stackdepth(S)) )
-% H(n) = n'
-% --------------------------- :: unop_dereference
-% P, Eg |- <*n, S, H, R, G> -->  <n', S, H, R, G>
-%
-% %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-%
-% {{ com
-% \ruleheading{Taking the address of a variable} \ \\
-% }}
-% %{{ com
-% %\testingdoc{nothing to do}
-% %}}
-%
-% lookup Eg S id = n
-% --------------------------- :: address
-% P, Eg |- <&id, S, H, R, G> --> <n, S, H, R, G>
-%
-%
-% %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-%
-% {{ com
-% \ruleheading{Assignment} \ \\
-% \resourcedoc{
-% do the same thing as the dereference rule
-% } \\
-% \testingdoc{
-% do the same thing as the dereference rule
-% } \\
-% }}
-%
-% color_res( runtime_check_res(n in R) )
-% color_imp( runtime_check_imp(G(n) = stackdepth(S)) )
-% ----------------------------------------- :: assign_const
-% P, Eg |- <n=n', S, H * n|->n0, R, G> --> <n', S, H * n|->n', R, G>
-%
-%
-% P, Eg |- <le, S, H, R, G > -->lv < le' , S', H', R', G' >
-% ---------------------------------------------------------- :: assign_lve
-% P, Eg |- <le=n', S, H , R, G> --> <le' = n, S', H' , R', G' >
-%
-% %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-%
-% {{ com
-% \ruleheading{Conditional, sequencing, operators} \ \\
-% }}
-%
-%
-% n =/= 0
-% ----------------------------------------- :: if_true
-% P, Eg |- <if (n) e1 else e2, S, H, R, G> --> <e1, S, H, R, G>
-%
-% ----------------------------------------- :: if_false
-% P, Eg |- <if (0) e1 else e2, S, H, R, G> --> <e2, S, H, R, G>
-%
-%
-% ----------------------------------------- :: seq_int
-% P, Eg |- <n;e, S, H, R, G> --> <e, S, H, R, G>
-%
-%
-% %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-%
-% --------------------------- :: unop_not_a
-% P, Eg |- <!0, S, H, R, G> -->  <1, S, H, R, G>
-%
-% n =/= 0
-% --------------------------- :: unop_not_b
-% P, Eg |- <!n, S, H, R, G> -->  <0, S, H, R, G>
-%
-%
-% {{ com Omitting the standard rules for $[[binop]]$s: $[[+]]$, $[[&&]]$, etc.
-% \smallskip
-% }}
-%
-% %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-%
-% {{ com
-% \newpage
-% \ruleheading{Block entry}
-% A block has to:
-% \begin{itemize}
-% \item create new environment $[[E']]$ for the block-local variables
-% \item create new allocations $[[H']]$ for the block-local variables
-% \item execute the block body in the combination of the existing and new environment together with the global variable environment
-% \end{itemize}
-% }}
-%
-% {{ com
-% \resourcedoc{
-% \begin{itemize}
-% \item for the block-scoped locals, update R to include the footprint of the block-local variables $[[n1]],..,[[ni]]$
-% \end{itemize}
-% }
-% \testingdoc{
-% \begin{itemize}
-% \item for the block-scoped locals, update G to map the footprint of the block-local variables $[[n1]],..,[[ni]]$ to the current stack depth, i.e.\ $[[stackdepth(S)]]$, because C/CN implicitly provide ownership for them
-% %\item (conceivably we could do a belt-and-braces check that the allocation really is fresh, checking that $[[n1]],..,[[ni]]$ is really fresh, but there's not much point)
-% \end{itemize}
-% }
-% }}
-%
-% block = { cty1 id1; .. ctyi idi; e }
-% E' = id1 |-> n1, .. , idi |-> ni
-% H' = n1 |-> 0 * .. * ni |-> 0
-% color_res( R' = Owned(n1) * .. * Owned(ni) )
-% color_imp( G' = n1 |-> stackdepth(S) * .. * ni |-> stackdepth(S) )
-% ----------------------------------------- :: block_start
-% P, Eg |- <block, S, H, R, G> --> <e, <Block, emp, E'>::S, H*H', R*R', G*G'>
-%
-% %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-%
-% {{ com
-% \ruleheading{Block exit}
-% At the end of a block, forget its environment and deallocate its locals:
-% }}
-%
-% {{ com
-% \resourcedoc{
-% \begin{itemize}
-% \item for the block-scoped locals, remove their footprint $[[n1]],..,[[ni]]$ from $[[R]]$
-% \end{itemize}
-% }
-% \testingdoc{
-% \begin{itemize}
-% \item for the block-scoped locals, remove their footprint $[[n1]],..,[[ni]]$ from $[[G]]$
-% \end{itemize}
-% }
-% }}
-%
-%
-% ---------------------------------------------------------------------------- :: block_end
-% P, Eg |- < n, (<Block, emp, E>::S), H, R, G> --> <n, S, H \ dom(E), R \ dom(E), G \ dom(E)>
-%
-% %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-%
-% {{ com
-% \newpage
-% \ruleheading{Function call}
-% A function call has to:
-% \begin{itemize}
-% \item create new environment $[[E']]$ for the function parameters
-% \item create new allocations $[[H']]$ for the function parameters
-% \item execute the function body in the new environment together with the global variable environment
-% \end{itemize}
-% }}
-%
-% {{ com
-% \resourcedoc{
-% \begin{itemize}
-% \item for the function-scoped locals, make R include the footprint of the function-local parameters $[[m1]],..,[[mk]]$, because C/CN implicitly provide ownership for them
-% \end{itemize}
-% }
-% \testingdoc{
-% \begin{itemize}
-% \item for the function-scoped locals, update G to map the footprint of the function-local parameters $[[m1]],..,[[mk]]$ to the current stack depth at the end of this transition, i.e.\ $[[stackdepth(S)]]+1$, because C/CN implicitly provide ownership for them
-% \end{itemize}
-% }
-% }}
-%
-% P(f) = cty f ( cty1 id1 , .. , ctyk idk ) /*@ requires spec ensures ret . spec' @*/ block
-% E' = id1 |-> m1, .. , idk |-> mk
-% H' = m1 |-> n1 * .. * mk |-> nk
-% V = id1 |-> n1 , .. , idk |-> nk
-% P , Eg , H , inc , stackdepth (S) |- < spec , V , used ( emp ) * R , G > -->* < cdot , V' , used ( R'1  ) * R'2 , G' >
-% color_res( R'' = Owned(m1) * .. * Owned(mk) )
-% S' = <Func ( f, V' , R2 ) , emp, E'> :: S
-% color_imp( G'' = m1 |-> stackdepth(S') * .. * mk |-> stackdepth(S') )
-% ----------------------------------------------------------------- :: call
-% P, Eg |- <f(n1,..,nk), S, H, R, G> -->  <block, S', H*H', R'1 * R'' , G'*G''>
-%
-%
-% %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-%
-% {{ com
-% \ruleheading{Function return}
-% A return discards all the stack up to and including the closest $[[Func (f , V , R2) ]]$ frame, and deallocates the heap pointed to by all those environments:
-% }}
-% {{ com
-% \resourcedoc{
-% \begin{itemize}
-% \item for the function parameters and any block-scoped locals allocated during execution of this function, remove their footprint $[[dom]]([[E1]],..,[[Ei]],[[E]])$ from $[[R]]$
-% \end{itemize}
-% }
-% \testingdoc{
-% \begin{itemize}
-% \item for the function parameters and any block-scoped locals allocated during execution of this function, remove their footprint $[[dom]]([[E1]],..,[[Ei]],[[E]])$ from $[[G]]$
-% \end{itemize}
-% }
-% }}
-%
-% S = <Block,C1,E1> :: .. :: <Block,Ci,Ei> :: <Func ( f , V , R2 ) ,C,E>::S'
-% H' = H \ dom (E1 , .. , Ei , E)
-% color_res( R1 = R \ dom ( E1 , .. , Ei , E) )
-% color_imp( G' = G \ dom ( E1 , .. , Ei , E) )
-% P(f) = cty f ( cty1 id1 , .. , ctyk idk ) /*@ requires spec ensures ret . spec' @*/ block
-% P , Eg , H , dec , stackdepth (S) |- < spec' , ( V , ret |-> n ) , used ( emp ) * R1 , G' > -->* < cdot , V' , used ( R1 ) * emp , G'' >
-% color_imp ( runtime_check_imp ( stackdepth (S') |- G'' ) )
-% -------------------------------------------------------------- :: return
-% P, Eg |- <return n, S , H, R, G> --> <n, S', H', R1 * R2 , G'' >
-%
-% %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-%
-% {{ com
-% \ruleheading{Shift evaluation context to stack}
-% Move some evaluation context into the topmost $[[Block]]$ frame of the stack, to compute under it.\\
-% }}
-%
-% %{{ com \testingdoc{ nothing to do } }}
-%
-% not ( isvalue(e) )
-% ---------------------------------------------------------------------------- :: eval_ctx1
-% P, Eg |- < A . e, (<Block, C, E>::S), H, R, G> --> <e, (<Block, C.A, E>::S), H, R, G>
-%
-% %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-%
-% {{ com
-% \ruleheading{Shift evaluation context from stack}
-% Move some evaluation context back from the stack to apply to a value:\\
-% }}
-%
-% %{{ com \testingdoc{ nothing to do } }}
-%
-% ---------------------------------------------------------------------------- :: eval_ctx2
-% P, Eg |- < n, (<Block, C.A, E>::S), H, R, G> --> <A.n, (<Block, C, E>::S), H, R, G>
-%
-% % Example:
-% % decompose: e1+e2 = (__+e2).e1   (equality of expression ASTs)
-% %
-% % <e1 + e2, (<Block, emp, emp>::S), H> --> <e1', (<Block, (__+e2)::emp, emp>::S), H>        ...  instance of eval_ctx1
-% %
-% % <e1', (<Block, (__+e2)::emp, emp>::S), H> -->* <n, (<Block, (__+e2)::emp, emp>::S), H>    ... with other rules using <e1, ...>  -->*  <n, ...>
-% %
-% % <n, (<Block, (__+e2)::emp, emp>::S), H>  --> <n+e2,(<Block, emp, emp>::S), H>             ... instance of eval_ctx2
-%
-% defn sd |- G :: :: Ghost_ :: Ghost_ {{ com range of $[[G]]$ is bounded by $[[sd]]$ }} by
-%
-%    ------------------ :: emp
-%    sd |- emp
-%
-%    sd |- G
-%    color_imp (runtime_check_imp ( n' =< sd ) )
-%    ----------------------------- :: star
-%    sd |- n |-> n' * G
-%
-% %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-% %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-%
-% defn P --> ( P' , Eg |- c )  :: :: 'Prog_init' :: '' {{ com initial configuration for program $[[P]]$ }} by
-%
-% %defn P -->  P' , Eg |- c  :: :: 'Prog_init' :: prog_init_ {{ com initial configuration for program $[[P]]$ }} by
-%
-% {{ com \noindent
-% \ruleheading{The initial configuration for a program}
-% creates an invocation for $[[main]]$, which should have no arguments.
-% }}
-% {{ com
-% \testingdoc{
-% \begin{itemize}
-% \item the instrumentation stack depth is the number of Func frames in the semantics' stack (so $[[stackdepth(emp)]] = 0$  in the initial configuration and the stackdepth is $1$ in the body of $[[main]]$)
-% \item initialise the ghost state $[[G]]$: for the globals, set $[[G]]$ to map the footprint of the initial heap H to the pseudo-stack-depth 0.
-% \end{itemize}
-% }
-% }}
-%
-%
-% P = spec_decls cty1 id1 ; ..  ctyi idi ;  func1 .. funcj
-% Eg = id1 |-> n1 , .. , idi |-> ni
-% S = emp
-% H = n1 |-> 0 * .. * ni |-> 0
-% color_res( R = Owned(n1) * .. * Owned(ni) )
-% color_imp( G = n1 |-> 0 * .. * ni |-> 0 )
-% --------------------------- :: prog_init
-% P --> ( P, Eg |- <main(), S, H, R, G> )
-%
-%
-% %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-% %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-% % spec language computation
-%
-% % the instrumentation doesn't care about the starts and ends of spec-language scopes, so let's do spec language semantics by substitution, not environments
-% % though we still need to keep the C stack $[[S]]$ to calculate the current stackdepth
-%
-% % for evaluation order, maybe we'll just reduce under evaluation contexts instead of shuffling them around explicitly
-%
-% {{ com
-% \subsection*{Spec dynamics}
-% }}
-%
-% defn P , Eg , H , incdec , sd |- spec_config -->* spec_val_config :: :: BigSpec_ :: bigspec_ {{ com specification configuration $[[spec_config]]$ evaluates to $[[spec_val_config]]$ }} by
-%
-%    ------------------------------------------------------------------------- :: value
-%    P , Eg , H , incdec , sd |- < sval , V , used ( R1 ) * R2 , G > -->* < sval , V , used ( R1 ) * R2 , G >
-%
-%
-%    P , Eg , H , incdec , sd |- < spec1 , V , used ( R1 ) * R2 , G > --> < spec2 , V' , used ( R1' ) * R2' , G' >
-%    P , Eg , H , incdec , sd |- < spec2 , V' , used ( R1' ) * R2' , G' > -->* < sval , V'' , used ( R1'' ) * R2'' , G'' >
-%    ------------------------------------------------------------------------ :: expression
-%    P , Eg , H , incdec , sd |- < spec1 , V , used ( R1 ) * R2 , G > -->* < sval , V'' , used ( R1'' ) * R2'' , G'' >
-%
-%
-% defn P , Eg , H , incdec , sd |- spec_config --> spec_config' :: :: Spec_ :: spec_ {{ com specification configuration $[[spec_config]]$ steps to $[[spec_config']]$ }} by
-%
-%    color_res(runtime_check_res(v=true))
-%    color_imp(runtime_check_imp(v=true))
-%    ------------------------------------ :: assert
-%    P , Eg , H , incdec , sd |- < assert ( v ) ; spec , V , used ( R1 ) * R2 , G > --> < spec , V , used ( R1 ) * R2 , G >
-%
-%
-%    --------------------------------------------------------------------------------------- :: let
-%    P , Eg , H , incdec , sd |- < let id = v ; spec , V , used ( R1 ) * R2 , G > --> < spec , ( V , id |-> v ) ,  used ( R1 ) * R2 , G >
-%
-%
-%    P ( p ) = predicate bty p ( bty1 id1 , .. , btyk idk ) { spec }
-%    V' = ( id1 |-> v1 , .. , idk |-> vk ) :: V
-%    ----------------------------------------------------------------------------------------------------------------------- :: pred_user
-%    P , Eg , H , incdec , sd |- < p ( v1 , .. , vk ) , V ,  used ( R1 ) * R2 , G > --> < spec , V' , used ( R1 ) * R2 , G >
-%
-%
-%    H ( n ) = n'
-%    color_res (runtime_check_res ( n in R2 ) ) color_res ( R2 = R2' * Owned (n) ) color_res ( R1' = R1 * Owned (n) )
-%    color_imp ( runtime_check_imp  ( G ( n ) = sd ) ) color_imp ( G  = G1  * n |-> sd ) color_imp ( G' = G1 * n |-> incdec ( sd ) )
-%    ----------------------- :: pred_owned
-%    P , Eg , H , incdec , sd |- < Owned ( n ) , V ,  used ( R1 ) * R2, G > --> < return n' , cdot :: V , used ( R1' ) * R2'  , G' >
-%
-%
-%    ---------------------------------------------------------------------------------------------------- :: take_return
-%    P , Eg , H , incdec , sd |- < take id = return v ; spec , V1 :: V , used ( R1 ) * R2 , G > --> < spec , ( V , id |-> v ) ,  used ( R1 ) * R2 , G >
-%
-%
-%    P , Eg , H , incdec , sd |- < spec , V , used ( R1 ) * R2 , G > --> < spec' , V' ,  used ( R1' ) * R2' , G' >
-%    ---------------------------------------------------------------------------------------------------- :: take_step
-%    P , Eg , H , incdec , sd |- < take id = spec ; spec1 , V , used ( R1 ) * R2 , G > --> < take id = spec' ; spec1 , V' ,  used ( R1' ) * R2' , G' >
-%
-%
-%    -------------------------------------------------------------------------------------------- :: if_true
-%    P , Eg , H , incdec , sd |- < if ( true ) { spec1 } else { spec2 } , V , used ( R1 ) * R2 , G > --> < spec1 , V ,  used ( R1 ) * R2 , G >
-%
-%
-%    ---------------------------------------------------------------------------------------------- :: if_false
-%    P , Eg , H , incdec , sd |- < if ( false ) { spec1 } else { spec2 } , V , used ( R1 ) * R2 , G > --> < spec2 , V ,  used ( R1 ) * R2 , G >
-%
-%
-%    P , Eg |- < V , t > --> < V' , t' >
-%    ------------------------------------------------------------------ :: ctx
-%    P , Eg , H , incdec , sd |- < SSA . t , V , used ( R1 ) * R2 , G > --> <  SSA . t' , V' ,  used ( R1 ) * R2 , G >
-%
-%
-% defn P , Eg |- < V , t > --> < V' , t' > :: :: Term_ :: term_ {{ com term $[[t]]$ steps to $[[t']]$ }} by
-%
-%
-%    ( V :: E ) ( id ) = v
-%    ------------------------------------ :: var
-%    P , Eg |- < V , id > --> < V , v >
-%
-%
-%    ------------------------------------ :: scoped
-%    P , Eg |- < V1 :: V , { v } > --> < V , v >
-%
-%
-%    P ( f ) = function bty f ( bty1 id1 , .. , btyk idk ) { t }
-%    ----------------------------------------------------------- :: call
-%    P , Eg |- < V , f ( v1 , .. , vk ) > -->  < ( id1 |-> v1 , .. , idk |-> vk ) :: V , { t } >
-%
-%    ----------------------------------- :: if_true
-%    P , Eg |- < V , if ( true ) t1 else t2 > --> < V , t1 >
-%
-%    ----------------------------------- :: if_false
-%    P , Eg |- < V , if ( false ) t1 else t2 > --> < V' , t2 >
-%
-%
-%    P , Eg |- < V , t > --> < V' , t' >
-%    ------------------------------------------- :: ctx
-%    P , Eg |- < V , STA . t > --> < V' , STA . t' >
-%
-%
-%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-% the static semantics
-
-grammar
-variable_context, Vc {{ tex \Gamma }} :: 'V_' ::= {{ com variable context }}
-   | cdot            ::   :: empty {{ com empty variable context }}
-   | id              ::   :: var   {{ com singleton context with $[[id]]$ }}
-   | Vc1 , ... , Vci ::   :: union {{ com union of variable contexts }}
-   | [ Vc ]          :: S :: parens
-
-constraint_context, Phi {{ tex \Phi }} :: 'Phi_' ::= {{ com constraint context }}
-   | cdot                       ::   :: empty {{ com empty constraint context }}
-   | term                       ::   :: term  {{ com singleton context with $[[term]]$ }}
-   | Phi1 /\ ... /\ Phii        ::   :: union {{ com conjunction of constraint contexts }}
-   | cond ( term , Phi , Phi' ) ::   :: cond  {{ com if $[[term]]$ then $[[Phi]]$ else $\cdot$ }}
-   | ( Phi )                    :: S :: parens
-
-conditional_resource , cond_res  :: 'CondRes_' ::= {{ com conditional typing resource }}
-   | id = spec  ::   :: id_spec {{ com for specs which return a value }}
-   | spec       ::   :: spec    {{ com for specs which don't return a value }}
-   | Rc         ::   :: cond    {{ com resource contexts  }}
-
-typing_resource, mres :: 'Res_' ::= {{ com typing resources }}
-   | term |-> term'                        ::   :: owned {{ com ownership of $[[term']]$ mapping to $[[term']]$ }}
-   | cond ( term , cond_res1 , cond_res2 ) ::   :: cond {{ com if $[[term]]$ then $[[cond_res1]]$ else $[[cond_res2]]$ }}
-
-resource_context, Rc {{ tex \mathcal{ R } }} :: 'Rc_' ::= {{ com resource context }}
-   | cdot           ::   :: empty
-   | mres           ::   :: res
-   | Rc1 * .. * Rci ::   :: star  {{ com TODO - we need to simplify before deconstructing }}
-   | ( Rc )         :: S :: parens
-
-done_or_rerun {{ tex ( \cnkw{done} \mid \cnkw{rerun} ) }} :: 'DoR_' ::= {{ com for use resoruce simplification }}
-   | done  :: :: done
-   | rerun :: :: rerun
-
- defns
+defns
 
   mini :: 'Mini_' ::=
 
-   defn P , Vc , Rc , Phi |- expand ( cond_res ) ~> Vc' , Rc' , Phi' :: :: CondRes_ :: CondRes_
-   {{ com given definitions in program $[[P]]$, variables $[[Vc]]$, resources $[[Rc]]$ and constraints $[[Phi]]$, expand conditional resource $[[cond_res]]$ into $[[Vc']] , [[Rc']] , [[Phi']]$ }} by
+  defn P , Vc , Rc , Phi |- expand ( cond_res ) ~> Vc' , Rc' , Phi' :: :: CondRes_ :: CondRes_
+  {{ com given definitions in program $[[P]]$, variables $[[Vc]]$, resources $[[Rc]]$ and constraints $[[Phi]]$, expand conditional resource $[[cond_res]]$ into $[[Vc']] , [[Rc']] , [[Phi']]$ }} by
 
     ---------------------------------------------------- :: Emp
     P , Vc , Rc , Phi |- expand ( Rc' ) ~> cdot , Rc' , cdot
@@ -939,8 +108,8 @@ done_or_rerun {{ tex ( \cnkw{done} \mid \cnkw{rerun} ) }} :: 'DoR_' ::= {{ com f
     P , Vc , Rc , Phi |- expand ( spec ) ~> Vc' , Rc' , Phi'
 
 
-   defn  P , Vc , Rc , Phi |- simplify ( Rc' ) ~> done_or_rerun , Vc' , Rc'' , Phi' :: :: Res_ :: Res_
-   {{ com given definitions in program $[[P]]$, variables $[[Vc]]$, resources $[[Rc]]$ and constraints $[[Phi]]$, simplify resources $[[Rc']]$ and produce contexts $[[Vc']] , [[Rc'']] , [[Phi']]$ (try expand any conditional resources in the context, re-run if any expanded) }} by
+  defn  P , Vc , Rc , Phi |- simplify ( Rc' ) ~> done_or_rerun , Vc' , Rc'' , Phi' :: :: Res_ :: Res_
+  {{ com given definitions in program $[[P]]$, variables $[[Vc]]$, resources $[[Rc]]$ and constraints $[[Phi]]$, simplify resources $[[Rc']]$ and produce contexts $[[Vc']] , [[Rc'']] , [[Phi']]$ (try expand any conditional resources in the context, re-run if any expanded) }} by
 
 
    ------------------------------------------------------------- :: Emp
@@ -972,14 +141,14 @@ done_or_rerun {{ tex ( \cnkw{done} \mid \cnkw{rerun} ) }} :: 'DoR_' ::= {{ com f
     P , Vc , Rc , Phi |- simplify ( cond ( term , cond_res1 , cond_res2 ) *  Rc' ) ~> done_or_rerun , Vc'' ,  cond ( term , cond_res1 , cond_res2 ) * Rc'' , Phi''
 
 
-  defn P , Vc , Rc , Phi |- simplify ( Vc' , Rc' , Phi' ) ~> Vc'' , Rc'' , Phi'' :: :: SimpRes_ :: SimpRes_
-  {{ com given definitions in program $[[P]]$, variables $[[Vc]]$, resources $[[Rc]]$ and constraints $[[Phi]]$, repeatedly simplify $[[Vc']], [[Rc']], [[Phi']]$ until no change, and produce contexts $[[Vc'']] , [[Rc'']] , [[Phi'']]$ }} by
- 
+ defn P , Vc , Rc , Phi |- simplify ( Vc' , Rc' , Phi' ) ~> Vc'' , Rc'' , Phi'' :: :: SimpRes_ :: SimpRes_
+ {{ com given definitions in program $[[P]]$, variables $[[Vc]]$, resources $[[Rc]]$ and constraints $[[Phi]]$, repeatedly simplify $[[Vc']], [[Rc']], [[Phi']]$ until no change, and produce contexts $[[Vc'']] , [[Rc'']] , [[Phi'']]$ }} by
+
 
     P , [ Vc , Vc' ] , Rc * Rc' , Phi /\ Phi' |- simplify ( Rc * Rc' ) ~> done , cdot , Rc * Rc' , cdot
     ---------------------------------------------------------------------- :: Done
     P , Vc , Rc , Phi |- simplify ( Vc' , Rc' , Phi' ) ~> Vc' , Rc' , Phi'
- 
+
 
     P , [ Vc , Vc' ] , Rc * Rc' , Phi /\ Phi' |- simplify ( Rc * Rc' ) ~> rerun , Vc1 , Rc1 , Phi1
     P , Vc , Rc , Phi |- simplify ( [ Vc' , Vc1 ] , Rc' * Rc1 , Phi' /\ Phi1 ) ~> Vc'' , Rc'' , Phi''
@@ -987,8 +156,8 @@ done_or_rerun {{ tex ( \cnkw{done} \mid \cnkw{rerun} ) }} :: 'DoR_' ::= {{ com f
     P , Vc , Rc , Phi |- simplify ( Vc' , Rc' , Phi' ) ~> Vc'' , Rc'' , Phi''
 
 
-   defn  P , Vc , Rc , Phi |- Vc' , Rc' , Phi' | spec -| sval , Vc'' , used ( Rc1 ) * Rc2 , Phi'' :: :: Prove_ :: Prove_
-   {{ com given definitions in program $[[P]]$, variables $[[Vc]]$, resources $[[Rc]]$ and constraints $[[Phi]]$ (and accumulating contexts $[[Vc']], [[Rc']], [[Phi']]$) prove $[[spec]]$ and evaluate it to $[[sval]]$, with $[[Rc1]]$ as used, and new contexts $[[Vc']] , [[Rc2]] , [[Phi']]$ }} by
+  defn  P , Vc , Rc , Phi |- Vc' , Rc' , Phi' | spec -| sval , Vc'' , used ( Rc1 ) * Rc2 , Phi'' :: :: Prove_ :: Prove_
+  {{ com given definitions in program $[[P]]$, variables $[[Vc]]$, resources $[[Rc]]$ and constraints $[[Phi]]$ (and accumulating contexts $[[Vc']], [[Rc']], [[Phi']]$) prove $[[spec]]$ and evaluate it to $[[sval]]$, with $[[Rc1]]$ as used, and new contexts $[[Vc']] , [[Rc2]] , [[Phi']]$ }} by
 
     ------------------------------------------------------ :: Val
     P , Vc , Rc , Phi |- Vc' , Rc' , Phi' | sval -| sval , Vc' , used ( Rc' ) * Rc , Phi'
@@ -1055,8 +224,8 @@ done_or_rerun {{ tex ( \cnkw{done} \mid \cnkw{rerun} ) }} :: 'DoR_' ::= {{ com f
     P , Vc , Rc , Phi |- Vc' , Rc' , Phi' | if ( term ) { spec1 } else { spec2 } -| cdot , [ Vc' , Vc1 ] , used ( Rc' * mres ) * Rc1 , Phi' /\ Phi1
 
 
-   defn  P , Vc , Rc , Phi |- Vc' , Phi' | spec ~> sval , Vc'' , Rc'' , Phi'' :: :: Assume_ :: Assume_
-   {{ com given definitions in program $[[P]]$, variables $[[Vc]]$, resources $[[Rc]]$ and constraints $[[Phi]]$, (and accumulating contexts $[[Vc']]$ and $[[Phi']]$) assume $[[spec]]$ and evaluate it to $[[sval]]$, with new context $[[Vc'']], [[Rc'']], [[Phi'']]$ }} by
+  defn  P , Vc , Rc , Phi |- Vc' , Phi' | spec ~> sval , Vc'' , Rc'' , Phi'' :: :: Assume_ :: Assume_
+  {{ com given definitions in program $[[P]]$, variables $[[Vc]]$, resources $[[Rc]]$ and constraints $[[Phi]]$, (and accumulating contexts $[[Vc']]$ and $[[Phi']]$) assume $[[spec]]$ and evaluate it to $[[sval]]$, with new context $[[Vc'']], [[Rc'']], [[Phi'']]$ }} by
 
     ------------------------------------------------------ :: Value
     P , Vc , Rc , Phi |- Vc' , Phi' | sval  ~>  sval  , Vc' , Rc ,  Phi'
@@ -1118,8 +287,8 @@ done_or_rerun {{ tex ( \cnkw{done} \mid \cnkw{rerun} ) }} :: 'DoR_' ::= {{ com f
     P , Vc , Rc , Phi |- Vc' , Phi' | if ( term ) { spec1 } else { spec2 } ~> cdot , [ Vc1 , Vc' ] , Rc1 * mres , Phi1 /\ Phi'
 
 
-  defn Vc , Rc , Phi |-lv lve -| id inEnv Vc' ,  Rc' , Phi' :: :: Lve_ :: Lve_
-  {{ com given definitions in program $[[P]]$, variables $[[Vc]]$, resources $[[Rc]]$ and constraints $[[Phi]]$, symbolically evaluate lvalue-expressions $[[lve]]$ to $[[id]]$ and new context $[[Vc']], [[Rc']], [[Phi']]$ }} by
+ defn Vc , Rc , Phi |-lv lve -| id inEnv Vc' ,  Rc' , Phi' :: :: Lve_ :: Lve_
+ {{ com given variables $[[Vc]]$, resources $[[Rc]]$ and constraints $[[Phi]]$, symbolically evaluate lvalue-expressions $[[lve]]$ to $[[id]]$ and new context $[[Vc']], [[Rc']], [[Phi']]$ }} by
 
     ---------------------------------------------------- :: Const
     Vc , Rc , Phi |-lv n -| id inEnv [ id ] , Rc , ( id = n )
@@ -1138,8 +307,8 @@ done_or_rerun {{ tex ( \cnkw{done} \mid \cnkw{rerun} ) }} :: 'DoR_' ::= {{ com f
     Vc , Rc , Phi |-lv * lve -| id2 inEnv [ id2 , Vc' ] , Rc' , ( id2 = id2' /\ Phi' )
 
 
-  defn  P , Vc , Rc , Phi |- y . spec e -| id inEnv Vc' ,  Rc' , Phi' :: :: Expr_ :: Expr_ {{ tex [[P]] [[,]] [[Vc]] [[,]] [[Rc]] [[,]] [[Phi]] [[|-]]_{ [[y]] [[.]] [[spec]] } [[e]] [[-|]] [[id]] [[inEnv]] [[Vc']] [[,]]  [[Rc']] [[,]] [[Phi']] }}
-  {{ com given definitions in program $[[P]]$, variables $[[Vc]]$, resources $[[Rc]]$, constraints $[[Phi]]$ and post-condition $[[spec]]$, expression $[[e]]$ symbolically evaluates to $[[id]]$, with new context $[[Vc']], [[Rc']], [[Phi']]$ }} by
+ defn  P , Vc , Rc , Phi |- y . spec e -| id inEnv Vc' ,  Rc' , Phi' :: :: Expr_ :: Expr_ {{ tex [[P]] [[,]] [[Vc]] [[,]] [[Rc]] [[,]] [[Phi]] [[|-]]_{ [[y]] [[.]] [[spec]] } [[e]] [[-|]] [[id]] [[inEnv]] [[Vc']] [[,]]  [[Rc']] [[,]] [[Phi']] }}
+ {{ com given definitions in program $[[P]]$, variables $[[Vc]]$, resources $[[Rc]]$, constraints $[[Phi]]$ and post-condition $[[spec]]$, expression $[[e]]$ symbolically evaluates to $[[id]]$, with new context $[[Vc']], [[Rc']], [[Phi']]$ }} by
 
 
     ---------------------------------------------------- :: Const
@@ -1172,7 +341,7 @@ done_or_rerun {{ tex ( \cnkw{done} \mid \cnkw{rerun} ) }} :: 'DoR_' ::= {{ com f
 
 
     P , Vc , Rc , Phi |- y . spec e1 -| id1 inEnv Vc1 , Rc1 , Phi1
-    P , Vc , Vc1 , Rc1 , Phi /\ Phi1 |- y . spec e2 -| id2 inEnv Vc2 , Rc2 , Phi2
+    P , [ Vc , Vc1 ] , Rc1 , Phi /\ Phi1 |- y . spec e2 -| id2 inEnv Vc2 , Rc2 , Phi2
     ------------------------------------------------------------------ :: Binop
     P , Vc , Rc , Phi |- y . spec e1 arith_binop e2 -| id inEnv [ id , Vc1 , Vc2 ] , Rc2 , ( id = ( id1 ' arith_binop ' id2 )  /\ Phi1 /\ Phi2 )
 
@@ -1187,8 +356,8 @@ done_or_rerun {{ tex ( \cnkw{done} \mid \cnkw{rerun} ) }} :: 'DoR_' ::= {{ com f
 
 
     P , Vc , Rc , Phi |- y . spec e1 -| id1 inEnv Vc1 , Rc1 , Phi1
-    P , Vc , Vc1 , Rc1 , Phi /\ Phi1 |- y . spec e2 -| id2 inEnv Vc2 , Rc2 , Phi2
-    P , Vc , Vc1 , Rc1 , Phi /\ Phi1 |- y . spec e3 -| id3 inEnv Vc3 , Rc3 , Phi3
+    P , [ Vc , Vc1 ] , Rc1 , Phi /\ Phi1 |- y . spec e2 -| id2 inEnv Vc2 , Rc2 , Phi2
+    P , [ Vc , Vc1 ] , Rc1 , Phi /\ Phi1 |- y . spec e3 -| id3 inEnv Vc3 , Rc3 , Phi3
     Rc' = cond ( id1 , Rc2 , Rc3 )
     Phi' = Phi1 /\ cond ( id1 , Phi2 , Phi3 ) /\ ( id = if id1 then id2 else id3 )
     ----------------------------------------------------------------------------------------- :: If
@@ -1196,7 +365,7 @@ done_or_rerun {{ tex ( \cnkw{done} \mid \cnkw{rerun} ) }} :: 'DoR_' ::= {{ com f
 
 
     P , Vc , Rc , Phi |- y . spec e1 -| id1 inEnv Vc1 , Rc1 , Phi1
-    P , Vc , Vc1 , Rc1 , Phi /\ Phi1 |- y . spec e2 -| id2 inEnv Vc2 , Rc2 , Phi2
+    P , [ Vc , Vc1 ] , Rc1 , Phi /\ Phi1 |- y . spec e2 -| id2 inEnv Vc2 , Rc2 , Phi2
     ------------------------------------------------------------------ :: Seq
     P , Vc , Rc , Phi |- y . spec e1 ; e2 -| id inEnv [ id , Vc1 , Vc2 ] , Rc2 , ( id = id2  /\ Phi1 /\ Phi2 )
 
