@@ -252,7 +252,7 @@ defns
     _ | < wrapI ( ct , int ) > --> < int' : pure_ret >
 
 
-    name : pure_fun def= </ xi // i /> |-> pstmt inEnv Globals
+    P ( name ) = </ xi // i /> |-> pstmt : pure_fun
     alloct | </ xi = pvali // i /> :; pure_fun >> < subs ; pure_ret >
     ----------------------------------------------------------------------------- :: Call
     alloct | < name ( </ pvali // i /> ) > --> < subs ( pstmt ) : pure_ret >
@@ -316,7 +316,7 @@ defns
 
    alloct | < h ; res_term > ||v < h' + { pred & None } ; pred_term >
    pred def= Owned < init , struct tag > ( ptrt ) ( oarg )
-   tagged tag & </ memberi : cti // i /> inEnv Globals
+   P ( tag ) = </ memberi : cti // i />
    indexed </ ptrti def= member_shift < struct tag > ( ptrt , memberi ) // i />
    indexed </ pred_termi def= Owned < init , cti > ( ptrti ) // i />
    -------------------------------------------------------------------------- :: Explode
@@ -324,7 +324,7 @@ defns
 
 
    alloct | < h ;  res_term > ||v < h' + </ { pred_termi ( oargi ) & None } // i /> ; < </ pred_termi // i /> > >
-   tagged tag & </ memberi : cti // i /> inEnv Globals
+   P ( tag ) = </ memberi : cti // i />
    indexed pred_termi def= Owned < init , cti > ( ptrti )
    term def= ptrt0 dot addr - offsetof tag member0
    alloct |- smt ( /\\ ( </ term = ptrti dot addr - offsetof tag memberi /\ ptrt0 dot alloc_id = ptrti dot alloc_id // i /> ) )
@@ -570,13 +570,13 @@ defns
     < alloct ; h ; res_memop > --> < alloct ; h' ; stmt : ret >
 
 
-    id : fon def= </ xi // i /> |-> stmt inEnv Globals
+    P ( id ) = </ xi // i /> |-> stmt : fon
     alloct | </ xi = spine_elemi // i /> :; fon >> < subs ; ret >
     ------------------------------------------------------------- :: CCall
     < alloct ; h ; ccall ( ct , id , </ spine_elemi // i /> ) > --> < alloct ; h ; subs ( stmt ) : ret >
 
 
-    name : fon def= </ xi // i /> |-> stmt inEnv Globals
+    P ( name ) = </ xi // i /> |-> stmt : fon
     alloct | </ xi = spine_elemi // i /> :; fon >> < subs ; ret >
     --------------------------------------------------------- :: Proc
     < alloct ; h ; pcall ( name , </ spine_elemi // i /> ) > --> < alloct ; h ; subs ( stmt ) : ret >
@@ -623,7 +623,7 @@ defns
     < s ; case pval of </ | pati => stmti // i /> end > --> < s ; subsj ( stmtj ) >
 
 
-    id : fon def= </ xi // i /> |-> stmt inEnv Globals
+    P ( id ) = </ xi // i /> |-> stmt : fon
     alloct | </ xi = pvali // i /> :; fon >> < subs ; false /\ I >
     ------------------------------------------------------------ :: Run
     < alloct ; h ; run id </ pvali // i /> > --> < alloct ; h ; subs ( stmt ) >

@@ -200,7 +200,7 @@ defns
   defn N ; nR |- res_req ~> bind out_res_bind for out_res_term and out_oarg -| out_nRp :: :: Req_Wf :: Req_Wf_
   {{ com $[[N]] ; [[nR]]$ (check well-formedness of and then) fulfil request $[[res_req]]$ (via $[[out_res_bind]]$) for answer $[[out_res_term]]$ and $[[out_oarg]]$, with $[[out_nRp]]$ leftover }} by
 
-    a def= _ : loc , </ _i : base_typei // i  /> , y' : base_type |-> res inEnv Globals
+    P ( a ) = _ : loc , </ _i : base_typei // i  /> , y' : base_type |-> res
     C ; L |- ptrt => loc
     indexed </ C ; L |- iargi => base_typei // i />
     N ; nR |- wf a ( ptrt , </ iargi // i /> ) ~> bind res_bind for res_term and oarg -| nR'
@@ -208,7 +208,7 @@ defns
     N ; nR |- a ( ptrt , </ iargi // i /> ) ~> bind res_bind for res_term and oarg -| nR'
 
 
-    a def= _ : loc , </ _i : base_typei // i  /> , y' : base_type |-> res inEnv Globals
+    P ( a ) = _ : loc , </ _i : base_typei // i  /> , y' : base_type |-> res
     C ; L |- ptrt => loc
     indexed </ C ; L |- iargi => base_typei // i />
     N ; nR |- wf each (integer x; iguard) { a ( array_shift < ct > ( ptrt , x ) , </ iargi // i /> ) } ~> bind res_bind for res_term and oarg -| nR'
@@ -476,19 +476,19 @@ defns
     % C ; L ; N ; </ nRi // i /> |- unseq ( </ stmti : reti // i /> ) => concat </ reti // i />
 
 
-    id :  norm_fun def= </ xi // i /> |-> stmt  inEnv Globals
+    P ( id ) = </ xi // i /> |-> stmt : norm_fun
     C ; L ; N ; nR |- spine :; norm_fun ~> bind res_bind for </ spine_elemi // i /> and norm_ret -| nR'
     ---------------------------------------------------------------------------------------------------------------- :: CCall
     C ; L ; N ; nR |- ccall ( ct , id , spine ) ~> bind res_bind for ccall ( ct , id , </ spine_elemi // i /> ) : norm_ret -| nR'
 
 
-    name :  norm_fun def= </ xi // i /> |-> stmt  inEnv Globals
+    P ( name ) = </ xi // i /> |-> stmt : norm_fun
     C ; L ; N ; nR |- spine :; norm_fun ~> bind res_bind for </ spine_elemi // i /> and norm_ret -| nR'
     ------------------------------------------------------------------------------------------------------------------ :: Proc
     C ; L ; N ; nR |- pcall ( name , spine ) ~> bind res_bind for pcall ( name , </ spine_elemi // i /> ) : norm_ret -| nR'
 
 
-    a def= </ xi : base_typei // i  /> , y : base_type |-> res inEnv Globals
+    P ( a ) = </ xi : base_typei // i  /> , y : base_type |-> res
     indexed </ C |- pvali => base_typei // i />
     N ; nR |- calc y using [ </ pvali / xi // i /> ] ( res ) ~> bind res_bind for res_term and oarg -| nR'
     pred def= a ( </ inj pvali // i /> ) ( oarg )
@@ -496,7 +496,7 @@ defns
     C ; L ; N ; nR |- fold a ( </ pvali // i /> ) ~> bind res_bind for fold res_term : pred : pred *o I -| nR''
 
 
-    a def= </ xi : base_typei // i  /> , y : base_type |-> res inEnv Globals
+    P ( a ) = </ xi : base_typei // i  /> , y : base_type |-> res
     indexed </ C |- pvali => base_typei // i />
     N ; nR |- a ( </ inj pvali // i /> ) ~> bind res_bind for res_term and oarg -| nR'
     res' def= [ oarg / y , </ iargi / xi // i /> ] ( res )
@@ -632,7 +632,7 @@ defns
     C ; L ; N ; nR |- case pval of </ | pati => stmti // i /> end <= norm_ret ~> case pval of </ | pati => stmt'i // i /> end
 
 
-    id : norm_fun def= </ xi // i /> |-> stmt inEnv Globals
+    P ( id ) = </ xi // i /> |-> stmt : norm_fun
     C ; L ; N ; cdot |- </ xi = pvali // i /> :; norm_fun >> subs ; false /\ I
     ----------------------------------------------------------------------------- :: Run
     C ; L ; N ; cdot |- run id </ pvali // i /> <= false /\ I ~> run id </ pvali // i />
