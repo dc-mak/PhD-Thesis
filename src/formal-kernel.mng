@@ -19,29 +19,64 @@ relevant terms, with a particular focus on explicit resource terms.
 
 \section{Kernel CN types}
 
-\begin{figure}
+\cref{fig:surface-cn-syntax} shows the grammar\sidenote{The grammar presented
+here is a superset of that currently accepted by the implementation.} of \kl{CN}'s
+surface syntax. Of note are the fact that $[[spec]]$ may terminate with a $[[return term]]$,
+as required by predicate definitions but not by functions specifications, or it
+may not (represented here with a $[[cdot]]$).
+
+\begin{figure*}[tpb]
     \small
     \grammartabularSTY{
-        \cnfon{}\cninterrule{}
-        \cnret{}\cnafterlastrule{}
+        \cnspec{}\cninterrule{}
+        \cnpredXXipred{}\cninterrule{}
+        \cnpredXXterm{}\cninterrule{}
+        \cnipredXXterm{}\cninterrule{}
     }
-    \caption{\kl{Kernel CN} function and return types.}\label{fig:kernel-fun-ret}
+    \caption{Surface CN syntax for predicate, requires and ensures bodies.}\label{fig:surface-cn-syntax}
+\end{figure*}
+
+Recall that the specifications are not freestanding, but are defined within the
+scope of either C function parameters, or of predicate parameters, as shown
+in~\cref{fig:func-pred-def}.
+
+\begin{figure}[htp]
+    \small
+    \grammartabularSTY{
+        \cnfuncXXdef{}\cninterrule{}
+        \cnfuncXXspec{}\cninterrule{}
+        \cnpredXXdef{}\cnafterlastrule{}
+    }
+    \caption{Surface CN syntax for function specifications and predicate
+        definitions.}\label{fig:func-pred-def}
 \end{figure}
 
 \cref{fig:kernel-fun-ret} shows the grammar of function types $[[ fon ]]$ which
 include both pre- and postconditions, and return types $[[ ret ]]$, which
-represents postconditions. Where the \kl{CN} grammar pre- and postconditions
-are a flat list of conditions, these types are nested and have quantifiers
-to make explicit their scoping, specifically that the variables bound in the
-precondition are available for use in the postcondition. This is necessary
-because these types depend on computational values, and so, for example, a call
-to a function needs to propagate the symbolic or concrete function arguments
-into the rest of a pre- and postcondition (via a spine judgement).
+represent postconditions. The structure of the types makes explicit the scoping
+implicit in the surface syntax. Function parameters $[[ct id;]]$ are mapped to
+$[[ pi x : to_base ( ct ) . fon ]]$, and C return types $[[ct']]$ and values,
+bound here with $[[y]]$\sidenote{In the implementation, this identifier is
+hardcoded to be the \cnline{return} keyword in postconditions.} is mapped to
+$[[sigma y : to_base ( ct' ) . ret ]]$. And lastly, the placement of $[[ret]]$
+inside $[[fon]]$, makes it clear that postconditions may also refer to variables
+bound in the precondition, and allows for symbolic or concrete function
+arguments to be substituted in (see~\nameref{sec:spine-judgement}).
 
-In order, both include: quantification over computational (program) values,
-quantification over logical (ghost) values, separating implication/conjunction
-for assertions about the heap, and logical implication/conjunction for pure
-assertions (in a linear context, about an empty heap).
+\begin{figure}[htp]
+    \small
+    \grammartabularSTY{%
+        \cnret{}\cninterrule{}
+        \cnfon{}\cnafterlastrule{}
+    }
+    \caption{\kl{Kernel CN} function and return types.}\label{fig:kernel-fun-ret}
+\end{figure}
+
+In order, both function $[[fon]]$ and return $[[ret]]$ types include:
+quantification over computational (program) values, quantification over logical
+(ghost) values, separating implication/conjunction for assertions about the
+heap, and logical implication/conjunction for pure assertions (in a linear
+context, about an empty heap).
 
 Though this seems like a large departure from the syntax given in
 \cref{fig:cn-grammar}, the mapping into this is straightforward, and helps
@@ -85,8 +120,6 @@ $[[ Owned < Uninit , ct > ]]$ respectively. \sidenote{Prior versions of this
     \renewcommand{\cnprodline}{\cnprodlineCommentNewline}
     \grammartabularSTY{%
         \cnpredXXname{}\cninterrule{}
-        \cnpredXXterm{}\cninterrule{}
-        \cnipredXXterm{}\cninterrule{}
         \cnpred{}\cninterrule{}
         \cnipred{}\cnafterlastrule{}
     }
@@ -128,8 +161,8 @@ than any higher-order assertions about the shape of the heap.
 \begin{figure*}[tp]
     \small
     \raggedright{}
-    \cndefnSpecXXUserDef{}
-    \cndefnSpecXXPredDef{}
+    \cndefnUserXXFuncXXTo{}
+    \cndefnUserXXPredXXTo{}
     \caption{\kl{CN} to \kl{Kernel CN} pre- and postcondition and predicate
         definition desugaring. For the C functions, each C argument is bound to
         a computational argument, with a base type $\beta_\tau$ corresponding
@@ -154,7 +187,7 @@ quantifications can be inferred when required.
 \begin{figure*}[tp]
     \small
     \raggedright{}
-    \cndefnSpecXXNormArg{}
+    \cndefnUserXXSpecXXToXXArg{}
     \caption{\kl{CN} to \kl{Kernel CN} precondition desugaring. I use $x \equiv e$
         to introduce $x$ as an abbreviation for $e$ when $e$ is a long term.
         Postcondition desugaring is similar, and thus omitted.}\label{fig:precond-to-kernel}
@@ -183,7 +216,7 @@ always translated into a logical quantification over the output argument of the
 \begin{figure*}[tp]
     \small
     \raggedright{}
-    \cndefnSpecXXRes{}
+    \cndefnUserXXSpecXXToXXRes{}
     \caption{\kl{CN} to \kl{Kernel CN} user-defined predicate desugaring.}\label{fig:pred-to-kernel}
 \end{figure*}
 
@@ -273,12 +306,12 @@ judgement, so are part of pure statement.
 Effectful expression (\cref{fig:kernel-expr}), include memory actions, memory
 operations, C function calls and Core procedure calls.
 
-\begin{figure}[h]
+\begin{figure}[htp]
     \small
     \grammartabularSTY{%
         \cnexpr{}\cnafterlastrule{}
     }
-    \caption{(Effectful) Expressions in ResCore.}\label{fig:kernel-expr}
+    \caption{Effectful expressions in ResCore.}\label{fig:kernel-expr}
 \end{figure}
 
 Effectful statements include \kl{return terms}, pure statements, bound effectful
@@ -288,6 +321,7 @@ expressions, standard conditional and pattern-matching constructs and the
 \begin{figure*}[tp]
     \small
     \grammartabularSTY{%
+        \cnretXXterm{}\cninterrule{}
         \cnstmt{}\cnafterlastrule{}
     }
     \caption{Effectful statements in ResCore.}\label{fig:kernel-stmt}
@@ -373,7 +407,7 @@ explain just the intuition. Terms $[[ emp ]]$ and
 $[[ TERM ]]$ are introduction forms for the types $[[ emp ]]$ and pure
 assertions $[[ term ]]$, and they have corresponding forms for eliminating
 them too. Variables are also resource terms and patterns, for any resource
-type. Terms $\mathit{pred\_term}$ and $\mathit{ipred\_term}$ introduce
+type. Terms $[[pred_term]]$ and $[[ipred_term]]$ introduce
 $[[ pred ]]$ and $[[ ipred ]]$ types respectively (the only difference
 between the two is that the latter also carry their output arguments). Angle
 brackets $\langle \_ , \_ \rangle$ and $[[ pack (_, _rest ) ]]$ are % chktex 25

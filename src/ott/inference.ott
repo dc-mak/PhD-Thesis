@@ -7,8 +7,8 @@ grammar
       {{ com not possible to take a difference }} {{ tex \outpol{[[None]]} }}
     | out_res_term and out_oarg                                                                   :: :: Clean
       {{ com request is satisfied exactly by $[[out_res_term]]$ and the output argument is $[[out_oarg]]$ }}
-    | out_oarg and out_res_req                                                                    :: :: More
-      {{ com request is satisfied partially with output argument $[[out_oarg]]$ with remaining $[[out_res_req]]$ }}
+    | out_oarg and out_pred_ipred                                                                    :: :: More
+      {{ com request is satisfied partially with output argument $[[out_oarg]]$ with remaining $[[out_pred_ipred]]$ }}
     | bind out_res_pat1 : out_res1 = out_res_term1 for out_x1 & out_oarg and out_x2 : out_rem     :: :: Rem
       {{ com deconstruct $[[out_res_term1]] [[:]] [[out_res1]]$ using $[[out_res_pat1]]$ to satisfy request exactly (using $[[out_x1]]$ and $[[out_oarg]]$) with remainder $[[out_x2]] [[:]] [[out_rem]]$ }}
 
@@ -79,11 +79,11 @@ defns
     N |- a ( ptrt2 , </ iarg1i // i /> ) in? each (integer x; iguard) { a ( array_shift < ct > ( ptrt1 , x ) , </ iarg2i // i /> ) } ~> term
 
 
-  defn N |- r : norm_res -? res_req ~> res_diff :: :: Res_Diff :: Res_Diff_
-  {{ com the difference between $[[r]] [[:]] [[norm_res]]$ and requested $[[res_req]]$ is $[[res_diff]]$ }} by
+  defn N |- r : norm_res -? pred_ipred ~> res_diff :: :: Res_Diff :: Res_Diff_
+  {{ com the difference between $[[r]] [[:]] [[norm_res]]$ and requested $[[pred_ipred]]$ is $[[res_diff]]$ }} by
 
     ---------------------------------------------------------- :: If_None
-    N |- _ : if term then res1 else res2 -? res_req ~> None
+    N |- _ : if term then res1 else res2 -? pred_ipred ~> None
 
 
     N |- pred_term = pred_term' ~> false
@@ -160,8 +160,8 @@ defns
     % N |- r : ipred_term & oarg -? ipred_term'  ~> oarg and { x ; iguard' /\ neg iguard . a ( ptrt + step , iargs ) }
 
 
-  defn N |- r1 : norm_res +? res_term2 : res_req & oarg2 ~> out_res_term and out_oarg3 :: :: Res_Comb :: Res_Comb_
-  {{ com combining $[[r1]] [[:]] [[norm_res]]$, $[[res_term2]] [[:]] [[res_req]] \& [[oarg2]]$, results in $[[out_res_term]]$ $[[out_oarg3]]$ }} by
+  defn N |- r1 : norm_res +? res_term2 : pred_ipred & oarg2 ~> out_res_term and out_oarg3 :: :: Res_Comb :: Res_Comb_
+  {{ com combining $[[r1]] [[:]] [[norm_res]]$, $[[res_term2]] [[:]] [[pred_ipred]] \& [[oarg2]]$, results in $[[out_res_term]]$ $[[out_oarg3]]$ }} by
 
     N |- pred_term in? ipred_term ~> term
     C ; L |- oarg1 => base_type
@@ -170,50 +170,48 @@ defns
     N |- r : pred_term ( oarg1 ) +? res_term : ipred_term & oarg2 ~> glue( < res_term , r > ) and oarg2 [ term ] := oarg1
 
 
-  defn N ; nR |- wf res_req ~> bind out_res_bind for out_res_term and out_oarg -| out_nRp :: :: Req :: Req_
-  {{ com $[[N]] ; [[nR]]$ fulfil well-formed request $[[res_req]]$ (via $[[out_res_bind]]$) for answer $[[out_res_term]]$ and $[[out_oarg]]$, with $[[out_nRp]]$ leftover }} by
+  defn N ; nR |- wf pred_ipred ~> bind out_res_bind for out_res_term and out_oarg -| out_nRp :: :: Req :: Req_
+  {{ com $[[N]] ; [[nR]]$ fulfil well-formed request $[[pred_ipred]]$ (via $[[out_res_bind]]$) for answer $[[out_res_term]]$ and $[[out_oarg]]$, with $[[out_nRp]]$ leftover }} by
 
 
-    N |- r : norm_res -? res_req ~> None
-    N ; nR |- wf res_req ~> bind res_bind for res_term and oarg -| nR
+    N |- r : norm_res -? pred_ipred ~> None
+    N ; nR |- wf pred_ipred ~> bind res_bind for res_term and oarg -| nR
     ------------------------------------------------------------------------------------------------ :: Rej
-    N ; nR , r : norm_res |- wf res_req ~> bind res_bind for res_term and oarg -| nR , r : norm_res
+    N ; nR , r : norm_res |- wf pred_ipred ~> bind res_bind for res_term and oarg -| nR , r : norm_res
 
 
-    N |- r : norm_res -? res_req ~> res_term and oarg
+    N |- r : norm_res -? pred_ipred ~> res_term and oarg
     ----------------------------------------------------------------------------- :: Acc_Clean
-    N ; nR , r : norm_res |- wf res_req ~> bind cdot for res_term and oarg -| nR
+    N ; nR , r : norm_res |- wf pred_ipred ~> bind cdot for res_term and oarg -| nR
 
 
-    N |- r : norm_res -? res_req ~> bind res_pat1 : res1 = res_term1 for r1 & oarg and r2 : rem
+    N |- r : norm_res -? pred_ipred ~> bind res_pat1 : res1 = res_term1 for r1 & oarg and r2 : rem
     -------------------------------------------------------------------------------------------------------------------- :: Acc_Rem
-    N ; nR , r : norm_res |- wf res_req ~> bind res_pat1 : res1 = res_term1 , cdot for r1 and oarg -| nR , r2 : rem
+    N ; nR , r : norm_res |- wf pred_ipred ~> bind res_pat1 : res1 = res_term1 , cdot for r1 and oarg -| nR , r2 : rem
 
 
-    N |- r : norm_res -? res_req1 ~> oarg1 and res_req2
-    N ; nR |- wf res_req2 ~> bind res_bind2 for res_term2 and oarg2 -| nR2
-    N |- r : norm_res +? res_term2 : res_req2 & oarg2 ~> res_term3 and oarg3
+    N |- r : norm_res -? pred_ipred1 ~> oarg1 and pred_ipred2
+    N ; nR |- wf pred_ipred2 ~> bind res_bind2 for res_term2 and oarg2 -| nR2
+    N |- r : norm_res +? res_term2 : pred_ipred2 & oarg2 ~> res_term3 and oarg3
     -------------------------------------------------------------------------------------- :: Acc_More
-    N ; nR , r : norm_res |- wf res_req1 ~> bind res_bind for res_term3 and oarg3 -| nR2
+    N ; nR , r : norm_res |- wf pred_ipred1 ~> bind res_bind for res_term3 and oarg3 -| nR2
 
 
-  defn N ; nR |- res_req ~> bind out_res_bind for out_res_term and out_oarg -| out_nRp :: :: Req_Wf :: Req_Wf_
-  {{ com $[[N]] ; [[nR]]$ (check well-formedness of and then) fulfil request $[[res_req]]$ (via $[[out_res_bind]]$) for answer $[[out_res_term]]$ and $[[out_oarg]]$, with $[[out_nRp]]$ leftover }} by
+  defn N ; nR |- pred_ipred ~> bind out_res_bind for out_res_term and out_oarg -| out_nRp :: :: Req_Wf :: Req_Wf_
+  {{ com $[[N]] ; [[nR]]$ (check well-formedness of and then) fulfil request $[[pred_ipred]]$ (via $[[out_res_bind]]$) for answer $[[out_res_term]]$ and $[[out_oarg]]$, with $[[out_nRp]]$ leftover }} by
 
-    P ( a ) = _ : loc , </ _i : base_typei // i  /> , y' : base_type |-> res
-    C ; L |- ptrt => loc
+    P ( a ) = </ _i : base_typei // i  /> , _ : _bt |-> res
     indexed </ C ; L |- iargi => base_typei // i />
-    N ; nR |- wf a ( ptrt , </ iargi // i /> ) ~> bind res_bind for res_term and oarg -| nR'
+    N ; nR |- wf a ( </ iargi // i /> ) ~> bind res_bind for res_term and oarg -| nR'
     ----------------------------------------------------------------- :: Pred
     N ; nR |- a ( ptrt , </ iargi // i /> ) ~> bind res_bind for res_term and oarg -| nR'
 
 
-    P ( a ) = _ : loc , </ _i : base_typei // i  /> , y' : base_type |-> res
-    C ; L |- ptrt => loc
+    P ( a ) = </ _i : base_typei // i  /> , _ : _bt |-> res
     indexed </ C ; L |- iargi => base_typei // i />
-    N ; nR |- wf each (integer x; iguard) { a ( array_shift < ct > ( ptrt , x ) , </ iargi // i /> ) } ~> bind res_bind for res_term and oarg -| nR'
+    N ; nR |- wf each (integer x; iguard) { a ( </ iargi // i /> ) } ~> bind res_bind for res_term and oarg -| nR'
     ----------------------------------------------------------------- :: IPred
-    N ; nR |- each (integer x; iguard) { a ( array_shift < ct > ( ptrt , x ) , </ iargi // i /> ) } ~> bind res_bind for res_term and oarg -| nR'
+    N ; nR |- each (integer x; iguard) { a ( </ iargi // i /> ) } ~> bind res_bind for res_term and oarg -| nR'
 
 
   defn N ; nR |- if term then res1 else res2 ~> out_x -| out_nRp :: :: If :: If_
@@ -488,7 +486,7 @@ defns
     C ; L ; N ; nR |- pcall ( name , spine ) ~> bind res_bind for pcall ( name , </ spine_elemi // i /> ) : norm_ret -| nR'
 
 
-    P ( a ) = </ xi : base_typei // i  /> , y : base_type |-> res
+    P ( a ) = </ xi : base_typei // i  /> , _ : _bt |-> res
     indexed </ C |- pvali => base_typei // i />
     N ; nR |- calc y using [ </ pvali / xi // i /> ] ( res ) ~> bind res_bind for res_term and oarg -| nR'
     pred def= a ( </ inj pvali // i /> ) ( oarg )
@@ -496,7 +494,7 @@ defns
     C ; L ; N ; nR |- fold a ( </ pvali // i /> ) ~> bind res_bind for fold res_term : pred : pred *o I -| nR''
 
 
-    P ( a ) = </ xi : base_typei // i  /> , y : base_type |-> res
+    P ( a ) = </ xi : base_typei // i  /> , _ : _bt |-> res
     indexed </ C |- pvali => base_typei // i />
     N ; nR |- a ( </ inj pvali // i /> ) ~> bind res_bind for res_term and oarg -| nR'
     res' def= [ oarg / y , </ iargi / xi // i /> ] ( res )

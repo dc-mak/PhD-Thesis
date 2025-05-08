@@ -170,8 +170,8 @@ defns
     N |- each (integer x; iguard) { a ( iargs ) } [=? each (integer x ; iguard') { a ( iargs' ) } ~> cmp
 
 
-  defn N |- res_req = res_req' ~> ty_bool :: :: Req_Eq :: Req_Eq_
-  {{ com resource equality: given constraints $[[N]]$, $[[res_req]]$ and $[[res_req']]$ are equal according to $[[ty_bool]]$ }} by
+  defn N |- pred_ipred = pred_ipred' ~> ty_bool :: :: Req_Eq :: Req_Eq_
+  {{ com resource equality: given constraints $[[N]]$, $[[pred_ipred]]$ and $[[pred_ipred']]$ are equal according to $[[ty_bool]]$ }} by
 
 
     a1 != a2
@@ -391,11 +391,10 @@ defns
     L ; N |- pack ( x , res_pat ) : exists y : base_type . res ~> L' , x : base_type ; N' ; R'
 
 
-    a != Owned < _init , ct >
-    P ( a ) = </ xi : _bti // i /> , y : _bt  |-> res
+    P ( id ) = </ xi : _bti // i /> , y : _bt  |-> res
     L ; N |- res_pat : [ oarg / y , </ iargi / xi // i />  ] ( res ) ~> L' ; N' ; R'
     --------------------------------------------------------------------------------------------------- :: Fold
-    L ; N |- fold ( res_pat ) : a ( </ iargi // i /> ) ( oarg ) ~> L' ; N' ; R'
+    L ; N |- fold ( res_pat ) : id ( </ iargi // i /> ) ( oarg ) ~> L' ; N' ; R'
 
 
   defn CLN |- ret_pat : ret ~> out_CLNRp :: :: Ret :: Ret_
@@ -783,16 +782,15 @@ defns
 
 
     pred_term' def= a ( </ iarg'i // i /> )
-    P ( a )  = </ _ : base_typei // i  /> |-> _res
+    P ( a )  = </ _ : base_typei // i  /> , y : base_type |-> _res
     indexed </ C ; L |- iarg'i => base_typei // i />
     N |- pred_term = pred_term' ~> true
     -------------------------------------------------------------------- :: Pred
     C ; L ; N ; _ : pred_term ( oarg ) |- pred_term' => pred_term ( oarg )
 
 
-    pred_term def= a ( </ iargi // i /> )
-    a != Owned < _init, ct >
-    P ( a ) = </ xi : base_typei // i  /> , y : base_type |-> res
+    pred_term def= id ( </ iargi // i /> )
+    P ( id ) = </ xi : base_typei // i  /> , y : base_type |-> res
     indexed </ C ; L |- iargi => base_typei // i />
     C ; L |- oarg => base_type
     C ; L ; N ; R |- res_term <= [ oarg / y , </ iargi / xi // i /> ] ( res )
@@ -801,7 +799,7 @@ defns
 
 
     ipred_term' def= each (integer x ; iguard) { a ( </ iarg'i // i /> ) }
-    P ( a ) = </ _ : base_typei // i  /> |-> _res
+    P ( a ) = </ _ : base_typei // i  /> , _ : _bt |-> _res
     indexed </ C ; L |- iarg'i => base_typei // i />
     N |- ipred_term = ipred_term' ~> true
     ------------------------------------------------------------------------------ :: IPred

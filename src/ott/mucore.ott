@@ -415,7 +415,7 @@ grammar
 
   pred_name , a {{ tex { \alpha } }} :: 'Pred_name_' ::= {{ com names of predicates }}
     | Owned < init , ct > :: :: owned {{ com sep. logic points-to indexed by C type $[[ ct ]]$ }}
-    | Alloc               :: :: alloc {{ com (provenance) knowledge of an allocation           }}
+    | Alloc               :: :: alloc {{ com (memory object model) allocation token            }}
     | id                  :: :: user  {{ com user-defined name                                 }}
 
   pred_term :: 'Pred_term_' ::= {{ com predicate term/request }}
@@ -425,18 +425,18 @@ grammar
     | each ( integer x ; iguard ) { pred_term } ::  :: ipred_term (+ bind x in iguard +) (+ bind x in pred_term +)
       {{ tex [[each]] \left(\![[integer]]\ x; [[iguard]] \right)\, \left\{ [[pred_term]] \, \right\} }}
 
-  res_req :: 'Res_req_' ::= {{ com resource request }}
-    | pred_term  :: :: pred  {{ com request a resource predicate            }}
-    | ipred_term :: :: ipred {{ com request a quantified resource predicate }}
+  pred_ipred :: 'Res_req_' ::= {{ com predicate or iterated predicate term }}
+    | pred_term  :: :: pred  {{ com predicate term          }}
+    | ipred_term :: :: ipred {{ com iterated predicate term }}
 
-  % OUT_HACK|res_req
-  out_res_req {{ tex \outpol{ res\_req } }}   :: 'Out_hack_' ::=  {{ com Ott-hack, ignore }}
-    | res_req :: :: res_req {{ tex \outpol{ [[res_req]] } }}
+  % OUT_HACK|pred_ipred
+  out_pred_ipred {{ tex \outpol{ pred\_ipred } }}   :: 'Out_hack_' ::=  {{ com Ott-hack, ignore }}
+    | pred_ipred :: :: pred_ipred {{ tex \outpol{ [[pred_ipred]] } }}
 
   pred , pt :: 'Pred_' ::=  {{ com \emph{precise} seperation-logic predicates }}
     | pred_term ( oarg )        ::   :: pred {{ com a predicate is a term with an output argument }}
     | ptrt |- init - ct -> term :: S :: points_to
-      {{ com pretty-printing for points-to predicate $\symtt{Owned} \langle [[ init ]] , [[ ct ]] \rangle ( [[ ptrt ]] ) \& [[ term ]] $ }}
+      {{ com pretty-printing for points-to predicate $\symtt{Owned} \langle [[ init ]] , [[ ct ]] \rangle ( [[ ptrt ]] ) ( [[ term ]] )$ }}
       {{ tex [[ ptrt ]] \overunderset{ \ifthenelse{\equal{ [[ init ]] }{ \_ } }{}{ [[ init ]] } }{ [[ ct ]] }{ \mapsto } [[ term ]] }}
 
 
@@ -492,7 +492,7 @@ grammar
     | sigma id : base_type . ret  ::   :: comp   {{ com return a computational value            }}
     | exists id : base_type . ret ::   :: log    {{ com return a logical (output) value         }}
     | res *o ret                  ::   :: res    {{ com return a resource                       }}
-    | term /\ ret                 ::   :: phi    {{ com guarantee a constraint (post-condition) }}
+    | term /\ ret                 ::   :: phi    {{ com guarantee a constraint                  }}
     | I                           ::   :: i      {{ com end return list                         }}
     | subs ( ret )                :: M :: subs
                                                       {{ com substitute $[[subs]]$ in $[[ret]]$      }}
@@ -560,11 +560,11 @@ grammar
     | undef UB_name                          ::   :: undef {{ com undefined behaviour                   }}
     | let pat = pexpr in pstmt               ::   :: pexpr (+ bind binders( pat ) in pstmt              +)
                                                            {{ com pure expression binding               }}
-    | let pat : pure_ret = pstmt1 in pstmt2  :: P :: let   (+ bind binders( pat ) in pstmt2             +)
-                                                           {{ com (proof-only) pure let statment        }}
     | if pval then pstmt1 else pstmt2        ::   :: if    {{ com pure if statement                     }}
     | case pval of </ | pbranchi // i /> end ::   :: case  {{ com pattern-matching                      }}
     | subs ( pstmt )                         :: M :: subs  {{ com substitute $[[subs]]$ in $[[pstmt]]$  }}
+    | let pat : pure_ret = pstmt1 in pstmt2  :: P :: let   (+ bind binders( pat ) in pstmt2             +)
+                                                           {{ com (proof-only) pure let statment        }}
 
   pbranch :: 'PBranch_' ::= {{ com pure case statement branch }}
     | pat => pstmt :: :: branch (+ bind binders( pat ) in pstmt +)
@@ -668,14 +668,14 @@ grammar
 
 grammar
 
-  ret_term , spine_elem :: Ret_term_ ::=  {{ com return values / spine element }}
+  ret_term , spine_elem :: Ret_term_ ::=  {{ com return values / spine elements }}
     | pval              ::   :: pval {{ com pure computational value                        }}
-    | oarg              ::   :: term {{ com logical value                                   }}
+    | oarg              ::   :: term {{ com logical term                                    }}
     | res_term          ::   :: res  {{ com resource term                                   }}
     | subs ( ret_term ) :: M :: subs {{ com substitution for return values / spine elements }}
 
 
-  ret_terms , spine :: Ret_terms_ ::=  {{ com return values / spine }}
+  ret_terms , spine {{ tex \mathit{spine} }} :: Ret_terms_ ::=  {{ com return values / spine }}
     | ret_term , ret_terms       :: M :: cons
     | </ ret_termi // , // i />  ::   :: elems
 
@@ -732,15 +732,15 @@ grammar
   % nd() is only used in the elab of if/loops for the case where the condiditional expression evaluates to unspecified()
   % We don't have unspecified() so we won't have nd()
   stmt :: 'TE_' ::= {{ com (effectful) statement }}
-    | < ret_terms >                         ::   :: ret_terms   {{ com values (including logical and reosurces terms) }}
+    | < ret_terms >                         ::   :: ret_terms   {{ com return values                                 }}
     | pure ( pstmt )                        ::   :: pure        {{ com pure statement                                }}
     | let ret_pat = expr in stmt            ::   :: expr        (+ bind binders( ret_pat ) in stmt                   +)
                                                                 {{ com (effectful) expression binding                }}
+    | if pval then stmt1 else stmt2         ::   :: if          {{ com conditional                                   }}
+    | run id pvals                          ::   :: run         {{ com run from label                                }}
+    | case pval of </ | branchi // i /> end ::   :: case        {{ com pattern-matching                              }}
     | let ret_pat : ret = stmt1 in stmt2    :: P :: let         (+ bind binders( ret_pat ) in stmt2                  +)
                                                                 {{ com let                                           }}
-    | if pval then stmt1 else stmt2         ::   :: if          {{ com conditional                                   }}
-    | case pval of </ | branchi // i /> end ::   :: case        {{ com pattern-matching                              }}
-    | run id pvals                          ::   :: run         {{ com run from label                                }}
     | insert_lets ( res_bind , stmt )       :: M :: insert_lets {{ com insert let expressions for binding resources  }}
     | subs ( stmt )                         :: M :: subs        {{ com substitute $[[subs]]$ in $[[stmt]]$           }}
 
@@ -833,30 +833,35 @@ grammar
  
  grammar
 
+  comp_list :: Comp_list_ ::= {{ com list of computational arguments }}
+    | pi id1 : base_type1 . .... . pi idk : base_typek :: :: gte_two
+
   fon {{ tex \mathit{fun} }} :: Fun_ ::= {{ com function types }}
-    | pi id : base_type . fon     ::     :: comp    {{ com assume a computational value        }}
-    | forall id : base_type . fon ::     :: log     {{ com assume a logical value              }}
-    | res --o fon                 ::     :: res     {{ com assume a resource                   }}
-    | term -) fon                 ::     :: phi     {{ com assume a constraint (pre-condition) }}
-    | ret                         ::     :: ret     {{ com return a value of type $[[ret]]$    }}
-    | to_fun ret                  :: M   :: of_ret  {{ com change a return to an arugment type }}
-    | subs ( fon )                :: M   :: subs    {{ com substitute $[[subs]]$ in $[[fon]]$  }}
-    | ( fon  )                    :: S X :: paren   {{ tex [[ fon ]]                           }}
+    | pi id : base_type . fon     ::     :: comp      {{ com assume a computational value        }}
+    | forall id : base_type . fon ::     :: log       {{ com assume a logical value              }}
+    | res --o fon                 ::     :: res       {{ com assume a resource                   }}
+    | term -) fon                 ::     :: phi       {{ com assume a constraint                 }}
+    | ret                         ::     :: ret       {{ com return a value of type $[[ret]]$    }}
+    | to_fun ret                  :: M   :: of_ret    {{ com change a return to an arugment type }}
+    | subs ( fon )                :: M   :: subs      {{ com substitute $[[subs]]$ in $[[fon]]$  }}
+    | ( fon  )                    :: S X :: paren     {{ tex [[ fon ]]                           }}
+    | comp_list . fon             :: M   :: comp_list {{ com assume several computational values }}
 
   pure_fun :: Pure_fun_ ::= {{ com pure function types }}
     | pi id : base_type . pure_fun :: :: comp
     | term -) pure_fun             :: :: phi
     | pure_ret                     :: :: ret
 
-  norm_fun {{ tex \norm{fun} }} :: Norm_fun_ ::= {{ com normalised function types }}
-    | pi id : base_type . norm_fun     ::     :: comp   {{ com assume a computational value                 }}
-    | forall id : base_type . norm_fun ::     :: log    {{ com assume a logical value                       }}
-    | norm_res --o norm_fun            ::     :: res    {{ com assume a resource                            }}
-    | term -) norm_fun                 ::     :: phi    {{ com assume a constraint (pre-condition)          }}
-    | norm_ret                         ::     :: ret    {{ com return a value of type $[[norm_ret]]$        }}
-    | to_fun norm_ret                  :: M   :: of_ret {{ com change a return to an arugment type          }}
-    | subs ( norm_fun )                :: M   :: subs   {{ com substitute $[[subs]]$ in $[[norm_fun]]$      }}
-    | ( norm_fun  )                    :: S X :: paren  {{ tex [[norm_fun]]                                 }}
+  norm_fun {{ tex \norm{ \mathit{fun} } }} :: Norm_fun_ ::= {{ com normalised function types }}
+    | pi id : base_type . norm_fun     ::     :: comp      {{ com assume a computational value            }}
+    | forall id : base_type . norm_fun ::     :: log       {{ com assume a logical value                  }}
+    | norm_res --o norm_fun            ::     :: res       {{ com assume a resource                       }}
+    | term -) norm_fun                 ::     :: phi       {{ com assume a constraint                     }}
+    | norm_ret                         ::     :: ret       {{ com return a value of type $[[norm_ret]]$   }}
+    | to_fun norm_ret                  :: M   :: of_ret    {{ com change a return to an arugment type     }}
+    | subs ( norm_fun )                :: M   :: subs      {{ com substitute $[[subs]]$ in $[[norm_fun]]$ }}
+    | ( norm_fun  )                    :: S X :: paren     {{ tex [[norm_fun]]                            }}
+    | comp_list . norm_fun             :: M   :: comp_list {{ com assume several computational values     }}
 
   subrules
     pure_fun <:: fon
@@ -900,10 +905,10 @@ grammar
     | None       :: :: None
     | x :: :: Some
 
-  spec :: 'Spec_' ::= {{ com alternative, C-programmer friendly syntax for defining predicates and writing specifications }}
+  spec {{ tex \mathit{spec} }}:: 'Spec_' ::= {{ com CN surface syntax for function specifications and predicate definitions }}
     | cdot                                 ::  :: empty  {{ com empty specification              }}
     | return term                          ::  :: ret    {{ com specify output arguments         }}
-    | res_req                              ::  :: res    {{ com name of (i)predicated            }}
+    | pred_ipred                           ::  :: p_ip   {{ com predicate or iterated predicate  }}
     | let x = term ; spec                  ::  :: let    (+ bind x in spec +)
                                                          {{ com bind (pure) term                 }}
     | take x = spec1 ; spec2               ::  :: take   (+ bind x in spec2 +)
@@ -915,11 +920,8 @@ grammar
     | cdot          :: :: empty
     | return term   :: :: ret
 
-  spec_predicate_def :: 'Spec_pred_def_' ::=
+  pred_def {{ tex \mathit{pred\_def}\, }} :: 'Pred_def_' ::= {{ com predicate definition }}
       | predicate base_type a ( base_type1 x1 , .. , base_typek xk ) { spec } :: :: List
-
-  % user_def :: 'User_def_' ::= {{ com syntax for user-defined predicates and function specifications (pre- and post-conditions) }}
-  %   | ct name ( </ cti xi // , // i /> ) requires spec1 ensures spec2                     :: :: CFunc
 
   subrules
     spec_value <:: spec

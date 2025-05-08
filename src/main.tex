@@ -63,8 +63,15 @@
 \renewenvironment{cndefnblock}[3][]{ \framebox{\mbox{#2}} \\[0.5\baselineskip] #3 \\[0pt]}{}
 % Hide bind specs, and put comment on a new line underneath productions
 \newcommand{\cnprodlineCommentNewline}[6]{& & $#1$ & $#2$ & $#3$ & $#5$ & \\ & & & \multicolumn{4}{p{\textwidth} }{#6} }
-% Hide bind specs and put comment on same line
-\renewcommand{\cnprodline}[6]{& & $#1$ & $#2$ & $#3$ & $#5$ & #6}
+\ExplSyntaxOn%
+\cs_new_eq:NN\StrIfInTF\str_if_in:nnTF
+\cs_new_protected:Npn \MaybeSwallowCnProdNewline {
+  \peek_remove_spaces:n
+  \peek_catcode:NTF \cnprodnewline { \use_none:n } { }
+}
+\ExplSyntaxOff
+% Hide bind specs, meta and proof-related productions and put comment on same line
+\renewcommand{\cnprodline}[6]{\StrIfInTF{#3}{M}{\MaybeSwallowCnProdNewline}{\StrIfInTF{#5}{P}{\MaybeSwallowCnProdNewline}{& & $#1$ & $#2$ & $#3$ & $#5$ & #6}}}
 % Hide bind specs
 \renewcommand{\cnbindspecprodline}[6]{}
 \ottstyledefaults{numberpremises=yes,premisenamelayout=topright,rulelayout=nobreaks}
@@ -106,9 +113,6 @@
     \renewcommand{\cnrulehead}[3]{##1  &##2}
     \renewcommand{\cnfirstprodline}[6]{\begingroup\begin{minipage}[t]{.8\textwidth}\ $##2$}
     \renewcommand{\cnprodline}[6]{\ $##1$~$##2$}{}
-        %\ifthenelse{\equal{#3}{} \OR \equal{#3}{\textsf{S}}}{\ $#1$~$#2$}{}
-        %\noexpandarg\IfSubStr*{#3}{M}{}{\ $#1$~$#2$}%
-        % \StrIfInTF{#3}{M}{}{\ $#1$~$#2$}% }
     \renewcommand{\cnprodnewline}{}
     \renewcommand{\cninterrule}{\end{minipage}\endgroup}
     \renewcommand{\cnafterlastrule}{\end{minipage}\endgroup}

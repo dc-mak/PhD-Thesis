@@ -8,6 +8,7 @@ grammar
     | meta term                              ::  :: meta_term       {{ com meta-logical constraint }} {{ tex [[term]]                                      }}
     | forall i . iguard => ( A , M ) |= heap ::  :: forall_i_ig_vip {{ com meta-logical quantification over VIP-heap-satisfaction                          }}
     | forall i . term                        ::  :: forall_i_term   {{ com meta-logical quantification over logical-constraint                             }}
+    | norm_fun def= norm_fun'                ::  :: norm_fun_abbrev {{ com abbreviate $[[norm_fun']]$ with the name $[[norm_fun]]$                         }}
 
 defns
   proof_defns :: '' ::=
@@ -130,9 +131,8 @@ defns
     { pred & None } <= _ : pred'
 
 
-    pred_term def= a ( </ iargi // i /> )
-    a != Owned < init , ct >
-    P ( a ) = </ xi : base_typei // i  /> , y : base_type |-> res
+    pred_term def= id ( </ iargi // i /> )
+    P ( id ) = </ xi : base_typei // i  /> , y : base_type |-> res
     cdot ; cdot ; cdot ; nR |- def <= [ oarg / y , </ iargi / xi // i /> ] ( res )
     heap <= nR
     ----------------------------------------------------------- :: Pred_Other
@@ -145,9 +145,8 @@ defns
     { ipred & cdot } <= _ : ipred'
 
 
-    ipred_term' def= each (integer x; iguard) { a ( iargs ) }
-    a != Owned < _init , ct >
-    forall x . iguard => { a ( iargs ) ( oarg [ x ] ) & arr_heap [ x ] } <= _ : a ( iargs ) ( oarg [ x ] )
+    ipred_term' def= each (integer x; iguard) { id ( iargs ) }
+    forall x . iguard => { id ( iargs ) ( oarg [ x ] ) & arr_heap [ x ] } <= _ : id ( iargs ) ( oarg [ x ] )
     ----------------------------------------------------------- :: IPred_Other
     { ipred_term ( oarg ) & arr_heap } <= _ : ipred_term ( oarg )
 
@@ -256,9 +255,9 @@ defns
   %   - returns mandatory
   %   - if end with if, with return in each branch
   %   - else no return in if branches, mandatory return afterwards
-  spec_defns :: 'Spec_' ::=
+  user_defns :: 'User_' ::=
 
-  defn [( spec )] ( opt_ident ) = out_res :: :: Res :: Res_
+  defn [( spec )] ( opt_ident ) = out_res :: :: Spec_To_Res :: Spec_To_Res_
   {{ com specification $[[spec]]$ (with optional $[[opt_ident]]$) represents resource $[[out_res]]$ ($[[opt_ident]]$ is present return when a return is expected, absent when it is not) }}  by
 
     --------------------------- :: None
@@ -302,7 +301,7 @@ defns
     [( take y = spec ; spec' )] ( opt_ident ) = exists y : base_type . res * res'
 
 
-  defn [( spec )] = out_norm_ret :: :: NormRet :: NormRet_
+  defn [( spec )] = out_norm_ret :: :: Spec_To_Ret :: Spec_To_Ret_
   {{ com specification $[[spec]]$ represents normalised return type $[[out_norm_ret]]$ }}  by
 
     --------------- :: None
@@ -325,7 +324,7 @@ defns
     [( take y = spec ; spec' )] = exists y : base_type . norm_res *o norm_ret
 
 
-  defn [( spec | norm_ret )] = out_norm_fun :: :: NormArg :: NormArg_
+  defn [( spec | norm_ret )] = out_norm_fun :: :: Spec_To_Arg :: Spec_To_Arg_
   {{ com specification $[[spec]]$ represents normalised argument type $[[out_norm_fun]]$ }}  by
 
     --------------------------------- :: None
@@ -348,26 +347,23 @@ defns
     [( take y = spec ; spec' | norm_ret )] = forall y : base_type . norm_res --o norm_fun
 
 
-  defn [( ct name ( </ cti xi // , // i /> ) requires spec1 ensures spec2 )] = out_norm_fun :: :: UserDef :: UserDef_
-  {{ com user-defined C function specification represents normalised argument type $[[out_norm_fun]]$ }}  by
+  defn [( func_def )] ~> P ( id ) = x1 , .. , xk |-> out_stmt  : out_norm_fun :: :: Func_To :: Func_To_
+  {{ com user-defined C function specification elaborates to ResCore $[[out_stmt]]$ and CN type $[[out_norm_fun]]$ }}  by
 
     [( spec2 )] = norm_ret
-    [( spec1 | sigma y : to_base ( ct ) . norm_ret )] = norm_fun
-    ------------------------------------------------------------ :: CFunc_Base
-    [( ct name( ) requires spec1 ensures spec2 )] = norm_fun
+    [( spec1 | sigma y : to_base ( ct ) . norm_ret )] = norm_fun'
+    norm_fun def= pi x1 : to_base ( ct1 ) . .. . pi xk : to_base ( ctk ) . norm_fun'
+    cerberus ( block ) ~> stmt
+    ----------------------------------------------------------------------------- :: Fun
+    [( ct id( ct1 x1 , .. , ctk xk ) /*@ requires spec1 ensures y. spec2 @*/ block )] ~> P ( id ) = x1 , .. , xk |-> stmt : norm_fun
 
 
-    [( ct name( </ cti xi // i /> ) requires spec1 ensures spec2 )] = norm_fun
-    ----------------------------------------------------------------------------- :: CFunc_Arg
-    [( ct name( ct1 x1 , </ cti xi // i /> ) requires spec1 ensures spec2 )] = pi x1 : to_base ( ct1 ) . norm_fun
-
-
-  defn [( predicate base_type  a ( </ base_typei xi // , // i /> ) { spec } )] = a' def= </ rk : base_type''k // , // k /> |-> res :: :: PredDef :: PredDef_
+  defn [( pred_def )] ~> P ( a ) = </ xk : base_typek // , // k /> |-> out_res :: :: Pred_To :: Pred_To_
   {{ com user-defined resource predicate definition represents predicate }}  by
 
     [( spec )] ( y ) = res
-    ---------------------- :: Pred
-    [( predicate base_type  a ( </ base_typei xi // i /> ) { spec } )] = a def= </ xi : base_typei // i /> , y : base_type |-> res
+    ---------------------- :: Res
+    [( predicate base_type  a ( </ base_typei xi // i /> ) { spec } )] ~> P ( a ) = </ xi : base_typei // i /> , y : base_type |-> res
 
 
 defns
