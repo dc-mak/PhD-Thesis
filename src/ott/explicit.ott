@@ -123,17 +123,17 @@ defns
   {{ com given constraints $[[N]]$ , $[[iguard]]$ is potentially included in $[[iguard']]$ (or vice-versa) with ordering and minimum $[[out_opt_cmp_term]]$ }} by
 
 
-    smt ( N => forall x . iguard <-> iguard' )
+    smt ( N => each ( integer x ; _t ) { iguard <-> iguard' } )
     ------------------------------------------------------------ :: Eq
     N |- cmp_min ( iguard , iguard' ) ~> Eq , iguard
 
 
-    smt ( N => forall x . iguard -> iguard' )
+    smt ( N => each (integer x; _t) { iguard -> iguard' } )
     ------------------------------------------------------------ :: Lt
     N |- cmp_min ( iguard , iguard' ) ~> Lt , iguard
 
 
-    smt ( N => forall x . iguard' -> iguard )
+    smt ( N => each ( integer x; _t) { iguard' -> iguard } )
     ------------------------------------------------------------ :: Gt
     N |- cmp_min ( iguard , iguard' ) ~> Gt , iguard'
 
@@ -157,15 +157,13 @@ defns
 
 
     N |- cmp_min ( iguard , iguard' ) ~> cmp , iguard''
-    term def= iguard'' -> ( iargs ) = ( iargs' )
-    smt ( N => exists x . neg term )
+    smt ( N => neg < each (integer x; iguard'') { ( iargs ) = ( iargs' ) } > )
     --------------------------------------------------------------------------------------- :: IArg_Neq
     N |- each (integer x; iguard) { a ( iargs ) } [=? each (integer x ; iguard') { a ( iargs' ) } ~> None
 
 
     N |- cmp_min ( iguard , iguard' ) ~> cmp , iguard''
-    term def= iguard'' -> ( iargs ) = ( iargs' )
-    smt ( N => forall x . term )
+    smt ( N => each (integer x; iguard'') { ( iargs ) = ( iargs' ) } )
     --------------------------------------------------------------------------------------- :: Comparable
     N |- each (integer x; iguard) { a ( iargs ) } [=? each (integer x ; iguard') { a ( iargs' ) } ~> cmp
 
@@ -699,7 +697,7 @@ defns
 
 
     C ; L ; N ; R |- res_term => ( *S x . iguard => ptrt |- init - ct -> oarg  )
-    smt ( N => forall x . iguard <-> ( 0 =< x =< n - 1 ) )
+    smt ( N => each (integer x; _t) { iguard <-> ( 0 =< x =< n - 1 ) } )
     y1 def= allocv [ ptrt dot alloc_id ]
     smt ( N => y1 dot base =< ptrt dot addr /\ array_shift < ct > ( ptrt , n ) dot addr  =< y1 dot base + y1 dot len )
     --------------------------------------------------------------------------------------- :: Congeal
@@ -753,7 +751,7 @@ defns
 
 
     C ; L ; N ; R |- res_term => each (integer x ; iguard') { a ( array_shift < ct > ( ptrt , x ) , iargs ) } ( oarg )
-    smt ( N => forall x. iguard -> iguard' )
+    smt ( N => each ( integer x ; _t ) { iguard -> iguard' } )
     iguard2 def= iguard' /\ neg iguard
     ipred1 def= each ( integer x; iguard ) { a ( array_shift <ct> (ptrt, x) , iargs ) } ( oarg )
     ipred2 def= each (integer x; iguard2) { a ( array_shift<ct>(ptrt, x) , iargs ) } ( oarg )

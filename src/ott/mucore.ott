@@ -396,11 +396,11 @@ grammar
 
 
   qterm :: 'QTerm_' ::= {{ com quantified SMT terms }}
-    | term            ::   :: term   {{ com unquantified SMT term                  }}
-    | forall x . term ::   :: forall {{ com universally quantified SMT term        }}
-    | exists x . term ::   :: exists {{ com existentially quantified SMT term      }}
-    | subs < qterm >  :: M :: subs   {{ tex [[subs]] \left( [[qterm]] \right)      }}
-                                     {{ com substitute $[[subs]]$ into $[[qterm]]$ }}
+    | term                                  ::   :: term   {{ com unquantified SMT term                  }}
+    | each ( base_type x ; term ) { term' } ::   :: forall {{ com universally quantified SMT term        }}
+    | neg < qterm >                         :: P :: neg    {{ tex [[neg]] qterm                          }}
+    | subs < qterm >                        :: M :: subs   {{ tex [[subs]] \left( [[qterm]] \right)      }}
+                                                          {{ com substitute $[[subs]]$ into $[[qterm]]$ }}
 
 grammar
 
@@ -422,8 +422,8 @@ grammar
     | a ( iargs ) :: :: pred_term
 
   ipred_term :: 'IPred_term_' ::= {{ com iterated predicate term/request }}
-    | each ( integer x ; iguard ) { pred_term } ::  :: ipred_term (+ bind x in iguard +) (+ bind x in pred_term +)
-      {{ tex [[each]] \left(\![[integer]]\ x; [[iguard]] \right)\, \left\{ [[pred_term]] \, \right\} }}
+    | each ( base_type x ; iguard ) { pred_term } ::  :: ipred_term (+ bind x in iguard +) (+ bind x in pred_term +)
+      {{ tex [[each]] \left( [[base_type]]\, x; [[iguard]] \right)\, \left\{ [[pred_term]] \, \right\} }}
 
   pred_ipred :: 'Res_req_' ::= {{ com predicate or iterated predicate term }}
     | pred_term  :: :: pred  {{ com predicate term          }}
@@ -913,15 +913,24 @@ grammar
                                                          {{ com bind (pure) term                 }}
     | take x = spec1 ; spec2               ::  :: take   (+ bind x in spec2 +)
                                                          {{ com bind output value of $[[spec1]]$ }}
-    | assert ( term ) ; spec               ::  :: assert {{ com assert specification             }}
+    | assert ( qterm ) ; spec              ::  :: assert {{ com assert specification             }}
     | if ( term ) { spec1 } else { spec2 } ::  :: if     {{ com conditional specification        }}
 
   spec_value , sval :: 'Spec_val_' ::=  {{ com specifications terminators }}
     | cdot          :: :: empty
     | return term   :: :: ret
 
-  pred_def {{ tex \mathit{pred\_def}\, }} :: 'Pred_def_' ::= {{ com predicate definition }}
-      | predicate base_type a ( base_type1 x1 , .. , base_typek xk ) { spec } :: :: List
+  pred_def {{ tex \mathit{pred\_def}\, }} :: 'Pred_' ::= {{ com predicate definition }}
+    | predicate base_type id ( base_type1 x1 , .. , base_typek xk ) { spec } :: :: Def
+
+  func_def {{ tex \mathit{func\_def}\, }} :: 'Func_' ::= {{ com pure CN function definition }}
+    | function base_type id ( base_type1 x1 , .. , base_typek xk ) { term } :: :: Def
+
+  datatype_def {{ tex \mathit{datatype\_def}  }} :: 'Datatype_' ::= {{ com datatype defnition }}
+    | datatype tag { ctor_def1 , .. , ctor_defn } :: :: Def
+
+  ctor_def {{ tex \mathit{ctor\_def} }} :: 'Ctor_' ::= {{ com datatype constructor definition/pattern }}
+    | id { base_type1 id1 , .. , base_typen idn } :: :: Def
 
   subrules
     spec_value <:: spec
