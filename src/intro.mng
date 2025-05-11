@@ -743,7 +743,7 @@ to the back of the queue, and popping from the front of the queue. The
 operations are proved to not only be memory safe, but also functionally correct
 via a user-defined datatype and predicate.
 
-I owe the idea, C implementation and intial proof structure to Benjamin Pierce;
+I owe the idea, C implementation and initial proof structure to Benjamin Pierce;
 the final proofs and lemmas involved are my work. As presented, the queue has a
 few limitations, reflecting the earlier version of \kl{CN} against which it was
 verified. Namely, \cinline{malloc} and \cinline{free} were not supported
@@ -771,52 +771,57 @@ any branching is required.
         \cninit{}\cnafterlastrule{}
     }
     \caption{High-level syntax of CN, modified for presentation and later discussion.
-    Modifications include: writing \cninline{Owned<✓,τ>} and \cninline{Owned<x,τ>}
-    instead of \cninline{RW<τ>} and \cninline{W<τ>} respectively; explicitly
-    binding the return value in the \cninline{ensures} clause, with an
-    identifier $y$, rather than assuming it is the keyword \cninline{return};
-    allowing arbitrary nesting of specifications under \cninline{take}, instead
-    of just predicates and iterated predicates; allowing \cninline{if}s at
-    places other than the outermost level of a predicate
-    definition.}\label{fig:cn-grammar}
+    Modifications include: writing {\footnotesize$[[Owned<Init,ct>]]$} and
+    {\footnotesize$[[Owned<Uninit,ct>]]$} instead of \cninline{RW<τ>} and
+    \cninline{W<τ>} respectively; explicitly binding the return value in the
+    \cninline{ensures} clause, with an identifier $y$, rather than assuming it
+    is the keyword \cninline{return}; allowing arbitrary nesting of
+    specifications under \cninline{take}, instead of just predicates and
+    iterated predicates; allowing \cninline{if}s at places other than the
+    outermost level of a predicate definition.}\label{fig:cn-grammar}
 \end{figure*}
 
 A file for \kl{CN} consists of series of top-level declarations of annotated C
 functions, (separation logic) predicate definitions, (purely logical) function
-definitions, and datatype declarations.\sidenote{Does the kernel formalism
-support datatypes?}
+definitions, and datatype declarations.\sidenote{As I explain in
+\nameref{chap:kernel-grammar}, I do not discuss recursive, pure functions or
+datatypes in the kernel formalism.}
 
 Function definitions for C introduce the identifiers for the arguments into the
-scope of the pre- and postconditions, preceded by \cninline{requires} and
-\cninline{ensures} respectively. Pre- and postconditions are a list of
-`${conditions}$', each followed by a semi-colon.
+scope of the preconditions, preceded by \cninline{requires}, and postconditions,
+preceded by \cninline{ensures}. Pre- and postconditions are $[[spec]]$s,
+with no explicit terminator (represented in the grammar with a $[[cdot]]$).
+
 \begin{itemize}
-    \item \cninline{take id = resource} is a \kl{monadic} bind, which binds
-        the \emph{output} arguments of the resource to the identifier \cninline{id},
-        which doubles up as an assertion about the heap.
-    \item \cninline{constraint} is a boolean-valued expression, which acts as a
-        pure assertion.
-    \item \cninline{let id = t} is simply an abbreviation for the expression
-        \cninline{t} bound to \cninline{id}; it has no effect on the context.
+    \item $[[let id = term; spec]]$ is simply an abbreviation for the expression
+        $[[term]]$ bound to $[[id]]$ in the scope of $[[spec]]$. It has no
+        effect on the context.
+    \item $[[assert (qterm); spec ]]$ is a pure assertion. It carries a
+        boolean-valued expression (perhaps quantified by a single variable)
+        $[[qterm]]$. If a quantified constraint is assumed, any quantifiers must
+        be manually provided by the user.
+    \item $[[take id = spec; spec']]$ is an assertion about the heap. It is
+        structured as a \kl{monadic} bind, to bind the return value of
+        $[[spec]]$ to the identifier $[[id]]$, in the scope of of $[[spec']]$.
+        For the implementation, $[[spec]]$ is restricted to be a $[[pred_ipred]]$ % chktex 25
 \end{itemize}
 
-\kl{CN} constraints (pure assertions) are either simple terms, or quantified
-constraints.\sidenote{These must be manually instantiated by the user.}
+\kl{CN} \kl{resource}s are either predicates $[[a ( iargs )]]$ or iterated
+predicates of the form
+$[[ each (base_type x; iguard) { a ( array_shift <ct>(yp , x) , iargs ) }]]$. % chktex 25
+Predicate names $[[a]]$ are either: \cninline{RW<τ>}/\cninline{W<τ>} (encoded as
+$[[Owned<Init,ct>]]$/$[[Owned<Uninit,ct>]]$ in the grammar in
+figure~\ref{fig:cn-grammar}) representing the ability to read-and-write/write an
+initialised/uninitialised location on the heap; an \cninline{Alloc} representing
+(permission to free) an allocation; or a user-defined predicate.
 
-\kl{CN} \kl{resource}s are simply a predicate \cninline{p(t1, .., tn)} % chktex 26 chktex 12 chktex 36
-or an iterated predicate of the form
-\cninline[breaklines]|each (<type> i; <guard>) { <pred>( array_shift(p i) ) }|. % chktex 36 chktex 37
-Predicate names \cninline{p} are either
-\cninline{Owned<ct>}/\cninline{Block<ct>}, representing ownership of an
-initialised (read and write)/uninitialised location (a points-to $\mapsto{}$)
-indexed by a C type, or \cninline{Alloc} representing an allocation, or a
-user-defined one.
-
-Similar to C syntax, \kl{CN} \kl{predicate} definitions first specify return
-type, then a name, and a \intro{base type} annotated list of arguments. Their
-definition consists of either a top-level \cninline{f} with a list of $\mathit{spec}$s
-in each branch, or just the list of ${specs}$ at the top-level. ${specs}$ are
-the ${conditions}$ followed by a return expression.\sidenote{\url{https://github.com/rems-project/cerberus/issues/266}}
+\kl{CN} \kl{predicate}s are defined with
+$[[ predicate base_type id( base_type1 id1 , .. , base_typek idk) { spec }]]$ % chktex 25
+where $[[spec]]$ must terminate with a $[[return term]]$. First is a
+return \intro{base type} $[[base_type]]$, then a name $[[id]]$, and a list of % chktex 25
+parameters $[[base_type1]]\, [[id1]] , {.}{.} , [[base_typek]]\, [[idk]]$. % chktex 25
+The implementation restricts $[[spec]]$ to have no nesting beyond a single top-level
+\cninline{if}.\sidenote{\url{https://github.com/rems-project/cerberus/issues/266}}
 
 \section{Queue definitions}
 
