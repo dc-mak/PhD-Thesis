@@ -16,6 +16,11 @@ CACHE := $(BUILD)/ott.cache
 OTTS := mucore.ott explicit.ott inference.ott operational.ott misc.ott minicn.ott
 OTTS := $(addprefix ott/, $(OTTS))
 
+THESIS_FILTERED := intro.$(GEN).tex \
+		   formal-kernel.$(GEN).tex \
+		   formal-statics.$(GEN).tex \
+		   formal-discussion.$(GEN).tex
+
 PDFS := $(BUILD)/defns.pdf $(BUILD)/soundness.pdf
 
 all: $(BUILD)/main.pdf $(PDFS)
@@ -34,7 +39,7 @@ else
 endif
 
 .PHONY: $(BUILD)/main.pdf
-$(BUILD)/main.pdf: intro.$(GEN).tex formal-kernel.$(GEN).tex formal-statics.$(GEN).tex \
+$(BUILD)/main.pdf: $(THESIS_FILTERED) \
     $(PREFIX)_included.$(GEN).tex \
     $(PREFIX)_override.$(GEN).tex \
     $(PREFIX)_drulenames.$(GEN).tex | $(BUILD)
@@ -44,13 +49,7 @@ else
 	latexmk $(FLAGS)
 endif
 
-intro.$(GEN).tex: intro.mng $(CACHE) | check_rule_diff
-	ott -readsys $(CACHE) -tex_name_prefix $(PREFIX) -tex_filter $< $@ | tac
-
-formal-kernel.$(GEN).tex: formal-kernel.mng $(CACHE) | check_rule_diff
-	ott -readsys $(CACHE) -tex_name_prefix $(PREFIX) -tex_filter $< $@ | tac
-
-formal-statics.$(GEN).tex: formal-statics.mng $(CACHE) | check_rule_diff
+$(THESIS_FILTERED):%.$(GEN).tex: %.mng $(CACHE) | check_rule_diff
 	ott -readsys $(CACHE) -tex_name_prefix $(PREFIX) -tex_filter $< $@ | tac
 
 soundness.$(GEN).tex: ott/soundness.mng $(CACHE) | check_rule_diff
