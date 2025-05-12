@@ -230,9 +230,8 @@ including structs and arrays (d) ignore iterated predicates.
 Because syntactically different expressions may alias the same heap locations,
 the type system still needs symbolic expressions and linear resources to track
 permissions on reading and writing locations (there is no allocation and
-destruction). This is visible in the spine judgement (\cref{fig:minicn-spine}),
-which is used to \emph{check} the typing contexts against a specification:
-postconditions for return expressions, preconditions for function calls.
+destruction). This is visible in the judgement in \cref{fig:minicn-spine}, which
+is used to prove a specification holds.
 
 \begin{figure*}[tpb]
     \ContinuedFloat*
@@ -241,7 +240,7 @@ postconditions for return expressions, preconditions for function calls.
     \onlyUseRules{\cndefnMiniXXProve{}}{%
         \cndruleMiniXXProveXXOwned{}
     }
-    \caption{Select rule for proving a specification in \kl{MiniCN}.}\label{fig:minicn-spine}
+    \caption{Proving an $[[Owned<_init, ct>]]$ specification in \kl{MiniCN}.}\label{fig:minicn-spine}
 \end{figure*}
 
 The typing context includes: $[[Vc]]$ for variables (computational and logical),
@@ -272,27 +271,26 @@ new constraints $[[Phi1]]$, and updated resources $[[Rc1]]$.
 
 \kl{MiniCN} is intended to be closer to the syntax (and implementation) than
 \kl{Kernel CN}. This is why I phrased the rules in an algorithmic-style in terms
-of input and output contexts, rather the usual declarative style for
-substructural systems. It also means that there are no explicit resource terms
-or logical (ghost) quantifier instantiations in the syntax tree.
+of input and output contexts, rather than a declarative, context-splitting
+style. It also means that there are no explicit resource terms or logical
+(ghost) quantifier instantiations in the syntax tree.
 
-As such, the rules for checking (and assuming) a specification both have to
+As such, the rules for proving (and assuming) a specification both have to
 compute the instantiation of logical (ghost) quantifiers on-the-fly, whereas
 this is separated into typing and elaboration in the \kl{Kernel CN}
 presentation. This is why, in addition to outputting a modified resource
-context, the spine judgement also outputs a specification value
-$\mathit{sval}$, as well as the additional constraints learnt (and additional
+context, the judgement also outputs a specification value
+$[[sval]]$, as well as the additional constraints learnt (and additional
 variables used). This is best demonstrated in \cref{fig:minicn-spine-take},
-where (a) the bound expression $\mathit{t}$ is the result of
-checking/evaluating $\mathit{spec}$ (b) the bound variable $\mathit{id}$ is
-added to the accumulating variable context (c) their equality is added to the
-accumulating constraint context before (d) checking/evaluating the rest of the
-specification.
+where premise 1 says that $[[return term]]$ is the result of proving and
+evaluating $[[spec]]$, and premise 2 says that given extra variable $[[id]]$,
+and an extra constraint $[[id = term]]$, the rest of the specification
+$[[spec']]$ evaluates to $[[sval]]$.
 
-\begin{figure*}[tpb]
+\begin{figure*}[tpbh]
     \ContinuedFloat{}
-    \includegraphics{figures/minicn-spine-3}
-    \caption{Select spine judgement rules for \kl{MiniCN}.}\label{fig:minicn-spine-take}
+    \cnusedrule{\cndruleMiniXXProveXXTake{}}
+    \caption{Proving a $[[take id = spec; spec']]$ specification in \kl{MiniCN}.}\label{fig:minicn-spine-take}
 \end{figure*}
 
 \section{Early returns intertwine normalising, synthesising and checking}
