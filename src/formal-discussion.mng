@@ -223,7 +223,9 @@ The specification language for \kl{MiniC}, is a simplified version of the
 surface syntax of \kl{CN} (\cref{fig:surface-cn-syntax}). The simplifications
 are to (a) equate pointers and integers (b) assume that all
 {\small$\cnkw{Owned}$}s are always initialised and (c) ignore any other C types,
-including structs and arrays (d) ignore iterated predicates.
+including structs and arrays (d) ignore iterated predicates. Using this, I
+define \kl{MiniCN} as the typing rules for \kl{MiniC} using this simplified
+specification language.
 
 \section{Aliasing requires linear resources}
 
@@ -317,7 +319,7 @@ $[[Rc']]$.
     \onlyUseRules{\cndefnMiniXXExpr{}}{%
         \cndruleMiniXXExprXXReturn{}
     }
-    \caption{Rule for typing a \kl{MiniC} return expression.}\label{fig:minicn-return}
+    \caption{\kl{MiniCN} rule for typing a \kl{MiniC} return expression.}\label{fig:minicn-return}
 \end{figure*}
 
 For the sake of simplicity, the synthesised value of each sub-expression is is
@@ -331,7 +333,7 @@ any ancestor expression to continue typing correctly.
     \small%
     \raggedright%
     \cnusedrule{\cndruleMiniXXExprXXBinop{}}
-    \caption{Rule for typing a \kl{MiniC} a binary operation expression.}\label{fig:minicn-bop}
+    \caption{\kl{MiniCN} rule for typing a \kl{MiniC} a binary operation expression.}\label{fig:minicn-bop}
 \end{figure*}
 
 In the case of a binary operation expression (\cref{fig:minicn-bop}), this
@@ -350,29 +352,47 @@ Aside from complications arising from early returns, avoiding let-normalisation
 also requires us to construct join-points for resource and constraint contexts
 (\cref{fig:minicn-if}).
 
-\begin{figure*}[tpb]
+\begin{figure}[tpbh]
     \ContinuedFloat{}
-    \includegraphics{figures/minicn-if}
-    \caption{\kl{MiniCN} rule for typing an if-expressions.}\label{fig:minicn-if}
-\end{figure*}
+    \small%
+    \raggedright%
+    \cnusedrule{\cndruleMiniXXExprXXIf{}}
+    \caption{\kl{MiniCN} rule for typing a \kl{MiniC} if-expression.}\label{fig:minicn-if}
+\end{figure}
 
 I chose to represent these join-points as an ordered-disjunction of
 \emph{contexts}, both resource and constraint. This is not very satisfying,
-because it complicates how to specify a lookup in the resource context. I
-outlined a scheme where such ordered-disjunctions would be simplified if either
-the condition or its negation could be proven, and otherwise require a
+because it complicates how to specify a lookup in the resource context. One
+possibility, is a scheme where such ordered-disjunctions would be simplified if
+either the condition or its negation could be proven, and otherwise require a
 syntactic match on both branch.
 
 \section{Discussion}
 
 As I showed in the previous sections, the typing judgements for \kl{MiniCN}
 becomes substantially more complicated in the absence of key features of
-\kl{ResCore}. This would extend to the proof of soundness too, because\ldots
-struggling to explain this.
+\kl{ResCore}. This would extend to the proof of soundness too, because the input
+and output contexts would not remain the same as an expression evaluated.
 
-\includegraphics{../misc/minicn-soundness}
+For concision, I will write $\Omega$ to represent all the contexts combined.
+For typing a binary operation, $\Omega_0 \vdash e_1 + e_2 \dashv \Omega_2$, the
+premises would be $\Omega_0 \vdash e_1 \dashv \Omega_1$ and $\Omega_1 \vdash e_2
+\dashv \Omega_2$.\sidenote{The rules I presented are not exactly in this format,
+outputting a delta of contexts rather than new ones. I believe
+the basic approach remains the same.}
 
-Or this
+Suppose then that $e_1 \rightarrow e_1'$. To prove that $e_1' + e_2$ is
+well-typed, we would have to show $\Omega_0' \vdash e_1' \dashv \Omega_1'$ and
+$\Omega_1' \vdash e_2 \dashv \Omega_2'$. This uses different contexts to the
+$\Omega_0$, $\Omega_1$ and $\Omega_2$ in the initial well-typed assumption.  To
+strengthen the induction hypothesis, one would need to define a relationship
+$\sqsubseteq$ between contexts, along with a weakening lemma which stated that
+if $\Omega \sqsubseteq \Omega'$ and $\Omega' \vdash e \dashv \Omega''$, then
+$\Omega \vdash e \dashv \Omega'''$ where $\Omega'' \sqsubseteq \Omega'''$.
+We would then need to apply this to the inductive cases, with
+$\Omega_0 \sqsubseteq \Omega_0'$, $\Omega_1 \sqsubseteq \Omega_1'$ and
+$\Omega_2 \sqsubseteq \Omega_2'$.
 
-\includegraphics{../misc/runtime-correctness}
-
+This resembles a rule of consequence proof for a Hoare-triple, except that one
+would need to prove there is a valid pre- and postcondition for every step of
+the evaluation of the program.
