@@ -287,31 +287,37 @@ evaluating $[[spec]]$, and premise 2 says that given extra variable $[[id]]$,
 and an extra constraint $[[id = term]]$, the rest of the specification
 $[[spec']]$ evaluates to $[[sval]]$.
 
-\begin{figure*}[tpbh]
+\begin{figure}[tpbh]
     \ContinuedFloat{}
+    \small%
+    \raggedright%
     \cnusedrule{\cndruleMiniXXProveXXTake{}}
     \caption{Proving a $[[take id = spec; spec']]$ specification in \kl{MiniCN}.}\label{fig:minicn-spine-take}
-\end{figure*}
+\end{figure}
 
 \section{Early returns intertwine normalising, synthesising and checking}
 
 Because expressions and statements are a single construct in \kl{MiniC}, and
 statements include \cinline{return} statements, any expression could
-potentially have its evaluation interrupted a nested early-return.
+potentially have its evaluation interrupted by a nested early-return.
 
 The typing judgement for expressions needs to take this into account, so in
-addition to synthesising symbolic values for sub-expressions (and modifying the
-resource context, and extending the variable and constraint context), it also
-needs to do so in a checking mode, threading through the postcondition
-(\cref{fig:minicn-return}). The judgement expresses the fact that given the
-context, the expression $\mathit{e}$ symbolically evaluates to $\mathit{id}$,
-with a new variables and constraints, and updated resources.
+addition to synthesising symbolic values for sub-expressions, it also
+needs to thread a postcondition $[[spec]]$ for \emph{checking} a return
+expression (\cref{fig:minicn-return}). The judgement expresses the fact that
+given the context $[[Vc]]; [[Phi]]; [[Rc]]$, and postcondition $[[y]] [[.]]
+[[spec]]$, the expression $[[e]]$ symbolically evaluates to $[[id]]$, with a new
+variables $[[Vc']]$, new constraints $[[Phi']]$, and updated resources
+$[[Rc']]$.
 
 \begin{figure*}[tpb]
     \ContinuedFloat*
-    \includegraphics{figures/minicn-expr-judgement}
-    \includegraphics{figures/minicn-return}
-    \caption{\kl{MiniCN} rule for typing a return expression.}\label{fig:minicn-return}
+    \small%
+    \raggedright%
+    \onlyUseRules{\cndefnMiniXXExpr{}}{%
+        \cndruleMiniXXExprXXReturn{}
+    }
+    \caption{Rule for typing a \kl{MiniC} return expression.}\label{fig:minicn-return}
 \end{figure*}
 
 For the sake of simplicity, the synthesised value of each sub-expression is is
@@ -322,8 +328,10 @@ any ancestor expression to continue typing correctly.
 
 \begin{figure*}[tpb]
     \ContinuedFloat{}
-    \includegraphics{figures/minicn-bop}
-    \caption{\kl{MiniCN} rule for typing binary operations.}\label{fig:minicn-bop}
+    \small%
+    \raggedright%
+    \cnusedrule{\cndruleMiniXXExprXXBinop{}}
+    \caption{Rule for typing a \kl{MiniC} a binary operation expression.}\label{fig:minicn-bop}
 \end{figure*}
 
 In the case of a binary operation expression (\cref{fig:minicn-bop}), this
