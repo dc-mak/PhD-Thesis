@@ -174,7 +174,7 @@ other way of enforcing the necessary distinction between the two worlds.
 Exposing the monad implicit in the predicate syntax as a type constructor would
 achieve both, though at the cost of exposing developers to a fancier type
 system. As a programming-language theorist, I prefer this, though the ultimate
-arbiter of such a decision would have to well-designed user-studies.
+arbiter of such a decision would be well-designed user-studies.
 
 \chapter{An alternative presentation}\label{chap:kernel-alternative}
 
@@ -236,32 +236,45 @@ postconditions for return expressions, preconditions for function calls.
 
 \begin{figure*}[tpb]
     \ContinuedFloat*
-    \includegraphics{figures/minicn-spine-1}
-    \includegraphics{figures/minicn-spine-2}
-    \caption{Select spine judgement rules for \kl{MiniCN}.}\label{fig:minicn-spine}
+    \small%
+    \raggedright%
+    \onlyUseRules{\cndefnMiniXXProve{}}{%
+        \cndruleMiniXXProveXXOwned{}
+    }
+    \caption{Select rule for proving a specification in \kl{MiniCN}.}\label{fig:minicn-spine}
 \end{figure*}
 
-The typing context includes: a program (list of definitions) $P$ for lookups,
-$\Gamma$ for variables (computational and logical), a resource context
-$\mathcal{R}$, and a constraint context $\Phi$. It accumulates contexts whilst
-checking specification $\mathit{spec}$, and produces a specification value
-$\mathit{sval}$, and contexts marking the new variables introduced, the
-resources used and leftover, and additional constraints learned. I chose this
-more complex accumulating style to mirror the (big-step) dynamic specification
-checks.
+The typing context includes: $[[Vc]]$ for variables (computational and logical),
+a constraint context $[[Phi]]$, and a resource context $[[Rc]]$. It accumulates
+contexts $[[Vc']]; [[Phi']]; [[Rc']]$ whilst checking specification $[[spec]]$,
+and produces a specification value $[[sval]]$, a context for new variables
+$[[Vc'']]$, a context for new constraints learned $[[Phi'']]$, a context of used
+resources $[[Rc1]]$, and a context for leftover resources $[[Rc2]]$. I chose
+this more complex accumulating style to mirror the (big-step) dynamic
+specification checks.
 
-The rule for checking ownership marks the resource in the context as
-used\sidenote{I marked the resources as used and delete them at the use site,
-instead of deleting them along the way, to mirror the dynamic semantics here
-too.} if the location is proven to be equal.
+The rule for checking ownership marks the resource in the context
+($[[ id1 |-> id2 ]]$) as used\sidenote{I marked the resources as used and delete
+them at the use site, instead of deleting them along the way, to mirror the
+dynamic semantics here too.} if the requested location $[[term]]$ is proven to
+be equal $[[Rc1 , Phi /\ Phi1 => term = id1]]$. Unlike the system
+presented in~\cref{sec:elaboration}, the resource context here is not guaranteed
+to be normalised, so this must be done lazily before each call to the SMT
+solver.\sidenote{Recall that $[[id |-> _  * id' |-> _]]$ implies $[[id != id']]$.}
+This is accomplished via the premise
+$[[ [ Vc, Vc' ] , Rc , Phi /\ Phi' |- simplify ( cdot , Rc , cdot ) ~> Vc1 , Rc1 , Phi1 ]]$,
+which says that assuming variables $[[ [Vc, Vc'] ]]$, constraints $[[Phi /\ Phi']]$,
+and resource context $[[Rc]]$, simplify $[[Rc]]$ (expand all determined
+conditional resources) to produce new variables $[[Vc1]]$,
+new constraints $[[Phi1]]$, and updated resources $[[Rc1]]$.
 
-\section{Implicit resources and terms intertwine elaboration and typing}
+\section{Implicit resource terms intertwine elaboration and typing}
 
-\kl{MiniCN} is intended to be closer to the syntax (and implementation)
-than \kl{Kernel CN}. This is why I phrased the rules in terms of input and
-output contexts, rather than the substructural kind. It also means that there
-are no explicit resource terms or logical (ghost) quantifier instantiations in
-the syntax tree.
+\kl{MiniCN} is intended to be closer to the syntax (and implementation) than
+\kl{Kernel CN}. This is why I phrased the rules in an algorithmic-style in terms
+of input and output contexts, rather the usual declarative style for
+substructural systems. It also means that there are no explicit resource terms
+or logical (ghost) quantifier instantiations in the syntax tree.
 
 As such, the rules for checking (and assuming) a specification both have to
 compute the instantiation of logical (ghost) quantifiers on-the-fly, whereas
@@ -325,7 +338,7 @@ system's symbolic evaluation \emph{itself} specified as a non-determinism
 monad (\href{https://github.com/rems-project/cerberus/issues/730}{issue
 \#730}).}
 
-\section{Lack of let-normalisation requires join-points}
+\section{Lack of let-normalisation requires join-points}\label{sec:lack-let-norm}
 
 Aside from complications arising from early returns, avoiding let-normalisation
 also requires us to construct join-points for resource and constraint contexts
