@@ -141,52 +141,51 @@ pressure for faster code, simplicity of compilation gave way to complex alias
 analysis and pointer provenance reasoning to optimise code.
 
 \begin{marginfigure}
-    \centering
-    \cfile{code/pointer_from_integer_1pg.c}
-    \caption{Example pointer\_from\_integer\_1pg.c.}\label{fig:ptr-from-int-ub}
+    \raggedleft%
+    \cfile{code/pointer_from_integer_1i.c}
+    \caption{A modified version of examples
+        pointer\_from\_integer\_\{1i,1ie\}.c.}\label{fig:ptr-from-int-ub}
 \end{marginfigure}%
 
-\cref{fig:ptr-from-int-ub} shows a slightly contrived example (courtesy
-of~\sidetextcite{memarian2019exploring}), which nevertheless illustrates the
-alias assumptions at play here. It guesses that \cinline{ADDRESS_PFI_1PG} is
-the address of a variable local to function \cinline{f}, which is
-cast to a pointer in \cinline{main}, and then passed in as an argument to
-\cinline{f}. The question this raises is: even if the guess matches the runtime
-address of the local variable, should the compiler be allowed to assume that
-pointers passed in as arguments cannot alias local variables? From a purely
-concrete point of view of pointers (they are simply numbers), the answer is no,
-yet this would disable constant propagation in the printed value in this
-example.
+\cref{fig:ptr-from-int-ub} shows a slightly contrived example (derived
+from~\sidetextcite{memarian2019exploring}), which nevertheless illustrates the
+alias assumptions at play here. It guesses that \cinline{ADDRESS_PFI_1I} is the
+address of a variable local to function \cinline{f}, and passes that guess in as
+an argument \cinline{f(j)}. Inside the function, it declares a local variable
+\cinline{i} and then creates a pointer \cninline{p} from the argument. If this
+new pointer is equal to the address of the local variable, it writes to that
+location (\cinline{if (p == &i) *p=7;}).  The value of the local variable is
+then printed.
 
-\begin{marginfigure}
-    \centering
-    \cfile{code/pointer_from_integer_1ie.c}
-    \caption{Example pointer\_from\_integer\_1ie.c.}\label{fig:ptr-from-int}
-\end{marginfigure}%
+Based on this, assuming the address is guessed correctly, the reader will wish
+to ponder two questions: Does this program have undefined behaviour, and if so,
+where and why?  What will it print?
 
-However, the other extreme, of assuming pointers are purely symbolic and always
-non-aliasing is definitely incorrect in C, because of C's ability to
-\emph{compute} with pointers (increment, calculate offsets, cast them to and
-from integers). An example similar to the previous one (from the same source)
-is shown in \cref{fig:ptr-from-int}, with the difference that instead of the
-address being cast to a pointer in the calling function \emph{before} the local
-variable is in scope one, it is cast to a pointer \emph{after} and its address
-has been \intro{exposed}: cast to an integer (but otherwise
-unused). Though we can clearly see that there is no dataflow between
-\cinline{k} and \cinline{i}, in general, the compiler cannot rule it out, so it
-conservatively disables constant propagation to the call to \cinline{printf}
-later.\sidenote{This example does have \kl{UB} though because of (demonic)
-allocation address non-determinism.}
+If one is under the impression that C pointers and integers are interchangeable,
+one may be surprised to learn (a) the program has undefined behaviour, because
+the pointer \cinline{p} is not constructed in a ``reasonable'' way
+(\nameref{chap:mem-model-explained}) (b) it can print 5, because the compiler
+may assume that \cninline{p} cannot alias the local variable \cinline{i}, and
+thus perform constant propagation over the assignment.
 
-Stakeholders have attempted to resolve such questions by the formation of and
-continual updates to the \kl{ISO} standard of C~\cite{isoC1990}, however, the
-resolutions can be complex and subtle. This is because of the different
-preferences for performance, control and language simplicity, amongst
-application programmers, systems programmers and compiler writers. To add to
-the confusion, as a prose English document, the standard has some irreducible
-ambiguities, and does not necessarily reflect \intro{de facto} C, as is it
-used in practice, so even memorising the standard would not be enough to
-safeguard against unexpected language quirks.
+We can thus conclude that to optimise pointer code, compilers assume that
+pointers in C are \emph{not} completely concrete, and are only constructed in
+``reasonable'' ways. We also know that to support low-level idioms of
+\emph{computing} with pointers (incrementing, offsetting, casting to and from
+integers), compilers assume that pointers are \emph{not} completely abstract.
+Compilers must also be conservative in such assumptions. This is evident by the
+surprising fact that \emph{despite a lack of dataflow between} \cinline{k} and
+\cinline{j}, uncommenting line 6 would make the program defined and print 7.
+
+Stakeholders have attempted to resolve questions of what a compiler may assume
+by the formation of and continual updates to the \kl{ISO} standard of
+C~\cite{isoC1990}, however, the resolutions can be complex and subtle. This is
+because of the different preferences for performance, control and language
+simplicity, amongst application programmers, systems programmers and compiler
+writers. To add to the confusion, as a prose English document, the standard has
+some irreducible ambiguities, and does not necessarily reflect \intro{de facto}
+C, as is it used in practice, so even memorising the standard would not be
+enough to safeguard against unexpected language quirks.
 
 Given this state of affairs, the \intro{Cerberus}
 project~\sidecite{memarian2022cerberus} aims to provide a formally defined,

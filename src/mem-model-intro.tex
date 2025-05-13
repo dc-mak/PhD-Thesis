@@ -96,52 +96,74 @@ within the formalised and implemented type systems.
 
 \margintoc%
 
-From the perspective of \kl{Core} and \kl{ResCore}, the memory object model
-(\cref{fig:mem-model-intf}) is simply a choice of representation of pointers,
-and the interface specified in the memory operations $memop$, and memory
-$\mathit{actions}$.\sidenote{Plus some extra primitives to detect races between
-unsequenced expressions, which I will ignore.}
+From the perspective of \kl{Core} and \kl{ResCore}, the representation of
+pointers, integers and memory itself are left abstract, and memory operations
+and memory actions are defined by an interface (\cref{fig:mem-model-intf}).
+
+\begin{figure}[tbhp]
+    \small%
+    \raggedright%
+    \begingroup%
+    \renewcommand{\cnprodline}[6]{& & $#1$ & $#2$ & $#3$ & $#5$ & }
+    \grammartabularSTY{%
+        \cnkillXXkind{}\cninterrule{}
+        \cnaction{}\cninterrule{}
+        \cnmemop{}\cnafterlastrule{}
+    }
+    \endgroup%
+    \caption{\kl{ResCore} memory interface, a simplified subset of the \kl{Core}
+        memory interface. I omit constructs for handling variable-length
+        arguments and loose expression evaluation order.}\label{fig:mem-model-intf}
+\end{figure}
+
+The key concept which begins this brief overview of memory object models is that
+of provenance. To optimise our code, compilers would like to assume that a
+programmer may only create pointers in a ``reasonable'' ways, and that certain
+basic assumptions about those pointers are always true.\sidenote{Such as (a) 
+function arguments may not alias local variables and (b) pointers created in a
+function may not alias the local variables of any caller (c) pointers created by
+guessing concrete addresses are always invalid.}
+
+Let us revisit the example from \cref{fig:ptr-from-int-ub}, reproduced in
+\cref{fig:mem-model-ptr-from-int} for convenience.  It guesses that
+\cinline{ADDRESS_PFI_1I} is the address of a variable local to function
+\cinline{f}, and passes that guess in as an argument \cinline{f(j)}. Inside the
+function, it declares a local variable \cinline{i} and then creates a pointer
+\cninline{p} from the argument. If this new pointer is equal to the address of
+the local variable, it writes to that location (\cinline{if (p == &i) *p=7;}).
+The value of the local variable is then printed.
+
+Assuming the address is guessed correctly, this program raises two questions:
+Does this program have undefined behaviour, and if so, where and why?  What will
+it print?
+
+Indeed, it does have undefined behaviour, because the pointer \cinline{p} is not
+constructed in a ``reasonable'' way and it can print 5, because the compiler may
+assume that \cninline{p} cannot alias the local variable \cinline{i}, and thus
+perform constant propagation over the assignment.
+
+To optimise pointer code, compilers assume that pointers in C are \emph{not}
+completely concrete, and are only constructed in ``reasonable'' ways. However,
+to support low-level idioms of \emph{computing} with pointers (incrementing,
+offsetting, casting to and from integers), compilers also assume that pointers
+are \emph{not} completely abstract.  Compilers must also be conservative in such
+assumptions. \emph{Despite a lack of dataflow between} \cinline{k} and
+\cinline{j}, uncommenting line 6 would make the program defined and print 7.
 
 \begin{marginfigure}
-    \includegraphics{figures/mem-model-intf}
-    \caption{Memory model interface of \kl{Core}.}\label{fig:mem-model-intf}
-\end{marginfigure}
+    \raggedright%
+    \cfile{code/pointer_from_integer_1i.c}
+    \caption{A modified version of examples
+        pointer\_from\_integer\_\{1i,1ie\}.c
+        from~\textcite{memarian2019exploring}}\label{fig:mem-model-ptr-from-int}
+\end{marginfigure}%
 
-The key concept which begins this brief overview of memory object models is
-that of provenance. To optimise our code, compilers would like to assume that
-not all pointers that a programmer can magically create (a) are valid, i.e.\
-point to a live allocation and (b) can alias any other live allocation in scope.
-
-Let us revisit the example from \cref{fig:ptr-from-int}, reproduced in
-\cref{fig:mem-model-ptr-from-int} for convenience. It shows a simple function
-\cinline{f}, which takes an integer \cinline{i} as an argument, assigns the
-number 5 to a local \cinline{j}, and then prints it. Interspersed are some
-seemingly irrelevant casts of the pointer \cinline{&j}, to a new local integer
-\cinline{k}, and a cast of the argument \cinline{i} to a new local pointer
-\cinline{p}, finishing with a write to \cinline{*p}. The function \cinline{f}
-is called from \cinline{main} with a value \cinline{ADDRESS_PFI_1I}, this is a
-``guess'' of the location of where \cinline{f}'s local variable \cinline{j}
-will be allocated during execution.
-
-Despite the fact that there is no data flowing between \cinline{k} and
-\cinline{i}, the mere fact that the address of \cinline{j} was taken (and
-``exposed'' via its assignment to an integer \cinline{k}) is enough to make the
-compiler wary that the pointer \cinline{p} could alias \cinline{j} and thus
-disable constant propagation.\sidenote{This example does have \kl{UB} though
-because of (demonic) allocation address non-determinism.}
-
-\begin{marginfigure}
-    \centering
-    \cfile{code/pointer_from_integer_1ie.c}
-    \caption{Example pointer\_from\_integer\_1ie.c.}\label{fig:mem-model-ptr-from-int}
-\end{marginfigure}
-
-\clearpage%
 \section{PNVI-ae-udi}
 
-The rules justifying the above are set out in the \kl{PNVI-ae-udi} memory model,
-upon which VIP is defined. Though the name is clunky and not euphonious, it is
-descriptive as each part defines a particular choice to focus on.
+The rules justifying the ``reasonable ways'' in which a pointer may be
+constructed are set out in the \kl{PNVI-ae-udi} memory model, upon which VIP is
+defined. Though the name is clunky and not euphonious, it is descriptive as each
+part defines a particular choice to focus on.
 
 \subsection{Provenance not tracked via integers}
 
@@ -158,8 +180,8 @@ Provenances are either $@\mathsf{empty}$, or allocation IDs $@i$ for integer
 $i$. Allocation IDs are allocated fresh
 globally\sidenote{PNVI-ae-udi does not support concurrency.} for every new
 allocation, and thus guaranteed to be unique. An \intro{allocation history}
-$\mathit{A}$ is a partial map indexed by allocation IDs, which tracks the size
-of allocations, base address and whether or not they are live. The pointer
+$\mathit{A}$ is a partial map indexed by allocation IDs, which tracks their
+base address, size, and liveness. The pointer
 resulting from successfully creating a fresh allocation is a pair of base
 address and the allocation ID\@. When an allocation is destroyed, the entry is
 not removed, but merely updated to record the allocation as dead. The
@@ -182,7 +204,7 @@ Reading from and writing to memory is done via the \coreinline{load} and
 \coreinline{store} actions, at a specific C type, and these actions handle
 structured \kl{Core} values, not sequences of bytes. Marshalling between the
 two is handled via $\mathrm{repr}$ and $\mathrm{abst}$ functions. So for
-example, a pointer $(a, @i)$ as a value is going to be stored as a sequence of
+example, a pointer $(@i, a)$ as a value is going to be stored as a sequence of
 bytes in memory based on its address $a$, each byte with its provenance
 $@i$.\sidenote{There is also an optional \kl{pointer index} for each byte's
 position in the pointer, see note~\ref{sn:ignore-ptr-index}.}
@@ -221,13 +243,20 @@ not just the ones which are live, but also the ones which have their addresses
 allocation has been exposed or not, and the semantics of an integer-to-pointer
 cast would then only examine those (\cref{fig:pnvi-ival-to-pval}).
 
-\begin{figure*}
-    \includegraphics{figures/mem-model-pnvi-ival-to-pval}
-    \caption{PNVI-* rules for casting an integer to a pointer. From
-    \textcite{memarian2022cerberus}. The first rule should have $x \in [ a \;
-    .. \; a + n - 1]$, and the second rule should have $p = (\mathsf{@empty},
-    x)$ (TODO\@: fix these).}\label{fig:pnvi-ival-to-pval}
-\end{figure*}
+\begin{figure}
+\begin{mathpar}
+  \inferrule[{[Label: $\textbf{ptrFromInt}\langle\tau_1, \tau_2\rangle(x) = (@i, x)$]}]{%
+    \exists \, i.\ A(i) = (n, a, \mathsf{alive}, \mathsf{\color{blue}{exposed}}) \wedge x \in [a \ldots a + n - 1]%
+  }{%
+    (A, S, M) \rightarrow (A, S, M)}
+  \\
+  \inferrule[{[Label: $\textbf{ptrFromInt}\langle\tau_1, \tau_2\rangle(x) = (@\mathsf{empty}, x)$]}]{%
+    \neg (\exists \, i.\ A(i) = (n, a, \mathsf{alive}, \mathsf{\color{blue}{exposed}}) \wedge x \in [a \ldots a + n - 1]) \\\\
+    x \neq 0 \\ x \textrm{ is not the address of a function}%
+  }{%
+    (A, S, M) \rightarrow (A, S, M)}
+\end{mathpar}\caption{Simplified PNVI-* rules for casting an integer to a pointer, based on~\textcite{memarian2022cerberus}.}\label{fig:pnvi-ival-to-pval}
+\end{figure}
 
 \begin{definition}[Exposed allocation]
 An allocation is \emph{exposed} iff a pointer to anywhere within that
