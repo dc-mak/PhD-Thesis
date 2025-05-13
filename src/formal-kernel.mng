@@ -420,25 +420,26 @@ types respectively, and they have corresponding eliminators too.
 Ordered-disjunctions can be introduced by \emph{any} resource term, and
 eliminated by any resource pattern.
 
-The following terms are all operations on predicates. Types for
-user-defined predicates are introduced and eliminated by the
-$[[ fold _rest : pred ]]$ construct, so that definitions of predicates % chktex 25
-can be hidden or exposed as required (necessary because we need and allow
-predicates to be recursive). The $[[ implode ( _rest , tag ) ]]$ % chktex 25
-and $[[ explode ( _rest ) ]]$ constructs are for transforming from % chktex 25
-and to an $[[ Owned < init , struct tag > ]]$ predicate (which, in kernel CN,
-represents \cninline{RW<ct>} for $[[ init ]] = [[ Init ]]$, and
-\cninline{W<ct>} for $[[ init ]] = [[ Uninit ]]$); the first consumes ownership
-of a struct and produces ownership of its members, the second does the inverse.
-Analagously for $[[ iterate ( _rest , n ) ]]$ and $[[ congeal ( _rest , n ) ]]$, % chktex 25
-the former consumes ownership of a fixed-size array, and produces ownership to
-each of its members, whereas the latter does the inverse.
+The following terms are all operations on predicates.
+\begin{itemize}
+    \item $[[ fold _rest : pred ]]$. This supports folding the % chktex 25
+        definitions of a user-defined recursive predicate.
+    \item $[[ explode ( _rest ) ]]$ and $[[ implode ( _rest, tag ) ]]$. % chktex 25
+        These constructs split and combine ownership of a struct from and to
+        ownership of its members respectively.
+    \item $[[ iterate ( _rest , n ) ]]$ and $[[ congeal ( _rest , n ) ]]$. % chktex 25
+        These constructs split and combine ownership of a fixed-size array from
+        and to each of its elements respectively.
+\end{itemize}
 
-The remaining terms are all operations on iterated predicates. The
-$[[ break ( _rest , _t ) ]]$ operation indexes an iterated predicate % chktex 25
-to move ownership out of it, whereas the $[[ glue ( _rest ) ]]$ % chktex 25
-operation does the inverse. The $[[ inj ( _rest , _t , ct , _ . _iargs ) ]]$ % chktex 25
-operation introduces a singleton (non-empty) iterated predicate.\sidenote{I
+The remaining terms are all operations on iterated predicates.
+\begin{itemize}
+    \item $[[ break ( _rest , _t ) ]]$. This indexes an iterated predicate % chktex 25
+        to move a predicate out of it.
+    \item $[[ glue ( _rest ) ]]$. This moves a predicate back into an % chktex 25
+        iterated one.
+    \item $[[ inj ( _rest , _t , ct , _ . _iargs ) ]]$ % chktex 25
+        This introduces a singleton (non-empty) iterated predicate.\sidenote{I
     chose a singleton introduction form rather than an empty one to enforce the
     invariant that all iterated predicates in the typing context are guaranteed
     to be non-empty. I do not believe this makes a material difference to
@@ -450,10 +451,11 @@ operation introduces a singleton (non-empty) iterated predicate.\sidenote{I
     (\href{https://github.com/rems-project/cerberus/issues/729}{issue \#729}).
 TODO\@: allow empty arrays and require the array value to be put in the rather
 term than assume default.}
-Lastly, the $[[ chop ( _rest , iguard ) ]]$ operation splits an iterated % chktex 25
-predicate along a given index guard $[[ iguard ]]$. As mentioned in
-\nameref{sec:monadic-syntax}, to preserve decidability by not inferring
-quantified constraints, the type system does not support merging arrays.
+    \item $[[ chop ( _rest , iguard ) ]]$. This splits an iterated % chktex 25
+        predicate along a given index guard $[[ iguard ]]$.
+\end{itemize}%
+As mentioned in \nameref{sec:monadic-syntax}, to preserve decidability by not
+inferring quantified constraints, the type system does not support merging arrays.
 
 \begin{figure*}[tbp]
     \centering
