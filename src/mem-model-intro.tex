@@ -245,17 +245,19 @@ cast would then only examine those (\cref{fig:pnvi-ival-to-pval}).
 
 \begin{figure}
 \begin{mathpar}
-  \inferrule[{[Label: $\textbf{ptrFromInt}\langle\tau_1, \tau_2\rangle(x) = (@i, x)$]}]{%
+  \inferrule[{[Label: $\textbf{ptrFromInt}\langle\tau\rangle(x) = (@i, x)$]}]{%
     \exists \, i.\ A(i) = (n, a, \mathsf{alive}, \mathsf{\color{blue}{exposed}}) \wedge x \in [a \ldots a + n - 1]%
   }{%
     (A, S, M) \rightarrow (A, S, M)}
   \\
-  \inferrule[{[Label: $\textbf{ptrFromInt}\langle\tau_1, \tau_2\rangle(x) = (@\mathsf{empty}, x)$]}]{%
+  \inferrule[{[Label: $\textbf{ptrFromInt}\langle\tau\rangle(x) = (@\mathsf{empty}, x)$]}]{%
     \neg (\exists \, i.\ A(i) = (n, a, \mathsf{alive}, \mathsf{\color{blue}{exposed}}) \wedge x \in [a \ldots a + n - 1]) \\\\
     x \neq 0 \\ x \textrm{ is not the address of a function}%
   }{%
     (A, S, M) \rightarrow (A, S, M)}
-\end{mathpar}\caption{Simplified PNVI-* rules for casting an integer to a pointer, based on~\textcite{memarian2022cerberus}.}\label{fig:pnvi-ival-to-pval}
+\end{mathpar}\caption{Simplified PNVI-* rules for casting an integer to a
+    pointer. Based
+    on~\textcite{memarian2022cerberus}.}\label{fig:pnvi-ival-to-pval}
 \end{figure}
 
 \begin{definition}[Exposed allocation]
@@ -284,12 +286,19 @@ is cast to a one-past pointer on the boundary between two live allocations, its
 provenance is assigned to be symbolic, containing both allocations' IDs
 (\cref{fig:pnvi-ival-to-pval-symbolic}).
 
-\begin{figure*}
-    \includegraphics{figures/mem-model-pnvi-ival-to-pval-symbolic}
-    \caption{PNVI-ae-udi rule for casting an integer to a pointer when
-        the value is the address on the boundary between two live allocations.
-        From \textcite{memarian2022cerberus}.}\label{fig:pnvi-ival-to-pval-symbolic}
-\end{figure*}
+\begin{figure}
+\begin{mathpar}
+  \inferrule[{[Label: $\textbf{ptrFromInt}\langle\tau\rangle(x) = ({\color{violet}\iota}, x)$]}]{%
+    \exists \, i_1.\ A(i_1) = (n_1, a_1, \mathsf{alive}, \mathsf{\color{blue}{exposed}}) \wedge x \in [a_1 \ldots a_1 + n_1] \\\\
+    \exists \, i_2.\ A(i_2) = (n_2, a_2, \mathsf{alive}, \mathsf{\color{blue}{exposed}}) \wedge x \in [a_2 \ldots a_2 + n_2] \\\\
+    {\color{violet}i_1 \neq i_2} \\ {\color{violet}\iota \notin \mathrm{dom}(S)}
+  }{%
+    (A, S, M) \rightarrow (A, S{\color{violet}[\iota \mapsto \{ i_1 , i_2 \}]}, M)}
+\end{mathpar}\caption{Simplified PNVI-ae-udi rule for casting an integer to a
+    pointer when the value is the address on the boundary between two live
+    allocations. Based
+    on~\textcite{memarian2022cerberus}.}\label{fig:pnvi-ival-to-pval-symbolic}
+\end{figure}
 
 Whilst useful for capturing many idioms and optimisations, the problem with these
 symbolic provenances is that they complicate every other rule which requires
