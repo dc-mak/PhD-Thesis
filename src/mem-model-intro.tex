@@ -245,12 +245,12 @@ cast would then only examine those (\cref{fig:pnvi-ival-to-pval}).
 
 \begin{figure}
 \begin{mathpar}
-  \inferrule[{[Label: $\textbf{ptrFromInt}\langle\tau\rangle(x) = (@i, x)$]}]{%
+  \inferrule[{[PNVI-ae-udi: $\textbf{ptrFromInt}\langle\tau\rangle(x) = (@i, x)$]}]{%
     \exists \, i.\ A(i) = (n, a, \mathsf{alive}, \mathsf{\color{blue}{exposed}}) \wedge x \in [a \ldots a + n - 1]%
   }{%
     (A, S, M) \rightarrow (A, S, M)}
   \\
-  \inferrule[{[Label: $\textbf{ptrFromInt}\langle\tau\rangle(x) = (@\mathsf{empty}, x)$]}]{%
+  \inferrule[{[PNVI-ae-udi: $\textbf{ptrFromInt}\langle\tau\rangle(x) = (@\mathsf{empty}, x)$]}]{%
     \neg (\exists \, i.\ A(i) = (n, a, \mathsf{alive}, \mathsf{\color{blue}{exposed}}) \wedge x \in [a \ldots a + n - 1]) \\\\
     x \neq 0 \\ x \textrm{ is not the address of a function}%
   }{%
@@ -288,7 +288,7 @@ provenance is assigned to be symbolic, containing both allocations' IDs
 
 \begin{figure}
 \begin{mathpar}
-  \inferrule[{[Label: $\textbf{ptrFromInt}\langle\tau\rangle(x) = ({\color{violet}\iota}, x)$]}]{%
+  \inferrule[{[PNVI-ae-udi: $\textbf{ptrFromInt}\langle\tau\rangle(x) = ({\color{violet}\iota}, x)$]}]{%
     \exists \, i_1.\ A(i_1) = (n_1, a_1, \mathsf{alive}, \mathsf{\color{blue}{exposed}}) \wedge x \in [a_1 \ldots a_1 + n_1] \\\\
     \exists \, i_2.\ A(i_2) = (n_2, a_2, \mathsf{alive}, \mathsf{\color{blue}{exposed}}) \wedge x \in [a_2 \ldots a_2 + n_2] \\\\
     {\color{violet}i_1 \neq i_2} \\ {\color{violet}\iota \notin \mathrm{dom}(S)}
@@ -362,8 +362,8 @@ state, and a translation into \kl{PNVI-ae-udi}.
 
 The way that both of these are achieved is a very limited form of tracking
 provenances via integers. Integer values in VIP model are represented by a
-datatype with two constructors: $\mathit{Loc(@i, a)} \mid \mathit{Int(z \in
-\mathbb{Z})}$. Casts from pointers $(@i, a)$ to integers just embed the pointer
+datatype with two constructors: $\mathit{Loc}\,(@i, a) \mid \mathit{Int}\,(z \in
+\mathbb{Z})$. Casts from pointers $(@i, a)$ to integers just embed the pointer
 into the $\mathit{Loc}$ constructor, and casts back to pointers just take the
 value out (\cref{fig:vip-ival-to-pval}). If the integer value has any
 intervening operations, only the integer parts (the address $a$ in
@@ -372,21 +372,35 @@ provenance is forgotten (\cref{fig:vip-arith-binop}). If the integer has no
 provenance, then \cinline{copy_alloc_id} can be used to annotate it with one
 (\cref{fig:vip-copy-alloc-id}).
 
-\begin{figure*}[tp]
-    \includegraphics{figures/mem-model-vip-ival-to-pval}
-    \caption{The \kl{VIP} rules to cast an integer into a pointer which
+\begin{figure}[tp]
+\begin{mathpar}
+  \inferrule[{[VIP: $\textbf{intFromPtr}\langle\tau\rangle((@i, x)) = \mathit{Loc}\,(@i, x)$]}]{%
+    A(i) = (n, a, \mathsf{alive}, \mathsf{\color{blue}{exposed}}) \\ x \in \mathsf{range}(\tau)%
+  }{%
+    (A, M) \rightarrow (A, M)}
+\end{mathpar}\caption{The \kl{VIP} rules to cast an integer into a pointer which
     preserves the round-trip property.}\label{fig:vip-ival-to-pval}
-\end{figure*}
+\end{figure}
 
 \begin{marginfigure}
-    \includegraphics{figures/mem-model-vip-arith-binop}
-    \caption{\kl{VIP} arithmetic operations on integers.}\label{fig:vip-arith-binop}
+\begin{mathpar}
+  \inferrule[{[VIP: $\textbf{arith\_bin\_op}(\oplus, x_1, x_2) = x$]}]{%
+    x = \mathit{Int}\,(\mathrm{to\_int}(x_1), \mathrm{to\_int}(x_2))
+  }{%
+    (A, M) \rightarrow (A, M)}
+\end{mathpar}\caption{\kl{VIP} arithmetic operations on
+    integers.}\label{fig:vip-arith-binop}
 \end{marginfigure}
 
-\begin{figure*}[tp]
-    \includegraphics{figures/mem-model-vip-copy-alloc-id}
-    \caption{\kl{VIP} \cinline{copy_alloc_id} primitive.}\label{fig:vip-copy-alloc-id}
-\end{figure*}
+\begin{figure}[tp]
+\begin{mathpar}
+  \inferrule[{[VIP: $\textbf{copy\_alloc\_id}(x, (@i, \_)) = (@i, \mathrm{to\_int}(x))$]}]{%
+    A(i) = (n, a, \mathsf{alive}) \\ \mathrm{to\_int}(x) \in [a \ldots a + n]
+  }{%
+    (A, M) \rightarrow (A, M)}
+\end{mathpar}\caption{\kl{VIP} \cinline{copy_alloc_id} primitive to create a
+    pointer with a specific provenance.}\label{fig:vip-copy-alloc-id}
+\end{figure}
 
 The VIP \cinline{copy_alloc_id} primitive needs to be expressible in
 PNVI-ae-udi for it to be a sound abstract, the way this is done is by
