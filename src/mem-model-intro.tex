@@ -119,7 +119,7 @@ and memory actions are defined by an interface (\cref{fig:mem-model-intf}).
 The key concept which begins this brief overview of memory object models is that
 of provenance. To optimise our code, compilers would like to assume that a
 programmer may only create pointers in a ``reasonable'' ways, and that certain
-basic assumptions about those pointers are always true.\sidenote{Such as (a) 
+basic assumptions about those pointers are always true.\sidenote{Such as (a)
 function arguments may not alias local variables and (b) pointers created in a
 function may not alias the local variables of any caller (c) pointers created by
 guessing concrete addresses are always invalid.}
@@ -661,7 +661,7 @@ chose to defer any implementation of subtyping resources automatically.
 \subsection{Non-deterministic pointer equality}\label{subsec:non-det-ptr-eq}
 
 The official presentation of the \kl{VIP} memory model uses a strict variant of
-the pointer-equality memory operation, which only looks at the addresses to
+the pointer equality memory operation, which only looks at the addresses to
 determine whether two pointers are considered equal.
 
 Disappointingly, things are not quite so simple in actual C
@@ -788,71 +788,62 @@ them towards more informative (but verbose) named functions such as
 
 Unfortunately, adapting \kl{VIP} to handle the non-deterministic
 pointer-equality rule is not straightforward. As it is defined in the paper and
-appendix, they assume strict (address-only) pointer-equality rule for both
+appendix, they assume strict (address-only) pointer equality rule for both
 \kl{VIP} and \kl{PNVI-ae-udi}. This means they sidestep the issue I present
 next.
 
-Let us imagine we simply replace the strict (address-only) pointer equality
-rule with the non-deterministic variant in both \kl{VIP} and \kl{PNVI-ae-udi}
-at the same time. One aspect of soundness is that if \kl{PNVI-ae-udi} and
-\kl{VIP} start in related states, then taking related steps will result in
-either \kl{UB} in \kl{VIP}, or will end in related states, with related (equal)
-return values. Now consider the example in \cref{fig:vip-non-det-ptr-eq-problem}.
+The issue is that, as stated, empty provenances do not lead to strictly more
+undefined behaviour under PNVI-ae-udi, and the proof of soundness of VIP above
+PNVI-ae-udi relies on this property. The example
+in~\cref{fig:non-det-ptr-eq-problem} illustrates this problem.\sidenote{ As
+mentioned in
+\href{https://github.com/rems-project/cerberus/issues/954}{Cerberus\#954}, the
+Cerberus implementation and formalisation differ in how they treat
+$(@\mathsf{empty}, a) == (@\mathsf{empty}, a)$. The Cerberus implementation
+treats it as always $\mathsf{true}$, whereas the Cerberus formalisation treats
+it as always $\mathsf{false}$. Both are problematic as
+per~\cref{fig:ptr-eq-hasse}, but need opposite if-conditions (\cinline{p != q}
+and \cinline{p == q}, respectively) for their counter-examples
+(\cref{fig:non-det-ptr-eq-problem}).}
 
-\begin{marginfigure}
-    \cfile[breaklines]{code/vip-non-det-ptr-eq-problem.c}
-    \caption{Example code which exhibits non-deterministic behaviour under
-        \kl{PNVI-ae-udi} (with non-det.\ pointer equality), but is always false
-        under \kl{VIP} (with non-det.\ pointer equality).}\label{fig:vip-non-det-ptr-eq-problem}
-\end{marginfigure}
+\begin{figure}
+    \cfile[breaklines]{code/non-det-ptr-eq-problem.c}%
+    \caption{Counter-examples to the desirable property that
+    $@\mathsf{empty}$ provenance leads to more undefined behaviour.  As is,
+    \cinline{p} has $@\mathsf{empty}$ provenance at the time of the pointer
+    equality test and does not lead to undefined behaviour, because the
+    \cinline{p == q} always evaluates to \cinline{false} according to the rule
+    in~\cref{fig:nd-ptr-eq}. If \cinline{p = &x} is uncommented, then
+    \cinline{p} has non-$@\mathsf{empty}$ provenance, which leads to the
+    non-deterministic case, which allows for executing the then-branch. This
+    branch has undefined behaviour because \cinline{q} has $@\mathsf{empty}$
+    provenance.}\label{fig:non-det-ptr-eq-problem}
+\end{figure}
 
-\begin{itemize}
-    \item In such a variant of \kl{PNVI-ae-udi} both pointers are one-past, and
-        so have symbolic provenance, but the same address, and so the result is
-        non-deterministic.
-    \item In such a variant of \kl{VIP}, both pointers have $@\mathsf{empty}$
-        provenance, so the equality test must return false.
-    \item Both are valid steps, so in particular, the \kl{VIP} system does not demonstrate \kl{UB}.
-    \item However, the return values cannot be related. The potential `true'
-        branch for \kl{PNVI-ae-udi} could lead to \kl{UB} which would have
-        incorrectly been classed as impossible in \kl{VIP}.
-\end{itemize}
+The examples rely on being able to construct two pointers \cinline{p} and
+\cinline{q}, with the same address. What differs is that in one version, both
+have $@\mathsf{empty}$ provenances (lines 10 and 11), and in the other,
+\cinline{p} has a non-$@\mathsf{empty}$ provenance (uncommenting line 12). They
+are tested for equality in the condition of an if-statement, in which the true
+branch\sidenote{But the false branch for the Cerberus implementation.}, there is
+\cinline{*q}, which is always undefined since it has $@\mathsf{empty}$
+provenance and loads requires a non-$@\mathsf{empty}$, live allocation ID\@.
 
-Both steps start in related states; the relation given in the proof of
-soundness says that any provenance $\pi$ in \kl{PNVI-ae-udi} may be related
-($\pi \approx_w @\mathsf{empty}$) to an empty one in \kl{VIP}. But if two
-pointers have $@\mathsf{empty}$ provenances in VIP, then we are free to
-choose pointers with distinct provenances in \kl{PNVI-ae-udi}, to force the
-pointer-equality operation to end up in the non-deterministic case. At this
-point, the result values are no longer related by equality, and cannot be,
-since the non-deterministic value can affect control flow and trigger \kl{UB}
-in the path not taken by the \kl{VIP} variant.
+When \cinline{p} and \cinline{q} both have $@\mathsf{empty}$ provenance, the
+test is always \cinline{false}\sidenote{But always \cinline{true} in the
+implementation}, and so the undefined behaviour load is never run. However, when
+\cinline{p} has a non-$@\mathsf{empty}$ provenance, the value of the condition
+is non-deterministically \cinline{true} or \cinline{false}, and so both branches
+of the if-statement could run, and so if either branch has undefined behaviour,
+the whole statement (and whole program) is deemed to have undefined behaviour.
 
-The key insight is that the statement ``$@\mathsf{empty}$ provenances lead to
-strictly more \kl{UB} than other provenances'', \emph{does not hold} in the
-presence of the totally-defined, non-deterministic pointer-equality rule,
-expressed in the proof by the relation $\pi \approx_w @\mathsf{empty}$. In
-domain theoretic terms, if $@\mathsf{empty} \sqsubseteq \pi$ is supposed to
-reflect the information ordering, the issue is that the pointer equality rule
-is not monotonic with respect to this.
-
-This presents us with the classic ``pick two of three'' situation:
-\begin{itemize}
-    \item \textbf{Drop $@\mathsf{empty}$ provenances.} This adds more \kl{UB}
-        to CN's memory model, but it forbids the counter-example in
-        \cref{fig:vip-non-det-ptr-eq-problem} and other soundness
-        issues.\sidenote{Proof pending. Would have to redo above PNVI-ae-udi.}
-        In practice, the change is small, primarily just forbidding the integer
-        to pointer cast which is not a direct round-trip, requiring the
-        programmer to use \cinline{copy_alloc_id} instead.
-    \item \textbf{Drop totality for pointer equality.} An alternative approach
-        would be to make the pointer equality test \kl{UB} if either argument
-        has the $@\mathsf{empty}$ provenance. This would mean accepting a
-        different interpretation (information order) for empty provenances.
-    \item \textbf{Drop non-determinism for pointer equality.} The existing
-        \kl{VIP} system is sound with respect to \kl{PNVI-ae-udi} with strict
-        (address-only) pointer equality, meaning no non-determinism.
-\end{itemize}
+The mathematically elegant solution to this is to adjust the rule for pointer
+equality so that the $(@\mathsf{empty}, a) == (@\mathsf{emtpy}, a)$ case is also
+non-deterministic. This also benefits the \kl{CN} implementation because, in
+most cases\sidenote{Except for memory bytes, see~\nameref{subsec:smt-rep}.}
+$@\mathsf{empty}$ provenances can be represented in the SMT solver problem as
+fresh unconstrained allocation IDs, rather than requiring a datatype with two
+separate constructors.
 
 \subsection{Allocation history}\label{subsec:alloc-history}
 
@@ -865,7 +856,7 @@ An allocation being live is important for some pointer operations, such as
 relational ones, which require the operand pointers to be in bounds of the same
 live allocation for the operation to not have \kl{UB}. However, for other
 operations (such as member shifting), it must still satisfy a bounds check, but
-whether or not an allocation is live is irrelevant. There is no operation which
+whether an allocation is live is irrelevant. There is no operation which
 requires knowing that an allocation is dead.
 
 So bounds checks do not require live allocation, some operations require
@@ -902,7 +893,7 @@ with live ones, though their allocation IDs will still be distinct, so tracking
 all forms of disjointness accurately would add significant complexity for
 little benefit.
 
-\subsection{SMT representations}
+\subsection{SMT representations}\label{subsec:smt-rep}
 
 One of the tricky aspects of adapting the memory object models to \kl{CN} is
 that the models are defined over \emph{concrete} values and executions, whereas
@@ -1102,8 +1093,3 @@ standard idiom of using an unconstrained variable as a default value.
         variables for addresses and allocation IDs and unconstrained ones as
         default values in morally partial operations.
 \end{itemize}
-
-\begin{figure}[h]
-    \centering
-    \includegraphics[width=\textwidth]{../misc/type-system-options.jpg}
-\end{figure}
