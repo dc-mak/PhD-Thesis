@@ -287,14 +287,14 @@ provenance is assigned to be symbolic, containing both allocations' IDs
 (\cref{fig:pnvi-ival-to-pval-symbolic}).
 
 \begin{figure}
-\begin{mathpar}
+\[
   \inferrule[{[PNVI-ae-udi: $\textbf{ptrFromInt}\langle\tau\rangle(x) = ({\color{violet}\iota}, x)$]}]{%
     \exists \, i_1.\ A(i_1) = (n_1, a_1, \mathsf{alive}, \mathsf{\color{blue}{exposed}}) \wedge x \in [a_1 \ldots a_1 + n_1] \\\\
     \exists \, i_2.\ A(i_2) = (n_2, a_2, \mathsf{alive}, \mathsf{\color{blue}{exposed}}) \wedge x \in [a_2 \ldots a_2 + n_2] \\\\
     {\color{violet}i_1 \neq i_2} \\ {\color{violet}\iota \notin \mathrm{dom}(S)}
   }{%
     (A, S, M) \rightarrow (A, S{\color{violet}[\iota \mapsto \{ i_1 , i_2 \}]}, M)}
-\end{mathpar}\caption{Simplified PNVI-ae-udi rule for casting an integer to a
+\]\caption{Simplified PNVI-ae-udi rule for casting an integer to a
     pointer when the value is the address on the boundary between two live
     allocations. Based
     on~\textcite{memarian2022cerberus}.}\label{fig:pnvi-ival-to-pval-symbolic}
@@ -373,32 +373,32 @@ provenance, then \cinline{copy_alloc_id} can be used to annotate it with one
 (\cref{fig:vip-copy-alloc-id}).
 
 \begin{figure}[tp]
-\begin{mathpar}
+\[
   \inferrule[{[VIP: $\textbf{intFromPtr}\langle\tau\rangle((@i, x)) = \mathit{Loc}\,(@i, x)$]}]{%
     A(i) = (n, a, \mathsf{alive}, \mathsf{\color{blue}{exposed}}) \\ x \in \mathsf{range}(\tau)%
   }{%
     (A, M) \rightarrow (A, M)}
-\end{mathpar}\caption{The \kl{VIP} rules to cast an integer into a pointer which
+\]\caption{The \kl{VIP} rules to cast an integer into a pointer which
     preserves the round-trip property.}\label{fig:vip-ival-to-pval}
 \end{figure}
 
 \begin{marginfigure}
-\begin{mathpar}
+\[
   \inferrule[{[VIP: $\textbf{arith\_bin\_op}(\oplus, x_1, x_2) = x$]}]{%
     x = \mathit{Int}\,(\mathrm{to\_int}(x_1), \mathrm{to\_int}(x_2))
   }{%
     (A, M) \rightarrow (A, M)}
-\end{mathpar}\caption{\kl{VIP} arithmetic operations on
+\]\caption{\kl{VIP} arithmetic operations on
     integers.}\label{fig:vip-arith-binop}
 \end{marginfigure}
 
 \begin{figure}[tp]
-\begin{mathpar}
+\[
   \inferrule[{[VIP: $\textbf{copy\_alloc\_id}(x, (@i, \_)) = (@i, \mathrm{to\_int}(x))$]}]{%
     A(i) = (n, a, \mathsf{alive}) \\ \mathrm{to\_int}(x) \in [a \ldots a + n]
   }{%
     (A, M) \rightarrow (A, M)}
-\end{mathpar}\caption{\kl{VIP} \cinline{copy_alloc_id} primitive to create a
+\]\caption{\kl{VIP} \cinline{copy_alloc_id} primitive to create a
     pointer with a specific provenance.}\label{fig:vip-copy-alloc-id}
 \end{figure}
 
@@ -677,40 +677,105 @@ false.
 \end{marginfigure}
 
 Therefore, when the pointers of an \cinline{==} have equal
-addresses but distinct provenances are distinct, the result will be
+addresses but distinct provenances, the result will be
 non-deterministically true or false (\cref{fig:nd-ptr-eq}). In practice, this will
-only happen if one of the pointers is a one-past, out-of-bounds as
+only happen if one of the pointers is one-past, or out-of-bounds as
 the result of permissive array/member shift, or has an $@\mathsf{empty}$
 provenance as the result of a cast from an integer.
 
 \begin{figure*}
 \begin{mathpar}
+  \begingroup%
+  \mprset{vskip=1ex}
   \inferrule[{[PNVI-ae-udi: $\textbf{eq\_ptrval}(p_1, p_2) = b$]}]{%
-    % \pi_1 =_S \pi_2 \eqdef \pi_1 = \iota_1 \wedge \pi_2 = \iota_2 \wedge S(\iota_1) = S(\iota_2) = \{ i \} \vee \pi_1 = @i_1 \wedge \pi_2 = @i_2 \wedge i_1 = i_2 \\\\
-    % \mathrm{ambiguous}(p_1, p_2) \defeq
-    %     p_1 = (\pi_1, a_1)
-    %     \wedge p_2 = (\pi_2, a_2)
-    %     \wedge a_1 = a_2
-    %     \wedge \\\\
-    {\begin{cases}
-        b = \mathsf{true} & \mathrm{if}\ p_1 = p_2 = \mathsf{NULL} \\
-        b = (a_1 =_{\mathbb{Z}} a_2) & \mathrm{if}\ {
-            \left(
-                \begin{array}{l}
-                {\color{violet} p_1 = (\iota_1, a_1) \wedge p_2 = (\iota_2, a_2) \wedge S( \iota_1 ) = S ( \iota_2 ) = \{ i \} } \\
-                \vee p_1 = (@i_1, a_1) \wedge p_2 = (@i_2, a_2) \wedge i_1 = i_2
-                \end{array}
-                \right) } \\
-        b = \mathsf{false} & \mathrm{if} \\
+    {\color{violet} \pi_1 =_S \pi_2 \eqdef
+        \left( \pi_1 = \iota_1 \wedge \pi_2 = \iota_2 \wedge S(\iota_1) = S(\iota_2) = \{\, i \,\} \right)} \\\\%
+%
+    {\color{violet} \pi_1 \neq_S \pi_2 \eqdef
+        \left( \pi_1 = \iota_1 \wedge \pi_2 = \iota_2 \wedge \neg \left ( S(\iota_1) = S(\iota_2) = \{\, i \,\} \right) \right)} \\\\%
+%
+    \pi_1 =_\mathrm{id} \pi_2 \eqdef \left (\pi_1 = @i_1 \wedge \pi_2 = @i_2 \wedge i_1 = i_2 \right)\\\\%
+%
+    b \in {\begin{cases}
+        \{\, \mathsf{true} \,\} &
+            \mathrm{if}\ p_1 = p_2 = \mathsf{NULL} \\%
+%
+        \{\, \mathit{ident}_1 = \mathit{ident}_2 \,\} &
+            \mathrm{if}\ p_1 = \mathsf{funptr}\,(\mathit{ident_1})
+                \wedge p_2 = \mathsf{funptr}\,(\mathit{ident_2}) \\%
+%
+        \{\, a_1 =_{\mathbb{Z}} a_2 \,\} &
+            \mathrm{if}\ p_1 = (\pi_1, a_1)
+                \wedge p_2 = (\pi_2, a_2)
+                \wedge \left( {\color{violet} \pi_1 =_S \pi_2} \vee \pi_1 =_\mathrm{id} \pi_2 \right) \\%
+%
+        \{\, (a_1 =_{\mathbb{Z}} a_2),  \mathsf{false} \,\} &
+            \mathrm{if}\ p_1 = (\pi_1, a_1)
+                \wedge p_2 = (\pi_2, a_2)
+                \wedge \left( {\color{violet} \pi_1 \neq_S \pi_2} \vee {\color{red}\pi_1 \neq \pi_2} \right) \\%
+%
+        \{\, \mathsf{false} \,\} & \mathrm{otherwise} \\
     \end{cases}}
   }{%
-    (A, M) \rightarrow (A, M)}
-\end{mathpar}
-    \includegraphics{figures/mem-model-pnvi-nd-ptr-eq}
-    \caption{The \kl{PNVI-ae-udi} rule for pointer equality. When addresses
-        are equal but provenances are distinct (captured by the fourth case),
-        the result of \cinline{==} operator will be non-deterministically either
-        true or false.}\label{fig:nd-ptr-eq}
+    (A, {\color{violet}S,}\, M) \rightarrow (A, {\color{violet}S,}\, M)}
+  \endgroup%
+\end{mathpar}\caption{\kl{PNVI-ae-udi} rule for pointer equality. When addresses
+    are equal but provenances are distinct (captured by the fourth case), the
+    result of \cinline{==} operator will be non-deterministically either true or
+    false. \textcolor{violet}{Parts specific to \kl{PNVI-ae-udi}, relating to
+    \kl{symbolic provenances} $\iota$ are coloured in violet}.
+    \textcolor{red}{Parts which break monotonicity with respect to the
+    $@\mathsf{empty}$ provenance are highlighted in red}.}\label{fig:nd-ptr-eq}
+\end{figure*}
+
+\begin{figure}
+\begin{mathpar}
+  \begingroup%
+  \mprset{vskip=1ex}
+  \inferrule[{[PNVI-ae-udi: $\textbf{eq\_ptrval}(p_1, p_2) = b$]}]{%
+    \mathsf{NULL} \cong \mathsf{NULL} \\
+    \mathsf{funptr}\,(\mathit{ident}) \cong \mathsf{funptr}\,(\mathit{ident}) \\
+    (@i, a) \cong (@i, a) \\\\
+%
+    {\color{violet} \iota_1 \approx \iota_2 \ \mathrm{if}\ S(\iota_1) = S(\iota_2) = \{\, i \,\}} \\
+    {\color{violet} (\iota_1, a) \cong (\iota_2, a)\ \mathrm{if}\ \iota_1 \approx \iota_2} \\
+    {\color{violet} (\iota_1, a) \questeq (\iota_2, a)\ \mathrm{if}\ \iota_1 \napprox \iota_2} \\
+    {\color{red} (\pi_1, a) \questeq (\pi_2, a)\ \mathrm{if}\ \pi_1 \neq \pi_2} \\\\
+%
+    b = \mathsf{true}\ \mathrm{if}\ p_1 \cong p_2 \\
+    b \in \{\, \mathsf{true},  \mathsf{false} \,\}\ \mathrm{if}\ p_1 \questeq p_2 \\
+    b = \mathsf{false}\ \mathrm{otherwise}
+  }{%
+    (A, {\color{violet}S,}\, M) \rightarrow (A, {\color{violet}S,}\, M)}
+  \endgroup%
+\end{mathpar}\caption{\kl{PNVI-ae-udi} rule for pointer equality, rephrased to
+    highlight the conditions for ambiguity. As in~\cref{fig:nd-ptr-eq},
+    \textcolor{violet}{parts specific to \kl{PNVI-ae-udi}, relating to
+    \kl{symbolic provenances} $\iota$ are coloured in violet};
+    \textcolor{red}{parts which break monotonicity with respect to the
+    $@\mathsf{empty}$ provenance are highlighted in red}.}\label{fig:nd-ptr-eq-rephrased}
+\end{figure}
+
+\begin{figure*}
+\begin{tikzcd}[cramped,sep=small]
+	& {(@i, @j)} &&& {\{\,\mathsf{true}\,\}} \\
+	{(@i, @\mathsf{empty})} && {(@\mathsf{empty}, @j)} & {\{\,\mathsf{true},\mathsf{false}\,\}} && {\{\,\mathsf{true},\mathsf{false}\,\}} \\
+	& {(@\mathsf{empty}, @\mathsf{empty})} &&& {{\color{red}\{\,\mathsf{false}\,\}}}
+	\arrow[from=2-1, to=1-2]
+	\arrow[from=2-3, to=1-2]
+	\arrow[from=2-4, to=1-5]
+	\arrow[from=2-6, to=1-5]
+	\arrow[from=3-2, to=2-1]
+	\arrow[from=3-2, to=2-3]
+	\arrow[color={red}, from=3-5, to=2-4]
+	\arrow[color={red}, from=3-5, to=2-6]
+\end{tikzcd}%
+\caption{Hasse diagram showing why the {\color{red}$\pi_1 \neq \pi_2$}
+    condition is not monotonic with between the source domain (pairs of
+    provenances) on the left and target domain (sets of possible boolean
+    values) on the right. In this case, fewer elements represent more precise
+    information, so the set $\{\,\mathsf{true},\mathsf{false}\,\}$ should be the
+    \emph{bottom} element rather than the top.}\label{fig:ptr-eq-hasse}
 \end{figure*}
 
 This introduces a small syntactic inconsistency between the specification
