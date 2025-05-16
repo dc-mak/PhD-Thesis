@@ -594,30 +594,79 @@ grammar
 
 grammar
 
-  cpat {{ tex \mathit{cpat} }} :: 'CPat_' ::= {{ com Cerberus Core patterns }}
-    | id : base_type                 :: :: var
-    | _  : base_type                 :: :: wild
-    | ctor ( </ cpati // , // i /> ) :: :: ctor
+  cpat {{ tex \mathit{pat} }} :: 'CPat_' ::= {{ com Cerberus Core patterns }}
+    | id : base_type                 ::  :: var
+    | _  : base_type                 ::  :: wild
+    | ctor ( </ cpati // , // i /> ) ::  :: ctor
 
-  pure_core {{ tex \mathit{pure\_core} }}, pce {{ tex \mathit{pce} }} :: 'PCE_' ::= {{ com pure Cerberus Core expressions }}
-    | x  :: :: var
-    | impl_const :: :: impl_const
-    | value :: :: value
-    | undef ( UB_name ) :: :: undef
-    | ctor ( pce1 , .. , pcen ) :: :: ctor
-    | array_shift ( pce1 , ct , pce2 ) :: :: array_shift
-    | member_shift ( pce , tag dot member ) :: :: member_shift
-    | case pce of </ | pati => pcei // i /> end :: :: case
-    | if pce1 then pce2 else pce3 :: :: if
-    | let cpat = pce1 in pce2 :: :: let
-    | not ( pce ) :: :: not
-    | pce1 binop pce2 :: :: binop
-    | struct [ tag ] ( dot member1 = pce1 , ... , dot membern = pcen ) :: :: struct
-    | union [ tag ] ( dot member = pce ) :: :: union
-    | cfunction ( pce ) :: :: cfunction
-    | memberof [ tag dot member ] ( pce ) :: :: memberof
-    | name ( pce1 , .. , pcen ) :: :: call
-    | refine_ctype ( pce1 , pce2 , pce3 ) :: :: refine_ctype
+  pure_core {{ tex \mathit{pure\_core} }}, pce {{ tex \mathit{e} }} :: 'PCE_' ::= {{ com pure Cerberus Core expressions }}
+    | x                                                                ::  :: var
+    | impl_const                                                       ::  :: impl_const
+    | value                                                            ::  :: value
+    | undef ( UB_name )                                                ::  :: undef
+    | ctor ( pce1 , .. , pcen )                                        ::  :: ctor
+    | array_shift ( pce1 , ct , pce2 )                                 ::  :: array_shift
+    | member_shift ( pce , tag dot member )                            ::  :: member_shift
+    | case pce of </ cpati => pcei // i /> end                         ::  :: case
+    | if pce1 then pce2 else pce3                                      ::  :: if
+    | let cpat = pce1 in pce2                                          ::  :: let
+    | not ( pce )                                                      ::  :: not
+    | pce1 binop pce2                                                  ::  :: binop
+    | struct [ tag ] ( dot member1 = pce1 , ... , dot membern = pcen ) ::  :: struct
+    | union [ tag ] ( dot member = pce )                               ::  :: union
+    | cfunction ( pce )                                                ::  :: cfunction
+    | memberof [ tag dot member ] ( pce )                              ::  :: memberof
+    | name ( pce1 , .. , pcen )                                        ::  :: call
+    | refine_ctype ( pce1 , pce2 , pce3 )                              ::  :: refine_ctype
+
+  cmemop {{ tex \mathit{memop} }} :: 'Cmemop_'  ::= {{ com Cerberus Core memory operations }}
+    | PtrEq            ::  :: ptrEq
+    | PtrNeq           ::  :: ptrNeq
+    | PtrLt            ::  :: ptrLt
+    | PtrGt            ::  :: ptrGt
+    | PtrLe            ::  :: ptrLe
+    | PtrGe            ::  :: ptrGe
+    | Ptrdiff          ::  :: ptrDiff
+    | IntFromPtr       ::  :: intFromPtr
+    | PtrFromInt       ::  :: ptrFromInt
+    | PtrValidForDeref ::  :: ptrValidForDeref
+    | PtrWellAligned   ::  :: ptrWellAligned
+    | PtrArrayShift    ::  :: ptrArrayShift
+    | Memcpy           ::  :: memcpy
+    | Memcmp           ::  :: memcmp
+    | Realloc          ::  :: realloc
+    | Va_start         ::  :: va_start
+    | Va_copy          ::  :: va_copy
+    | Va_arg           ::  :: va_arg
+    | Va_end           ::  :: va_end
+
+  caction {{ tex \mathit{action} }} :: 'Caction_' ::= {{ com Cerberus Core memory action }}
+    | create_object ( pce1 , pce2 )           ::  :: create_object
+    | create_read_only ( pce1 , pce2 , pce3 ) ::  :: create_read_only
+    | create_region ( pce1 , pce2 )           ::  :: create_region
+    | kill ( pce1 )                           ::  :: kill
+    | store ( pce1 , pce2 , pce3 )            ::  :: store
+    | load ( pce1 , pce2 )                    ::  :: load
+    | seq_rmw ( pce1 , pce2 , x . pce3 )      ::  :: seq_rmw
+
+  core {{ tex \mathit{core} }}, ce {{ tex \mathit{E} }} :: 'CE_' ::= {{ com Cerberus Core expression }}
+    | pure ( pce )                                   ::  :: pure
+    | MEMOP ( cmemop , pce1 , ... , pcen )           ::  :: memop
+    | caction                                        ::  :: action
+    | neg ( caction )                                ::  :: neg_action {{ tex \cnkw{neg}( [[caction]] ) }}
+    | case pce of </ cpati => cei // i /> end        ::  :: case
+    | let cpat = pce in ce                           ::  :: let
+    | if pce then ce1 else ce2                       ::  :: if
+    | ccall ( pce , pce1 , ... , pcen )              ::  :: ccall
+    | pcall ( name , pce1 , ... , pcen )             ::  :: pcall
+    | unseq ( ce1 , ... , cen )                      ::  :: unseq
+    | let weak cpat = ce1 in ce2                     ::  :: weak
+    | let strong cpat = ce1 in ce2                   ::  :: strong
+    | bound ( ce )                                   ::  :: bound
+    | nd ( ce1 , ... , cen )                         ::  :: nondet
+    | save id ( x1 := pce1 , .. , xn := pcen ) in ce ::  :: save
+    | run id ( pce1 , ... , pcen )                   ::  :: run
+    | par ( ce1 , ... , cen )                        ::  :: par
 
 grammar
 
