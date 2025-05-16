@@ -377,24 +377,24 @@ defns
   ( A , [| |] ) |= cdot
 
 
-  meta A [ alloc_id ] = ( addr , term , true )
-  forall i .  i != alloc_id -> A [ i ] = ( _t , _t , false )
+  meta A [ @ aid ] = ( addr , term , true )
+  forall i .  i != aid -> A [ i ] = ( _t , _t , false )
   -------------------------------------------------------------------------- :: Alloc
-  ( A , [| |] ) |= { Alloc ( ( @ alloc_id , addr ) ) ( term ) & None }
+  ( A , [| |] ) |= { Alloc ( ( @ aid , addr ) ) ( term ) & None }
 
 
-  meta A [ alloc_id ] = ( addr , term , _t )
+  meta A [ @ aid ] = ( addr , term , _t )
   meta addr =< addr' =< addr + term
   meta M  [ addr' dd addr' + sizeof ct - 1 ] = _t
   -------------------------------------------------------------------------------- :: Owned
-  ( A , M ) |= { Owned < Uninit , ct > ( ( @ alloc_id , addr' ) ) ( oarg ) & None }
+  ( A , M ) |= { Owned < Uninit , ct > ( ( @ aid , addr' ) ) ( oarg ) & None }
 
 
-  meta A [ alloc_id ] = ( addr , term , _t )
+  meta A [ @ aid ] = ( addr , term , _t )
   meta addr =< addr' =< addr + term
   meta ( oarg , nil ) = abst ( A , ct , M  [ addr' dd addr' + sizeof ct - 1 ] )
   ------------------------------------------------------------------------------------------- :: Owned_Init
-  ( A , M ) |= { Owned < Init , ct > ( ( @ alloc_id , addr' ) ) ( oarg ) & None }
+  ( A , M ) |= { Owned < Init , ct > ( ( @ aid , addr' ) ) ( oarg ) & None }
 
 
   ( A , M ) |= heap

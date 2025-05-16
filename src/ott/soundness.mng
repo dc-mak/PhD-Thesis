@@ -1900,8 +1900,8 @@ arbitrary (not normalised).
     \begin{proof}
 
     \step{<2>1}{%
-        $[[pval1]]$ must be a $[[ ptr1 ]] = [[ ( @ alloc_id1 , addr1 ) ]]$.\\
-        $[[pval2]]$ must be a $[[ ptr2 ]] = [[ ( @ alloc_id2 , addr2 ) ]]$.\\
+        $[[pval1]]$ must be a $[[ ptr1 ]] = [[ ( @ aid1 , addr1 ) ]]$.\\
+        $[[pval2]]$ must be a $[[ ptr2 ]] = [[ ( @ aid1 , addr2 ) ]]$.\\
         \pf{} By on the typing assumption and \PureValObjPtr.}
 
     \step{<2>2}{%
@@ -1909,7 +1909,7 @@ arbitrary (not normalised).
         \pf{} By inversion on the typing assumption.}
 
     \step{<2>3}{%
-        $[[ alloct |- smt ( alloc_id1 = alloc_id2 = ptrt1 dot alloc_id = ptrt2 dot alloc_id2 ) ]]$\\
+        $[[ alloct |- smt ( @ aid1 = @ aid2 = ptrt1 dot alloc_id = ptrt2 dot alloc_id2 ) ]]$\\
         $[[ alloct |- smt ( ptrt1 dot base =< addr1 =< ptrt1 dot base + term1 ) ]]$\\
         $[[ alloct |- smt ( ptrt2 dot base =< addr2 =< ptrt2 dot base + term2 ) ]]$.\\
         \pf{} By inversion on the typing assumption and $[[ alloct <= N ]]$.}
@@ -2195,7 +2195,7 @@ to deduce that $[[ nR' ]]$ can only be what you would have supplied anyways.
 }{%
     \pflet{%
         $[[ ret ]] = [[ sigma yp : loc . term /\ exists x : to_base ( ct ) . ( yp |- Uninit - ct -> x ) *o I  ]]$\\
-        where $[[ term ]] = [[ representable ( ct * , yp ) /\ alignedI ( int , yp )  /\ allocv [ alloc_id ] = ( addr , sizeof ct ) ]]$.\\
+        where $[[ term ]] = [[ representable ( ct * , yp ) /\ alignedI ( int , yp )  /\ allocv [ @ aid ] = ( addr , sizeof ct ) ]]$.\\
         $[[ pt ]] = [[ Owned < Uninit, ct > ( inj ptr ) ( default to_base ( ct ) ) ]]$.\\[\baselineskip]}
 
     \assume{%
@@ -2206,8 +2206,8 @@ to deduce that $[[ nR' ]]$ can only be what you would have supplied anyways.
     \pflet{%
         $[[ h' ]] = [[ { pt & None } + { Alloc ( inj ptr ) ( sizeof ct ) & None } ]]$,
         $[[ nR' ]] = [[ _ : pt , _ : Alloc ( inj ptr ) ( sizeof ct ) ]]$,
-        $[[ alloct' ]] = ( [[ alloct [ alloc_id ] := ( addr , sizeof ct ) ]])$,
-        $[[ N' ]] = [[ N , allocv [ alloc_id ] = ( addr , sizeof ct )  ]]$.}}
+        $[[ alloct' ]] = ( [[ alloct [ @ aid ] := ( addr , sizeof ct ) ]])$,
+        $[[ N' ]] = [[ N , allocv [ @ aid ] = ( addr , sizeof ct )  ]]$.}}
     This means $[[ heap ]] = [[ h' + f ]]$ (trivially).
     Also, $[[ alloct' <= N' ]]$ from since $[[ alloct <= N ]]$ (by expanding definitions).
     Hence $[[ alloct' ; h' <= N' ; nR' ]]$
@@ -2338,7 +2338,7 @@ to deduce that $[[ nR' ]]$ can only be what you would have supplied anyways.
 
     \assume{%
       $[[ ret def= sigma y : bool . y = ( addr1 ' rel_binop ' addr2 ) /\ Alloc ( ptrt1 ) ( oarg1 ) * Alloc ( ptrt2 ) ( oarg2 ) *o I ]]$
-      $[[ cdot ; L0 ; N ; nR |- res_term | ( @ alloc_id1 , addr1 ) rel_binop ( @ alloc_id2 , addr2 ) => ret ]]$
+      $[[ cdot ; L0 ; N ; nR |- res_term | ( @ aid1 , addr1 ) rel_binop ( @ aid2 , addr2 ) => ret ]]$
       and $[[ alloct | < h + f ; res_term > ||v < heap + { Alloc ( ptrt1 ) ( oarg1 ) & None } + { Alloc ( ptrt2 ) ( oarg2 ) & None } ; < Alloc ( ptrt1 ) , Alloc ( ptrt2 ) > > ]]$.\\[\baselineskip]}
 
     $[[ exists ]] [[ h' ]] , [[ nR' ]]$ such that
@@ -2568,7 +2568,7 @@ have ranges which are disjoint with allocations so far.}
 
 \pfsketch{ Induction over the memory action and operation rules.
     The core idea is that the CN system only supports integers as plain
-    integers, and not $Loc( [[ ( @ alloc_id , addr ) ]] )$. As such all
+    integers, and not $\mathrm{Loc}\, ( [[ ( @ aid , addr ) ]] )$. As such all
     transitions preserve that invariant.\\[\baselineskip]}
 
 \assume{\begin{pfenum}
@@ -2589,10 +2589,10 @@ have ranges which are disjoint with allocations so far.}
 \step{<1>1}{\case{%
     \OpActionCreate.
 }{%
-    \pf{} \pflet{ $[[ A' ]] = [[ A [ alloc_id ] := ( addr , sizeof ct , true ) ]]$ \\
+    \pf{} \pflet{ $[[ A' ]] = [[ A [ @ aid ] := ( addr , sizeof ct , true ) ]]$ \\
     $[[ M' ]] = [[ M [ addr dd addr + sizeof ct - 1 ] ]] :=
     ( @ \mathsf{empty} , \mathsf{unspec} , \mathsf{none} )$.\\
-    $[[ alloct' ; h' ]] = [[ alloct [ alloc_id ] := ( addr , sizeof ct ) ; h + { pt & None } + { Alloc ( inj ptr ) ( sizeof ct ) & None } ]]$.\\[\baselineskip]}
+    $[[ alloct' ; h' ]] = [[ alloct [ @ aid ] := ( addr , sizeof ct ) ; h + { pt & None } + { Alloc ( inj ptr ) ( sizeof ct ) & None } ]]$.\\[\baselineskip]}
 
     The premises of this step satisfy the premises of \VipAlloc{}.\\
     $[[ alloct' ]]$ is consistent with $[[ A' ]]$ (required by premise 2 of \SatStateDef{}).\\
@@ -2603,11 +2603,11 @@ have ranges which are disjoint with allocations so far.}
 \step{<1>2}{\case{%
     \OpActionKillStatic.
 }{%
-    \pf{} Since $[[ h ]] = [[ h1 + { Alloc ( ptrt ) ( sizeof ct ) & None } + { Owned < _init , ct > ( ptrt ) ( _t ) & None } ]]$,
-    where $[[ ptrt = ( @ alloc_id , addr ) ]]$ and \lemmaref{subsec:res_term_red_sat},
-    we must have $[[ A [ alloc_id ] = ( addr , sizeof ct , true ) ]]$.\\[\baselineskip]
+    \pf{} Since $[[ h ]] = [[ h1 + { Owned < _init , ct > ( ptrt ) ( _t ) & None } + { Alloc ( ptrt ) ( sizeof ct ) & None }  ]]$,
+    where $[[ ptrt = ( @ aid , addr ) ]]$ and \lemmaref{subsec:res_term_red_sat},
+    we must have $[[ A [ @ aid ] = ( addr , sizeof ct , true ) ]]$.\\[\baselineskip]
 
-    \pflet{ $[[ A' ]] = [[ A [ inj ptr dot alloc_id ] := ( inj ptr dot addr , sizeof ct , false ) ]]$.\\[\baselineskip]}
+    \pflet{ $[[ A' ]] = [[ A [ @ aid ] := ( addr , sizeof ct , false ) ]]$.\\[\baselineskip]}
 
     The premises of this step satisfy the premises of \VipKill{}.\\
     $[[ alloct ]]$ remains consistent with $[[ A' ]]$ (by premise 2 of \SatStateDef{}).}}
@@ -2618,7 +2618,7 @@ have ranges which are disjoint with allocations so far.}
     \pf{} Since $[[ h' ]] = [[ h1 + { Owned < _init , ct > ( ptrt ) ( _t ) & None } ]]$,
     \lemmaref{subsec:res_term_red_sat}, and $[[ alloct ]]$ and $[[ A ]]$ are
     consistent (by premise 2 of \SatStateDef), we must have
-    $[[ A [ alloc_id ] = ( addr , sizeof ct , true ) ]]$.\\[\baselineskip]
+    $[[ A [ @ aid ] = ( addr , sizeof ct , true ) ]]$.\\[\baselineskip]
 
     In the CN operational semantics, integers are not $Loc$s, and all resource predicates are indexed by
     pointers calculable at runtime (syntactic restriction), so we must step with
@@ -2632,9 +2632,9 @@ have ranges which are disjoint with allocations so far.}
     \pf{} Since $[[ h' ]] = [[ h1 + { Alloc ( ptrt ) ( term ) & None } ]]$,
     \lemmaref{subsec:res_term_red_sat}, and $[[ alloct ]]$ and $[[ A ]]$ are
     consistent (by premise 2 of \SatStateDef), we must have
-    $[[ A [ alloc_id ] = ( addr , term , true ) ]]$ 
-    where $[[ ptrt dot alloc_id = alloc_id ]]$,
-    and $[[ addr ]] \in \mathsf{value\_rnage([[ ct ]])}$ because
+    $[[ A [ @ aid ] = ( addr , term , true ) ]]$ 
+    where $[[ ptrt dot alloc_id = @ aid ]]$,
+    and $[[ addr ]] \in \mathsf{value\_range([[ ct ]])}$ because
     $[[ representable ( ct , addr ) ]]$.\\[\baselineskip]
     
     
@@ -2685,7 +2685,7 @@ have ranges which are disjoint with allocations so far.}
     \pf{} Since $[[ h' ]] = [[ h1 + { Alloc ( ptrt ) ( term ) & None } ]]$,
     \lemmaref{subsec:res_term_red_sat}, and $[[ alloct ]]$ and $[[ A ]]$ are
     consistent (by premise 2 of \SatStateDef), we must have
-    $[[ alloc_id1 = alloc_id2  = ptrt dot alloc_id ]]$,
+    $[[ @ aid1 = @ aid2  = ptrt dot alloc_id ]]$,
     $[[ A [ ptrt dot alloc_id ] = ( ptrt dot base , term , true ) ]]$,
     $[[ ptrt dot base =< ( addr1 , addr2 ) =< ptrt dot base + term ]]$,
     and $[[ int def= ( addr1 - addr2 ) / sizeof ct ]]$.\\[\baselineskip]
@@ -2699,11 +2699,11 @@ have ranges which are disjoint with allocations so far.}
     % \OpPExprArrayShift is not an expr but here for sake of completeness wrt VIP.
 
     In both cases, since $[[ alloct ]]$ and $[[ A ]]$ are consistent (by premise 2 of \SatStateDef),
-    we have $[[ A [ alloc_id ] = ( addri , termi , _t ) ]]$.
+    we have $[[ A [ @ aid ] = ( addri , termi , _t ) ]]$.
     Also, from the premise of the CN steps, we know
     $[[ addri =< inj ptr' dot addr =< addri + termi ]]$
     where $[[ inj ptr' def= array_shift < ct > ( inj ptr ,  int ) ]]$
-    $[[ inj ptr = ( @ alloc_id , _t ) ]]$.\\[\baselineskip]
+    $[[ inj ptr = ( @ aid , _t ) ]]$.\\[\baselineskip]
 
     Hence we may step with \VipArray{}. Since $[[ ( A , M ) ]]$ doesn't
     change, satisfaction is preserved.}}
@@ -2722,7 +2722,7 @@ have ranges which are disjoint with allocations so far.}
     $[[ A [ ptrt1 dot alloc_id ] = ( addr1' , term1 , true ) ]]$,
     $[[ A [ ptrt2 dot alloc_id ] = ( addr1' , term2 , true ) ]]$.
     From the premise CN step, we also know
-    $[[ alloc_id1 = alloc_id2 = ptrt1 dot alloc_id = ptrt2 dot alloc_id2 ]]$,
+    $[[ @aid1 = @aid2 = ptrt1 dot alloc_id = ptrt2 dot alloc_id2 ]]$,
     $[[ ptrt1 dot base =< addr1 =< ptrt1 dot base + term1 ]]$,
     and $[[ ptrt2 dot base =< addr2 =< ptrt2 dot base + term2 ]]$.
     $[[ addr =< ptrt dot addr =< addr + term ]]$.\\[\baselineskip]

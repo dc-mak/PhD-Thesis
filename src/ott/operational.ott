@@ -23,7 +23,7 @@ grammar
 
   opsem_extra :: 'opsem_extra_' ::= {{ com extra judgements for operational semantics }}
     | forall i lt j . not ( pati = pval ~> subsi ) ::   :: forall_i_lt_j_not_decons {{ com all patterns prior to $[[j]]$ failed to match/deconstruct }}
-    | int notIn dom ( alloct )                     ::   :: fresh_alloc_id           {{ com $ @ [[int]]$ is a fresh allocation id                     }}
+    | alloc_id notIn dom ( alloct )                ::   :: fresh_alloc_id           {{ com $[[alloc_id]]$ is a fresh allocation id                   }}
     | int inEnv newAlloc ( heap , pval , term )    ::   :: newAlloc                 {{ com set of new addresses for an allocation                    }}
     | heap def= heap'                              ::   :: heap_abbrev              {{ com heap abbreviations                                        }}
 
@@ -180,7 +180,7 @@ defns
     % DEFER (not implemented) other ctor_expr
     % ctor_expr ( </ pvali // , // i /> )
 
-    x def= alloct [ alloc_id ]
+    x def= alloct [ inj ptr dot alloc_id ]
     inj ptr' def= array_shift<ct>(inj ptr, int)
     alloct |- smt ( x dot base =< inj ptr' dot addr =< x dot base + x dot len )
     pure_ret def= sigma y : loc . y = inj ptr' /\ I
@@ -188,7 +188,7 @@ defns
     alloct | < array_shift < ct > ( ptr , int ) > --> < ptr' : pure_ret >
 
 
-    x def= alloct [ alloc_id ]
+    x def= alloct [ inj ptr dot alloc_id ]
     inj ptr' def= member_shift < tagged tag > ( inj ptr , member )
     alloct |- smt ( x dot base =< inj ptr' dot addr =< x dot base + x dot len )
     pure_ret def= sigma y : loc . y = inj ptr' /\ I
@@ -442,15 +442,15 @@ defns
 
 
     addr inEnv newAlloc ( h , pval , sizeof ct )
-    alloc_id notIn dom ( alloct )
-    inj ptr def= ( @ alloc_id , addr )
+    @ aid notIn dom ( alloct )
+    inj ptr def= ( @ aid , addr )
     pt def= inj ptr |- Uninit - ct -> default to_base ( ct )
     ret def= sigma yp : loc . term /\ exists x : to_base ( ct ) . ( yp |- Uninit - ct -> x ) *o Alloc ( yp ) ( sizeof ct ) *o I
-    term def= representable ( ct * , inj ptr ) /\ alignedI ( int , inj ptr ) /\ allocv [ alloc_id ] = ( addr , sizeof ct )
+    term def= representable ( ct * , inj ptr ) /\ alignedI ( int , inj ptr ) /\ allocv [ @ aid ] = ( addr , sizeof ct )
     alloct |- smt ( term )
     h' def= h + { pt & None } + { Alloc ( inj ptr ) ( sizeof ct ) & None }
     ------------------------------------------------------------------------- :: Create
-    < alloct ; h ; emp | create < ct > ( int ) > --> < alloct [ alloc_id ] := ( addr , sizeof ct ) ;  h' ; < ptr , default to_base ( ct ), Owned < Uninit , ct > ( inj ptr ) , Alloc ( inj ptr ) > : ret >
+    < alloct ; h ; emp | create < ct > ( int ) > --> < alloct [ @ aid ] := ( addr , sizeof ct ) ;  h' ; < ptr , default to_base ( ct ), Owned < Uninit , ct > ( inj ptr ) , Alloc ( inj ptr ) > : ret >
 
 
     alloct | < h ; res_term > ||v < h' + { pt & None } ; Owned < Init , ct > ( ptrt ) >
@@ -471,10 +471,11 @@ defns
     < alloct ; h ; res_term | store < ct > ( ptr , pval ) > --> < alloct ; h' + { pt' & None } ; < Unit , Owned < Init , ct > ( inj ptr ) > : ret >
 
 
-    alloct | < h ; res_term > ||v < h' + { pred_term1 ( _t ) & None } + { pred_term2 ( term ) & None } ; < pred_term1 , pred_term2 > >
-    pred_term1 def= Owned < _init , ct > ( ptrt )
-    pred_term2 def= Alloc ( ptrt' )
-    alloct |- smt ( ptrt = ptrt' = inj ptr /\ sizeof ct = term )
+    h1 def= { pred_term1 ( _t ) & None } + { pred_term2 ( term ) & None }
+    alloct | < h ; res_term > ||v < h' + h1 ; < pred_term1 , pred_term2 > >
+    pred_term1 def= Owned < _init , ct > ( ptrt1 )
+    pred_term2 def= Alloc ( ptrt2 )
+    alloct |- smt ( ptrt1 = ptrt2 = inj ptr /\ sizeof ct = term )
     ret def= sigma _ : unit . I
     ----------------------------------------------------------------------------------- :: Kill_Static
     < alloct ; h ; res_term | kill < ct > ( ptr ) > --> < alloct ; h' ; < Unit > : ret >
@@ -484,46 +485,46 @@ defns
     alloct | < h ; res_term > ||v < h1 + h2 ;  < pred_term1 , pred_term2 > >
     h2 def= </ { pred_termi ( termi ) & None } // i />
     indexed </ pred_termi def= Alloc ( ptrti ) // i />
-    alloct |- smt ( alloc_id1 = alloc_id2 = ptrt1 dot alloc_id = ptrt2 dot alloc_id2 )
+    alloct |- smt ( @ aid1 = @ aid2 = ptrt1 dot alloc_id = ptrt2 dot alloc_id2 )
     alloct |- smt ( ptrt1 dot base =< addr1 =< ptrt1 dot base + term1 )
     alloct |- smt ( ptrt2 dot base =< addr2 =< ptrt2 dot base + term2 )
     inj bool_value def= addr1 ' rel_binop ' addr2
     ret def= sigma y : bool . y = ( addr1 ' rel_binop ' addr2 ) /\ pred_term1 ( term1 ) * pred_term2 ( term2 ) *o I
     -------------------------------------------------------------------------------------------------------------- :: Rel_Binop
-    alloct | < h ; res_term | ( @ alloc_id1 , addr1 ) rel_binop ( @ alloc_id2 , addr2 ) > --> < h1 + h2 ; < bool_value , < pred_term1 , pred_term2 > > : ret >
+    alloct | < h ; res_term | ( @ aid1 , addr1 ) rel_binop ( @ aid2 , addr2 ) > --> < h1 + h2 ; < bool_value , < pred_term1 , pred_term2 > > : ret >
 
 
     alloct | < h ; res_term > ||v < h1 + { pred_term ( term ) & None } ;  pred_term >
     pred_term def= Alloc ( ptrt )
-    alloct |- smt ( alloc_id1 = alloc_id2 = ptrt dot alloc_id )
+    alloct |- smt ( @ aid1 = @ aid2 = ptrt dot alloc_id )
     alloct |- smt ( ptrt dot base =< ( addr1 , addr2 ) =< ptrt dot base + term )
     int def= ( addr1 - addr2 ) / sizeof ct
     ret def= sigma y : integer . y = ( addr1 - addr2 ) / sizeof ct /\ res *o I
     -------------------------------------------------------------------------------------------------------------- :: PtrDiff_Arr
-    alloct | < h ; res_term | ( @ alloc_id1 , addr1 ) - array n ct - ( @ alloc_id2 , addr2 ) > --> < h1 + { pred_term ( term ) & None } ; < int , pred_term > : ret >
+    alloct | < h ; res_term | ( @ aid1 , addr1 ) - array n ct - ( @ aid2 , addr2 ) > --> < h1 + { pred_term ( term ) & None } ; < int , pred_term > : ret >
 
 
     alloct | < h ; res_term > ||v < h1 + { pred_term ( term ) & None } ;  pred_term >
     pred_term def= Alloc ( ptrt )
-    alloct |- smt ( alloc_id1 = alloc_id2 = ptrt dot alloc_id )
+    alloct |- smt ( @ aid1 = @ aid2 = ptrt dot alloc_id )
     alloct |- smt ( ptrt dot base =< ( addr1 , addr2 ) =< ptrt dot base + term )
     int def= ( addr1 - addr2 ) / sizeof ct
     ret def= sigma y : integer . y = ( addr1 - addr2 ) / sizeof ct /\ res *o I
     -------------------------------------------------------------------------------------------------------------- :: PtrDiff
-    alloct | < h ; res_term | ( @ alloc_id1 , addr1 ) - ct - ( @ alloc_id2 , addr2 ) > --> < h1 + { pred_term ( term ) & None } ; < int , pred_term > : ret >
+    alloct | < h ; res_term | ( @ aid1 , addr1 ) - ct - ( @ aid2 , addr2 ) > --> < h1 + { pred_term ( term ) & None } ; < int , pred_term > : ret >
 
 
     alloct | < h ; res_term > ||v < h' + { pred_term ( _t ) & None } ; pred_term >
     pred_term def= Alloc ( ptrt )
-    alloct |- smt ( alloc_id = ptrt dot alloc_id /\ representable ( ct2 , addr ) )
+    alloct |- smt ( @ aid = ptrt dot alloc_id /\ representable ( ct2 , addr ) )
     ret def= sigma y : integer . y = addr /\ pred_term ( _t ) *o I
     ---------------------------------------------------------------------------------- :: IntFromPtr
-    _ | < h ; res_term | intFromPtr < ct > ( ( @ alloc_id , addr ) ) > --> < h' + { pred_term ( _t ) & None } ; < addr , pred_term > : ret >
+    _ | < h ; res_term | intFromPtr < ct > ( ( @ aid , addr ) ) > --> < h' + { pred_term ( _t ) & None } ; < addr , pred_term > : ret >
 
 
     alloct | < h ; res_term > ||v < h' + { pred_term ( oarg ) & None } ; pred_term >
     pred_term def= Owned < _init , ct > ( ptrt )
-    x def= alloct [ ptrt dot alloc_id ]
+    x def= alloct [ @ id ]
     alloct |- smt ( x dot base =< addr =< x dot base + x dot len )
     inj ptr def= ( @ ptrt dot alloc_id , addr )
     ret def= sigma y : loc . y = ( @ ptrt dot alloc_id , addr ) /\ pred_term ( oarg ) *o I
@@ -546,7 +547,7 @@ defns
     alloct | < h ; res_term > ||v < h' + { pred_term ( term ) & None } ; pred_term >
     pred_term def= Alloc ( ptrt )
     inj ptr' def= array_shift < ct > ( inj ptr , int )
-    alloct |- smt ( alloc_id = ptrt dot alloc_id /\ inj ptr' dot addr =< ptrt dot base + term )
+    alloct |- smt ( inj ptr' dot alloc_id = ptrt dot alloc_id /\ inj ptr' dot addr =< ptrt dot base + term )
     ret def= sigma y : loc . y = inj ptr' /\ pred_term ( term ) *o I
     --------------------------------------------------------------------------------------------- :: PtrArrayShift
     alloct | < h ; res_term | ptrArrayShift < ct > ( ptr , int ) > --> < h ; < ptr' , pred_term > : ret >

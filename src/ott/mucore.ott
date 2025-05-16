@@ -65,7 +65,7 @@ embed {{ tex-preamble
 }}
 
 metavar id , x , xp {{ tex {x_p} }}, y , yp {{ tex { y_p } }} , yf {{ tex f }} , _ , abbrev , r , allocv {{ tex { alloc_{\symrm{var} } } }} ::=
-  {{ com subscripts: p for pointers, f for functions }}
+  {{ com subscripts: p for pointers }}
 
 indexvar n , i , j , k ::= {{ com index variables }}
 
@@ -88,7 +88,7 @@ grammar
 
   member :: 'Member_' ::= {{ com record or C struct/union member name }}
     | id        :: :: user_def {{ com user-defined member }}
-    | alloc_id  :: :: alloc_id {{ tex \mathrm{alloc\_id} }}
+    | alloc_id  :: :: alloc_id {{ tex \mathrm{id}       }}
     | addr      :: :: addr     {{ tex \mathrm{addr}      }}
     | base      :: :: base     {{ tex \mathrm{base}      }}
     | len       :: :: len      {{ tex \mathrm{len}       }}
@@ -109,7 +109,7 @@ grammar
     | struct tag   :: :: struct  {{ com C struct type                               }}
     | tagged tag   :: :: tagged  {{ com C struct or union                           }} {{ tex [[ tag ]]  }}
 
-  int , _int {{ tex \_ }} , addr , alloc_id :: 'Int_' ::=    {{ com integer }}
+  int , _int {{ tex \_ }} , addr , aid {{ tex \mathit{id} }} :: 'Int_' ::=    {{ com integer }}
     | i                   ::   :: index      {{ com literal integer                        }}
     | 1                   :: X :: one
     | 0                   :: X :: zero
@@ -124,6 +124,9 @@ grammar
     | min ct              :: M :: Min        {{ tex \min{ [[ct]] }                         }}
                                              {{ com minimum of numeric type $[[ct]]$       }}
 
+  alloc_id :: 'Alloc_id_' ::= {{ com allocation IDs }}
+    | @ aid :: :: int
+
 grammar
 
   base_type {{ tex \beta }} , _bt {{ tex \_ }} :: 'Bt_' ::= {{ com base types }}
@@ -131,7 +134,7 @@ grammar
     | bool                                   ::   :: bool     {{ com boolean                     }}
     | integer                                ::   :: integer  {{ com integer                     }}
     | loc                                    ::   :: loc      {{ com pointers (record of allocation ID and integer address) }} {{ tex \mathtt{pointer} }}
-    | alloc_id                               ::   :: alloc_id {{ com allocation IDs (integers)   }} {{ tex \mathtt{alloc\_id} }}
+%   | alloc_id                               ::   :: alloc_id {{ com allocation IDs (integers)   }} {{ tex \mathtt{alloc\_id} }}
     | struct tag                             ::   :: struct   {{ com C structs                   }}
     | record </ memberi : base_typei // i /> ::   :: record   {{ com res. pred. output arguments }}
     | id_map                                 :: M :: idMap    {{ com allocs to base and length   }}
@@ -199,10 +202,10 @@ grammar
 grammar
 
   ptr :: 'Ptr_' ::=  {{ com pointer in VIP model }}
-    | ( @ int , int' ) :: :: aia    {{ com pointer with provenance (allocation id) }}
-    | NULL             :: :: null   {{ com null pointer                            }}
+    | ( alloc_id , int ) :: :: aia    {{ com pointer with provenance (allocation id) }}
+    | NULL               :: :: null   {{ com null pointer                            }}
 % Not worth extra complication of rules
-%   | id               :: :: funptr {{ com function pointer                        }}
+%   | id                 :: :: funptr {{ com function pointer                        }}
 
 grammar
 
@@ -339,7 +342,8 @@ grammar
 
   pointer_op :: 'Pointer_op_' ::= {{ com SMT term pointer operations }}
     | NULL                                  :: :: null
-    | ( @ term , term' )                    :: :: aia
+    | @ term                                :: :: alloc_id
+    | ( term , term' )                      :: :: aia
     | member_shift < ct > ( term , member ) :: :: member_shift
     | array_shift < ct > ( term , term' )   :: :: array_Shift
 
@@ -545,7 +549,7 @@ grammar
     | array_shift < ct > ( pval1 , pval2 )  ::   :: array_shift     {{ com pointer array shift                              }}
     | member_shift < ct > ( pval , member ) ::   :: member_shift    {{ com pointer struct/union member shift                }}
     | not ( pval )                          ::   :: not             {{ com boolean not                                      }}
-    | pval1 binop pval2                     ::   :: op              {{ order [[binop]] [[ pval1 ]] [[ pval2 ]]              }} {{ com binary operations }}
+    | pval1 binop pval2                     ::   :: op              {{ com binary operations                                }}
     | memberof  ( tag , member , pval )     ::   :: memberof        {{ com C struct/union member access                     }}
     | name ( </ pvali // , // i /> )        ::   :: call            {{ com pure function call                               }}
     | assert_undef ( pval , UB_name )       ::   :: assert_undef    {{ com if $[[ pval ]]$ then UB for reason $[[UB_name]]$ }}
