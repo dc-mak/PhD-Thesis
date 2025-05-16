@@ -758,24 +758,27 @@ provenance as the result of a cast from an integer.
 
 \begin{figure*}
 \begin{tikzcd}[cramped,sep=small]
-	& {(@i, @j)} &&& {\{\,\mathsf{true}\,\}} \\
-	{(@i, @\mathsf{empty})} && {(@\mathsf{empty}, @j)} & {\{\,\mathsf{true},\mathsf{false}\,\}} && {\{\,\mathsf{true},\mathsf{false}\,\}} \\
-	& {(@\mathsf{empty}, @\mathsf{empty})} &&& {{\color{red}\{\,\mathsf{false}\,\}}}
-	\arrow[from=2-1, to=1-2]
-	\arrow[from=2-3, to=1-2]
-	\arrow[from=2-4, to=1-5]
-	\arrow[from=2-6, to=1-5]
-	\arrow[from=3-2, to=2-1]
-	\arrow[from=3-2, to=2-3]
-	\arrow[color={red}, from=3-5, to=2-4]
-	\arrow[color={red}, from=3-5, to=2-6]
+	& {(@i, @j)} && {\{\,\mathsf{true}\,\}} & & {\{\,\mathsf{false}\,\}} \\
+	{(@i, @\mathsf{empty})} && {(@\mathsf{empty}, @j)} \\
+	& {(@\mathsf{empty}, @\mathsf{empty})} &&& {\{\,\mathsf{true}, \mathsf{false}\,\}}
+	\arrow[from=2-1, to=1-2, color=gray]
+	\arrow[from=2-3, to=1-2, color=gray]
+	\arrow[from=3-2, to=2-1, color=gray]
+	\arrow[from=3-2, to=2-3, color=gray]
+    \arrow[from=3-5, to=1-4, color=gray]
+    \arrow[from=3-5, to=1-6, color=gray]
+    \arrow[from=1-2, to=1-4, dashed]
+    \arrow[from=2-1, to=3-5, dashed, crossing over, crossing over clearance=0.5ex, bend right=2]
+    \arrow[from=2-3, to=3-5, dashed, bend left=6]
+    \arrow[from=3-2, to=1-6, dashed, crossing over, color=red, bend right=8]
 \end{tikzcd}%
-\caption{Hasse diagram showing why the {\color{red}$\pi_1 \neq \pi_2$}
-    condition is not monotonic with between the source domain (pairs of
-    provenances) on the left and target domain (sets of possible boolean
-    values) on the right. In this case, fewer elements represent more precise
-    information, so the set $\{\,\mathsf{true},\mathsf{false}\,\}$ should be the
-    \emph{bottom} element rather than the top.}\label{fig:ptr-eq-hasse}
+\caption{Hasse diagram showing why the condition {\color{red}$\pi_1 \neq \pi_2$},
+    represented by the dashed arrows $\rightdasharrow$, is not monotonic (when
+    addresses are equal). $d_1 {\color{gray}\rightarrow} d_2$ if $d_1$ leads to
+    more undefined behaviour than $d_2$. On the left is the domain of pairs of
+    provenances, assuming $i \neq j$. On the right is the domain of sets of
+    boolean values. The problematic, non-monotonic mapping is the red dashed
+    arrow $\color{red}\rightdasharrow$.}\label{fig:ptr-eq-hasse}
 \end{figure*}
 
 This introduces a small syntactic inconsistency between the specification
