@@ -241,6 +241,20 @@ grammar
 
 grammar
 
+  ctor :: 'Ctor_' ::= {{ com Cerberus Core constructors }}
+    | Nil base_type :: :: nil         {{ com empty list                                      }} % : [bTy]
+    | Cons          :: :: cons        {{ com list cons                                       }} % : bTy -> [bTy] -> [bTy]
+    | Tuple         :: :: tuple       {{ com tuple                                           }} % : bTy1 -> ... -> bTyN -> (bTy1, ..., bTyN)
+    | Array         :: :: array       {{ com C fixed-size array (guaranteed to be non-empty) }} % : bTy -> ... -> bTy -> array bTy
+    | IvCOMPL       :: :: ivCOMPL     {{ com bitwise complement             }} % : ctype -> integer -> integer
+    | IvAND         :: :: ivAND       {{ com bitwise AND                    }} % : ctype -> integer -> integer -> integer
+    | IvOR          :: :: ivOR        {{ com bitwise OR                     }} % : ctype -> integer -> integer -> integer
+    | IvXOR         :: :: ivXOR       {{ com bitwise XOR                    }} % : ctype -> integer -> integer -> integer
+    | Specified     :: :: Specified
+    | Unspecified   :: :: Unspecified
+    | Ivfromfloat   :: :: ivfromfloat
+    | Fvfromint     :: :: fvfromInt
+
   ctor_val :: 'CtorV_' ::= {{ com data constructors (values, do not reduce) }}
     | Nil base_type :: :: nil         {{ com empty list                                      }} % : [bTy]
     | Cons          :: :: cons        {{ com list cons                                       }} % : bTy -> [bTy] -> [bTy]
@@ -248,15 +262,19 @@ grammar
     | Array         :: :: array       {{ com C fixed-size array (guaranteed to be non-empty) }} % : bTy -> ... -> bTy -> array bTy
 
   ctor_expr :: 'CtorE_' ::= {{ com data constructors (expressions, do reduce) }}
-    | IvCOMPL     :: :: ivCOMPL     {{ com bitwise complement             }} % : ctype -> integer -> integer
-    | IvAND       :: :: ivAND       {{ com bitwise AND                    }} % : ctype -> integer -> integer -> integer
-    | IvOR        :: :: ivOR        {{ com bitwise OR                     }} % : ctype -> integer -> integer -> integer
-    | IvXOR       :: :: ivXOR       {{ com bitwise XOR                    }} % : ctype -> integer -> integer -> integer
+    | IvCOMPL       :: :: ivCOMPL     {{ com bitwise complement             }} % : ctype -> integer -> integer
+    | IvAND         :: :: ivAND       {{ com bitwise AND                    }} % : ctype -> integer -> integer -> integer
+    | IvOR          :: :: ivOR        {{ com bitwise OR                     }} % : ctype -> integer -> integer -> integer
+    | IvXOR         :: :: ivXOR       {{ com bitwise XOR                    }} % : ctype -> integer -> integer -> integer
+
+  subrules
+    ctor_val <:: ctor
+    ctor_expr <:: ctor
 
 metavar UB_name ::=
  {{ com undefined behaviour }}
 
-metavar impl_const ::=
+metavar impl_const {{ tex \mathit{impl\_const} }}::=
   {{ com implementation-defined constant }}
 
 grammar
@@ -537,7 +555,7 @@ grammar
 
 grammar
 
-  pat :: 'Pat_' ::= {{ com computational patterns }}
+  pat :: 'Pat_' ::= {{ com patterns }}
     | id                                :: :: var  (+ binders = id +)
     | ctor_val ( </ pati // , // i /> ) :: :: ctor (+ binders = binders( </ pati // i /> ) +)
 
@@ -560,7 +578,7 @@ grammar
 
 grammar
 
-  pstmt :: 'TPE_' ::= {{ com pure statements }}
+  pstmt :: 'PS_' ::= {{ com pure statements }}
     | pval                                   ::   :: pval  {{ com pure value                            }}
     | undef UB_name                          ::   :: undef {{ com undefined behaviour                   }}
     | let pat = pexpr in pstmt               ::   :: pexpr (+ bind binders( pat ) in pstmt              +)
@@ -573,6 +591,33 @@ grammar
 
   pbranch :: 'PBranch_' ::= {{ com pure case statement branch }}
     | pat => pstmt :: :: branch (+ bind binders( pat ) in pstmt +)
+
+grammar
+
+  cpat {{ tex \mathit{cpat} }} :: 'CPat_' ::= {{ com Cerberus Core patterns }}
+    | id : base_type                 :: :: var
+    | _  : base_type                 :: :: wild
+    | ctor ( </ cpati // , // i /> ) :: :: ctor
+
+  pure_core {{ tex \mathit{pure\_core} }}, pce {{ tex \mathit{pce} }} :: 'PCE_' ::= {{ com pure Cerberus Core expressions }}
+    | x  :: :: var
+    | impl_const :: :: impl_const
+    | value :: :: value
+    | undef ( UB_name ) :: :: undef
+    | ctor ( pce1 , .. , pcen ) :: :: ctor
+    | array_shift ( pce1 , ct , pce2 ) :: :: array_shift
+    | member_shift ( pce , tag dot member ) :: :: member_shift
+    | case pce of </ | pati => pcei // i /> end :: :: case
+    | if pce1 then pce2 else pce3 :: :: if
+    | let cpat = pce1 in pce2 :: :: let
+    | not ( pce ) :: :: not
+    | pce1 binop pce2 :: :: binop
+    | struct [ tag ] ( dot member1 = pce1 , ... , dot membern = pcen ) :: :: struct
+    | union [ tag ] ( dot member = pce ) :: :: union
+    | cfunction ( pce ) :: :: cfunction
+    | memberof [ tag dot member ] ( pce ) :: :: memberof
+    | name ( pce1 , .. , pcen ) :: :: call
+    | refine_ctype ( pce1 , pce2 , pce3 ) :: :: refine_ctype
 
 grammar
 
