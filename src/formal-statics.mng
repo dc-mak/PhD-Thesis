@@ -346,12 +346,25 @@ rule for dynamic allocations.}
 
 \begin{figure*}[tp]
     \small
+    \begingroup%
+    \NewCommandCopy{\origcndrule}{\cndrule}
+    \renewcommand{\cndrule}[4][]{\origcndrule[#1]{#2}{%
+    \begin{minipage}{0.65\textwidth}
+        \raggedright
+        \leftskip 2em
+        \parindent -2em
+        $#3$
+    \end{minipage}
+    }{#4}}%
+    \NewCommandCopy{\origXXcndruleActionXXCreate}{\cndruleActionXXCreate}
+    \renewcommand{\cndruleActionXXCreate}{\onlyUseNthCnPremise{1,3}{\origXXcndruleActionXXCreate{}}}
     \raggedright{}
     \cndefnAction{}
     \\%
     \onlyUseRules{\cndefnMemop{}}{%
         \cndruleMemopXXRelXXBinop{}
     }
+    \endgroup%
     \caption{\kl{Kernel CN} typing rules for memory actions, and a select rule
         for typing a memory operation.}\label{fig:typing-mem-action}
 \end{figure*}
@@ -443,7 +456,7 @@ function type before using the spine judgement.
 \section{Pattern matching}
 
 \textbf{Pattern matching is an unusually important crux of \kl{kernel CN}'s type
-system because it \emph{is} the canal which directs the rich grammar of
+system because it is \emph{the} canal which directs the rich grammar of
 resource and return types into contexts.} The judgement for this is
 $[[ C ; L ; N |- ret_pat : ret ~> C' ; L' ; N' ; R' ]]$, % chktex 25
 which says that given the contexts, a return pattern and a return type,

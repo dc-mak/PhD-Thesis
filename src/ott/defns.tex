@@ -105,25 +105,22 @@ of type checking is given in a separate document.
 \section{Commentary}
 \label{sec:commentary}
 
-In this document, we formalise ``kernel CN'',
-which is essentially ordinary CN with no type and
-resource inference. In particular, we assume that all
-universal quantifiers are explicitly instantiated, that all
-existential quantifiers have explicit witnesses, and all resource
-manipulations have proof terms with linear/substructural
-types. However, we do not require proof terms for the logical
-properties, since by construction all of the entailments fall
-into the SMT fragment. Since our inference algorithm can be extended
-to an elaboration algorithm producing a fully-annotated program,
-kernel CN could serve as an intermediate representation for the CN
-compiler (which we have formalised elaboration for iterated resource
-manipulation, though not footprint analysis).
-Moreover, the lack of inference makes it a simpler language
-to prove type safety for.
+In this document, I formalise ``kernel CN'', which is essentially ordinary CN
+with no type and resource inference. In particular, I assume that all universal
+quantifiers are explicitly instantiated, that all existential quantifiers have
+explicit witnesses, and all resource manipulations have proof terms with linear
+types. However, I do not require proof terms for the logical properties, because
+all the entailments fall into the SMT fragment by construction. Since the
+inference algorithm can be extended to an elaboration algorithm producing a
+fully-annotated program, kernel CN could serve as an intermediate representation
+for the CN implementation; I have also formalised (without any associated
+proofs) what such an elaboration would look like, focusing on iterated resource
+manipulation.  Moreover, the lack of inference makes it a simpler language for
+which to prove type safety.
 
 The kernel CN is a calculus in A-normal form, with a bidirectional
-type system. Since we handle the majority of C, the entire system is very
-large, and so we only provide commentary on the highlights.
+type system. Since I handle the majority of C, the entire system is very
+large, and so I only provide commentary on the highlights.
 
 \subsection{Types and Terms}
 
@@ -163,14 +160,14 @@ iterated resources), and $[[ iguard ]]$ (for boolean guards of iterated resource
 \caption{Grammar of Resource Terms}\label{fig:resource-grammar}
 \end{figure}
 
-In Figure~\ref{fig:resource-grammar}, we give the grammar of resource types
+In Figure~\ref{fig:resource-grammar}, I give the grammar of resource types
 (i.e., separation logic predicates) and resource terms (the proof terms used by
 the kernel Core typechecker).
 %
 The standard resources $[[ res ]]$ can be an empty heap $[[ emp ]]$, a boolean
 condition $[[ term ]]$, the separating conjunction $[[ res1 * res2 ]]$, an
 existential type $[[ exists y : base_type . res ]]$, and the disjunction $[[ if
-term then res1 else res2 ]]$. We use a conditional rather than a traditional
+term then res1 else res2 ]]$. I use a conditional rather than a traditional
 disjunction to avoid backtracking during typechecking.
 
 Resource predicates have special syntax to handle the division of their
@@ -196,7 +193,7 @@ $[[ fold res_term : pred ]]$, and unfolded via pattern-matching.
 
 In addition, there are resource operations recording the
 resource-manipulation steps inference uses to successfully type a
-program.  If we suppress the book-keeping of checking that input
+program.  If I suppress the book-keeping of checking that input
 arguments match, calculating indices, and updating output arguments,
 most of these operations have simple intuitions.
 %
@@ -243,7 +240,7 @@ is an acceptable simplification, because the elaboration pass can annotate terms
 with fully-instantiated constraints, whose quantifiers were either supplied
 by lemmas, annotations or default instantiation.
 
-We focus on the judgements for typing resource terms and memory actions. The
+I focus on the judgements for typing resource terms and memory actions. The
 judgement $[[ C ; L ; N ; R |- res_term => res ]]$ should be read as ``under a
 context of computational variables $[[ C ]]$, logical variables $[[ L ]]$,
 constraints $[[ N ]]$ and resources $[[ R ]]$, the resource term
@@ -252,7 +249,7 @@ part of the judgement with an \colorbox{red!10}{output mode}). The judgement
 $[[ C ; L ; N ; R |- res_term <= res ]]$ reads similarly, replacing
 `synthesises' with `checks against'.
 
-We need both judgements because variables, folding, predicate operations are
+I need both judgements because variables, folding, predicate operations are
 naturally typed as synthesising rules, whereas constraints, packing
 existentials, and conditional resources require checking.  Furthermore, as we
 shall see soon, memory actions require a synthesising judgement (to obtain and
