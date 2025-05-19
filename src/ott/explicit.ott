@@ -904,8 +904,8 @@ defns
 
 
     C |- pval => integer
-    term def= representable ( ct * , yp ) /\ alignedI ( inj pval , yp ) /\ allocv [ yp dot alloc_id ] = ( yp dot base , sizeof ct )
-    ret def= ( yp |- Uninit - ct -> x ) *o Alloc ( yp ) ( sizeof ct ) *o I
+    term def= representable ( ct * , yp ) /\ alignedI ( inj pval , yp ) /\ allocv [ yp dot alloc_id ] = ( yp dot addr , sizeof ct )
+    ret def= ( yp |- Uninit - ct -> x ) *o Alloc ( yp dot alloc_id ) ( ( yp dot addr , sizeof ct ) ) *o I
     ------------------------------------------------------------------------- :: Create
     C ; L ; N ; cdot |- emp | create < ct >  ( pval ) => sigma yp : loc . term /\ exists x : to_base ( ct ) .  ret
 
@@ -935,8 +935,9 @@ defns
 
 
     C |- pval => loc
-    C ; L ; N ; R |- res_term => ptrt |- _init - ct -> _t * Alloc ( ptrt' ) ( term )
-    smt ( N =>  ptrt = ptrt' = inj pval /\ sizeof ct = term )
+    C ; L ; N ; R |- res_term => ptrt |- _init - ct -> _t * Alloc ( term ) ( oarg )
+    term' def= ptrt dot addr = oarg dot base /\ sizeof ct = oarg dot len
+    smt ( N =>  ptrt = inj pval /\ ptrt dot alloc_id = term /\ term' )
     ---------------------------------------------------------------------------- :: Kill_Static
     C ; L ; N ; R |-  res_term | kill < ct > ( pval ) => sigma _ : unit . I
 
