@@ -445,11 +445,13 @@ defns
     addr inEnv newAlloc ( h , pval , sizeof ct )
     @ aid notIn dom ( alloct )
     inj ptr def= ( @ aid , addr )
-    ret def= sigma yp : loc . term /\ exists x : to_base ( ct ) . ( yp |- Uninit - ct -> x ) *o Alloc ( yp dot alloc_id ) ( ( yp dot addr , sizeof ct ) ) *o I
+    pred_term1 def= Owned < Uninit , ct > ( inj ptr )
+    pred_term2 def= Alloc ( @ aid )
+    ret def= sigma yp : loc . term /\ exists x : to_base ( ct ) . pred_term1 ( x ) *o pred_term2 ( ( yp dot addr , sizeof ct ) ) *o I
     term def= representable ( ct * , inj ptr ) /\ alignedI ( int , inj ptr ) /\ allocv [ @ aid ] = ( addr , sizeof ct )
     alloct |- smt ( term )
-    h' def= h + { Owned < Uninit , ct > ( inj ptr ) ( default to_base ( ct ) ) & None } + { Alloc ( @ aid ) ( ( addr , sizeof ct ) ) & None }
-    stmt def= < ptr , default to_base ( ct ), Owned < Uninit , ct > ( inj ptr ) , Alloc ( @ aid ) >
+    h' def= h + { pred_term1 ( default to_base ( ct ) ) & None } + { pred_term2 ( ( addr , sizeof ct ) ) & None }
+    stmt def= < ptr , default to_base ( ct ), pred_term1 , pred_term2 >
     ------------------------------------------------------------------------- :: Create
     < alloct ; h ; emp | create < ct > ( int ) > --> < alloct [ @ aid ] := ( addr , sizeof ct ) ;  h' ; stmt : ret >
 
@@ -475,7 +477,7 @@ defns
     h1 def= { pred_term1 ( _t ) & None } + { pred_term2 ( term ) & None }
     alloct | < h ; res_term > ||v < h' + h1 ; < pred_term1 , pred_term2 > >
     pred_term1 def= Owned < _init , ct > ( ptrt1 )
-    pred_term2 def= Alloc ( ptrt2 )
+    pred_term2 def= Alloc ( @ aid )
     alloct |- smt ( ptrt1 = ptrt2 = inj ptr /\ sizeof ct = term )
     ret def= sigma _ : unit . I
     ----------------------------------------------------------------------------------- :: Kill_Static

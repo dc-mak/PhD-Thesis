@@ -1869,8 +1869,9 @@ arbitrary (not normalised).
         \pf{} By \PureValObjPtr.}
 
     \step{<2>2}{%
-        $[[ cdot ; L0 ; N ; nR |- res_term => ptrt1 |- _init - ct -> _t * Alloc ( ptrt2 ) ( term ) ]]$\\
-        $[[ alloct |- smt ( ptrt = ptrt' = inj ptr /\ sizeof ct = term ) ]]$.\\
+        $[[ cdot ; L0 ; N ; nR |- res_term => ptrt1 |- _init - ct -> _t * Alloc ( term ) ( oarg ) ]]$\\
+        $[[ term' def= ptrt dot addr = oarg dot base /\ sizeof ct = oarg dot len ]]$ \\
+        $[[ alloct |- smt ( ptrt = inj ptr /\ ptrt dot alloc_id = term /\ term' ) ]]$.\\
         \pf{} By inversion on the typing assumption, $[[ alloct <= N ]]$ and \stepref{<2>1}.}
 
     \step{<2>3}{%
@@ -1878,16 +1879,16 @@ arbitrary (not normalised).
         \begin{pfenum}
         \item $[[ alloct |- h' <= nR' ]]$
         \item $[[ alloct | < h ; res_term > ||v < h' ; res_val > ]]$
-        \item $[[ cdot ; L0 ; N ; nR' |- res_val => ptrt1 |- _init - ct -> _t * Alloc ( ptrt2 ) ( term ) ]]$.
+        \item $[[ cdot ; L0 ; N ; nR' |- res_val => ptrt |- _init - ct -> _t * Alloc ( term ) ( oarg ) ]]$.
         \end{pfenum}
         \pf{} By \stepref{<2>2} and \lemmaref{subsec:res_term_progress}.}
 
     \step{<2>4}{%
-        $[[ res_val ]] = [[ < Owned < _init , ct > ( ptrt1 )  , Alloc ( ptrt2 ) > ]]$.\\
+        $[[ res_val ]] = [[ < Owned < _init , ct > ( ptrt )  , Alloc ( term ) > ]]$.\\
         \pf{} By \lemmaref{subsec:non_cond_res_det_ctx_val}.}
 
     \step{<2>5}{%
-        $[[ h' ]] = [[ { ptrt1 |- _init - ct -> _t  & None } + { Alloc ( ptrt2 ) ( term ) & None } ]]$.\\
+        $[[ h' ]] = [[ { ptrt |- _init - ct -> _t  & None } + { Alloc ( term ) ( oarg ) & None } ]]$.\\
         \pf{} By inversion on the typing assumption in \stepref{<2>3},
         $[[ alloct |- h' <= nR' ]]$ and \lemmaref{subsec:norm_ctx_det_heap}.}
 
@@ -2201,11 +2202,11 @@ to deduce that $[[ nR' ]]$ can only be what you would have supplied anyways.
     \assume{%
         $[[ cdot ; L0 ; N ; cdot |- emp | create < ct > ( int ) => ret ]]$
         and so $[[ h ]] = [[ cdot ]]$ (by inversion, \HeapEmpty)
-        and $[[ heap ]] = [[ f + { pt & None } + { Alloc ( inj ptr ) ( sizeof ct ) & None } ]]$.\\}
+        and $[[ heap ]] = [[ f + { pt & None } + { Alloc ( @ aid ) ( ( addr , sizeof ct) ) & None } ]]$.\\}
 
     \pflet{%
-        $[[ h' ]] = [[ { pt & None } + { Alloc ( inj ptr ) ( sizeof ct ) & None } ]]$,
-        $[[ nR' ]] = [[ _ : pt , _ : Alloc ( inj ptr ) ( sizeof ct ) ]]$,
+        $[[ h' ]] = [[ { pt & None } + { Alloc ( @ aid ) ( ( addr , sizeof ct) ) & None } ]]$,
+        $[[ nR' ]] = [[ _ : pt , _ : Alloc ( @ aid ) ( ( addr , sizeof ct) ) ]]$,
         $[[ alloct' ]] = ( [[ alloct [ @ aid ] := ( addr , sizeof ct ) ]])$,
         $[[ N' ]] = [[ N , allocv [ @ aid ] = ( addr , sizeof ct )  ]]$.}}
     This means $[[ heap ]] = [[ h' + f ]]$ (trivially).
@@ -2313,16 +2314,16 @@ to deduce that $[[ nR' ]]$ can only be what you would have supplied anyways.
 
     \assume{%
         $[[ cdot ; L0 ; N ; nR |- res_term | kill < ct > ( ptr ) => sigma _ : unit . I ]]$
-        and $[[ alloct | < h + f ; res_term > ||v < heap + { pt & None } + { Alloc ( ptrt ) ( oarg ) & None } ; < Owned < _init , ct > ( inj ptr ) , Alloc ( ptrt ) > > ]]$.\\[\baselineskip]}
+        and $[[ alloct | < h + f ; res_term > ||v < heap + { pt & None } + { Alloc ( @ aid ) ( oarg ) & None } ; < Owned < _init , ct > ( inj ptr ) , Alloc ( @ aid ) > > ]]$.\\[\baselineskip]}
 
     $[[ exists ]] [[ h'' ]] , [[ nR'' ]]$ such that
-    $[[ heap + { pt & None } + { Alloc ( ptrt ) ( oarg ) & None } ]] = [[ h'' + f ]]$,
+    $[[ heap + { pt & None } + { Alloc ( @ aid ) ( oarg ) & None } ]] = [[ h'' + f ]]$,
     $[[ alloct |- h'' <= nR'' ]]$
-    and $[[ cdot ; L0 ; N ; nR'' |- < Owned < _init , ct > ( inj ptr ) , Alloc ( ptrt ) > => pt ]]$,
+    and $[[ cdot ; L0 ; N ; nR'' |- < Owned < _init , ct > ( inj ptr ) , Alloc ( @ aid ) > => pt ]]$,
     by \lemmaref{subsec:res_term_red_isolated}.\\[\baselineskip]
 
-    $[[ nR'' ]] = [[ _ : pt , _ : Alloc ( ptrt ) ( oarg ) ]]$ by lemma~\ref{subsec:non_cond_res_det_ctx_val}
-    and $[[ h'' ]] = [[ { pt & None } + { Alloc ( ptrt ) ( oarg ) & None } ]]$ by lemma~\ref{subsec:norm_ctx_det_heap},
+    $[[ nR'' ]] = [[ _ : pt , _ : Alloc ( @ aid ) ( oarg ) ]]$ by lemma~\ref{subsec:non_cond_res_det_ctx_val}
+    and $[[ h'' ]] = [[ { pt & None } + { Alloc ( @ aid ) ( oarg ) & None } ]]$ by lemma~\ref{subsec:norm_ctx_det_heap},
     hence $[[ heap ]] = [[ f ]]$.\\
     \pflet{$[[ h' ]] = [[ cdot ]]$ and $[[ nR' ]] = [[ cdot ]]$.\\}
     This means $[[ heap ]] = [[ h' + f ]]$ and $[[ alloct |- h' <= nR' ]]$ (by \HeapEmpty).\\[\baselineskip]
@@ -2592,11 +2593,11 @@ have ranges which are disjoint with allocations so far.}
     \pf{} \pflet{ $[[ A' ]] = [[ A [ @ aid ] := ( addr , sizeof ct , true ) ]]$ \\
     $[[ M' ]] = [[ M [ addr dd addr + sizeof ct - 1 ] ]] :=
     ( @ \mathsf{empty} , \mathsf{unspec} , \mathsf{none} )$.\\
-    $[[ alloct' ; h' ]] = [[ alloct [ @ aid ] := ( addr , sizeof ct ) ; h + { pt & None } + { Alloc ( inj ptr ) ( sizeof ct ) & None } ]]$.\\[\baselineskip]}
+    $[[ alloct' ; h' ]] = [[ alloct [ @ aid ] := ( addr , sizeof ct ) ; h + { pt & None } + { Alloc ( @ aid ) ( (addr, sizeof ct) ) & None } ]]$.\\[\baselineskip]}
 
     The premises of this step satisfy the premises of \VipAlloc{}.\\
     $[[ alloct' ]]$ is consistent with $[[ A' ]]$ (required by premise 2 of \SatStateDef{}).\\
-    $[[ ( A' , [| |] ) |= { Alloc ( inj ptr ) ( sizeof ct ) & None } ]]$ by \SatHeapAlloc{}.\\
+    $[[ ( A' , [| |] ) |= { Alloc ( @ aid ) ( (addr , sizeof ct) ) & None } ]]$ by \SatHeapAlloc{}.\\
     $[[ ( A' , M [ addr dd addr + sizeof ct - 1 ] ) |= { pt & None } ]]$ by \SatHeapOwned{}.\\
     $[[ ( A , M ) |= h ]]$ by assumption and so \SatHeapConcat{} proves heap satisfation overall.}}
 
