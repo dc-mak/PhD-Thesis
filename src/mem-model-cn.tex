@@ -211,8 +211,16 @@ linear part, it does not get updated to record a dead allocation in the
 rule for \coreinline{kill} (\cref{fig:mem-model-dyn-create-kill}).
 
 \begin{figure*}
-    \includegraphics{figures/mem-model-dyn-create}
-    \includegraphics{figures/mem-model-dyn-kill}
+    \small%
+    \raggedright%
+    \begingroup%
+    \NewCommandCopy{\origcndruleOpXXActionXXCreate}{\cndruleOpXXActionXXCreate}
+    \renewcommand{\cndruleOpXXActionXXCreate}{\onlyUseNthCnPremise{1,2,3,7,8}{\origcndruleOpXXActionXXCreate{}}}
+    \onlyUseRules{\cndefnOpXXAction{}}{%
+        \cndruleOpXXActionXXCreate{},
+        \cndruleOpXXActionXXKillXXStatic{}
+    }
+    \endgroup%
     \caption{The allocation history only tracks a mapping from IDs to a pair of
         base address and size, so when an allocation is killed, existing entries
         are not mutated.}\label{fig:mem-model-dyn-create-kill}

@@ -438,19 +438,20 @@ defns
     alloct | < h ; pack ( oarg , res_term ) > ||v < h' ; pack ( oarg , res_val ) >
 
 
-  defn < s ; res_action  > --> < s' ; stmt : ret > :: :: Action :: Action_ by
+  defn < s ; res_action  > --> < s' ; stmt : ret > :: :: Action :: Action_
+  {{ com state $[[s]]$ and resource action $[[res_action]]$ steps to state $[[s']]$ and statement $[[stmt]]$ with type annotation $[[ret]]$ }} by
 
 
     addr inEnv newAlloc ( h , pval , sizeof ct )
     @ aid notIn dom ( alloct )
     inj ptr def= ( @ aid , addr )
-    pt def= inj ptr |- Uninit - ct -> default to_base ( ct )
-    ret def= sigma yp : loc . term /\ exists x : to_base ( ct ) . ( yp |- Uninit - ct -> x ) *o Alloc ( yp ) ( sizeof ct ) *o I
+    ret def= sigma yp : loc . term /\ exists x : to_base ( ct ) . ( yp |- Uninit - ct -> x ) *o Alloc ( yp dot alloc_id ) ( ( yp dot addr , sizeof ct ) ) *o I
     term def= representable ( ct * , inj ptr ) /\ alignedI ( int , inj ptr ) /\ allocv [ @ aid ] = ( addr , sizeof ct )
     alloct |- smt ( term )
-    h' def= h + { pt & None } + { Alloc ( inj ptr ) ( sizeof ct ) & None }
+    h' def= h + { Owned < Uninit , ct > ( inj ptr ) ( default to_base ( ct ) ) & None } + { Alloc ( @ aid ) ( ( addr , sizeof ct ) ) & None }
+    stmt def= < ptr , default to_base ( ct ), Owned < Uninit , ct > ( inj ptr ) , Alloc ( @ aid ) >
     ------------------------------------------------------------------------- :: Create
-    < alloct ; h ; emp | create < ct > ( int ) > --> < alloct [ @ aid ] := ( addr , sizeof ct ) ;  h' ; < ptr , default to_base ( ct ), Owned < Uninit , ct > ( inj ptr ) , Alloc ( inj ptr ) > : ret >
+    < alloct ; h ; emp | create < ct > ( int ) > --> < alloct [ @ aid ] := ( addr , sizeof ct ) ;  h' ; stmt : ret >
 
 
     alloct | < h ; res_term > ||v < h' + { pt & None } ; Owned < Init , ct > ( ptrt ) >
