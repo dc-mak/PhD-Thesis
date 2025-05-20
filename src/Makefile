@@ -19,7 +19,8 @@ OTTS := $(addprefix ott/, $(OTTS))
 THESIS_FILTERED := intro.$(GEN).tex \
 		   formal-kernel.$(GEN).tex \
 		   formal-statics.$(GEN).tex \
-		   formal-discussion.$(GEN).tex
+		   formal-discussion.$(GEN).tex \
+		   mem-model-cn.$(GEN).tex
 
 PDFS := $(BUILD)/defns.pdf $(BUILD)/soundness.pdf
 

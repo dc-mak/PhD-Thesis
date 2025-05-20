@@ -30,9 +30,9 @@ an updated model of \kl{ResCore} heaps. Lastly, I will explain how I proved the
         for typing a memory operation.}\label{fig:cnvip-mem-action}
 \end{figure*}
 
-In \textsc{Expl\_Is\_Action\_Create}, creating an allocation produces new
+In \ActionCreate{}, creating an allocation produces new
 constraints on its base address and size. These are tracked via constraints on a
-logical variable $\mathit{alloc}_\mathrm{var}$, a map from \kl{allocation ID}s to
+logical variable $[[allocv]]$, a map from \kl{allocation ID}s to
 pairs of a base address and size. This can be interpreted as an implicit
 logical argument and return value for each function call.\sidenote{Need to
 check the typing rules to ensure enforce this idea consistently.} Creating an
@@ -186,7 +186,7 @@ based memory object model from its current concrete one.
 \subsection{Extending the dynamic semantics}
 
 In the typing rules, I modelled the allocation history as a single global
-logical variable $\mathit{alloc}_\mathrm{var}$. This means that even morally
+logical variable $[[allocv]]$. This means that even morally
 closed programs have that variable free in explicit logical and resource terms.
 At the same time, because the allocation history is extended during the course
 of evaluating a \kl{ResCore} program, it is not a term which can be substituted
@@ -261,23 +261,23 @@ evidence.\sidenote{TODO this too\ldots}
 
 Because the abstract state now includes an append-only allocation history, the
 typing rules for heaps (\cref{sec:heap-types}) needs to be generalised to
-include it. The main judgement involved in this is $\mathit{alloc} \Leftarrow
-\Phi$, which says that the allocation history $\mathit{alloc}$ is consistent
-with constraint context $\Phi$. \cref{fig:alloc-typing} shows that it does so
+include it. The main judgement involved in this is $[[alloct <= N]]$, which says
+that the allocation history $[[alloct]]$ is consistent
+with constraint context $[[N]]$. \cref{fig:alloc-typing} shows that it does so
 by checking if each constraint, with the allocation history substituted for the
-$\mathit{alloc}_\mathrm{var}$, holds (under the empty context).
+$[[allocv]]$, holds (under the empty context).
 
 \begin{marginfigure}
     \footnotesize%
     \raggedright%
     \cndefnAlloc{}%
     \caption{Definition of a well-constrained allocation history \textemdash{}
-        $\mathit{alloc}$ is consistent with each constraint in context
-        $\Phi$.}\label{fig:alloc-typing}
+        $[[alloct]]$ is consistent with each constraint in context
+        $[[N]]$.}\label{fig:alloc-typing}
 \end{marginfigure}
 
 The heap typing rule generalises similarly (\cref{fig:heap2-typing}). It
-substitutes the allocation history for $\mathit{alloc}_\mathrm{var}$, and then
+substitutes the allocation history for $[[allocv]]$, and then
 types the heap exactly as before.
 
 \begin{marginfigure}
@@ -304,50 +304,49 @@ dynamic semantics by the definition of allocation history typing. The bounds
 and liveness checks are similarly easy to link across the static and dynamic
 semantics by the definition of heap typing. The updated theorem statements are
 as below: the main differences are the use of the updated abstract state typing
-judgements, and the use of the $\mathcal{L}_0 = {\; \mathit{alloc}_\mathrm{var}
-\;}$ environment, instead of the empty one, for logical variables. Updated
-proofs are in the appendix.
+judgements, and the use of the $[[L0]] = [[allocv : _bt ]]$ environment, instead
+of the empty one, for logical variables. Updated proofs are in the appendix.
 
 \begin{theorem}[CN-VIP:\ progress and type preservation for resource terms]
-For all resource terms ($[[ res\_term ]]$) closed which type check or synthesise
-($[[ cdot ; L0 ; N ; nR |- res\_term <= res ]]$), and well-typed states
-($[[ alloct ; h <= N ; nR ]]$), there exists a resource value ($[[ res\_val ]]$),
+For all resource terms ($[[ res_term ]]$) closed which type check or synthesise
+($[[ cdot ; L0 ; N ; nR |- res_term <= res ]]$), and well-typed states
+($[[ alloct ; h <= N ; nR ]]$), there exists a resource value ($[[ res_val ]]$),
 context ($[[ nR' ]]$) and heap ($[[ h' ]]$), such that: the value is well-typed
-($[[ cdot ; L0 ; N ; nR' |- res\_val <= res ]]$); the heap is well-typed
+($[[ cdot ; L0 ; N ; nR' |- res_val <= res ]]$); the heap is well-typed
 ($[[ alloct |- h' <= nR' ]]$), and for all frame-heaps ($[[ f ]]$), the resource term
 reduces to the resource value without affecting the frame-heap
-($[[ alloct | < h + f ; res\_term > ||v < h' + f ; res\_val > ]]$).
+($[[ alloct | < h + f ; res_term > ||v < h' + f ; res_val > ]]$).
 \end{theorem}
 
 \begin{theorem}[Progress for the annotated and let-normalised Core]
-If a top-level expression ($[[ texpr ]]$) is well-typed
-($[[ cdot ; L0 ; N ; nR |- texpr <= ret ]]$) and all computational patterns
-in it are exhaustive, then either it is a value ($[[ tval ]]$), or it is
+If a statement ($[[ stmt ]]$) is well-typed
+($[[ cdot ; L0 ; N ; nR |- stmt <= ret ]]$) and all computational patterns
+in it are exhaustive, then either it is a value ($[[ < ret_terms > ]]$), or it is
 unreachable, or for all well-typed states ($[[ s <= N ; nR ]]$)
-then there exists another state ($[[ s' ]]$) and expression ($[[ texpr' ]]$)
-which is stepped to ($[[ < s ; texpr > --> < s' ; texpr' > ]]$)
+then there exists another state ($[[ s' ]]$) and expression ($[[ stmt' ]]$)
+which is stepped to ($[[ < s ; stmt > --> < s' ; stmt' > ]]$)
 in the operational semantics.
 \end{theorem}
 
 \begin{theorem}[Type preservation for the annotated and let-normalised Core]
-For all closed and well-typed top-level expressions
-($[[ cdot ; L0 ; N ; nR |- texpr <= ret ]]$),
+For all closed and well-typed statements
+($[[ cdot ; L0 ; N ; nR |- stmt <= ret ]]$),
 well typed states ($[[ alloct ; h <= N ; nR ]]$),
 frame-heaps ($[[ f ]]$),
 new states ($[[ alloct' ; h' ]]$),
-and new top-level expressions ($[[ texpr' ]]$),
+and new statements ($[[ stmt' ]]$),
 which are connected by a step in the operational semantics
-($[[ < alloct ; h + f ; texpr > -->  < alloct' ; heap ; texpr' > ]]$),
+($[[ < alloct ; h + f ; stmt > -->  < alloct' ; heap ; stmt' > ]]$),
 if all top-level functions are annotated correctly,
 there exists a constraint context ($[[ N' ]]$),
 sub-heap ($[[ h' ]]$),
 and resource context ($[[ nR' ]]$),
 such that the constraint context is extended
-($[[ cdot ; L0 ; N ; cdot \sqsubseteq cdot ; L0 ; N' ; cdot ]]$),
+($[[ cdot ; L0 ; N ; cdot [= cdot ; L0 ; N' ; cdot ]]$),
 the frame is unaffected ($[[ heap ]] = [[ h' + f ]]$),
 the sub-state is well-typed ($[[ alloct' ; h' <= N' ; nR' ]]$),
-and the top-level expression too
-($[[ cdot ; L0 ; N' ; nR' |- texpr' <= ret ]]$).
+and the statement too
+($[[ cdot ; L0 ; N' ; nR' |- stmt' <= ret ]]$).
 \end{theorem}
 
 \section{Linking \kl{ResCore} to \kl{PNVI-ae-udi}}\label{sec:linking}
