@@ -100,10 +100,10 @@ defns.$(GEN).tex: ott/defns.tex $(CACHE) | check_defns_diff
 
 .PHONY: check_defns_diff
 
-check_defns_diff: $(PREFIX)_included.$(GEN).tex
+check_defns_diff: $(PREFIX)_included.$(GEN).tex defns_list.tex
 	@echo "Checking for definitions differences"
-	@grep -o '^\\$(PREFIX)defns[a-zA-Z]\+' $^ | sed '$$d' > $@
-	@grep -o '^\\$(PREFIX)defns[a-zA-Z]\+' ott/defns.tex | diff -u --color - $@
+	@grep -o '^\\$(PREFIX)defns[a-zA-Z]\+' $< | sed '$$d' > $@
+	@grep -o '^\\$(PREFIX)defns[a-zA-Z]\+' defns_list.tex | diff -u --color - $@
 	@rm $@
 
 .PHONY: out_hack
