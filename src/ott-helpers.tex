@@ -20,6 +20,25 @@ rulelayout=nobreaks}
 }
 \ExplSyntaxOff%
 
+\NewDocumentCommand{\grammartabularWrapComment}{mm}{%
+\begin{tabular}{@{}l@{}l@{\ \ }c@{\ \ }ll@{}lp{#1}}#2\end{tabular}}
+
+\ExplSyntaxOn%
+\NewDocumentEnvironment{mathparcomma}{ +b } % <-- capture body
+ {
+  \seq_set_split:Nnn \l_tmpa_seq { , } { #1 }
+  \begin{mathpar}
+  \seq_map_indexed_inline:Nn \l_tmpa_seq
+   {
+     \ensuremath{##2}%
+     \int_compare:nNnTF { ##1 } < { \seq_count:N \l_tmpa_seq }
+       { ,\and }
+       { }
+   }
+  \end{mathpar}
+ }
+\ExplSyntaxOff%
+
 %%%%%%%%%%%%%%%%%%%%%%%%
 % Grammar presentation %
 %%%%%%%%%%%%%%%%%%%%%%%%
