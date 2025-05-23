@@ -9,8 +9,8 @@ grammar
       {{ com request is satisfied exactly by $[[out_res_term]]$ and the output argument is $[[out_oarg]]$ }}
     | out_oarg and out_pred_ipred                                                                    :: :: More
       {{ com request is satisfied partially with output argument $[[out_oarg]]$ with remaining $[[out_pred_ipred]]$ }}
-    | bind out_res_pat1 : out_res1 = out_res_term1 for out_x1 & out_oarg and out_x2 : out_rem     :: :: Rem
-      {{ com deconstruct $[[out_res_term1]] [[:]] [[out_res1]]$ using $[[out_res_pat1]]$ to satisfy request exactly (using $[[out_x1]]$ and $[[out_oarg]]$) with remainder $[[out_x2]] [[:]] [[out_rem]]$ }}
+    | bind out_res_bind for out_x1 & out_oarg REM out_x2 : out_rem     :: :: Rem
+      {{ com use $[[out_res_bind]]$ to satisfy request exactly (using $[[out_x1]]$ and $[[out_oarg]]$) with remainder $[[out_x2]] [[:]] [[out_rem]]$ }}
 
 
   res_bind :: 'res_bind_' ::= {{ com resource bindings }}
@@ -107,7 +107,7 @@ defns
     oarg' def= oarg [ term ]
     res def= pred_term ( oarg' )
     -------------------------------------------------------------------------- :: PI_Rem
-    N |- r : ipred_term ( oarg ) -? pred_term ~> bind < r1 , r2 > : rem * res = break ( r , term ) for r2 & oarg' and r1 : rem
+    N |- r : ipred_term ( oarg ) -? pred_term ~> bind < r1 , r2 > : rem * res = break ( r , term ) for r2 & oarg' REM r1 : rem
 
 
     N |- pred_term in? ipred_term ~> None
@@ -148,7 +148,7 @@ defns
     ipred_term' def= each (integer x; iguard') { pred_term }
     rem def= each (integer x; iguard  /\ neg iguard') { pred_term } ( oarg )
     ---------------------------------------------------------------------------------------- :: II_Lt
-    N |- r : ipred_term ( oarg ) -? ipred_term' ~> bind < r1 , r2 > : res = chop ( r , iguard' ) for r1 & oarg [ k ] and r2 : rem
+    N |- r : ipred_term ( oarg ) -? ipred_term' ~> bind < r1 , r2 > : res = chop ( r , iguard' ) for r1 & oarg [ k ] REM r2 : rem
 
 
     % This would require being able to merge arrays, which the implementation does not support
@@ -185,7 +185,7 @@ defns
     N ; nR , r : norm_res |- wf pred_ipred ~> bind cdot for res_term and oarg -| nR
 
 
-    N |- r : norm_res -? pred_ipred ~> bind res_pat1 : res1 = res_term1 for r1 & oarg and r2 : rem
+    N |- r : norm_res -? pred_ipred ~> bind res_pat1 : res1 = res_term1 for r1 & oarg REM r2 : rem
     -------------------------------------------------------------------------------------------------------------------- :: Acc_Rem
     N ; nR , r : norm_res |- wf pred_ipred ~> bind res_pat1 : res1 = res_term1 , cdot for r1 and oarg -| nR , r2 : rem
 
