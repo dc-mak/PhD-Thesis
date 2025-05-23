@@ -1,0 +1,136 @@
+\input{cn_included.gen}    % auto-gen'd rules and grammars
+\usepackage{ott/ottlayout} % customising layout
+\input{cn_override.gen}    % intercepting premise, rule and defn blocks to ottlayout ones
+\input{cn_drulenames.gen}  % auto-gen'd macros for rule names in small caps
+
+\ottstyledefaults{%
+numberpremises=yes,%
+premisenamelayout=topright,%
+rulelayout=nobreaks}
+
+%%%%%%%%%%%%%%%%%%%
+% Grammar helpers %
+%%%%%%%%%%%%%%%%%%%
+
+\ExplSyntaxOn%
+\cs_new_eq:NN\StrIfInTF\str_if_in:nnTF
+\cs_new_protected:Npn \MaybeSwallowCnProdNewline {
+  \peek_remove_spaces:n
+  \peek_catcode:NTF \cnprodnewline { \use_none:n } { }
+}
+\ExplSyntaxOff%
+
+%%%%%%%%%%%%%%%%%%%%%%%%
+% Grammar presentation %
+%%%%%%%%%%%%%%%%%%%%%%%%
+
+\renewcommand{\cnprodline}[6]{%
+\StrIfInTF{#3}{M}{\MaybeSwallowCnProdNewline}{%     % hide meta prods
+  \StrIfInTF{#5}{P}{\MaybeSwallowCnProdNewline}{%   % hide proof-related prods
+    & & $#1$ & $#2$ & $#3$ & $#5$ & #6}}}           % no bind specs (#4)
+
+\renewcommand{\cnbindspecprodline}[6]{} % hide extra bind specs
+
+\NewDocumentCommand{\cngrammarcompressed}{mm}{
+    \begingroup%
+    \renewcommand{\cngrammartabular}[1]{\begin{align*}##1\end{align*}}
+    \renewcommand{\cnrulehead}[3]{##1  &##2}
+    \renewcommand{\cnfirstprodline}[6]{\begingroup\begin{minipage}[t]{#1}\raggedright\ $##2$}
+    \renewcommand{\cnprodline}[6]{\StrIfInTF{##3}{M}{}{\StrIfInTF{##5}{P}{}{\ $##1$~$##2$}}}{}
+    \renewcommand{\cnprodnewline}{}
+    \renewcommand{\cninterrule}{\end{minipage}\endgroup\\}
+    \renewcommand{\cnafterlastrule}{\end{minipage}\endgroup\\}
+    \cngrammartabular{#2}
+    \endgroup%
+}
+
+%%%%%%%%%%%%%%%%%%%%%%%
+% Rule premise filter %
+%%%%%%%%%%%%%%%%%%%%%%%
+
+\ExplSyntaxOn%
+\NewDocumentCommand{\onlyUseNthCnPremise}{m +m}
+ {
+   \group_begin:
+
+   \seq_set_split:Nnn \l_indices { , } { #1 }
+   % \seq_show:N \l_indices
+
+   % Backup original \cndrule
+   \cs_set_eq:NN \orig_cndrule: \cndrule
+
+   % Locally override \cndrule
+   \RenewDocumentCommand{\cndrule}{O{}mmm}
+     {
+       % Split on \cnpremise
+       \seq_set_split:Nnn \l_premises { \cnpremise } { ##2 }
+       % First one is empty
+       \seq_pop_left:NN \l_premises \l_tmpa_tl%
+       % \seq_show:N \l_premises
+
+       \seq_clear_new:N \l_filtered
+       \seq_map_indexed_inline:Nn \l_premises
+         {
+           \seq_if_in:NnTF \l_indices { ####1 }
+             {
+               \seq_put_right:Nn \l_filtered { \cnpremise { ####2 } }
+               % \iow_term:x { Adding~premise~####1:~\tl_to_str:n {####2} }
+             }
+             {
+               % \iow_term:x { Skipping~premise~####1:~\tl_to_str:n {####2} }
+             }
+         }
+       % \seq_show:N \l_filtered
+
+       \orig_cndrule: [##1]{\seq_use:Nn \l_filtered {}}{##3}{##4}
+     }
+
+   #2%
+   \group_end:
+ }
+\ExplSyntaxOff%
+
+%%%%%%%%%%%%%%%%%%%%%
+% Defn block filter %
+%%%%%%%%%%%%%%%%%%%%%
+
+\ExplSyntaxOn%
+% argument #1 calls \cnusedrule{\cmdX{}} with different \cmdX{}, and we want it
+% to only have an effect if \cmdX{} is in the list #2.
+\NewDocumentCommand{\onlyUseRules}{mm}
+{
+  \group_begin:%
+  % split #2 on comma (clist = comma list) and put each element in a sequence
+  \seq_clear:N \l_tmpa_seq
+  \clist_map_inline:nn {#2}
+  {
+    \seq_gput_right:Nn \l_tmpa_seq {##1}
+  }%
+
+  %\typeout{Sequence}%
+  %\seq_show:N \l_tmpa_seq {}%
+
+  % save the original command
+  \NewCommandCopy{\origcnusedrule}{\cnusedrule}%
+
+  % intercept \cnusedrule to check if its argument is in the sequence,
+  % and only call the original if so (otherwise do nothing)
+  \renewcommand{\cnusedrule}[1]{%
+    \seq_if_in:NnT \l_tmpa_seq {##1}
+      {%
+        %\typeout{Found!}
+        \origcnusedrule{##1}%
+      }%
+  }
+  #1
+  \group_end:%
+}
+\ExplSyntaxOff%
+
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%
+% Defn block presentation %
+%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+% Put judgement comment on a new line, half-BLS below the judgement form (in a box)
+\renewenvironment{cndefnblock}[3][]{\framebox{\mbox{#2}} \\[0.5\baselineskip] #3 \leavevmode\\[0pt]}{\leavevmode\\[0pt]}

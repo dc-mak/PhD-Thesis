@@ -2,15 +2,15 @@ metavar P {{ tex \mathrm{Defn} }} ::= {{ com definitions }}
 
 grammar
 
-  declaration, decl :: '' ::= {{ com MiniC variable declaration }}
+  decl :: '' ::= {{ com MiniC variable declaration }}
     | ct id ;       ::    :: decl
 
-  lvalue_expression {{ tex \mathit{lvalue\_expression} }} , lve :: 'Lve_' ::= {{ com MiniC lvalue expression }}
+  lve :: 'Lve_' ::= {{ com MiniC lvalue expression }}
     | n     ::  :: constant            {{ com constant               }}
     | id    ::  :: var                 {{ com variable               }}
     | * lve ::  :: deref               {{ com indirection            }}
 
-  expression {{ tex \mathit{expression} }} , e :: 'E_' ::=                {{ com MiniC expression    }}
+  e {{ tex \mathit{mce} }} :: 'E_' ::=                {{ com MiniC expression    }}
     | n                   ::   :: constant {{ com constant            }}
     | id                  ::   :: var      {{ com variable            }}
     | & id                ::   :: address  {{ com address of variable }}
@@ -46,32 +46,32 @@ grammar
     | mres = mres'                   ::  :: eq_mres
     | cerberus ( block ) ~> out_stmt :: :: cerb_elab       {{ com elaborate (Mini) C program into ResCore $[[out_stmt]]$                          }}
 
-  variable_context, Vc {{ tex \Gamma }} :: 'V_' ::= {{ com variable context }}
+  Vc {{ tex \Gamma }} :: 'V_' ::= {{ com variable context }}
     | cdot            ::   :: empty {{ com empty variable context }}
     | id              ::   :: var   {{ com singleton context with $[[id]]$ }}
     | Vc1 , ... , Vci ::   :: union {{ com union of variable contexts }}
     | [ Vc ]          :: S :: parens
 
-  constraint_context, Phi {{ tex \Phi }} :: 'Phi_' ::= {{ com constraint context }}
+  Phi {{ tex \Phi }} :: 'Phi_' ::= {{ com constraint context }}
     | cdot                       ::   :: empty {{ com empty constraint context }}
     | term                       ::   :: term  {{ com singleton context with $[[term]]$ }}
     | Phi1 /\ ... /\ Phii        ::   :: union {{ com conjunction of constraint contexts }}
     | cond ( term , Phi , Phi' ) ::   :: cond  {{ com if $[[term]]$ then $[[Phi]]$ else $\cdot$ }}
     | ( Phi )                    :: S :: parens
 
-  conditional_resource , cond_res  :: 'CondRes_' ::= {{ com conditional typing resource }}
+  cond_res  :: 'CondRes_' ::= {{ com conditional typing resource }}
     | id = spec  ::   :: id_spec {{ com for specs which return a value }}
     | spec       ::   :: spec    {{ com for specs which don't return a value }}
     | Rc         ::   :: cond    {{ com resource contexts  }}
 
-  typing_resource, mres :: 'Res_' ::= {{ com typing resources }}
+  mres :: 'Res_' ::= {{ com typing resources }}
     | term |-> term'                        ::   :: owned {{ com ownership of $[[term']]$ mapping to $[[term']]$ }}
     | cond ( term , cond_res1 , cond_res2 ) ::   :: cond {{ com if $[[term]]$ then $[[cond_res1]]$ else $[[cond_res2]]$ }}
 
-  resource_context, Rc {{ tex \symcal{ R } }} :: 'Rc_' ::= {{ com resource context }}
+  Rc {{ tex \symcal{ R } }} :: 'Rc_' ::= {{ com resource context }}
     | cdot           ::   :: empty
     | mres           ::   :: res
-    | Rc1 * .. * Rci ::   :: star  {{ com TODO - we need to simplify before deconstructing }}
+    | Rc1 * .. * Rci ::   :: star
     | ( Rc )         :: S :: parens
 
   done_or_rerun {{ tex ( \cnkw{done} \mid \cnkw{rerun} ) }} :: 'DoR_' ::= {{ com for use resoruce simplification }}
