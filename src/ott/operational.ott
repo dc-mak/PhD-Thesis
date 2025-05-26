@@ -346,8 +346,8 @@ defns
    alloct | < h ; break ( res_term , term ) > ||v < h'' ;  < ipred_term' , pred_term > >
 
 
-   alloct | < h ; res_term > ||v < h'' ;  < ipred_term , pred_term > >
-   h'' def= h' + { ipred_term ( oarg1 ) & arr_heap } + { pred_term ( oarg2 ) & def_heap }
+   alloct | < h ; res_term > ||v < h' ;  < ipred_term , pred_term > >
+   h' def= h1 + { ipred_term ( oarg1 ) & arr_heap } + { pred_term ( oarg2 ) & def_heap }
    ipred_term def= each (integer x; iguard) { a ( array_shift < ct > ( ptrt1 , x ) , iargs1 ) }
    pred_term def= a ( ptrt2  , iargs2 )
    term def= ( ptrt2 dot addr - ptrt1 dot addr ) / sizeof ct
@@ -356,11 +356,12 @@ defns
    x def= alloct [ ptrt1 dot alloc_id ]
    alloct |- smt ( x dot base =< ptrt1 dot addr /\ ptrt2 dot addr + sizeof ct =< x dot base + x dot len )
    ipred_term' def= each (integer x; iguard \/ x = term) { a ( array_shift < ct > ( ptrt1 , x ) , iargs1 ) }
-   ---------------------------------------------------------------------------------------------------------------------------- :: Glue
-   alloct | < h ; glue ( res_term ) > ||v < h' + { ipred_term' ( oarg1 [ term ] := oarg2 ) & arr_heap [ term ] := def_heap } ; ipred_term' >
+   h2 def= { ipred_term' ( oarg1 [ term ] := oarg2 ) & arr_heap [ term ] := def_heap }
+   --------------------------------------------------------------------------------------------------------- :: Glue
+   alloct | < h ; glue ( res_term ) > ||v < h1 + h2 ; ipred_term' >
 
 
-   alloct | < h ; res_term > ||v < h' + { pred_term ( oarg ) & def_heap } ; pred_term >
+   alloct | < h ; res_term > ||v < h1 + { pred_term ( oarg ) & def_heap } ; pred_term >
    pred_term def= a ( ptrt2 , iargs2 )
    term def= ( ptrt1 dot addr - ptrt2 dot addr ) / sizeof ct
    alloct |- smt ( ptrt1 = array_shift < ct > ( ptrt2 , term ) ) 
@@ -369,8 +370,9 @@ defns
    alloct |- smt ( x dot base =< ptrt1 dot addr /\ ptrt2 dot addr + sizeof ct =< x dot base + x dot len )
    ipred_term def= each (integer x; x = term) { a ( array_shift<ct>(ptrt1, x) , iargs1 ) }
    cdot ; cdot |- oarg => base_type
+   h2 def= { ipred_term ( const oarg ) & cdot [ term ] := def_heap }
    ----------------------------------------------------------------- :: Inj
-   alloct | < h ; inj ( res_term , ptrt1 , ct , x . iargs1 ) > ||v < h' + { ipred_term ( const oarg ) & cdot [ term ] := def_heap } ; ipred_term >
+   alloct | < h ; inj ( res_term , ptrt1 , ct , x . iargs1 ) > ||v < h1 + h2 ; ipred_term >
 
 
    alloct | < h ; res_term > ||v < h' + { ipred_term ( oarg ) & arr_heap } ; ipred_term >

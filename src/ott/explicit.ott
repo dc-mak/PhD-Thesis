@@ -735,8 +735,9 @@ defns
     smt ( N => term / x ( ( iargs1 ) = ( iargs2 ) ) )
     x def= allocv [ ptrt1 dot alloc_id ]
     smt ( N => x dot base =< ptrt2 dot addr /\ ptrt2 dot addr + sizeof ct =< x dot base + x dot len )
+    res def= each (integer x; iguard \/ x = term) { a ( array_shift < ct > ( ptrt1 , x ) , iargs1 ) } ( oarg1 [ term ] := oarg2 )
     ----------------------------------------------------------------- :: Glue
-    C ; L ; N ; R |- glue ( res_term ) => ops each (integer x; iguard \/ x = term) { a ( array_shift < ct > ( ptrt1 , x ) , iargs1 ) } ( oarg1 [ term ] := oarg2 )
+    C ; L ; N ; R |- glue ( res_term ) => ops res
 
 
     C ; L ; N ; R |- res_term => a ( ptrt2 , iargs2 ) ( oarg )
@@ -746,8 +747,9 @@ defns
     x def= allocv [ ptrt1 dot alloc_id ]
     smt ( N => x dot base =< ptrt1 dot addr /\ ptrt2 dot addr + sizeof ct =< x dot base + x dot len )
     C ; L |- oarg => base_type
+    res def= each (integer x ; x = term ) { a ( array_shift < ct > ( ptrt1 , x ) , iargs2 ) } ( const oarg )
     ----------------------------------------------------------------- :: Inj
-    C ; L ; N ; R |- inj ( res_term , ptrt1 , ct , x . iargs1 ) => ops each (integer x ; x = term ) { a ( array_shift < ct > ( ptrt1 , x ) , iargs2 ) } ( const oarg )
+    C ; L ; N ; R |- inj ( res_term , ptrt1 , ct , x . iargs1 ) => ops res
 
 
     C ; L ; N ; R |- res_term => each (integer x ; iguard') { a ( array_shift < ct > ( ptrt , x ) , iargs ) } ( oarg )

@@ -44,7 +44,7 @@ grammar
     | Phi = Phi'                     ::  :: eq_constraints
     | Vc = Vc'                       ::  :: eq_variable_contexts
     | mres = mres'                   ::  :: eq_mres
-    | cerberus ( block ) ~> out_stmt :: :: cerb_elab       {{ com elaborate (Mini) C program into ResCore $[[out_stmt]]$                          }}
+    | frontend ( block ) ~> out_stmt :: :: cerb_elab       {{ com elaborate (Mini) C program into ResCore $[[out_stmt]]$                          }}
 
   Vc {{ tex \Gamma }} :: 'V_' ::= {{ com variable context }}
     | cdot            ::   :: empty {{ com empty variable context }}
@@ -130,8 +130,9 @@ defns
 
     neg ( Rc , Phi => term ) neg ( Rc , Phi => neg term )
     Vc , Rc , Phi |- simplify ( Rc' ) ~> done_or_rerun , Vc'' , Rc'' , Phi''
+    Rc3 = cond ( term , cond_res1 , cond_res2 ) * Rc''
     -------------------------------------------------- :: Cond_Undet
-    Vc , Rc , Phi |- simplify ( cond ( term , cond_res1 , cond_res2 ) *  Rc' ) ~> done_or_rerun , Vc'' ,  cond ( term , cond_res1 , cond_res2 ) * Rc'' , Phi''
+    Vc , Rc , Phi |- simplify ( cond ( term , cond_res1 , cond_res2 ) *  Rc' ) ~> done_or_rerun , Vc'' ,  Rc3 , Phi''
 
 
  defn Vc , Rc , Phi |- simplify ( Vc' , Rc' , Phi' ) ~> Vc'' , Rc'' , Phi'' :: :: SimpRes_ :: SimpRes_

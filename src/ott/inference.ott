@@ -228,59 +228,56 @@ defns
     N ; nR , x : norm_res |- if term then res1 else res2 ~> x -| nR , x : norm_res
 
 
-  defn N ; nR |- calc y using res ~> bind out_res_bind for out_res_term and out_oarg -| out_nRp :: :: Oarg :: Oarg_
-  {{ com arbirtrary resource and output-arg request: $[[N]] ; [[nR]]$ fulfil request for resource $[[res]]$ and output-arg $[[y]]$ (via $[[out_res_bind]]$) with \textbf{checking} $[[out_res_term]]$ and $[[out_oarg]]$, leaving resources $[[out_nRp]]$}} by
+  defn N ; nR |- res ~> bind out_res_bind for out_res_term and out_oarg -| out_nRp :: :: Oarg :: Oarg_
+  {{ com arbirtrary resource and output-arg request: $[[N]] ; [[nR]]$ fulfil request for output argument of resource $[[res]]$ and output-arg $[[y]]$ (via $[[out_res_bind]]$) with \textbf{checking} $[[out_res_term]]$ and $[[out_oarg]]$, leaving resources $[[out_nRp]]$}} by
 
 
-    -------------------------------------------------------------------- :: Empty
-    N ; nR |- calc _ using emp ~> bind cdot for emp and unit -| nR
+    % ------------------------------------------------- :: Empty
+    % N ; nR |- emp ~> bind cdot for emp and x -| nR
 
 
-    ---------------------------------------------------------------- :: Return
-    N ; nR |- calc y using term ~> bind cdot for TERM and term -| nR
+    ---------------------------------------------------- :: Return
+    N ; nR |- term ~> bind cdot for emp and term -| nR
+
+
+    N ; nR |- pred_term ~> bind res_bind for res_term and oarg -| nR'
+    ------------------------------------------------------------------------ :: Pred
+    N ; nR |- pred_term ( _t ) ~> bind res_bind for res_term and oarg  -| nR'
+
+
+    N ; nR |- ipred_term ~> bind res_bind for res_term and oarg -| nR'
+    ------------------------------------------------------------------------- :: IPred
+    N ; nR |- ipred_term ( _t ) ~> bind res_bind for res_term and oarg  -| nR'
+    
+
+    smt ( N => term )
+    N ; nR |- res ~> bind res_bind for res_term and oarg -| nR'
+    ----------------------------------------------------------------------------- :: Assert
+    N ; nR |- term * res ~> bind res_bind for < TERM , res_term > and oarg -| nR'
 
 
     smt ( N => term )
-    N ; nR |- calc y using res1 ~> bind res_bind for res_term and oarg -| nR'
-    -------------------------------------------------------------------------------------------------------- :: EndIf_True
-    N ; nR |- calc y using if term then res1 else res2 ~> bind res_bind for res_term and oarg -| nR'
+    N ; nR |- res1 ~> bind res_bind for res_term and oarg -| nR'
+    ----------------------------------------------------------------------------------- :: If_True
+    N ; nR |- if term then res1 else res2 ~> bind res_bind for res_term and oarg -| nR'
 
 
     smt ( N => neg term )
-    N ; nR |- calc y using res2 ~> bind res_bind for res_term and oarg -| nR'
-    -------------------------------------------------------------------------------------------------------- :: EndIf_False
-    N ; nR |- calc y using if term then res1 else res2 ~> bind res_bind for res_term and oarg -| nR'
+    N ; nR |- res2 ~> bind res_bind for res_term and oarg -| nR'
+    ----------------------------------------------------------------------------------- :: If_False
+    N ; nR |- if term then res1 else res2 ~> bind res_bind for res_term and oarg -| nR'
 
 
-    N ; nR |- if term then res1 else res2 ~> x -| nR'
-    ---------------------------------------------------------------------------------------- :: EndIf_UnderDet
-    N ; nR |- calc _ using if term then res1 else res2 ~> bind cdot for x and unit -| nR'
+    % % x is a fresh/unconstrained variable
+    % --------------------------------------------------------------------- :: If_Undet
+    % N ; nR |- if term then res1 else res2 ~> bind cdot for x and x -| nR'
 
 
-    N ; nR |- calc _ using if term then res1 else res2 ~> bind res_bind for res_term and unit -| nR'
-    N ; nR' |- calc y using res3 ~> bind res_bind3 for res_term3 and oarg -| nR''
-    ------------------------------------------------------------------------------------- :: MiddleIf
-    N ; nR |- calc y using ( if term then res1 else res2 ) * res3 ~> bind res_bind , res_bind3 for < res_term , res_term3 > and oarg -| nR''
-
-
-    smt ( N => term )
-    N ; nR |- calc y using res ~> bind res_bind for res_term and oarg -| nR'
-    ------------------------------------------------------------------------------------- :: Assert
-    N ; nR |- calc y using term * res ~> bind res_bind for < TERM , res_term > and oarg -| nR'
-
-
-    N ; nR |- pred_term ~> bind res_bind1 for res_term1 and oarg' -| nR'
-    N ; nR' |- calc y using oarg' / y' ( res ) ~> bind res_bind2 for res_term2 and oarg -| nR''
-    res_term def= pack ( oarg' , < res_term1 , res_term2 > )
-    -------------------------------------------------------------------------------------------------------------- :: TakePred
-    N ; nR |- calc y using exists y' : base_type.  pred_term ( y' ) * res ~> bind res_bind1 , res_bind2 for res_term and oarg  -| nR''
-
-
-    N ; nR |- ipred_term ~> bind res_bind1 for res_term1 and oarg' -| nR'
-    N ; nR' |- calc y using oarg' / y' ( res ) ~> bind res_bind2 for res_term2 and oarg -| nR''
-    res_term def= pack ( oarg' , < res_term1 , res_term2 > )
-    -------------------------------------------------------------------------------------------------------------- :: TakeIPred
-    N ; nR |- calc y using exists y' : array base_type . ipred_term ( y' ) * res ~> bind res_bind1 , res_bind2 for res_term and oarg  -| nR''
+    N ; nR |- res1 ~> bind res_bind1 for res_term1 and oarg1 -| nR1
+    N ; nR1 |- oarg1 / y1 ( res2 ) ~> bind res_bind2 for res_term2 and oarg2 -| nR2
+    res_term def= pack ( oarg2 , < res_term1 , res_term2 > )
+    ---------------------------------------------------------------------------------------------------------- :: Take
+    N ; nR |- exists y1 : base_type.  res1 * res2 ~> bind res_bind1 , res_bind2 for res_term and oarg2  -| nR2
 
 
 defns
@@ -422,23 +419,10 @@ defns
     C ; L ; N ; nR |- pval , spine :; pi x : base_type . norm_fun ~> bind res_bind for pval , spine' and norm_ret -| nR'
 
 
-    % Could infer a pack here
-    N ; nR |- pred_term ~> bind res_bind for res_term and oarg -| nR'
+    N ; nR |- norm_res ~> bind res_bind for res_term and oarg -| nR'
     C ; L ; N ; nR' |- spine :; norm_fun ~> bind res_bind' for spine' and norm_ret -| nR''
-    ------------------------------------------------------------------------------------------- :: TakePred
-    C ; L ; N ; nR |- spine :; forall y : base_type . pred_term ( y ) --o norm_fun ~> bind res_bind , res_bind' for oarg , res_term , spine' and norm_ret -| nR''
-
-
-    N ; nR |- ipred_term ~> bind res_bind for res_term and oarg -| nR'
-    C ; L ; N ; nR' |- spine :; oarg / y ( norm_fun ) ~> bind res_bind' for spine' and norm_ret' -| nR''
-    --------------------------------------------------------------------------------------------------------------- :: TakeIPred
-    C ; L ; N ; nR |- spine :; forall y : array base_type . ipred_term ( y ) --o norm_fun ~> bind res_bind , res_bind' for oarg , res_term , spine' and norm_ret -| nR''
-
-
-    N ; nR |- calc _ using if term then res1 else res2 ~> bind res_bind for res_term and unit -| nR'
-    C ; L ; N ; nR' |- spine :; norm_fun ~> bind res_bind' for spine' and norm_ret -| nR''
-    ----------------------------------------------------------------------------------------------------------------------------------------------- :: MiddleIf
-    C ; L ; N ; nR |- spine :;  if term then res1 else res2 --o norm_fun ~> bind res_bind , res_bind' for res_term , spine' and norm_ret -| nR''
+    ------------------------------------------------------------------------------------------- :: Take
+    C ; L ; N ; nR |- spine :; forall y : base_type . norm_res --o norm_fun ~> bind res_bind , res_bind' for oarg , res_term , spine' and norm_ret -| nR''
 
 
     smt ( N => term )
@@ -488,7 +472,7 @@ defns
 
     P ( a ) = </ xi : base_typei // i  /> , _ : _bt |-> res
     indexed </ C |- pvali => base_typei // i />
-    N ; nR |- calc y using [ </ pvali / xi // i /> ] ( res ) ~> bind res_bind for res_term and oarg -| nR'
+    N ; nR |- [ </ pvali / xi // i /> ] ( res ) ~> bind res_bind for res_term and oarg -| nR'
     pred def= a ( </ inj pvali // i /> ) ( oarg )
     ---------------------------------------------------------------------------------------------------------- :: Fold
     C ; L ; N ; nR |- fold a ( </ pvali // i /> ) ~> bind res_bind for fold res_term : pred : pred *o I -| nR''
