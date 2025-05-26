@@ -54,8 +54,13 @@ endif
 $(THESIS_FILTERED):%.$(GEN).tex: %.mng $(CACHE) | check_rule_diff
 	ott -readsys $(CACHE) -tex_name_prefix $(PREFIX) -tex_filter $< $@ | tac
 
-soundness.$(GEN).tex: ott/soundness.mng soundness_proof.$(GEN).tex $(CACHE) | check_rule_diff
+soundness.$(GEN).tex: ott/soundness.mng soundness_proof2.$(GEN).tex $(CACHE) | check_rule_diff
 	ott -readsys $(CACHE) -tex_name_prefix $(PREFIX) -tex_filter $< $@ | tac
+
+# Bit of a hack because sharing .aux files across different preambles is
+# breaking the build and (also not supported/bad)
+soundness_proof2.$(GEN).tex: soundness_proof.$(GEN).tex
+	cp $^ $@
 
 # Subs\_Pat\_Value'\_Sym turns |-> \newcommand{\SubsPatValueSym}{\textsc{\Subs\_\allowbreak{}Pat\_\allowbreak{}Value'\_\allowbreak{}Sym}}
 $(PREFIX)_drulenames.$(GEN).tex: defns.$(GEN).drulenames
