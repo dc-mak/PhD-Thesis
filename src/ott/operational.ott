@@ -11,7 +11,7 @@ grammar
     | subs ( heap )           :: M :: subs
     | def_heap dot member     :: M :: def_heap_proj
 
-  def_heap :: 'Def_heap_' ::= {{ com optional pair of definition (resource value) and heap }}
+  def_heap {{ tex \mathit{def\_heap} }}:: 'Def_heap_' ::= {{ com optional pair of definition (resource value) and heap }}
     | None              :: :: None
     | def & heap        :: :: Some
     | arr_heap [ term ] :: :: ArrGet
@@ -22,10 +22,10 @@ grammar
     | arr_heap [ term ] := def_heap :: :: Update
 
   opsem_extra :: 'opsem_extra_' ::= {{ com extra judgements for operational semantics }}
-    | forall i lt j . not ( pati = pval ~> subsi ) ::   :: forall_i_lt_j_not_decons {{ com all patterns prior to $[[j]]$ failed to match/deconstruct }}
-    | alloc_id notIn dom ( alloct )                ::   :: fresh_alloc_id           {{ com $[[alloc_id]]$ is a fresh allocation id                   }}
-    | int inEnv newAlloc ( heap , pval , term )    ::   :: newAlloc                 {{ com set of new addresses for an allocation                    }}
-    | heap def= heap'                              ::   :: heap_abbrev              {{ com heap abbreviations                                        }}
+    | forall i lt j . not ( pati = pval ~> subsi ) ::   :: forall_i_lt_j_not_decons {{ com all patterns prior to $[[j]]$ failed to match/deconstruct     }}
+    | alloc_id notIn dom ( alloct )                ::   :: fresh_alloc_id           {{ com $[[alloc_id]]$ is a fresh wrt allocation history $[[alloct]]$ }}
+    | addr inEnv newAlloc ( heap , int , int' )    ::   :: newAlloc                 {{ com $[[addr]]$ is in the set of possible new addresses for an allocation, wrt $[[heap]]$, alignment $[[int]]$ and size $[[int']]$ }}
+    | heap def= heap'                              ::   :: heap_abbrev              {{ com heap abbreviations                                            }}
 
 defns
   subs_judge :: 'Subs_' ::=
@@ -164,7 +164,8 @@ defns
 defns
   pure_opsem :: 'Op_' ::=
 
-  defn alloct | < pexpr > --> < pstmt : pure_ret > :: :: PExpr :: PExpr_ by
+  defn alloct | < pexpr > --> < pstmt : pure_ret > :: :: PExpr :: PExpr_
+  {{ com given allocation history $[[alloct]]$, pure expression $[[pexpr]]$ steps to pure statement $[[pstmt]]$ annotated with pure return type $[[pure_ret]]$ }} by
 
 
     cdot |- pval => base_type
@@ -258,7 +259,8 @@ defns
     alloct | < name ( </ pvali // i /> ) > --> < subs ( pstmt ) : pure_ret >
 
 
-  defn alloct | < pstmt > --> < pstmt' > :: :: PStmt :: PStmt_ by
+  defn alloct | < pstmt > --> < pstmt' > :: :: PStmt :: PStmt_
+  {{ com given allocation history $[[alloct]]$, pure statement $[[pstmt]]$ steps to pure statement $[[pstmt']]$ }} by
 
 
     pat = pval ~> subs
@@ -444,7 +446,7 @@ defns
   {{ com state $[[s]]$ and resource action $[[res_action]]$ steps to state $[[s']]$ and statement $[[stmt]]$ with type annotation $[[ret]]$ }} by
 
 
-    addr inEnv newAlloc ( h , pval , sizeof ct )
+    addr inEnv newAlloc ( h , int , sizeof ct )
     @ aid notIn dom ( alloct )
     inj ptr def= ( @ aid , addr )
     pred_term1 def= Owned < Uninit , ct > ( inj ptr )
@@ -559,7 +561,8 @@ defns
     alloct | < h ; res_term | ptrArrayShift < ct > ( ptr , int ) > --> < h ; < ptr' , pred_term > : ret >
 
 
-  defn < s ; expr > --> < s' ; stmt : ret > :: :: Expr :: Expr_ by
+  defn < s ; expr > --> < s' ; stmt : ret > :: :: Expr :: Expr_
+  {{ com state $[[s]]$ and expression $[[expr]]$ steps to state $[[s']]$ and statement $[[stmt]]$ annotated with return type $[[ret]]$ }} by
 
 
     alloct | < pexpr > --> < pstmt : pure_ret >
@@ -589,7 +592,8 @@ defns
     < alloct ; h ; pcall ( name , </ spine_elemi // i /> ) > --> < alloct ; h ; subs ( stmt ) : ret >
 
 
-  defn < s ; stmt > --> < s' ; stmt' > :: :: Stmt :: Stmt_ by
+  defn < s ; stmt > --> < s' ; stmt' > :: :: Stmt :: Stmt_
+  {{ com state $[[s]]$ and statement $[[stmt]]$ steps to state $[[s']]$ and statement $[[stmt']]$ }} by
 
 
     ---------------------------------------- :: Pure_PVal
