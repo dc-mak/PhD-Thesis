@@ -20,7 +20,8 @@ THESIS_FILTERED := intro.$(GEN).tex \
 		   formal-kernel.$(GEN).tex \
 		   formal-statics.$(GEN).tex \
 		   formal-discussion.$(GEN).tex \
-		   mem-model-cn.$(GEN).tex
+		   mem-model-cn.$(GEN).tex \
+		   soundness_proof.$(GEN).tex
 
 PDFS := $(BUILD)/defns.pdf $(BUILD)/soundness.pdf
 
@@ -53,7 +54,7 @@ endif
 $(THESIS_FILTERED):%.$(GEN).tex: %.mng $(CACHE) | check_rule_diff
 	ott -readsys $(CACHE) -tex_name_prefix $(PREFIX) -tex_filter $< $@ | tac
 
-soundness.$(GEN).tex: ott/soundness.mng $(CACHE) | check_rule_diff
+soundness.$(GEN).tex: ott/soundness.mng soundness_proof.$(GEN).tex $(CACHE) | check_rule_diff
 	ott -readsys $(CACHE) -tex_name_prefix $(PREFIX) -tex_filter $< $@ | tac
 
 # Subs\_Pat\_Value'\_Sym turns |-> \newcommand{\SubsPatValueSym}{\textsc{\Subs\_\allowbreak{}Pat\_\allowbreak{}Value'\_\allowbreak{}Sym}}
