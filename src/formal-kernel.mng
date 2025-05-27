@@ -24,7 +24,7 @@ datatype declarations.
 
 \section{Kernel CN types}
 
-\cref{fig:surface-cn-syntax} shows the grammar\sidenote{} of \kl{CN}'s
+\cref{fig:surface-cn-syntax} shows the grammar of \kl{CN}'s
 surface syntax. Of note are the fact that $[[spec]]$ may terminate with a $[[return term]]$,
 as required by predicate definitions but not by function specifications, or it
 may not (represented here with a $[[cdot]]$).
@@ -43,37 +43,42 @@ may not (represented here with a $[[cdot]]$).
 Recall that the specifications are not freestanding, but are defined within the
 scope of either C function parameters, or of predicate parameters, as shown
 in~\cref{fig:func-pred-def}.
-\begin{figure}[htp]
+\begin{figure*}[htp]
     \small
+    \raggedright%
+    \begin{minipage}[t][0.24\textheight]{0.75\textwidth}
+    \vspace{0pt}
     \grammartabularSTY{
-        \cnfuncXXdef{}\cninterrule{}
+        \cncfuncXXdef{}\cninterrule{}
         \cnfuncXXspec{}\cninterrule{}
         \cnpredXXdef{}\cnafterlastrule{}
     }
-    \caption{Surface CN syntax for function specifications and predicate
-        definitions.}\label{fig:func-pred-def}
-\end{figure}
-
-\cref{fig:kernel-fun-ret} shows the grammar of function types $[[ fon ]]$ which
-include both pre- and postconditions, and return types $[[ ret ]]$, which
-represent postconditions. The structure of the types makes explicit the scoping
-implicit in the surface syntax. Function parameters $[[ct id;]]$ are mapped to
-$[[ pi x : to_base ( ct ) .: fon ]]$, and C return types $[[ct']]$ and values,
-bound here with $[[y]]$\sidenote{In the implementation, this identifier is
-hardcoded to be the \cnline{return} keyword in postconditions.} is mapped to
-$[[sigma y : to_base ( ct' ) .: ret ]]$. And lastly, the placement of $[[ret]]$
-inside $[[fon]]$, makes it clear that postconditions may also refer to variables
-bound in the precondition, and allows for symbolic or concrete function
-arguments to be substituted in (see~\nameref{sec:spine-judgement}).
-
-\begin{figure}[htp]
-    \small
+    \end{minipage}%
+%
+    \begin{minipage}[t][0.24\textheight]{0.65\textwidth}
+    \vspace{0pt}
     \grammartabularSTY{%
         \cnret{}\cninterrule{}
         \cnfon{}\cnafterlastrule{}
     }
-    \caption{\kl{Kernel CN} function and return types.}\label{fig:kernel-fun-ret}
-\end{figure}
+    \end{minipage}
+    \caption{Left: surface CN syntax for function specifications and
+        predicate definitions. Right: \kl{Kernel CN} function and return
+        types.}\label{fig:func-pred-def}
+\end{figure*}
+
+\cref{fig:func-pred-def} also shows the grammar of function types $[[ fon ]]$ which
+include both pre- and postconditions, and return types $[[ ret ]]$, which
+represent postconditions. The structure of the types makes explicit the scoping
+implicit in the surface syntax. Function parameters $[[ct]] [[id]]$ are mapped
+to $[[ pi x : to_base ( ct ) .: fon ]]$. C return values are bound with
+$[[y]]$.\sidenote{In the implementation, this identifier is hardcoded to be the
+\cninline{return} keyword in postconditions.} For a C return type $[[ct']]$, the
+return value is represented by the type $[[sigma y : to_base ( ct' ) .: ret ]]$.
+Lastly, the placement of $[[ret]]$ inside $[[fon]]$, makes it clear that
+postconditions may also refer to variables bound in the precondition, and allows
+for symbolic or concrete function arguments to be substituted in
+(see~\nameref{sec:spine-judgement}).
 
 In order, both function $[[fon]]$ and return $[[ret]]$ types include:
 quantification over computational (program) values, quantification over logical
@@ -191,9 +196,8 @@ quantifications can be inferred when required.
     \small
     \raggedright{}
     \cndefnUserXXSpecXXToXXArg{}
-    \caption{\kl{CN} to \kl{Kernel CN} precondition desugaring. I use $x \equiv e$
-        to introduce $x$ as an abbreviation for $e$ when $e$ is a long term.
-        Postcondition desugaring is similar, and thus omitted.}\label{fig:precond-to-kernel}
+    \caption{\kl{CN} to \kl{Kernel CN} precondition desugaring. Postcondition
+        desugaring is similar, and thus omitted.}\label{fig:precond-to-kernel}
 \end{figure*}
 
 Desugaring predicate definitions is similar. Because the grammar is used in two
