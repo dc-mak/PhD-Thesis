@@ -335,7 +335,7 @@ defns
     pat1 : base_type ~> C1 with term1
     pat2 : list base_type ~> C2 with term2
     --------------------------------------------------------------------------- :: Cons
-    Cons ( pat1 , pat2 ) : list base_type ~> C1 , C2 with term1 cons term2
+    Cons ( pat1 , pat2 ) : list base_type ~> C1 , C2 with term1 :: term2
 
 
     indexed pati : base_typei ~> Ci with termi
@@ -611,7 +611,7 @@ defns
 
 
     P ( name ) = </ xi // i /> |-> pstmt : pure_fun
-    C ; L ; N ; cdot |- </ xi = pvali // i /> :; pure_fun >> subs ; pure_ret
+    C ; L ; N ; cdot |- </ xi = pvali // i /> :: pure_fun >> subs ; pure_ret
     ------------------------------------------------------------------------ :: Call
     C ; L ; N |- name ( </ pvali // i /> ) => pure_ret
 
@@ -867,36 +867,36 @@ defns
 defns
   expl_spine :: '' ::=
 
-  defn CLNR |- param_spine :; fon >> out_subs ; out_ret :: :: Spine :: Spine_
+  defn CLNR |- param_spine '::' fon >> out_subs ; out_ret :: :: Spine :: Spine_
   {{ com function call spine checks: given $[[ CLNR ]]$, and $[[ param_spine ]]$ for function of type $[[ fon ]]$, produce
     term-substitution $[[ out_subs ]]$ and result type $[[ out_ret ]]$ }} by
 
     ---------------------------------------- :: Ret
-    C ; L ; N ; cdot |- :; ret >> cdot ; ret
+    C ; L ; N ; cdot |- :: ret >> cdot ; ret
 
 
     C |- pval => base_type
-    C ; L ; N ; R |- param_spine :; pval / x ( fon ) >> subs ; ret
+    C ; L ; N ; R |- param_spine :: pval / x ( fon ) >> subs ; ret
     ------------------------------------------------------------------------------------- :: Comp
-    C ; L ; N ; R |-  x = pval , param_spine :; pi x : base_type . fon >> [ pval / x , subs ] ; ret
+    C ; L ; N ; R |-  x = pval , param_spine :: pi x : base_type . fon >> [ pval / x , subs ] ; ret
 
 
     C ; L |- oarg => base_type
-    C ; L ; N ; R |- param_spine :; oarg / x ( fon ) >> subs ; ret
+    C ; L ; N ; R |- param_spine :: oarg / x ( fon ) >> subs ; ret
     ---------------------------------------------------------------------------------------- :: Log
-    C ; L ; N ; R |- x = oarg , param_spine :; forall x : base_type . fon >> [ oarg / x , subs ] ; ret
+    C ; L ; N ; R |- x = oarg , param_spine :: forall x : base_type . fon >> [ oarg / x , subs ] ; ret
 
 
     smt ( N => term )
-    C ; L ; N ; R |- param_spine :; fon >> subs ; ret
+    C ; L ; N ; R |- param_spine :: fon >> subs ; ret
     ---------------------------------------------------- :: Phi
-    C ; L ; N ; R |- param_spine :; term -) fon >> subs ; ret
+    C ; L ; N ; R |- param_spine :: term -) fon >> subs ; ret
 
 
     C ; L ; N ; R1 |- res_term <= res
-    C ; L ; N ; R2 |- param_spine :; fon >> subs ; ret
+    C ; L ; N ; R2 |- param_spine :: fon >> subs ; ret
     ---------------------------------------------------------------------- :: Res
-    C ; L ; N ; R1 , R2 |- x = res_term , param_spine :; res --o fon >> [ res_term / x , subs ] ; ret
+    C ; L ; N ; R1 , R2 |- x = res_term , param_spine :: res --o fon >> [ res_term / x , subs ] ; ret
 
 defns
   expl_action :: '' ::=
@@ -1056,13 +1056,13 @@ defns
 
 
     P ( id ) = </ xi // i /> |-> stmt : fon
-    C ; L ; N ; R |- </ xi = spine_elemi // i /> :; fon >> subs ; ret
+    C ; L ; N ; R |- </ xi = spine_elemi // i /> :: fon >> subs ; ret
     ------------------------------------------------------------------ :: CCall
     C ; L ; N ; R |- ccall ( ct , id , </ spine_elemi // i /> ) => ret
 
 
     P ( name ) = </ xi // i /> |-> stmt : fon
-    C ; L ; N ; R |- </ xi = spine_elemi // i /> :; fon >> subs ; ret
+    C ; L ; N ; R |- </ xi = spine_elemi // i /> :: fon >> subs ; ret
     ------------------------------------------------------------------ :: Proc
     C ; L ; N ; R |- pcall ( name , </ spine_elemi // i /> ) => ret
 
@@ -1077,7 +1077,7 @@ defns
   {{ com statement checks: given $[[CLNR]]$, $[[stmt]]$ checks against return type $[[ret]]$ }} by
 
 
-    C ; L ; N ; R |- to_param ret_terms :; to_fun ret >> subs ; I
+    C ; L ; N ; R |- to_param ret_terms :: to_fun ret >> subs ; I
     -------------------------------------------- :: RetT
     C ; L ; N ; R |- < ret_terms > <= ret
 
@@ -1116,6 +1116,6 @@ defns
 
 
     P ( id ) = </ xi // i /> |-> stmt : fon
-    C ; L ; N ; cdot |- </ xi = pvali // i /> :; fon >> subs ; false /\ I
+    C ; L ; N ; cdot |- </ xi = pvali // i /> :: fon >> subs ; false /\ I
     ----------------------------------------------------------------- :: Run
     C ; L ; N ; cdot |- run id </ pvali // i /> <= false /\ I

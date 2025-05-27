@@ -90,7 +90,7 @@ $[[ Cons ( x1 , x2 ) ]]$ should match the value
 $[[ Cons ( pval1 , Cons ( pval2 , Nil base_type ( ) ) ) ]]$). Hence, we
 must weaken the notion of equality on types to $[[ ~ ]]$ relatedness, which
 links the two, so that during the proof can substitute the constraint term
-$[[ x1 cons x2 ]]$ at the type-level, and maintain a link to the corresponding
+$[[ x1 :: x2 ]]$ at the type-level, and maintain a link to the corresponding
 value.
 
 Second is that the conditions of related conditional resource must
@@ -1113,9 +1113,9 @@ $[[ term / x ( res ) ~ term / y ( res' ) ]]$.
 \begin{pfproof}
 
 \assume{%
-    $[[ cdot ; L0 ; N ; nR |- </ xi = spine_elemi // i /> :; fon >> subs1 ; ret1 ]]$\\
+    $[[ cdot ; L0 ; N ; nR |- </ xi = spine_elemi // i /> :: fon >> subs1 ; ret1 ]]$\\
     $[[ alloct ; h <= N ; nR ]]$\\
-    $[[ alloct | </ xi = spine_elemi // i /> :; fon >> < subs2 ; ret2 > ]]$.\\[\baselineskip]}
+    $[[ alloct | </ xi = spine_elemi // i /> :: fon >> < subs2 ; ret2 > ]]$.\\[\baselineskip]}
 
 \prove{%
     $[[ subs1 ]] = [[ subs2 ]]$, $[[ ret1 ]] = [[ ret2 ]]$.\\[\baselineskip]}
@@ -1141,7 +1141,7 @@ arbitrary (not normalised).
     \item $[[ </ ret_pati // i /> ]]$ is exhaustive
     \item $[[ fon ~ ret ]]$
     % res_terms have to be closed for progress/type-pres
-    \item $[[ cdot ; L0 ; N ; nR |- to_param </ ret_termi // i /> :; fon >> psi ; I ]]$
+    \item $[[ cdot ; L0 ; N ; nR |- to_param </ ret_termi // i /> :: fon >> psi ; I ]]$
     \item $[[ alloct ; h <= N ; nR ]]$
     \end{pfenum}\leavevmode\\}
 
@@ -1155,14 +1155,14 @@ arbitrary (not normalised).
 % C ; L ; N |- </ ret_pati // i /> : ret ~> C' ; L' ; N' ; R'        | exists h' , subs .
 % </ ret_pati // i /> is exhaustive                                  |   forall f . < h + f ; </ ret_pati = ret_termi // i /> > ~> < h' + f ; subs >
 % fon ~ ret                                                          |   exists nR' .
-% cdot ; L0 ; N ; nR |- </ ret_termi // i /> :; fon >> I             |     alloct |- h' <= nR'
+% cdot ; L0 ; N ; nR |- </ ret_termi // i /> :: fon >> I             |     alloct |- h' <= nR'
 % alloct |- h <= nR                                                  |     C ; L ; N ; nR' |- subs <= ( C' ; L' ; R' )
 
 
 \step{<1>1}{\case{\PatRetEmpty}{%
     $[[ C ; L ; N |- : I ~> cdot ; cdot ; cdot ; cdot ]]$\\
     which means $[[ fon ]] = [[ I ]]$ (by inversion, \RelRetI)\\
-    and so $[[ cdot ; L0 ; N ; cdot |- :; I >> cdot ; I ]]$ (by inversion, \SpineRet),\\
+    and so $[[ cdot ; L0 ; N ; cdot |- :: I >> cdot ; I ]]$ (by inversion, \SpineRet),\\
     and $[[ h ]] = [[ cdot ]]$ (by lemma~\ref{subsec:norm_ctx_det_heap}).\\
     Let $[[ h' ]] = [[ cdot ]]$, to step with \SubsPatRetEmpty.\\
     Let $[[ nR' ]] = [[ cdot ]]$, to type $[[ h' ]]$ with
@@ -1171,7 +1171,7 @@ arbitrary (not normalised).
 \step{<1>2}{\case{\PatRetComp}{%
     $[[ C ; L ; N |- comp pat , </ ret_patj // j /> : sigma y : base_type . ret ~> C1 , C2 ; L2 ; N2 ; R2 ]]$\\
     which means $[[ fon ]] = [[ pi x : base_type . fon' ]]$ (by inversion, \RelRetComp),\\
-    and so $[[ cdot ; L0 ; N ; nR |- to_param pval , </ ret_termj // j /> :; pi x : base_type . fon' >> psi ; I ]]$
+    and so $[[ cdot ; L0 ; N ; nR |- to_param pval , </ ret_termj // j /> :: pi x : base_type . fon' >> psi ; I ]]$
     (by inversion, \SpineComp).\\[\baselineskip]
 
     $[[ pat : base_type ~> C1 with term1 ]]$ (from the pattern-matching assumption),\\
@@ -1185,7 +1185,7 @@ arbitrary (not normalised).
     (from the pattern-matching assumption),\\
     $[[ forall term1 ~ inj pval . pval / x ( fon' ) ~ term1 / y ( ret' ) ]]$
     (from the related assumption),\\
-    $[[ cdot ; L0 ; N ; nR |- to_param </ ret_termj // j /> :; pval / x ( fon' ) >> psi ; I ]]$
+    $[[ cdot ; L0 ; N ; nR |- to_param </ ret_termj // j /> :: pval / x ( fon' ) >> psi ; I ]]$
     (from the spine typing assumption),\\
     and $[[ alloct |- h <= nR ]]$,
     imply $[[ exists ]] [[h'']], [[subs2]] [[.]] [[ < h + f ; </ ret_patj = ret_termj // j /> > ~> < h'' + f ; subs2 > ]]$\\
@@ -1238,7 +1238,7 @@ arbitrary (not normalised).
         / \SubsChkEmpty.}}
 
     \step{<2>4}{\case{\PatCompCons}{%
-        \pf{} $[[ term1 ]] = [[ term11 cons term12 ]]$, and by inversion on the
+        \pf{} $[[ term1 ]] = [[ term11 :: term12 ]]$, and by inversion on the
         typing assumption, and then by exhaustiveness,
         $[[ pval ]] = [[ Cons ( pval1 , pval2 ) ]]$.
         By induction (1) they would unify and (2)
@@ -1260,14 +1260,14 @@ arbitrary (not normalised).
 \step{<1>3}{\case{\PatRetLog}{%
     $[[ C ; L ; N |- log y' , </ ret_patj // j /> : exists y : base_type . ret ~> C2 ; y' : base_type , L2 ; N2 ; R2 ]]$\\
     which means $[[ fon ]] = [[ forall x : base_type . fon' ]]$ (by inversion, \RelRetLog)\\
-    and so $[[ cdot ; L0 ; N ; nR |- to_param oarg , </ ret_termj // j /> :; forall x : base_type . fon' >> psi ; I ]]$
+    and so $[[ cdot ; L0 ; N ; nR |- to_param oarg , </ ret_termj // j /> :: forall x : base_type . fon' >> psi ; I ]]$
     (by inversion, \SpineLog).\\[\baselineskip]
 
     $[[ C ; L , y : base_type ; N |- </ ret_patj // j /> : ret' ~> C2 ; L2 ; N2 ; R2 ]]$
     (from the pattern-matching assumption),\\
     $[[ forall oarg ~ oarg' . oarg / x ( fon' ) ~ oarg' / y' ( ret' ) ]]$
     (from the related assumption),\\
-    $[[ cdot ; L0 ; N ; nR |- to_param </ ret_termj // j /> :; oarg / x ( fon' ) >> psi ; I ]]$
+    $[[ cdot ; L0 ; N ; nR |- to_param </ ret_termj // j /> :: oarg / x ( fon' ) >> psi ; I ]]$
     (from the spine typing assumption)\\
     and $[[ alloct |- h <= nR ]]$,
     imply $[[ < h + f ; </ ret_patj = ret_termj // j /> > ~> < h' + f ; subs > ]]$\\
@@ -1291,13 +1291,13 @@ arbitrary (not normalised).
 \step{<1>4}{\case{\PatRetPhi}{%
     $[[ C ; L ; N |- </ ret_pati // i /> : term' /\ ret' ~> C' ; L' ; N' , term' ; R' ]]$\\
     which means $[[ fon ]] = [[ term -) fon' ]]$ (by inversion, \RelRetPhi),\\
-    and so $[[ cdot ; L0 ; N ; nR |- to_param </ ret_termj // j /> :;  term --o fon' >> psi ; I ]]$
+    and so $[[ cdot ; L0 ; N ; nR |- to_param </ ret_termj // j /> ::  term --o fon' >> psi ; I ]]$
     (by inversion, \SpineRes).\\[\baselineskip]
 
     $[[ C ; L ; N |- </ ret_pati // i /> : ret' ~> C' ; L' ; N' , term' ; R' ]]$
     (from the pattern-matching assumption)\\
     $[[ fon' ~ ret' ]]$ (from the related assumption),\\
-    $[[ cdot ; L0 ; N ; nR |- to_param </ ret_termj // j /> :; fon' >> psi ; I ]]$
+    $[[ cdot ; L0 ; N ; nR |- to_param </ ret_termj // j /> :: fon' >> psi ; I ]]$
     (from the spine typing assumption)\\
     imply $[[ < h + f ; </ ret_pati = ret_termi // i /> > ~> < h' + f ; subs > ]]$
     and the heap and substitution typings (by induction).}}
@@ -1305,7 +1305,7 @@ arbitrary (not normalised).
 \step{<1>5}{\case{\PatRetRes}{%
     $[[ C ; L ; N |- reso res_pat , ret_pat : res' *o ret' ~> C4 ; L3, L4 ; N3, N4 ; R3 , R4 ]]$\\
     which means $[[ fon ]] = [[ res --o fon' ]]$ (by inversion, \RelRetRes),\\
-    and so $[[ cdot ; L0 ; N ; nR1 , nR2 |- to_param res_term , spine :;  res --o fon >> psi ; I ]]$
+    and so $[[ cdot ; L0 ; N ; nR1 , nR2 |- to_param res_term , spine ::  res --o fon >> psi ; I ]]$
     (by inversion, \SpineRes),
     and $[[ h ]] = [[ h1 + h2 ]]$ where $[[ alloct |- h1 <= nR1 ]]$ and $[[ alloct |- h2 <= nR2 ]]$
     (by lemma~\ref{subsec:norm_ctx_det_heap}).\\[\baselineskip]
@@ -1330,7 +1330,7 @@ arbitrary (not normalised).
     $[[ C ; L ; N |- </ ret_patj // j /> : ret' ~> C4 ; L4 ; N4 ; R4 ]]$
     (from the pattern matching assumption),\\
     $[[ fon' ~ ret' ]]$ (from the related assumption),\\
-    $[[ cdot ; L0 ; N ; nR2 |- to_param </ ret_termj // j /> :; fon' >> psi ; I ]]$
+    $[[ cdot ; L0 ; N ; nR2 |- to_param </ ret_termj // j /> :: fon' >> psi ; I ]]$
     (from the spine typing assumption),\\
     and $[[ alloct |- h2 <= nR2 ]]$,
     imply $[[ < h2 + h1'' + f ; </ ret_patj = ret_termj // j /> > ~> < h2' + h1'' + f ; subs2 > ]]$
@@ -1596,12 +1596,12 @@ arbitrary (not normalised).
     \step{<2>1}{%
         \begin{pfenum}
         \item $[[ P ( name ) = </ xi // i /> |-> pstmt : pure_fun ]]$.
-        \item $[[ cdot ; L0 ; N ; cdot |- </ xi = pvali // i /> :; pure_fun >> subs ; sigma y : base_type . term /\ I ]]$.
+        \item $[[ cdot ; L0 ; N ; cdot |- </ xi = pvali // i /> :: pure_fun >> subs ; sigma y : base_type . term /\ I ]]$.
         \end{pfenum}
     \pf{} By inversion on the assumption.}
 
     \step{<2>2}{%
-        $[[ alloct | </ xi = pvali // i /> :; pure_fun >> < subs ; sigma y : base_type . term /\ I > ]]$.\\
+        $[[ alloct | </ xi = pvali // i /> :: pure_fun >> < subs ; sigma y : base_type . term /\ I > ]]$.\\
         \pf{} By lemma \ref{subsec:wt_spine_sub}.}
 
     \step{<2>3}{%
@@ -1892,11 +1892,11 @@ arbitrary (not normalised).
 
     \step{<2>1}{%
         $[[ P ( id ) = </ xi // i /> |-> stmt : fon ]]$\\
-        $[[ cdot ; L0 ; N ; nR |- </ xi = spine_elemi // i /> :; fon >> subs ; ret ]]$.\\
+        $[[ cdot ; L0 ; N ; nR |- </ xi = spine_elemi // i /> :: fon >> subs ; ret ]]$.\\
         \pf{} By inversion.}
 
     \step{<2>2}{%
-        $[[ alloct | </ xi = spine_elemi // i /> :; fon >> < subs ; ret > ]]$.\\
+        $[[ alloct | </ xi = spine_elemi // i /> :: fon >> < subs ; ret > ]]$.\\
         \pf{} By \stepref{<2>1} and \lemmaref{subsec:wt_spine_sub}.}
 
     \step{<2>3}{Step with \OpExprCCall.}
@@ -1995,7 +1995,7 @@ to deduce that $[[ nR' ]]$ can only be what you would have supplied anyways.
     \item $[[ cdot ; L0 ; N ; nR |- stmt <= ret ]]$,
     \item $[[ alloct ; h <= N ; nR ]]$
     \item for all $[[ P ( id ) = </ xi // i /> |-> stmt : fon ]]$,
-            if $[[ C ; L ; N ; R |- param_spine :; fon >> subs ; ret ]]$
+            if $[[ C ; L ; N ; R |- param_spine :: fon >> subs ; ret ]]$
             then $[[ C ; L ; N ; R |- subs ( stmt ) <= ret ]]$
     \item $[[ forall ]] [[ f ]] [[ . ]] [[ < alloct ;  h + f ; stmt > -->  < alloct' ; heap ; stmt' > ]]$.
 \end{pfenum}\leavevmode\\}
@@ -2275,7 +2275,7 @@ to deduce that $[[ nR' ]]$ can only be what you would have supplied anyways.
 }{%
     \assume{%
         $[[ P ( id ) = </ xi // i  /> |-> stmt : fon ]]$\\
-        $[[ cdot ; L0 ; N ; nR |- </ xi = spine_elemi // i /> :; fon >> subs1 ; ret1 ]]$.\\
+        $[[ cdot ; L0 ; N ; nR |- </ xi = spine_elemi // i /> :: fon >> subs1 ; ret1 ]]$.\\
         $[[ alloct <= N ]]$\\
         $[[ < alloct ; h ; ccall ( ct , id , </ spine_elemi // i /> ) > --> < alloct ; h ; subs2 ( stmt ) : ret2 > ]]$\\
         $[[ cdot ; L0 ; N ; nR |- subs1 ( stmt ) <= ret1 ]]$

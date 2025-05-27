@@ -41,7 +41,7 @@ embed {{ tex-preamble
 \ifthenelse{ \equal{}{#6} }%
 {#6}%
 {\\ & & & \multicolumn{4}{p{.5\textwidth} }{#6} } }
-\renewcommand{\[[TEX_NAME_PREFIX]]rulehead}[3]{$#1$ & & $#2$ & \multicolumn{4}{l}{#3} }
+\renewcommand{\[[TEX_NAME_PREFIX]]rulehead}[3]{$#1$ & & ${:}{:}{=}$ & \multicolumn{4}{l}{#3} }
 
 % Green comments - can't do colorbox because it doesn't wrap (neither does \usepackage{soul}'s \hl)
 \usepackage[dvipsnames,usenames]{xcolor}
@@ -354,7 +354,7 @@ grammar
 
   list_op :: 'List_op_' ::= {{ com SMT term list constructors and operations }}
     | nil              ::  :: nil
-    | term1 cons term2 ::  :: cons {{ tex [[term1]] :: [[term2]] }}
+    | term1 '::' term2 ::  :: cons
     | tl term          ::  :: tail
     | int th_l term    ::  :: nth  {{ tex [[term]]^{([[int]])} }}
 
@@ -371,12 +371,11 @@ grammar
 
 
   map_op :: 'Map_op_' ::= {{ com SMT term map operations }}
-    | [ | terms |]              :: M :: lit   {{ com array literal }}
+    | [| terms |]               :: M :: lit   {{ com array literal }} {{ tex [| \, [[terms]] \, |] }}
     | term1 [ term2 ]           ::   :: get
     | term1 [ term2 dd term3 ]  ::   :: range
     | const term                ::   :: const
     | term1 [ term2 ] := term3  ::   :: set
-    | x : base_type . term      ::   :: def
 
   % DEFER align this with backend/cn/terms.ml
   term , _t {{ tex \_ }}, iguard , ptrt {{ tex ptr }} , iarg , oarg , alloct {{ tex alloc }} , A , M :: '' ::= {{ com SMT term grammar }}
@@ -408,9 +407,10 @@ grammar
   qterm :: 'QTerm_' ::= {{ com quantified SMT terms }}
     | term                                  ::   :: term   {{ com unquantified SMT term                  }}
     | each ( base_type x ; term ) { term' } ::   :: forall {{ com universally quantified SMT term        }}
+      {{ tex [[each]] \left( [[base_type]]\, [[x]] ; [[term]] \right)\, \left\{ [[term']] \, \right\}    }}
     | neg < qterm >                         :: P :: neg    {{ tex [[neg]] qterm                          }}
     | subs < qterm >                        :: M :: subs   {{ tex [[subs]] \left( [[qterm]] \right)      }}
-                                                          {{ com substitute $[[subs]]$ into $[[qterm]]$ }}
+                                                           {{ com substitute $[[subs]]$ into $[[qterm]]$ }}
 
 grammar
 
@@ -433,7 +433,7 @@ grammar
 
   ipred_term :: 'IPred_term_' ::= {{ com iterated predicate term/request }}
     | each ( base_type x ; iguard ) { pred_term } ::  :: ipred_term (+ bind x in iguard +) (+ bind x in pred_term +)
-      {{ tex [[each]] \left( [[base_type]]\, x; [[iguard]] \right)\, \left\{ [[pred_term]] \, \right\} }}
+      {{ tex [[each]] \left( [[base_type]]\, [[x]] ; [[iguard]] \right)\, \left\{ [[pred_term]] \, \right\} }}
 
   pred_ipred :: 'Res_req_' ::= {{ com predicate or iterated predicate term }}
     | pred_term  :: :: pred  {{ com predicate term          }}
@@ -881,12 +881,12 @@ grammar
     | cdot    :: :: cdot      {{ tex \cdot                            }}
     | |       :: :: bar       {{ tex \mid                             }}
     | |->     :: :: mapsto    {{ tex \mapsto                          }}
-    | cons    :: :: cons      {{ tex \Colon                           }}
-    | :       :: :: of_type   {{ tex {\mathcolon}                     }}
+    | '::'    :: :: Colon     {{ tex \Colon                           }}
+    | :=      :: :: coloneq   {{ tex \coloneq                         }}
+    | :       :: :: of_type   {{ tex {\;\!\colon\;\!}                 }}
     | .       :: :: such_that {{ tex . \:                             }}
     | dot     :: :: dot       {{ tex \! {.} \!                        }}
     | >>      :: :: chevron   {{ tex \gg                              }}
-    | :;      :: :: doublecol {{ tex \Colon                           }}
     | \/      :: :: or        {{ tex \vee                             }}
     | \//     :: :: big_or    {{ tex \bigvee                          }}
     | def=    :: :: equiv     {{ tex \eqdef                           }}
