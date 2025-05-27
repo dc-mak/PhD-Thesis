@@ -129,7 +129,7 @@ defns
     smt ( N => each (integer x; _t) { neg ( iguard /\ ( x != term ) ) } )
     C ; L |- oarg => base_type
     ------------------------------------------------------------------------------------------------ :: IP_Last
-    N |- r : pred_term ( oarg ) -? ipred_term ~> inj ( r , ptrt1 , ct , x . iargs ) and const oarg
+    N |- r : pred_term ( oarg ) -? ipred_term ~> inj ( r , ptrt1 , ct , x .: iargs ) and const oarg
 
 
     N |- ipred_term [=? ipred_term' ~> None
@@ -154,10 +154,10 @@ defns
     % This would require being able to merge arrays, which the implementation does not support
     % N |- ipred_term' [=? ipred_term ~> Gt
     % % ipred_term' > ipred_term
-    % ipred_term  def= { x ; iguard  . a ( ptrt + step , iargs ) }
-    % ipred_term' def= { x ; iguard' . a ( ptrt + step , iargs ) }
+    % ipred_term  def= { x ; iguard  .: a ( ptrt + step , iargs ) }
+    % ipred_term' def= { x ; iguard' .: a ( ptrt + step , iargs ) }
     % ------------------------------------------------------------------ :: II_Gt
-    % N |- r : ipred_term & oarg -? ipred_term'  ~> oarg and { x ; iguard' /\ neg iguard . a ( ptrt + step , iargs ) }
+    % N |- r : ipred_term & oarg -? ipred_term'  ~> oarg and { x ; iguard' /\ neg iguard .: a ( ptrt + step , iargs ) }
 
 
   defn N |- r1 : norm_res +? res_term2 : pred_ipred & oarg2 ~> out_res_term and out_oarg3 :: :: Res_Comb :: Res_Comb_
@@ -277,7 +277,7 @@ defns
     N ; nR1 |- oarg1 / y1 ( res2 ) ~> bind res_bind2 for res_term2 and oarg2 -| nR2
     res_term def= pack ( oarg2 , < res_term1 , res_term2 > )
     ---------------------------------------------------------------------------------------------------------- :: Take
-    N ; nR |- exists y1 : base_type.  res1 * res2 ~> bind res_bind1 , res_bind2 for res_term and oarg2  -| nR2
+    N ; nR |- exists y1 : base_type .: res1 * res2 ~> bind res_bind1 , res_bind2 for res_term and oarg2  -| nR2
 
 
 defns
@@ -289,7 +289,7 @@ defns
 
 
     C ; L ; N ; nR |- emp | create < ct > ( pval ) => norm_ret
-    norm_ret def= sigma yp : loc . term /\ exists x : to_base ( ct ) . ( yp |- Uninit - ct -> x ) *o I
+    norm_ret def= sigma yp : loc .: term /\ exists x : to_base ( ct ) .: ( yp |- Uninit - ct -> x ) *o I
     term def= representable ( ct * , yp ) /\ alignedI ( inj pval , yp )
     ----------------------------------------------------------------------- :: Create
     C ; L ; N ; nR |- create < ct > ( pval ) ~> bind cdot for emp & norm_ret -| nR
@@ -302,7 +302,7 @@ defns
     % DEFER (not implemented) - memory order
     C |- pval0 => loc
     N ; nR |- Owned < Init , ct > ( inj pval0 ) ~> bind res_bind for res_term and oarg -| nR'
-    norm_ret def= sigma y : to_base ( ct ) . y = oarg /\ pt *o I
+    norm_ret def= sigma y : to_base ( ct ) .: y = oarg /\ pt *o I
     -------------------------------------------------------------------------- :: Load
     C ; L ; N ; nR |- load < ct >  ( pval0 ) ~> bind res_bind for res_term & norm_ret -| nR'
 
@@ -312,7 +312,7 @@ defns
     % DEFER (not implemented) - locking boolean
     smt ( N => representable ( ct , inj pval1 ) )
     N ; nR |- Owned < _init , ct > ( inj pval0 ) ~> bind res_bind for res_term and _t -| nR'
-    norm_ret def= sigma _ : unit . ( inj pval0 |- Init - ct -> inj pval1 ) *o I
+    norm_ret def= sigma _ : unit .: ( inj pval0 |- Init - ct -> inj pval1 ) *o I
     ------------------------------------------------------------------------------------------- :: Store
     C ; L ; N ; nR |- store < ct > ( pval0 , pval1 ) ~> bind res_bind for res_term & norm_ret -| nR'
 
@@ -320,7 +320,7 @@ defns
     C |- pval0 => loc
     N ; nR |- Owned < _init , ct > ( inj pval ) ~> bind res_bind for res_term and _t -| nR'
     ---------------------------------------------------------------------------------------- :: Kill_Static
-    C ; L ; N ; nR |- kill < ct > ( pval ) ~> bind res_bind for res_term & sigma _ : unit . I -| nR'
+    C ; L ; N ; nR |- kill < ct > ( pval ) ~> bind res_bind for res_term & sigma _ : unit .: I -| nR'
 
 
     % DEFER (not implemented)
@@ -342,7 +342,7 @@ defns
     % N |- inj pval1 inEnv res
     % N |- inj pval2 inEnv res
     % -------------------------------- :: Rel_Binop
-    % C ; L ; N ; R |- res_term | pval1 rel_binop pval2 => sigma y : bool . y = ( inj pval1 ' rel_binop ' inj pval2 ) /\ res *o I
+    % C ; L ; N ; R |- res_term | pval1 rel_binop pval2 => sigma y : bool .: y = ( inj pval1 ' rel_binop ' inj pval2 ) /\ res *o I
 
 
     % C |- pval1 => loc
@@ -352,7 +352,7 @@ defns
     % N |- inj pval1 inEnv res
     % N |- inj pval2 inEnv res
     % -------------------------------- :: PtrDiff_Arr
-    % C ; L ; N ; R |- res_term | pval1 - array n ct - pval2 => sigma y : bool . y = ( inj pval1 - inj pval2 ) / sizeof ct /\ res *o I
+    % C ; L ; N ; R |- res_term | pval1 - array n ct - pval2 => sigma y : bool .: y = ( inj pval1 - inj pval2 ) / sizeof ct /\ res *o I
 
 
     % C |- pval1 => loc
@@ -361,21 +361,21 @@ defns
     % N |- inj pval1 inEnv res
     % N |- inj pval2 inEnv res
     % -------------------------------- :: PtrDiff
-    % C ; L ; N ; R |- res_term | pval1 - ct - pval2 => sigma y : bool . y = ( inj pval1 - inj pval2 ) / sizeof ct /\ res *o I
+    % C ; L ; N ; R |- res_term | pval1 - ct - pval2 => sigma y : bool .: y = ( inj pval1 - inj pval2 ) / sizeof ct /\ res *o I
 
 
     % C |- pval => loc
     % C ; L ; N ; R |- res_term => res
     % N |- inj pval inEnv res
     % ------------------------------- :: IntFromPtr
-    % C ; L ; N ; R |- intFromPtr ( res_term | ct1 , ct2 , pval ) => sigma y : integer . y = cast_ptr_to_int inj pval /\ res *o I
+    % C ; L ; N ; R |- intFromPtr ( res_term | ct1 , ct2 , pval ) => sigma y : integer .: y = cast_ptr_to_int inj pval /\ res *o I
 
 
     % C |- pval => integer
     % C ; L ; N ; R |- res_term => res
     % N |- inj pval inEnv res
     % ----------------------------------- :: PtrFromInt
-    % C ; L ; N ; R |- ptrFromInt ( res_term | ct1 , ct2 , pval ) => sigma y : loc . y = cast_int_to_ptr inj pval /\ res *o I
+    % C ; L ; N ; R |- ptrFromInt ( res_term | ct1 , ct2 , pval ) => sigma y : loc .: y = cast_int_to_ptr inj pval /\ res *o I
 
     % C |- pval1 => loc
     % C |- pval2 => integer
@@ -384,7 +384,7 @@ defns
     % N |- inj pval1 inEnv res
     % N |- inj pval1 +ptr ( inj pval2 * sizeof ct ) inEnv res
     % ----------------------------------------------------- :: PtrArrayShift
-    % C ; L ; N ; R |- ptrArrayShift ( res_term | pval1 ,  ct , pval2 ) => sigma y : loc . y = inj pval1 +ptr ( inj pval2 * sizeof ct ) /\ res *o I
+    % C ; L ; N ; R |- ptrArrayShift ( res_term | pval1 ,  ct , pval2 ) => sigma y : loc .: y = inj pval1 +ptr ( inj pval2 * sizeof ct ) /\ res *o I
 
 
     C ; L ; N ; nR |- _rest | memop => norm_ret
@@ -416,13 +416,13 @@ defns
     C |- pval => base_type
     C ; L ; N ; nR |- spine :: pval / x  ( norm_fun ) ~> bind res_bind for spine' and norm_ret -| nR'
     ---------------------------------------------------------------------------------------------------------------- :: Comp
-    C ; L ; N ; nR |- pval , spine :: pi x : base_type . norm_fun ~> bind res_bind for pval , spine' and norm_ret -| nR'
+    C ; L ; N ; nR |- pval , spine :: pi x : base_type .: norm_fun ~> bind res_bind for pval , spine' and norm_ret -| nR'
 
 
     N ; nR |- norm_res ~> bind res_bind for res_term and oarg -| nR'
     C ; L ; N ; nR' |- spine :: norm_fun ~> bind res_bind' for spine' and norm_ret -| nR''
     ------------------------------------------------------------------------------------------- :: Take
-    C ; L ; N ; nR |- spine :: forall y : base_type . norm_res --o norm_fun ~> bind res_bind , res_bind' for oarg , res_term , spine' and norm_ret -| nR''
+    C ; L ; N ; nR |- spine :: forall y : base_type .: norm_res --o norm_fun ~> bind res_bind , res_bind' for oarg , res_term , spine' and norm_ret -| nR''
 
 
     smt ( N => term )
@@ -524,7 +524,7 @@ defns
 
     N |- x / y ( res ) ~> res_pat
     ------------------------------------------------------ :: Pack
-    N |- exists y : base_type . res ~> pack ( x , res_pat )
+    N |- exists y : base_type .: res ~> pack ( x , res_pat )
 
 
 
@@ -543,7 +543,7 @@ defns
 
   N |- ret ~> ret_pat
   ------------------------------------------------------------ :: Log
-  N |- exists x : base_type . ret ~> log x , ret_pat
+  N |- exists x : base_type .: ret ~> log x , ret_pat
 
 
   defn N ; nR ~> out_res_bind :: :: Simp_Ctx :: Simp_Ctx_
@@ -581,7 +581,7 @@ defns
 
     C ; L ; N ; nR |- expr ~> bind res_bind for expr' : ret -| nR'
     N |- ret ~> ret_pat
-    N |- ret_pat : sigma y : base_type . ret ~> C1 ; L1 ; N1 ; nR1
+    N |- ret_pat : sigma y : base_type .: ret ~> C1 ; L1 ; N1 ; nR1
     C , C1 ; L , L' , L1 ; N , N' , N1 ; nR' , nR1 |- stmt <= norm_ret2 ~> stmt'
     stmt'' def= insert_lets ( res_bind , let ret_pat = expr' in stmt' )
     ---------------------------------------------------------------------------------------- :: Let

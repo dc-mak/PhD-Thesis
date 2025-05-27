@@ -32,7 +32,7 @@ grammar
     | ct id ( ct1 id1 , .. , ctk idk ) func_spec block ::  :: funcD
 
   func_spec :: 'FSP_' ::= {{ com function specification }}
-    | /*@ requires spec1 ensures y . spec2 @*/ :: :: spec
+    | /*@ requires spec1 ensures y .: spec2 @*/ :: :: spec
 
   minicn_extra :: mincn_extra_ ::=
     | P ( id ) = cfunc_def           ::  :: P_lookup        {{ com function $[[id]]$ has definition $[[cfunc_def]]$        }}
@@ -305,85 +305,85 @@ defns
     Vc , Rc , Phi |-lv * lve -| id2 inEnv [ id2 , Vc' ] , Rc' , ( id2 = id2' /\ Phi' )
 
 
- defn  Vc , Rc , Phi |- y . spec e -| id inEnv Vc' ,  Rc' , Phi' :: :: Expr :: Expr_
- {{ tex [[Vc]] ; [[Phi]] ; [[Rc]] [[|-]]_{ [[y]] [[.]] [[spec]] } [[e]] [[-|]] [[id]] [[inEnv]] [[Vc']] ;  [[Phi']] ; [[Rc']] }}
+ defn  Vc , Rc , Phi |- y .: spec e -| id inEnv Vc' ,  Rc' , Phi' :: :: Expr :: Expr_
+ {{ tex [[Vc]] ; [[Phi]] ; [[Rc]] [[|-]]_{ [[y]] .\: [[spec]] } [[e]] [[-|]] [[id]] [[inEnv]] [[Vc']] ;  [[Phi']] ; [[Rc']] }}
  {{ com given variables $[[Vc]]$, constraints $[[Phi]]$, resources $[[Rc]]$ and post-condition $[[spec]]$, expression $[[e]]$ symbolically evaluates to $[[id]]$, with new context $[[Vc']], [[Rc']], [[Phi']]$ }} by
 
 
     ---------------------------------------------------- :: Const
-    Vc , Rc , Phi |- y . spec n -| id inEnv [ id ] , Rc , ( id = n )
+    Vc , Rc , Phi |- y .: spec n -| id inEnv [ id ] , Rc , ( id = n )
 
     id inEnv Vc
     Vc , Rc , Phi |- simplify ( cdot , Rc , cdot ) ~> Vc1 , Rc1 * mres , Phi1
     mres = id' |-> id2'
     Rc1 * mres , Phi /\ Phi1 => id = id'
     --------------------------------- :: Var
-    Vc , Rc , Phi |- y . spec id -| id2 inEnv [ id2 , Vc1 ] , Rc1 * mres , ( id2 = id2' /\ Phi1 )
+    Vc , Rc , Phi |- y .: spec id -| id2 inEnv [ id2 , Vc1 ] , Rc1 * mres , ( id2 = id2' /\ Phi1 )
 
 
     id inEnv Vc
     -------- :: Addr
-    Vc , Rc , Phi |- y . spec &id -| id' inEnv [ id' ] , Rc , ( id' = id )
+    Vc , Rc , Phi |- y .: spec &id -| id' inEnv [ id' ] , Rc , ( id' = id )
 
 
-    Vc , Rc , Phi |- y . spec e -| id inEnv Vc' , Rc' , Phi'
+    Vc , Rc , Phi |- y .: spec e -| id inEnv Vc' , Rc' , Phi'
     ----------------------------------------------- :: Not
-    Vc , Rc , Phi |- y . spec ! e -| id' inEnv [ id' , Vc' ] , Rc , ( id' = ( if id = 0 then 1 else 0 ) /\ Phi' )
+    Vc , Rc , Phi |- y .: spec ! e -| id' inEnv [ id' , Vc' ] , Rc , ( id' = ( if id = 0 then 1 else 0 ) /\ Phi' )
 
 
-    Vc , Rc , Phi |- y . spec e -| id inEnv Vc' , Rc' , Phi'
+    Vc , Rc , Phi |- y .: spec e -| id inEnv Vc' , Rc' , Phi'
     [ Vc , Vc' ] , Rc' , Phi /\ Phi' |- simplify ( cdot , Rc' , cdot ) ~> Vc1 , Rc1 * mres , Phi1
     mres = id' |-> id2'
     Rc1 * mres , Phi /\ Phi' /\ Phi1 => id = id'
     ----------------------------------------------- :: Deref
-    Vc , Rc , Phi |- y . spec * e -| id2 inEnv [ id2 , Vc1 , Vc' ] , Rc1 * mres , ( id2 = id2' /\ Phi1 /\ Phi' )
+    Vc , Rc , Phi |- y .: spec * e -| id2 inEnv [ id2 , Vc1 , Vc' ] , Rc1 * mres , ( id2 = id2' /\ Phi1 /\ Phi' )
 
 
-    Vc , Rc , Phi |- y . spec e1 -| id1 inEnv Vc1 , Rc1 , Phi1
-    [ Vc , Vc1 ] , Rc1 , Phi /\ Phi1 |- y . spec e2 -| id2 inEnv Vc2 , Rc2 , Phi2
+    Vc , Rc , Phi |- y .: spec e1 -| id1 inEnv Vc1 , Rc1 , Phi1
+    [ Vc , Vc1 ] , Rc1 , Phi /\ Phi1 |- y .: spec e2 -| id2 inEnv Vc2 , Rc2 , Phi2
     ------------------------------------------------------------------ :: Binop
-    Vc , Rc , Phi |- y . spec e1 arith_binop e2 -| id inEnv [ id , Vc1 , Vc2 ] , Rc2 , ( id = ( id1 ' arith_binop ' id2 )  /\ Phi1 /\ Phi2 )
+    Vc , Rc , Phi |- y .: spec e1 arith_binop e2 -| id inEnv [ id , Vc1 , Vc2 ] , Rc2 , ( id = ( id1 ' arith_binop ' id2 )  /\ Phi1 /\ Phi2 )
 
 
-    Vc , Rc , Phi |- y . spec e -| id1 inEnv Vc1 , Rc1 , Phi1
+    Vc , Rc , Phi |- y .: spec e -| id1 inEnv Vc1 , Rc1 , Phi1
     [ Vc , Vc1 ] , Rc1 , Phi /\ Phi1 |- simplify ( cdot , Rc1 , cdot ) ~> Vc2 , Rc2 , Phi2
     [ Vc , Vc1 , Vc2 ] , Rc2 , Phi /\ Phi1 /\ Phi2 |-lv lve -| id3 inEnv Vc3 , Rc3 * mres , Phi3
     mres = id3' |-> _
     Rc3 * mres , Phi /\ Phi1 /\ Phi2 /\ Phi3 => id3 = id3'
     ------------------------------------------------------------- :: Assign
-    Vc , Rc , Phi |- y . spec lve = e -| id inEnv [ id , Vc3, Vc2 , Vc1 ] , Rc3 * mres , ( id = id1 /\ Phi3 /\ Phi2 /\ Phi1 )
+    Vc , Rc , Phi |- y .: spec lve = e -| id inEnv [ id , Vc3, Vc2 , Vc1 ] , Rc3 * mres , ( id = id1 /\ Phi3 /\ Phi2 /\ Phi1 )
 
 
-    Vc , Rc , Phi |- y . spec e1 -| id1 inEnv Vc1 , Rc1 , Phi1
-    [ Vc , Vc1 ] , Rc1 , Phi /\ Phi1 |- y . spec e2 -| id2 inEnv Vc2 , Rc2 , Phi2
-    [ Vc , Vc1 ] , Rc1 , Phi /\ Phi1 |- y . spec e3 -| id3 inEnv Vc3 , Rc3 , Phi3
+    Vc , Rc , Phi |- y .: spec e1 -| id1 inEnv Vc1 , Rc1 , Phi1
+    [ Vc , Vc1 ] , Rc1 , Phi /\ Phi1 |- y .: spec e2 -| id2 inEnv Vc2 , Rc2 , Phi2
+    [ Vc , Vc1 ] , Rc1 , Phi /\ Phi1 |- y .: spec e3 -| id3 inEnv Vc3 , Rc3 , Phi3
     Rc' = cond ( id1 , Rc2 , Rc3 )
     Phi' = Phi1 /\ cond ( id1 , Phi2 , Phi3 ) /\ ( id = if id1 then id2 else id3 )
     ----------------------------------------------------------------------------------------- :: If
-    Vc , Rc , Phi |- y . spec if ( e1 ) e2 else e3 -| id inEnv [ id , Vc1 , Vc2 , Vc3 ] , Rc' , Phi'
+    Vc , Rc , Phi |- y .: spec if ( e1 ) e2 else e3 -| id inEnv [ id , Vc1 , Vc2 , Vc3 ] , Rc' , Phi'
 
 
-    Vc , Rc , Phi |- y . spec e1 -| id1 inEnv Vc1 , Rc1 , Phi1
-    [ Vc , Vc1 ] , Rc1 , Phi /\ Phi1 |- y . spec e2 -| id2 inEnv Vc2 , Rc2 , Phi2
+    Vc , Rc , Phi |- y .: spec e1 -| id1 inEnv Vc1 , Rc1 , Phi1
+    [ Vc , Vc1 ] , Rc1 , Phi /\ Phi1 |- y .: spec e2 -| id2 inEnv Vc2 , Rc2 , Phi2
     ------------------------------------------------------------------ :: Seq
-    Vc , Rc , Phi |- y . spec e1 ; e2 -| id inEnv [ id , Vc1 , Vc2 ] , Rc2 , ( id = id2  /\ Phi1 /\ Phi2 )
+    Vc , Rc , Phi |- y .: spec e1 ; e2 -| id inEnv [ id , Vc1 , Vc2 ] , Rc2 , ( id = id2  /\ Phi1 /\ Phi2 )
 
 
     Vc0' = Vc0 Vcj' = [ Vcj-1' , Vcj  ] Phi0' = Phi0 Phij' = Phij-1' /\ Phij
-    Vc0' , Rc0 , Phi0' |- y . spec e1 -| id1 inEnv Vc1 , Rc1 , Phi1 ldots Vck-1' , Rck-1 , Phik-1' |- y . spec ek -| idk inEnv Vck , Rck , Phik
-    P(yf) = ct yf ( ct1 id1 , .. , ctk idk ) /*@ requires spec1 ensures y' . spec2 @*/ block
+    Vc0' , Rc0 , Phi0' |- y .: spec e1 -| id1 inEnv Vc1 , Rc1 , Phi1 ldots Vck-1' , Rck-1 , Phik-1' |- y .: spec ek -| idk inEnv Vck , Rck , Phik
+    P(yf) = ct yf ( ct1 id1 , .. , ctk idk ) /*@ requires spec1 ensures y' .: spec2 @*/ block
     Vck' , Rck , Phik' |- cdot , cdot , cdot | spec1 -| cdot , Vc' , used ( Rc1' ) * Rc2' , Phi'
     [ Vck' , Vc' ]  , Rc2' , Phik' /\ Phi' |- y' , cdot | spec2 ~> cdot  , Vc'' , Rc3' , Phi''
     ------------------------------------------------------------------ :: Call
-    Vc0 , Rc0 , Phi0 |- y . spec yf ( e1 , .. , ek ) -| y' inEnv [ Vc1 , .. , Vck , Vc' , Vc'' ] , Rc3' , ( Phi1 /\ .. /\ Phik /\ Phi' /\ Phi'' )
+    Vc0 , Rc0 , Phi0 |- y .: spec yf ( e1 , .. , ek ) -| y' inEnv [ Vc1 , .. , Vck , Vc' , Vc'' ] , Rc3' , ( Phi1 /\ .. /\ Phik /\ Phi' /\ Phi'' )
 
 
-    [ Vc , id1 , .. , idk ] , Rc , Phi |- y . spec e -| id1 inEnv Vc1 , Rc1 , Phi1
+    [ Vc , id1 , .. , idk ] , Rc , Phi |- y .: spec e -| id1 inEnv Vc1 , Rc1 , Phi1
     -------------------------------------------------------------------------------- :: Block
-    Vc , Rc , Phi |- y . spec { ct1 id1 ; .. ctk idk ; e } -| id1 inEnv [ id1 , .. , idk , Vc1 ] , Rc1 , Phi1
+    Vc , Rc , Phi |- y .: spec { ct1 id1 ; .. ctk idk ; e } -| id1 inEnv [ id1 , .. , idk , Vc1 ] , Rc1 , Phi1
 
 
-    Vc , Rc , Phi |- y . spec e -| id1 inEnv Vc1 , Rc1 , Phi1
+    Vc , Rc , Phi |- y .: spec e -| id1 inEnv Vc1 , Rc1 , Phi1
     [ Vc , Vc1 , y ] , Rc1 , Phi /\ Phi1 /\ y = id1 |- cdot , cdot , cdot | spec -| cdot , Vc' , used ( Rc' ) * cdot , Phi'
     ------------------------------------------------------------------ :: Return
-    Vc , Rc , Phi |- y . spec return e -| y inEnv [ y ] , cdot , false
+    Vc , Rc , Phi |- y .: spec return e -| y inEnv [ y ] , cdot , false

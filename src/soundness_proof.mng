@@ -131,9 +131,9 @@ inconvenient, it becomes necessary in the \StmtLet{} case.
 Second is in the lemma~\nameref{subsec:wt_values_pat_match}.
 There are two substitutions at play here. As an example, consider:
 \[
-[[ let comp Cons ( x1 , x2 ) , ret_pat : sigma y : list unit . ret = < Cons ( Unit , Nil unit ( ) ) , ret_terms > in stmt ]].
+[[ let comp Cons ( x1 , x2 ) , ret_pat : sigma y : list unit .: ret = < Cons ( Unit , Nil unit ( ) ) , ret_terms > in stmt ]].
 \]
-For the return type $[[ sigma y : list unit . ret ]]$, the type-level
+For the return type $[[ sigma y : list unit .: ret ]]$, the type-level
 substitution will be $[[ Cons ( x1 , x2 ) / y ( ret )]]$.  However, at the
 term-level, the substitution will be $[[ [ Unit / x1 , Nil unit ( ) / x2 ] ]]$.
 \emph{Bridging this difference is the main reason for the $[[ ~ ]]$ relation}
@@ -398,7 +398,7 @@ over it as well as all the usual suspects on the right.\\[\baselineskip]
 Substitution of contexts is defined by substituting over each constraint in
 $[[ N ]]$. As a result, $[[ subs ( N1 , N2) ]] = [[ subs ( N1 ) , subs ( N2 ) ]]$,
 and if $[[ subs ( N ) ]] = [[ N1' , N2' ]]$ then
-$[[ exists ]] [[ N1 ]], [[ N2 ]] [[ . ]] [[ subs ( N1 , N2 ) ]] = [[ subs ( N1 ) , subs ( N2 ) ]]$.
+$[[ exists ]] [[ N1 ]], [[ N2 ]] [[ .: ]] [[ subs ( N1 , N2 ) ]] = [[ subs ( N1 ) , subs ( N2 ) ]]$.
 
 \begin{pfproof}
 \pfsketch{ Induction over the typing judgements.\\
@@ -628,7 +628,7 @@ predicates.
     \item $[[ cdot ; L0 ; N ; R |- res_term <= res ]]$ (or synthesising)
 \end{pfenum}\leavevmode\\}
 
-\prove{ $[[ exists ]] [[ nR ]] [[.]] [[ R ]] = [[ nR ]]$.\\[\baselineskip]}
+\prove{ $[[ exists ]] [[ nR ]] .\: [[ R ]] = [[ nR ]]$.\\[\baselineskip]}
 
 \pfsketch{ By induction on the typing judgement.\\[\baselineskip]}
 
@@ -687,7 +687,7 @@ This is a simple inversion lemma.
     \pf{} By inversion, the assumption must be \ResSynSepConj{} (and optionally \ResChkSwitch),
     or \ResChkSepConj.}
 
-\step{<1>7}{If $[[ res ]] = [[ exists y : base_type . res ]]$,
+\step{<1>7}{If $[[ res ]] = [[ exists y : base_type .: res ]]$,
     then $[[ res_val ]] = [[ pack ( oarg , res_val' )]]$.\\
     \pf{} By inversion, the assumption must be \ResChkPack.}
 
@@ -712,7 +712,7 @@ This is as simple inversion lemma.
     for $[[ cdot |- subs0 ( pred ) = subs0 ( pred' ) ]]$.\\
     \pf{} By inversion, the assumption must be \HeapPredOther.}
 
-\step{<1>4}{If $[[ ipred ]] = [[ *S x . iguard => ptrt |- _init - ct -> oarg ]]$, $[[ nR ]] = [[ _ : ipred ]]$,
+\step{<1>4}{If $[[ ipred ]] = [[ *S x .: iguard => ptrt |- _init - ct -> oarg ]]$, $[[ nR ]] = [[ _ : ipred ]]$,
     then $[[ h ]] = [[ { ipred' & cdot } ]]$ for $[[ cdot |- subs0 ( ipred ) = subs0 ( ipred' ) ]]$.\\
     \pf{} By inversion, the assumption must be \HeapIPredOwned.}
 
@@ -735,7 +735,7 @@ This is as simple inversion lemma.
     $[[ alloct |- h <= nR ]]$.\\}
 
 \prove{%
-    $[[ forall ]] [[ f ]] [[.]] [[ footprint_of res_val in h + f ~> h REM f ]]$.\\[\baselineskip]}
+    $[[ forall ]] [[ f ]] .\: [[ footprint_of res_val in h + f ~> h REM f ]]$.\\[\baselineskip]}
 
 \pfsketch{ By induction on the typing judgement.\\[\baselineskip]}
 
@@ -783,11 +783,11 @@ This is as simple inversion lemma.
     \end{pfenum}\leavevmode\\}
 
 \prove{%
-    $[[ exists ]] [[ res_val ]] , [[ nR']] , [[ h' ]] [[.]] $
+    $[[ exists ]] [[ res_val ]] , [[ nR']] , [[ h' ]] .\: $
     \begin{pfenum}
     \item $[[ cdot ; L0 ; N ; nR'  |- res_val <= res ]]$ (or synthesising respectively)
     \item $[[ alloct |- h' <= nR' ]]$
-    \item $[[ forall ]] [[ f ]] [[.]] [[ alloct | < h + f ; res_term > ||v < h' + f ; res_val > ]]$.
+    \item $[[ forall ]] [[ f ]] .\: [[ alloct | < h + f ; res_term > ||v < h' + f ; res_val > ]]$.
     \end{pfenum}\leavevmode\\[\baselineskip]}
 
 \pfsketch{ Induction on the resource term typing assumption. The type
@@ -795,7 +795,7 @@ This is as simple inversion lemma.
     the shape of the heap.\\[\baselineskip]}
 
 Because of this direction of information, you cannot prove that
-$[[ forall ]] [[ nR' ]] [[.]] ( [[ alloct |- h' <= nR' ]] )
+$[[ forall ]] [[ nR' ]] .\: ( [[ alloct |- h' <= nR' ]] )
 [[ => ]] ( [[ cdot ; L0 ; N ; R'' |- res_val' <= res ]] )$.
 The converse is already true by the composition of
 lemmas~\ref{subsec:non_cond_res_det_ctx_val} and~\ref{subsec:norm_ctx_det_heap}.
@@ -818,11 +818,11 @@ predicates in pattern-matching.\\[\baselineskip]
         \pf{} By inversion on the typing assumption.}
 
     \step{<2>2}{%
-        $[[ exists ]] [[ h'' ]] , [[ nR'' ]] , [[ res_val' ]] [[.]] $
+        $[[ exists ]] [[ h'' ]] , [[ nR'' ]] , [[ res_val' ]] .\: $
         \begin{pfenum}
         \item $[[ cdot ; L0 ; N ; R'' |- res_val' => res' ]]$
         \item $[[ alloct |- h' <= nR' ]]$
-        \item $[[ forall ]] [[ f ]] [[.]] [[ alloct | < h + f ; res_term' > ||v < h'' + f ; res_val' > ]]$.
+        \item $[[ forall ]] [[ f ]] .\: [[ alloct | < h + f ; res_term' > ||v < h'' + f ; res_val' > ]]$.
         \end{pfenum}
         \pf{} By the induction hypothesis.}
 
@@ -954,7 +954,7 @@ predicates in pattern-matching.\\[\baselineskip]
 
 \step{<1>7}{\case{\ResSynPredOpsInj}{%
     \pf{} Like \ResSynPredOpsIterate, but with:\\
-    $[[ res_term ]]= [[ inj ( res_term' , ptrt1 , ct , x . iargs1 ) ]]$\\
+    $[[ res_term ]]= [[ inj ( res_term' , ptrt1 , ct , x .: iargs1 ) ]]$\\
     $[[ res ]]     = [[ ipred_term ( const oarg ) ]]$
     where $[[ ipred_term ]] = [[each (integer x;  x = term ) { a ( array_shift<ct> (ptrt1, x) , iargs1 ) } ]]$\\[\baselineskip]
 
@@ -1041,7 +1041,7 @@ predicates in pattern-matching.\\[\baselineskip]
 \step{<1>12}{\case{\ResChkPack}{%
     \pf{} Like \ResSynPredOpsIterate, but with:\\
     $[[ res_term ]] = [[ pack ( oarg , res_term' ) ]]$,
-    $[[ res ]]      = [[ exists y : base_type . res'' ]]$,
+    $[[ res ]]      = [[ exists y : base_type .: res'' ]]$,
     $[[ res' ]]     = [[ oarg / y ( res'' ) ]]$\\
     $[[ res_val ]]  = [[ pack ( oarg , res_val' ) ]]$.
     Value and heap typing hold by induction; prove reduction using \OpResTPack.}}
@@ -1053,11 +1053,11 @@ predicates in pattern-matching.\\[\baselineskip]
     $[[ res ]]     = [[ a ( </ iargi // i /> ) ( oarg ) ]]$\\
     $[[ res' ]]    = [[ [ oarg / y , [ </ iargi / xi // i /> ] ] ( res'' ) ]]$.\\[\baselineskip]
 
-    $[[ exists ]] [[ h1 ]] , [[ nR' ]] , [[ res_val' ]] [[.]]$\\
+    $[[ exists ]] [[ h1 ]] , [[ nR' ]] , [[ res_val' ]] .\:$\\
     \begin{enumerate}
     \item $[[ cdot ; L0 ; N ; nR' |- res_val' <= res' ]]$
     \item $[[ alloct |- h1 <= nR' ]]$
-    \item $[[ forall ]] [[ f ]] [[.]] [[ alloct | < h + f ; res_term > ||v < h1 + f ; res_val' > ]]$
+    \item $[[ forall ]] [[ f ]] .\: [[ alloct | < h + f ; res_term > ||v < h1 + f ; res_val' > ]]$
     \end{enumerate}
     (by induction).\\[\baselineskip]
 
@@ -1086,7 +1086,7 @@ predicates in pattern-matching.\\[\baselineskip]
 
 If $[[ res_term ]]$ is closed, $[[ cdot ; L0 ; N ; nR |- res_term <= res ]]$,
 $[[ alloct |- h <= nR ]]$ and $[[ alloct | < h + f ; res_term > ||v < heap ; res_val > ]]$
-then $[[ exists ]] [[ h' ]] , [[ nR' ]] [[ . ]]
+then $[[ exists ]] [[ h' ]] , [[ nR' ]] [[ .: ]]
 [[ heap ]] = [[ h' + f ]]
 [[ /\ ]] ( [[ alloct |- h' <=  nR' ]] )
 [[ /\ ]] ( [[ cdot ; L0 ; N ; nR' |- res_val <= res ]] )$.
@@ -1145,15 +1145,15 @@ arbitrary (not normalised).
     \item $[[ alloct ; h <= N ; nR ]]$
     \end{pfenum}\leavevmode\\}
 
-\prove{$[[ exists ]] [[ h' ]] , [[ subs ]] [[.]]$\\
-    $\quad [[ forall ]] [[ f ]] [[ . ]] [[ < h + f ; </ ret_pati = ret_termi // i /> > ~> < h' + f ; subs > ]]$\\
-    $\quad [[ exists ]] [[ nR' ]] [[ . ]]$\\
+\prove{$[[ exists ]] [[ h' ]] , [[ subs ]] .\:$\\
+    $\quad [[ forall ]] [[ f ]] [[ .: ]] [[ < h + f ; </ ret_pati = ret_termi // i /> > ~> < h' + f ; subs > ]]$\\
+    $\quad [[ exists ]] [[ nR' ]] [[ .: ]]$\\
     $\qquad [[ alloct |- h' <= nR' ]] [[ /\ ]] [[ cdot ; L0 ; N ; nR' |- subs <= ( C' ; L' ; R' )  ]]$.\\[\baselineskip]}
 
 \pfsketch{ Induction over the pattern-matching judgement.\\[\baselineskip]}
 
 % C ; L ; N |- </ ret_pati // i /> : ret ~> C' ; L' ; N' ; R'        | exists h' , subs .
-% </ ret_pati // i /> is exhaustive                                  |   forall f . < h + f ; </ ret_pati = ret_termi // i /> > ~> < h' + f ; subs >
+% </ ret_pati // i /> is exhaustive                                  |   forall f .: < h + f ; </ ret_pati = ret_termi // i /> > ~> < h' + f ; subs >
 % fon ~ ret                                                          |   exists nR' .
 % cdot ; L0 ; N ; nR |- </ ret_termi // i /> :: fon >> I             |     alloct |- h' <= nR'
 % alloct |- h <= nR                                                  |     C ; L ; N ; nR' |- subs <= ( C' ; L' ; R' )
@@ -1169,9 +1169,9 @@ arbitrary (not normalised).
     \HeapEmpty{} and $[[ subs ]]$ with \SubsChkEmpty.}}
 
 \step{<1>2}{\case{\PatRetComp}{%
-    $[[ C ; L ; N |- comp pat , </ ret_patj // j /> : sigma y : base_type . ret ~> C1 , C2 ; L2 ; N2 ; R2 ]]$\\
-    which means $[[ fon ]] = [[ pi x : base_type . fon' ]]$ (by inversion, \RelRetComp),\\
-    and so $[[ cdot ; L0 ; N ; nR |- to_param pval , </ ret_termj // j /> :: pi x : base_type . fon' >> psi ; I ]]$
+    $[[ C ; L ; N |- comp pat , </ ret_patj // j /> : sigma y : base_type .: ret ~> C1 , C2 ; L2 ; N2 ; R2 ]]$\\
+    which means $[[ fon ]] = [[ pi x : base_type .: fon' ]]$ (by inversion, \RelRetComp),\\
+    and so $[[ cdot ; L0 ; N ; nR |- to_param pval , </ ret_termj // j /> :: pi x : base_type .: fon' >> psi ; I ]]$
     (by inversion, \SpineComp).\\[\baselineskip]
 
     $[[ pat : base_type ~> C1 with term1 ]]$ (from the pattern-matching assumption),\\
@@ -1183,12 +1183,12 @@ arbitrary (not normalised).
 
     $[[ C1 ; L0 ; N |- </ ret_patj // j /> : term1 / y ( ret' ) ~> C2 ; L2 ; N2 ; R2 ]]$
     (from the pattern-matching assumption),\\
-    $[[ forall term1 ~ inj pval . pval / x ( fon' ) ~ term1 / y ( ret' ) ]]$
+    $[[ forall term1 ~ inj pval .: pval / x ( fon' ) ~ term1 / y ( ret' ) ]]$
     (from the related assumption),\\
     $[[ cdot ; L0 ; N ; nR |- to_param </ ret_termj // j /> :: pval / x ( fon' ) >> psi ; I ]]$
     (from the spine typing assumption),\\
     and $[[ alloct |- h <= nR ]]$,
-    imply $[[ exists ]] [[h'']], [[subs2]] [[.]] [[ < h + f ; </ ret_patj = ret_termj // j /> > ~> < h'' + f ; subs2 > ]]$\\
+    imply $[[ exists ]] [[h'']], [[subs2]] .\: [[ < h + f ; </ ret_patj = ret_termj // j /> > ~> < h'' + f ; subs2 > ]]$\\
     and that $[[ exists ]] [[ nR' ]]$ such that
     $[[ alloct |- h' <= nR' ]]$ and $[[ C1 ; L0 ; N ; nR' |- subs2 <= ( C2 ; L2 ; R2 ) ]]$
     (by induction, then~\lemmaref{sec:weakening}).\\[\baselineskip]
@@ -1216,7 +1216,7 @@ arbitrary (not normalised).
 
     \prove{\begin{pfenum}
         \item $[[ term1 ~ inj pval ]]$
-        \item $[[ exists ]] [[ subs ]] [[ . ]] [[ pat = pval ~> subs ]]$
+        \item $[[ exists ]] [[ subs ]] [[ .: ]] [[ pat = pval ~> subs ]]$
         and $[[ cdot ; cdot ; cdot ; cdot |- subs <= ( C1 ; cdot ; cdot ) ]]$.
     \end{pfenum}\leavevmode\\[\baselineskip]}
 
@@ -1258,14 +1258,14 @@ arbitrary (not normalised).
     \end{pfproof}
 
 \step{<1>3}{\case{\PatRetLog}{%
-    $[[ C ; L ; N |- log y' , </ ret_patj // j /> : exists y : base_type . ret ~> C2 ; y' : base_type , L2 ; N2 ; R2 ]]$\\
-    which means $[[ fon ]] = [[ forall x : base_type . fon' ]]$ (by inversion, \RelRetLog)\\
-    and so $[[ cdot ; L0 ; N ; nR |- to_param oarg , </ ret_termj // j /> :: forall x : base_type . fon' >> psi ; I ]]$
+    $[[ C ; L ; N |- log y' , </ ret_patj // j /> : exists y : base_type .: ret ~> C2 ; y' : base_type , L2 ; N2 ; R2 ]]$\\
+    which means $[[ fon ]] = [[ forall x : base_type .: fon' ]]$ (by inversion, \RelRetLog)\\
+    and so $[[ cdot ; L0 ; N ; nR |- to_param oarg , </ ret_termj // j /> :: forall x : base_type .: fon' >> psi ; I ]]$
     (by inversion, \SpineLog).\\[\baselineskip]
 
     $[[ C ; L , y : base_type ; N |- </ ret_patj // j /> : ret' ~> C2 ; L2 ; N2 ; R2 ]]$
     (from the pattern-matching assumption),\\
-    $[[ forall oarg ~ oarg' . oarg / x ( fon' ) ~ oarg' / y' ( ret' ) ]]$
+    $[[ forall oarg ~ oarg' .: oarg / x ( fon' ) ~ oarg' / y' ( ret' ) ]]$
     (from the related assumption),\\
     $[[ cdot ; L0 ; N ; nR |- to_param </ ret_termj // j /> :: oarg / x ( fon' ) >> psi ; I ]]$
     (from the spine typing assumption)\\
@@ -1366,13 +1366,13 @@ arbitrary (not normalised).
     \assume{\begin{pfenum}
         \item $[[ L ; N |- res_pat : res' ~> L' ; N' ; R' ]]$
         \item $[[ res ~ res' ]]$
-        \item $[[ exists ]] [[ nR ]] . ( [[ cdot ; L0 ; N ; nR |- res_val <= res ]] )
+        \item $[[ exists ]] [[ nR ]] .: ( [[ cdot ; L0 ; N ; nR |- res_val <= res ]] )
             [[ /\ ]] ( [[ alloct ; h <= N ; nR ]] )$
     \end{pfenum}\leavevmode\\}
 
-    \prove{$[[ exists ]] [[ h' ]] , [[ subs ]] [[ . ]]$\\
-        $\quad [[ forall ]] [[ f ]] [[ . ]] [[ < h + f ; res_pat = res_val > ~> < h' + f ; subs > ]]$\\
-        $\quad [[ exists ]] [[ nR' ]] [[ . ]]
+    \prove{$[[ exists ]] [[ h' ]] , [[ subs ]] [[ .: ]]$\\
+        $\quad [[ forall ]] [[ f ]] [[ .: ]] [[ < h + f ; res_pat = res_val > ~> < h' + f ; subs > ]]$\\
+        $\quad [[ exists ]] [[ nR' ]] [[ .: ]]
             [[ alloct |- h' <= nR' ]]
             [[ /\ ]] [[ cdot ; L0 ; N ; nR' |- subs <= ( cdot ; L' ; R' ) ]]$.\\[\baselineskip]}
 
@@ -1390,7 +1390,7 @@ arbitrary (not normalised).
             \pf{} $[[ a != Owned < _init , ct > ]]$ (from the pattern-matching assumption),
             and \lemmaref{subsec:norm_ctx_det_heap}.}
 
-        \step{<3>2}{$[[ exists ]] [[ nR1' ]] [[ . ]]$
+        \step{<3>2}{$[[ exists ]] [[ nR1' ]] [[ .: ]]$
         \begin{pfenum}
             \item $[[ P ( a ) = </ xi : base_typei // i  /> , y : base_type |-> res'' ]]$
             \item $[[ cdot ; cdot ; cdot ; nR1' |- def <= [ oarg / y , [ </ iarg / xi // i /> ] ] ( res'' ) ]]$
@@ -1460,21 +1460,21 @@ arbitrary (not normalised).
         $[[ cdot ; L0 ; N ; nR' |- [ subs1 , subs2 ] <= ( cdot ; L1 , L2 ; R1 , R2 ) ]]$.}}
 
     \step{<2>6}{\case{\PatResMatchPack}{%
-        $[[ L ; N |- pack ( x , res_pat' ) : exists y' : base_type . res1' ~> x : base_type ,  L' ; N' ; R' ]]$\\[\baselineskip]
+        $[[ L ; N |- pack ( x , res_pat' ) : exists y' : base_type .: res1' ~> x : base_type ,  L' ; N' ; R' ]]$\\[\baselineskip]
 
-        $[[ res ]] = [[ exists y : base_type . res1 ]]$ (by inversion, \RelResExists)
-        and $[[ cdot ; L0 ; N ; nR |- pack ( oarg , res_val' ) <= exists y : base_type . res1 ]]$
+        $[[ res ]] = [[ exists y : base_type .: res1 ]]$ (by inversion, \RelResExists)
+        and $[[ cdot ; L0 ; N ; nR |- pack ( oarg , res_val' ) <= exists y : base_type .: res1 ]]$
         (by lemma~\ref{subsec:non_cond_res_det_ctx_val}).\\
 
         $[[ L , x : base_type ; N |- res_pat' : x / y' ( res1' ) ~> L' ; N' ; R' ]]$
         (from the pattern-matching assumption),
         $[[ cdot ; L0 ; N ; nR |-  res_val' <= oarg / y ( res1 ) ]]$
         (from the typing assumption),
-        $[[ forall term ~ term' . term / y ( res1 ) ~ term' / y' ( res1' ) ]]$
+        $[[ forall term ~ term' .: term / y ( res1 ) ~ term' / y' ( res1' ) ]]$
         (from the related assumption),
         $[[ oarg ~ x ]]$
-        imply $[[ exists ]] [[ h' ]] , [[ subs' ]] [[.]] [[ forall ]] [[ f ]] \ldots$
-        $[[ exists ]] [[ nR' ]] [[ . ]] [[ alloct |- h' <= nR' ]]$ and
+        imply $[[ exists ]] [[ h' ]] , [[ subs' ]] .\: [[ forall ]] [[ f ]] \ldots$
+        $[[ exists ]] [[ nR' ]] [[ .: ]] [[ alloct |- h' <= nR' ]]$ and
         $[[ cdot ; L0 , x : base_type ; N ; nR'' |- subs' <= ( cdot ; L' ; R' )]]$
         (by induction, then \lemmaref{sec:weakening}).\\[\baselineskip]
 
@@ -1509,8 +1509,8 @@ arbitrary (not normalised).
 
 \prove{%
     Either $[[ stmt ]]$ is a value $[[ < ret_terms > ]]$, or it is unreachable,
-    or $[[ forall ]] [[ s ]] [[.]] ( [[ s <= N ; nR ]] ) [[ => ]]
-    [[ exists ]] [[ s' ]] , [[ stmt' ]] [[ . ]]
+    or $[[ forall ]] [[ s ]] .\: ( [[ s <= N ; nR ]] ) [[ => ]]
+    [[ exists ]] [[ s' ]] , [[ stmt' ]] [[ .: ]]
         [[ < s ; stmt > --> < s' ; stmt' > ]]$.\\[\baselineskip]}
 
 \pfsketch{ Induction over the typing rules.\\[\baselineskip]}
@@ -1596,12 +1596,12 @@ arbitrary (not normalised).
     \step{<2>1}{%
         \begin{pfenum}
         \item $[[ P ( name ) = </ xi // i /> |-> pstmt : pure_fun ]]$.
-        \item $[[ cdot ; L0 ; N ; cdot |- </ xi = pvali // i /> :: pure_fun >> subs ; sigma y : base_type . term /\ I ]]$.
+        \item $[[ cdot ; L0 ; N ; cdot |- </ xi = pvali // i /> :: pure_fun >> subs ; sigma y : base_type .: term /\ I ]]$.
         \end{pfenum}
     \pf{} By inversion on the assumption.}
 
     \step{<2>2}{%
-        $[[ alloct | </ xi = pvali // i /> :: pure_fun >> < subs ; sigma y : base_type . term /\ I > ]]$.\\
+        $[[ alloct | </ xi = pvali // i /> :: pure_fun >> < subs ; sigma y : base_type .: term /\ I > ]]$.\\
         \pf{} By lemma \ref{subsec:wt_spine_sub}.}
 
     \step{<2>3}{%
@@ -1686,7 +1686,7 @@ arbitrary (not normalised).
         \pf{} By inversion on the typing assumption, $[[ alloct <= N ]]$ and \stepref{<2>1}.}
 
     \step{<2>3}{%
-        $[[ exists ]] [[ h' ]], [[ nR' ]], [[ res_val ]] [[.]]$
+        $[[ exists ]] [[ h' ]], [[ nR' ]], [[ res_val ]] .\:$
         \begin{pfenum}
         \item $[[ alloct |- h' <= nR' ]]$
         \item $[[ alloct | < h ; res_term > ||v < h' ; res_val > ]]$
@@ -1724,7 +1724,7 @@ arbitrary (not normalised).
         \pf{} By inversion on the typing assumption, $[[ alloct <= N ]]$ and \stepref{<2>1}.}
 
     \step{<2>3}{%
-        $[[ exists ]] [[ h' ]], [[ nR' ]], [[ res_val ]] [[.]]$
+        $[[ exists ]] [[ h' ]], [[ nR' ]], [[ res_val ]] .\:$
         \begin{pfenum}
         \item $[[ alloct |- h' <= nR' ]]$
         \item $[[ alloct | < h ; res_term > ||v < h' ; res_val > ]]$
@@ -1760,7 +1760,7 @@ arbitrary (not normalised).
         \pf{} By inversion on the typing assumption, $[[ alloct <= N ]]$ and \stepref{<2>1}.}
 
     \step{<2>3}{%
-        $[[ exists ]] [[ h' ]], [[ nR' ]], [[ res_val ]] [[.]]$\\
+        $[[ exists ]] [[ h' ]], [[ nR' ]], [[ res_val ]] .\:$\\
         \begin{pfenum}
         \item $[[ alloct |- h' <= nR' ]]$
         \item $[[ alloct | < h ; res_term > ||v < h' ; res_val > ]]$
@@ -1801,7 +1801,7 @@ arbitrary (not normalised).
         \pf{} By inversion on the typing assumption and $[[ alloct <= N ]]$.}
 
     \step{<2>4}{%
-        $[[ exists ]] [[ h' ]], [[ nR' ]], [[ res_val ]] [[.]]$\\
+        $[[ exists ]] [[ h' ]], [[ nR' ]], [[ res_val ]] .\:$\\
         \begin{pfenum}
         \item $[[ alloct |- h' <= nR' ]]$
         \item $[[ alloct | < h ; res_term > ||v < h' ; res_val > ]]$
@@ -1850,7 +1850,7 @@ arbitrary (not normalised).
         \pf{} By inversion on the typing assumption and $[[ alloct <= N ]]$.}
 
     \step{<2>4}{%
-        $[[ exists ]] [[ h' ]], [[ nR' ]], [[ res_val ]] [[.]]$\\
+        $[[ exists ]] [[ h' ]], [[ nR' ]], [[ res_val ]] .\:$\\
         \begin{pfenum}
         \item $[[ alloct |- h' <= nR' ]]$
         \item $[[ alloct | < h ; res_term > ||v < h' ; res_val > ]]$
@@ -1974,14 +1974,14 @@ $[[ C |- pval => to_base ( ct ) ]]$.
 
 If $[[ cdot ; L0 ; N ; nR |- stmt <= ret ]]$ and
 $[[ alloct ; h <= N ; nR ]]$, and all functions are well-typed
-then $[[ forall ]] [[ f ]] [[ . ]] [[ < alloct ; h + f ; stmt > -->  < alloct' ; heap ; stmt' > ]] [[ => ]]
-[[ exists ]] [[ N' ]] , [[ h' ]] , [[ nR' ]] [[ . ]]
+then $[[ forall ]] [[ f ]] [[ .: ]] [[ < alloct ; h + f ; stmt > -->  < alloct' ; heap ; stmt' > ]] [[ => ]]
+[[ exists ]] [[ N' ]] , [[ h' ]] , [[ nR' ]] [[ .: ]]
 ( [[ cdot ; L0 ; N ; cdot [= cdot ; L0 ; N' ; cdot ]] )
 [[ /\ ]] [[ heap ]] = [[ h' + f ]]
 [[ /\ ]] ( [[ alloct' ; h' <= N' ; nR' ]] )
 [[ /\ ]] ( [[ cdot ; L0 ; N' ; nR' |- stmt' <= ret ]] )$.\\[\baselineskip]
 
-You can equally well prove $[[ forall ]] [[ nR' ]] [[ . ]] [[ alloct ; h' <= N' ; nR' ]]
+You can equally well prove $[[ forall ]] [[ nR' ]] [[ .: ]] [[ alloct ; h' <= N' ; nR' ]]
 [[ => ]] [[ cdot ; L0 ; N ; nR' |- stmt' <= ret ]]$ instead. Instead of
 supplying $[[ nR' ]]$ and proving heap typing, you instead invert heap typing
 to deduce that $[[ nR' ]]$ can only be what you would have supplied anyways.
@@ -1997,10 +1997,10 @@ to deduce that $[[ nR' ]]$ can only be what you would have supplied anyways.
     \item for all $[[ P ( id ) = </ xi // i /> |-> stmt : fon ]]$,
             if $[[ C ; L ; N ; R |- param_spine :: fon >> subs ; ret ]]$
             then $[[ C ; L ; N ; R |- subs ( stmt ) <= ret ]]$
-    \item $[[ forall ]] [[ f ]] [[ . ]] [[ < alloct ;  h + f ; stmt > -->  < alloct' ; heap ; stmt' > ]]$.
+    \item $[[ forall ]] [[ f ]] [[ .: ]] [[ < alloct ;  h + f ; stmt > -->  < alloct' ; heap ; stmt' > ]]$.
 \end{pfenum}\leavevmode\\}
 
-\prove{$[[ exists ]] [[ N' ]] , [[ h' ]], [[ nR' ]] [[ . ]]$
+\prove{$[[ exists ]] [[ N' ]] , [[ h' ]], [[ nR' ]] [[ .: ]]$
     \begin{pfenum}
         \item $[[ cdot ; L0 ; N ; cdot [= cdot ; L0 ; N' ; cdot ]]$
         \item $[[ heap ]] = [[ h' + f ]]$
@@ -2016,7 +2016,7 @@ to deduce that $[[ nR' ]]$ can only be what you would have supplied anyways.
     \pflet{$[[ h' ]] = [[ cdot ]]$ and $[[ nR' ]] = [[ cdot ]]$,
         so $[[ heap ]] = [[ h' + f ]]$ trivially and $[[ alloct |- cdot <= cdot ]]$ (by \HeapEmpty).}
 
-    $[[ ret ]] = [[ pure_ret ]]= [[ sigma y : base_type . y = inj pval /\ I ]]$\\[\baselineskip]
+    $[[ ret ]] = [[ pure_ret ]]= [[ sigma y : base_type .: y = inj pval /\ I ]]$\\[\baselineskip]
     \pf{} By \PureStmtPExpr{} and \PureStmtPVal, suffices to show $[[ cdot ; L0 ; N |- pval <= pure_ret ]]$
     which requires proving the trivial constraint $[[ inj pval = inj pval ]]$.}}
 
@@ -2026,7 +2026,7 @@ to deduce that $[[ nR' ]]$ can only be what you would have supplied anyways.
     As before, $[[ nR ]] = [[ cdot ]]$, $[[ h ]] = [[ cdot ]]$, and
     $[[ heap ]] = [[ f ]]$.
 
-    $[[ ret ]] = [[ sigma y : integer . y = xor_uf ( int1 , int2 ) /\ I ]]$\\[\baselineskip]
+    $[[ ret ]] = [[ sigma y : integer .: y = xor_uf ( int1 , int2 ) /\ I ]]$\\[\baselineskip]
     \pf{} By \PureStmtPVal, suffices to show $[[ cdot |- int => integer ]]$
     (true by \PureValObjInt).}}
 
@@ -2038,7 +2038,7 @@ to deduce that $[[ nR' ]]$ can only be what you would have supplied anyways.
     \pflet{$[[ h' ]] = [[ cdot ]]$ and $[[ nR' ]] = [[ cdot ]]$,
         so $[[ heap ]] = [[ h' + f ]]$ trivially and $[[ alloct |- cdot <= cdot ]]$ (by \HeapEmpty).}
 
-    $[[ ret ]] = [[ sigma y : loc . y = inj ptr' /\ I ]]$\\[\baselineskip]
+    $[[ ret ]] = [[ sigma y : loc .: y = inj ptr' /\ I ]]$\\[\baselineskip]
     \pf{} By \PureStmtPVal, suffices to show $[[ cdot |- ptr' => loc ]]$
     (true by \PureValObjPtr) and
     $[[ smt ( N => inj ptr' = array_shift < ct > ( inj ptr , int ) ) ]]$
@@ -2080,7 +2080,7 @@ to deduce that $[[ nR' ]]$ can only be what you would have supplied anyways.
     \ActionCreate.
 }{%
     \pflet{%
-        $[[ ret ]] = [[ sigma yp : loc . term /\ exists x : to_base ( ct ) . ( yp |- Uninit - ct -> x ) *o I  ]]$\\
+        $[[ ret ]] = [[ sigma yp : loc .: term /\ exists x : to_base ( ct ) .: ( yp |- Uninit - ct -> x ) *o I  ]]$\\
         where $[[ term ]] = [[ representable ( ct * , yp ) /\ alignedI ( int , yp )  /\ allocv [ @ aid ] = ( addr , sizeof ct ) ]]$.\\
         $[[ pt ]] = [[ Owned < Uninit, ct > ( inj ptr ) ( default to_base ( ct ) ) ]]$.\\[\baselineskip]}
 
@@ -2123,7 +2123,7 @@ to deduce that $[[ nR' ]]$ can only be what you would have supplied anyways.
     \ActionLoad.
 }{%
     \pflet{%
-        $[[ ret ]] = [[ sigma y : to_base ( ct ) . y = inj pval /\ ( inj ptr |- Init - ct -> inj pval ) *o I ]]$\\
+        $[[ ret ]] = [[ sigma y : to_base ( ct ) .: y = inj pval /\ ( inj ptr |- Init - ct -> inj pval ) *o I ]]$\\
         $[[ pt ]] = [[ Owned < Init , ct > ( inj ptr ) ( inj pval ) ]]$.\\[\baselineskip]}
 
     \assume{%
@@ -2158,7 +2158,7 @@ to deduce that $[[ nR' ]]$ can only be what you would have supplied anyways.
     \ActionStore.
 }{%
     \pflet{%
-        $[[ ret ]] = [[ sigma _ : unit . ( inj ptr |- Init - ct -> inj pval ) *o I ]]$.\\
+        $[[ ret ]] = [[ sigma _ : unit .: ( inj ptr |- Init - ct -> inj pval ) *o I ]]$.\\
         $[[ pt ]] = [[ Owned < _init , ct > ( inj ptr ) ( _t )]]$,
         $[[ pt' ]] = [[ Owned < Init , ct > ( inj ptr ) ( inj pval ) ]]$.\\[\baselineskip]}
 
@@ -2198,7 +2198,7 @@ to deduce that $[[ nR' ]]$ can only be what you would have supplied anyways.
 }{%
 
     \assume{%
-        $[[ cdot ; L0 ; N ; nR |- res_term | kill < ct > ( ptr ) => sigma _ : unit . I ]]$
+        $[[ cdot ; L0 ; N ; nR |- res_term | kill < ct > ( ptr ) => sigma _ : unit .: I ]]$
         and $[[ alloct | < h + f ; res_term > ||v < heap + { pt & None } + { Alloc ( @ aid ) ( oarg ) & None } ; < Owned < _init , ct > ( inj ptr ) , Alloc ( @ aid ) > > ]]$.\\[\baselineskip]}
 
     $[[ exists ]] [[ h'' ]] , [[ nR'' ]]$ such that
@@ -2214,7 +2214,7 @@ to deduce that $[[ nR' ]]$ can only be what you would have supplied anyways.
     This means $[[ heap ]] = [[ h' + f ]]$ and $[[ alloct |- h' <= nR' ]]$ (by \HeapEmpty).\\[\baselineskip]
 
     \prove{%
-        $[[ cdot ; L0 ; N ; cdot |- < Unit > <= sigma _ : unit . I ]]$}
+        $[[ cdot ; L0 ; N ; cdot |- < Unit > <= sigma _ : unit .: I ]]$}
 
     \pf{} By \SpineRet, \PureValUnit, \SpineComp, \StmtRetT.}}
 
@@ -2223,7 +2223,7 @@ to deduce that $[[ nR' ]]$ can only be what you would have supplied anyways.
 }{%
 
     \assume{%
-      $[[ ret def= sigma y : bool . y = ( addr1 ' rel_binop ' addr2 ) /\ Alloc ( ptrt1 ) ( oarg1 ) * Alloc ( ptrt2 ) ( oarg2 ) *o I ]]$
+      $[[ ret def= sigma y : bool .: y = ( addr1 ' rel_binop ' addr2 ) /\ Alloc ( ptrt1 ) ( oarg1 ) * Alloc ( ptrt2 ) ( oarg2 ) *o I ]]$
       $[[ cdot ; L0 ; N ; nR |- res_term | ( @ aid1 , addr1 ) rel_binop ( @ aid2 , addr2 ) => ret ]]$
       and $[[ alloct | < h + f ; res_term > ||v < heap + { Alloc ( ptrt1 ) ( oarg1 ) & None } + { Alloc ( ptrt2 ) ( oarg2 ) & None } ; < Alloc ( ptrt1 ) , Alloc ( ptrt2 ) > > ]]$.\\[\baselineskip]}
 
@@ -2315,12 +2315,12 @@ to deduce that $[[ nR' ]]$ can only be what you would have supplied anyways.
     $[[ < alloct ; h + f ; let </ ret_pati // i /> : ret1 = < </ ret_termi // i /> > in stmt > --> < alloct' ; heap ; subs ( stmt ) > ]]$.\\
     where $[[ < h ; </ ret_pati = ret_termi // i /> > ~> < heap ; subs > ]]$.\\[\baselineskip]
 
-    \prove{$[[ exists ]] [[ N' ]] , [[ h' ]] , [[ nR' ]] [[ . ]]$\\
+    \prove{$[[ exists ]] [[ N' ]] , [[ h' ]] , [[ nR' ]] [[ .: ]]$\\
         $\quad [[ cdot ; L0 ; N ; cdot [= cdot ; L0 ; N' ; cdot ]]$\\
         $\quad [[ heap ]] = [[ h' + f ]]$ and $[[ alloct |- h' <= nR' ]]$\\
         $\quad [[ cdot ; L0 ; N' ; nR' |- subs ( stmt2 ) <= subs ( ret2 ) ]]$.\\[\baselineskip]}
 
-    $[[ exists ]] [[ h1' ]], [[ nR1' ]] [[ . ]] [[ heap ]] = [[ h1' + h2 + f ]]$,
+    $[[ exists ]] [[ h1' ]], [[ nR1' ]] [[ .: ]] [[ heap ]] = [[ h1' + h2 + f ]]$,
     $[[ alloct |- h1' <= nR1' ]]$ and $[[ cdot ; L0 ; N ; nR1' |- subs <= ( C3 ; L3 ; R3 ) ]]$\\
     by \lemmaref{subsec:wt_values_pat_match}.\\[\baselineskip]
     This means $[[ cdot ; L0 ; [ id ,subs ] ( N , N3 ) ; nR1' , nR2 |- [ id , subs ] <= ( C3 ; L0 , L3 ; nR2 , R3 ) ]]$
@@ -2352,7 +2352,7 @@ to deduce that $[[ nR' ]]$ can only be what you would have supplied anyways.
         $[[ indexed </ C , Ci ; L ; N , termi = inj pval ; R |- stmti <= ret // i /> ]]$.\\[\baselineskip]
 
         $[[ patj = pval ~> subsj ]]$ and
-        $[[ forall i lt j . not ( pati = pval ~> subsi ) ]]$.\\[\baselineskip]}
+        $[[ forall i lt j .: not ( pati = pval ~> subsi ) ]]$.\\[\baselineskip]}
 
     \pflet{$[[ N' ]] = [[ N , subsj ( termj = inj pval ) ]]$, $[[ h' ]] = [[ h ]]$ and $[[ nR' ]] = [[ nR ]]$.}
     $[[ cdot ; L0 ; N' ; nR |- [ id , subsj ] <= ( Cj ; L0 ; nR ) ]]$\\

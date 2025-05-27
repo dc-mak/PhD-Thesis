@@ -311,7 +311,7 @@ grammar
 
   arith_op :: 'Arith_op_' ::= {{ com SMT term arithmetic operations }}
     | term1 +   term2                   ::   :: add
-    | sum i . iguard => term            ::   :: sum {{ tex \sum_{ [[ i ]] } { [[ iguard ]] [[ => ]] \left\{ [[ term ]] \right\}  } }}
+    | sum i .: iguard => term            ::   :: sum {{ tex \sum_{ [[ i ]] } { [[ iguard ]] [[ => ]] \left\{ [[ term ]] \right\}  } }}
     | term1 -   term2                   ::   :: sub
     | term1 *   term2                   ::   :: mul {{ tex [[term1]] \times [[term2]] }}
     | term1 /   term2                   ::   :: div
@@ -451,7 +451,7 @@ grammar
   ipred :: 'IPred_' ::= {{ com iterated (integer-indexed) seperation logic predicate }}
     | ipred_term ( oarg )                         ::   :: ipred
       {{ com an iterated predicate is an iterated term with an array output argument }}
-    | *S x . iguard => ptrt |- init - ct -> oarg  :: S :: ipoints_to
+    | *S x .: iguard => ptrt |- init - ct -> oarg  :: S :: ipoints_to
       {{ com pretty-printing for iterated points-to $\cnkw{each}$ $(\!\cnkw{integer} \, [[ x ]]\, ;$ $[[ iguard ]])$ $\{ \cnkw{Owned}$ $\langle [[ init ]] , [[ ct ]] \rangle$ $( [[ ptrt ]] ) \}$ $( [[ oarg ]] )$ }}
       {{ tex [[ *S ]]_{ [[ x ]] } { [[ iguard ]] [[ => ]] \left\{ [[ ptrt ]] \overunderset{ [[ init ]] }{ [[ ct ]] }{ \mapsto } { [[ oarg ]] [ [[ x ]]\;\! ] } \right\}  } }}
 
@@ -465,7 +465,7 @@ grammar
     | ipred                       ::     :: ipred    {{ com iterated (integer-indexed) heap predicate   }}
     | res1 * res2                 ::     :: sep_conj {{ com seperating conjunction                      }}
     | *S ( </ resi // , // i /> ) :: S   :: big_conj {{ com notation for nested sep. conj.              }}
-    | exists x : base_type . res  ::     :: exists   {{ com existential                                 }}
+    | exists x : base_type .: res  ::     :: exists   {{ com existential                                 }}
     | if term then res1 else res2 ::     :: if       {{ com conditional resource / ordered disjuction   }}
     | ( res )                     :: S X :: paren    {{ com parentheses                                 }}
     | subs ( res )                :: M   :: subs     {{ com substitute $[[subs]]$ in $[[res]]$          }}
@@ -497,28 +497,28 @@ grammar
 grammar
 
   ret , _r {{ tex \_ }} :: Ret_ ::= {{ com return types }}
-    | sigma id : base_type . ret  ::   :: comp   {{ com return a computational value            }}
-    | exists id : base_type . ret ::   :: log    {{ com return a logical (output) value         }}
-    | res *o ret                  ::   :: res    {{ com return a resource                       }}
-    | term /\ ret                 ::   :: phi    {{ com guarantee a constraint                  }}
-    | I                           ::   :: i      {{ com end return list                         }}
-    | subs ( ret )                :: M :: subs
+    | sigma id : base_type .: ret  ::   :: comp   {{ com return a computational value            }}
+    | exists id : base_type .: ret ::   :: log    {{ com return a logical (output) value         }}
+    | res *o ret                   ::   :: res    {{ com return a resource                       }}
+    | term /\ ret                  ::   :: phi    {{ com guarantee a constraint                  }}
+    | I                            ::   :: i      {{ com end return list                         }}
+    | subs ( ret )                 :: M :: subs
                                                       {{ com substitute $[[subs]]$ in $[[ret]]$      }}
 
   pure_ret :: Pure_ret_ ::= {{ com pure return types }}
-    | sigma id : base_type . pure_ret ::   :: comp
-    | term /\ pure_ret                ::   :: phi
-    | I                               ::   :: i
-    | subs ( pure_ret )               :: M :: subs
+    | sigma id : base_type .: pure_ret ::   :: comp
+    | term /\ pure_ret                 ::   :: phi
+    | I                                ::   :: i
+    | subs ( pure_ret )                :: M :: subs
                                                           {{ com substitute $[[subs]]$ in $[[pure_ret]]$   }}
 
   norm_ret {{ tex \norm{ret} }} :: Norm_ret_ ::= {{ com normalised return types }}
-    | sigma id : base_type . norm_ret  ::   :: comp
-    | exists id : base_type . norm_ret ::   :: log
-    | norm_res *o norm_ret             ::   :: norm_res
-    | term /\ norm_ret                 ::   :: phi
-    | I                                ::   :: i
-    | subs ( norm_ret )                :: M :: subs
+    | sigma id : base_type .: norm_ret  ::   :: comp
+    | exists id : base_type .: norm_ret ::   :: log
+    | norm_res *o norm_ret              ::   :: norm_res
+    | term /\ norm_ret                  ::   :: phi
+    | I                                 ::   :: i
+    | subs ( norm_ret )                 :: M :: subs
 
 subrules
     pure_ret <:: norm_ret
@@ -632,7 +632,7 @@ grammar
     | kill ( pce1 )                           ::  :: kill
     | store ( pce1 , pce2 , pce3 )            ::  :: store
     | load ( pce1 , pce2 )                    ::  :: load
-    | seq_rmw ( pce1 , pce2 , x . pce3 )      ::  :: seq_rmw
+    | seq_rmw ( pce1 , pce2 , x .: pce3 )     ::  :: seq_rmw
 
   core , ce {{ tex \cnnt{E} }} :: 'CE_' ::= {{ com Cerberus Core expression }}
     | pure ( pce )                                   ::  :: pure
@@ -667,14 +667,14 @@ grammar
   % (c) makes `{ _ : qpred_term' & oarg } |- qpred_term => qpred_term' & oarg' nicely consistent
   % (d) avoids the need to invent default-valued arrays in the SMT terms.
   pred_ops :: 'Pred_ops_' ::= {{ com (q)points-to operation terms }}
-    | iterate ( res_term , int )               :: :: iterate {{ com transform points-to-array into iterated points-to   }}
-    | congeal ( res_term , int )               :: :: congeal {{ com transform iterated points-to into points-to-array   }}
-    | explode ( res_term )                     :: :: explode {{ com transform points-to-struct into member points-tos   }}
-    | implode ( res_term , tag )               :: :: implode {{ com transform member points-tos into points-to-struct   }}
-    | break ( res_term , term )                :: :: break   {{ com break a ipred into a ipred and a pred               }}
-    | glue ( res_term )                        :: :: join    {{ com glue a ipred and a pred (back) into a ipred         }}
-    | inj ( res_term , ptrt , ct , x . iargs ) :: :: inj     {{ com transform a pred into a singleton ipred             }}
-    | chop ( res_term , iguard )               :: :: chop    {{ com chop a ipred into two ipreds along $[[iguard]]$     }}
+    | iterate ( res_term , int )                :: :: iterate {{ com transform points-to-array into iterated points-to   }}
+    | congeal ( res_term , int )                :: :: congeal {{ com transform iterated points-to into points-to-array   }}
+    | explode ( res_term )                      :: :: explode {{ com transform points-to-struct into member points-tos   }}
+    | implode ( res_term , tag )                :: :: implode {{ com transform member points-tos into points-to-struct   }}
+    | break ( res_term , term )                 :: :: break   {{ com break a ipred into a ipred and a pred               }}
+    | glue ( res_term )                         :: :: join    {{ com glue a ipred and a pred (back) into a ipred         }}
+    | inj ( res_term , ptrt , ct , x .: iargs ) :: :: inj     {{ com transform a pred into a singleton ipred             }}
+    | chop ( res_term , iguard )                :: :: chop    {{ com chop a ipred into two ipreds along $[[iguard]]$     }}
 
   % It is subtle, but quite important, that only variables can have an
   % ordered-disjunction type, and (since variables are not values) there is no
@@ -882,7 +882,7 @@ grammar
     | '::'    :: :: Colon     {{ tex \Colon                           }}
     | :=      :: :: coloneq   {{ tex \coloneq                         }}
     | :       :: :: of_type   {{ tex \oftype                          }}
-    | .       :: :: such_that {{ tex . \:                             }}
+    | .:      :: :: such_that {{ tex . \:                             }}
     | dot     :: :: dot       {{ tex \! {.} \!                        }}
     | >>      :: :: chevron   {{ tex \gg                              }}
     | \/      :: :: or        {{ tex \vee                             }}
@@ -899,8 +899,8 @@ grammar
     | obj     :: :: obj       {{ tex                                  }}
     | ops     :: :: ops       {{ tex                                  }}
     | PAT     :: :: PAT       {{ tex                                  }}
-    | [(      :: :: openDen   {{ tex [\![                             }}
-    | )]      :: :: closeDen  {{ tex ]\!]                             }}
+    | [(      :: :: openDen   {{ tex [\![ \,                          }}
+    | )]      :: :: closeDen  {{ tex \, ]\!]                          }}
     | ||v     :: :: DownArr   {{ tex \Downarrow                       }}
     | -?      :: :: subQ      {{ tex \mathrel{ {-}\!{?} }             }}
     | +?      :: :: plusQ     {{ tex \mathrel{ {+}{?} }               }}
@@ -916,34 +916,34 @@ grammar
  grammar
 
   comp_list :: Comp_list_ ::= {{ com list of computational arguments }}
-    | pi id1 : base_type1 . .... . pi idk : base_typek :: :: gte_two
+    | pi id1 : base_type1 .: .... .: pi idk : base_typek :: :: gte_two
 
   fon {{ tex \cnnt{fun} }} :: Fun_ ::= {{ com function types }}
-    | pi id : base_type . fon     ::     :: comp      {{ com assume a computational value        }}
-    | forall id : base_type . fon ::     :: log       {{ com assume a logical value              }}
-    | res --o fon                 ::     :: res       {{ com assume a resource                   }}
-    | term -) fon                 ::     :: phi       {{ com assume a constraint                 }}
-    | ret                         ::     :: ret       {{ com return a value of type $[[ret]]$    }}
-    | to_fun ret                  :: M   :: of_ret    {{ com change a return to an arugment type }}
-    | subs ( fon )                :: M   :: subs      {{ com substitute $[[subs]]$ in $[[fon]]$  }}
-    | ( fon  )                    :: S X :: paren     {{ tex [[ fon ]]                           }}
-    | comp_list . fon             :: M   :: comp_list {{ com assume several computational values }}
+    | pi id : base_type .: fon     ::     :: comp      {{ com assume a computational value        }}
+    | forall id : base_type .: fon ::     :: log       {{ com assume a logical value              }}
+    | res --o fon                  ::     :: res       {{ com assume a resource                   }}
+    | term -) fon                  ::     :: phi       {{ com assume a constraint                 }}
+    | ret                          ::     :: ret       {{ com return a value of type $[[ret]]$    }}
+    | to_fun ret                   :: M   :: of_ret    {{ com change a return to an arugment type }}
+    | subs ( fon )                 :: M   :: subs      {{ com substitute $[[subs]]$ in $[[fon]]$  }}
+    | ( fon  )                     :: S X :: paren     {{ tex [[ fon ]]                           }}
+    | comp_list .: fon             :: M   :: comp_list {{ com assume several computational values }}
 
   pure_fun :: Pure_fun_ ::= {{ com pure function types }}
-    | pi id : base_type . pure_fun :: :: comp
-    | term -) pure_fun             :: :: phi
-    | pure_ret                     :: :: ret
+    | pi id : base_type .: pure_fun :: :: comp
+    | term -) pure_fun              :: :: phi
+    | pure_ret                      :: :: ret
 
   norm_fun {{ tex \norm{ \cnnt{fun} } }} :: Norm_fun_ ::= {{ com normalised function types }}
-    | pi id : base_type . norm_fun     ::     :: comp      {{ com assume a computational value            }}
-    | forall id : base_type . norm_fun ::     :: log       {{ com assume a logical value                  }}
-    | norm_res --o norm_fun            ::     :: res       {{ com assume a resource                       }}
-    | term -) norm_fun                 ::     :: phi       {{ com assume a constraint                     }}
-    | norm_ret                         ::     :: ret       {{ com return a value of type $[[norm_ret]]$   }}
-    | to_fun norm_ret                  :: M   :: of_ret    {{ com change a return to an arugment type     }}
-    | subs ( norm_fun )                :: M   :: subs      {{ com substitute $[[subs]]$ in $[[norm_fun]]$ }}
-    | ( norm_fun  )                    :: S X :: paren     {{ tex [[norm_fun]]                            }}
-    | comp_list . norm_fun             :: M   :: comp_list {{ com assume several computational values     }}
+    | pi id : base_type .: norm_fun     ::     :: comp      {{ com assume a computational value            }}
+    | forall id : base_type .: norm_fun ::     :: log       {{ com assume a logical value                  }}
+    | norm_res --o norm_fun             ::     :: res       {{ com assume a resource                       }}
+    | term -) norm_fun                  ::     :: phi       {{ com assume a constraint                     }}
+    | norm_ret                          ::     :: ret       {{ com return a value of type $[[norm_ret]]$   }}
+    | to_fun norm_ret                   :: M   :: of_ret    {{ com change a return to an arugment type     }}
+    | subs ( norm_fun )                 :: M   :: subs      {{ com substitute $[[subs]]$ in $[[norm_fun]]$ }}
+    | ( norm_fun  )                     :: S X :: paren     {{ tex [[norm_fun]]                            }}
+    | comp_list .: norm_fun             :: M   :: comp_list {{ com assume several computational values     }}
 
   subrules
     pure_fun <:: fon

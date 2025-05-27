@@ -1,13 +1,13 @@
 grammar
 
   misc_extra :: 'misc_extra_' ::= {{ com extra judgements for proof-related definitions }}
-    | forall x . iguard => h <= nR           ::  :: forall_x_ig_h   {{ com meta-logical: for all $[[x]]$ such that $[[iguard]]$, heap $[[h]]$ checks against resource context $[[nR]]$        }}
-    | forall term ~ term' . fon ~ ret        ::  :: forall_rel_ret  {{ com meta-logical: for all unifiable $[[term]]$ and $[[term']]$, $[[fon]]$ and $[[ret]]$ are unifiable                  }}
-    | forall term ~ term' . res ~ res'       ::  :: forall_rel_res  {{ com meta-logical: for all unifiable $[[term]]$ and $[[term']]$, $[[res]]$ and $[[res']]$ are unifiable                 }}
+    | forall x .: iguard => h <= nR           ::  :: forall_x_ig_h   {{ com meta-logical: for all $[[x]]$ such that $[[iguard]]$, heap $[[h]]$ checks against resource context $[[nR]]$        }}
+    | forall term ~ term' .: fon ~ ret        ::  :: forall_rel_ret  {{ com meta-logical: for all unifiable $[[term]]$ and $[[term']]$, $[[fon]]$ and $[[ret]]$ are unifiable                  }}
+    | forall term ~ term' .: res ~ res'       ::  :: forall_rel_res  {{ com meta-logical: for all unifiable $[[term]]$ and $[[term']]$, $[[res]]$ and $[[res']]$ are unifiable                 }}
     | term ~ term'                           ::  :: term_term_rel   {{ com omitted/assumed defintion: SMT terms $[[ term ]]$ and $[[ term' ]]$ are unifiable                                  }}
     | meta term                              ::  :: meta_term       {{ com meta-logical: constraint $[[term]]$ holds }} {{ tex [[term]]                                                       }}
-    | forall i . iguard => ( A , M ) |= heap ::  :: forall_i_ig_vip {{ com meta-logical: for all $[[i]]$ such that $[[iguard]]$, concrete heap $([[A]], [[M]])$ satisfies symbolic $[[heap]]$ }}
-    | forall i . term                        ::  :: forall_i_term   {{ com meta-logical: for all $[[i]]$, constraint $[[term]]$ holds                                                         }}
+    | forall i .: iguard => ( A , M ) |= heap ::  :: forall_i_ig_vip {{ com meta-logical: for all $[[i]]$ such that $[[iguard]]$, concrete heap $([[A]], [[M]])$ satisfies symbolic $[[heap]]$ }}
+    | forall i .: term                        ::  :: forall_i_term   {{ com meta-logical: for all $[[i]]$, constraint $[[term]]$ holds                                                         }}
     | norm_fun def= norm_fun'                ::  :: norm_fun_abbrev {{ com abbreviate $[[norm_fun']]$ with the name $[[norm_fun]]$                                                            }}
 
 defns
@@ -140,13 +140,13 @@ defns
 
 
     ipred def= ipred'
-    ipred def= *S x . iguard => ptrt |- _init - ct -> oarg
+    ipred def= *S x .: iguard => ptrt |- _init - ct -> oarg
     ------------------------------------------------- :: IPred_Owned
     { ipred & cdot } <= _ : ipred'
 
 
     ipred_term' def= each (integer x; iguard) { id ( iargs ) }
-    forall x . iguard => { id ( iargs ) ( oarg [ x ] ) & arr_heap [ x ] } <= _ : id ( iargs ) ( oarg [ x ] )
+    forall x .: iguard => { id ( iargs ) ( oarg [ x ] ) & arr_heap [ x ] } <= _ : id ( iargs ) ( oarg [ x ] )
     ----------------------------------------------------------- :: IPred_Other
     { ipred_term ( oarg ) & arr_heap } <= _ : ipred_term ( oarg )
 
@@ -197,9 +197,9 @@ defns
     if term then res1 else res2 ~ if term' then res1' else res2'
 
 
-    forall term ~ term' . term / y ( res1 ) ~ term' / y' ( res1' )
+    forall term ~ term' .: term / y ( res1 ) ~ term' / y' ( res1' )
     --------------------------------------------------------------- :: Exists
-    exists y : base_type . res1 ~ exists y' : base_type . res1'
+    exists y : base_type .: res1 ~ exists y' : base_type .: res1'
 
 
     res1 ~ res1'
@@ -226,14 +226,14 @@ defns
     ------ :: I
     I ~ I
 
-    forall term ~ inj pval . term / y ( fon ) ~ pval / y' ( ret )
+    forall term ~ inj pval .: term / y ( fon ) ~ pval / y' ( ret )
     ------------------------------------------------------------- :: Comp
-    pi y : base_type . fon ~ sigma y' : base_type . ret
+    pi y : base_type .: fon ~ sigma y' : base_type .: ret
 
 
-    forall oarg ~ oarg' . oarg / y ( fon ) ~ oarg' / y' ( ret )
+    forall oarg ~ oarg' .: oarg / y ( fon ) ~ oarg' / y' ( ret )
     ------------------------------------------------------------- :: Log
-    forall y : base_type . fon ~ exists y' : base_type . ret
+    forall y : base_type .: fon ~ exists y' : base_type .: ret
 
 
     term ~ term'
@@ -298,7 +298,7 @@ defns
     [( spec )] ( y ) = res
     [( spec' )] ( opt_ident ) = res'
     ----------------------------------------------------------------------------- :: Take
-    [( take y = spec ; spec' )] ( opt_ident ) = exists y : base_type . res * res'
+    [( take y = spec ; spec' )] ( opt_ident ) = exists y : base_type .: res * res'
 
 
   defn [( spec )] = out_norm_ret :: :: Spec_To_Ret :: Spec_To_Ret_
@@ -321,7 +321,7 @@ defns
     [( spec )] ( y ) = norm_res
     [( spec' )] = norm_ret
     ------------------------------------------------------------------------- :: Take
-    [( take y = spec ; spec' )] = exists y : base_type . norm_res *o norm_ret
+    [( take y = spec ; spec' )] = exists y : base_type .: norm_res *o norm_ret
 
 
   defn [( spec | norm_ret )] = out_norm_fun :: :: Spec_To_Arg :: Spec_To_Arg_
@@ -344,18 +344,18 @@ defns
     [( spec )] ( y ) = norm_res
     [( spec' | norm_ret )] = norm_fun
     ------------------------------------------------------------------------------------- :: Take
-    [( take y = spec ; spec' | norm_ret )] = forall y : base_type . norm_res --o norm_fun
+    [( take y = spec ; spec' | norm_ret )] = forall y : base_type .: norm_res --o norm_fun
 
 
   defn [( cfunc_def )] ~> P ( id ) = x1 , .. , xk |-> out_stmt  : out_norm_fun :: :: Func_To :: Func_To_
   {{ com user-defined C function specification elaborates to ResCore $[[out_stmt]]$ and CN type $[[out_norm_fun]]$ }}  by
 
     [( spec2 )] = norm_ret
-    [( spec1 | sigma y : to_base ( ct ) . norm_ret )] = norm_fun'
-    norm_fun def= pi x1 : to_base ( ct1 ) . .. . pi xk : to_base ( ctk ) . norm_fun'
+    [( spec1 | sigma y : to_base ( ct ) .: norm_ret )] = norm_fun'
+    norm_fun def= pi x1 : to_base ( ct1 ) .: .. .: pi xk : to_base ( ctk ) .: norm_fun'
     frontend ( block ) ~> stmt
     ----------------------------------------------------------------------------- :: Fun
-    [( ct id( ct1 x1 , .. , ctk xk ) /*@ requires spec1 ensures y. spec2 @*/ block )] ~> P ( id ) = x1 , .. , xk |-> stmt : norm_fun
+    [( ct id( ct1 x1 , .. , ctk xk ) /*@ requires spec1 ensures y .: spec2 @*/ block )] ~> P ( id ) = x1 , .. , xk |-> stmt : norm_fun
 
 
   defn [( pred_def )] ~> P ( id ) = </ xk : base_typek // , // k /> |-> out_res :: :: Pred_To :: Pred_To_
@@ -372,13 +372,13 @@ defns
   defn ( A , M ) |= heap :: :: Heap :: Heap_
   {{ com VIP heap $( [[ A ]] , [[ M ]] )$ satisfies $[[heap]]$ ($[[ M ]]$ disjoint over bytes, $[[ A ]]$ disjoint over live allocations) }}  by
 
-  forall i . A [ i ] = ( _t , _t , false )
+  forall i .: A [ i ] = ( _t , _t , false )
   ------------------------------------------ :: Emp
   ( A , [| |] ) |= cdot
 
 
   meta A [ @ aid ] = ( addr , term , true )
-  forall i .  i != aid -> A [ i ] = ( _t , _t , false )
+  forall i .:  i != aid -> A [ i ] = ( _t , _t , false )
   -------------------------------------------------------------------------- :: Alloc
   ( A , [| |] ) |= { Alloc ( @ aid ) ( (addr , term) ) & None }
 
@@ -402,9 +402,9 @@ defns
   ( A , M ) |= { a ( iargs ) ( oarg ) & def & heap }
 
 
-  meta M = sum i . iguard => Mi
-  meta A = sum i . iguard => Ai
-  forall i . iguard => ( Ai , Mi ) |= arr_heap [ i ] dot DEF
+  meta M = sum i .: iguard => Mi
+  meta A = sum i .: iguard => Ai
+  forall i .: iguard => ( Ai , Mi ) |= arr_heap [ i ] dot DEF
   --------------------------------------------------------------------------------------- :: IPred
   ( A , M ) |= { each (integer x; iguard) { a ( iargs ) } ( oarg ) & arr_heap }
 
@@ -422,7 +422,7 @@ defns
   {{ com VIP heap $( [[ A ]] , [[ M ]] )$ satisfies $[[state]]$ }}  by
 
   ( A , M ) |= alloct / allocv ( heap )
-  forall i . A [ i ] = ( addr , term , _t ) <-> alloct [ i ] = ( addr , term )
+  forall i .: A [ i ] = ( addr , term , _t ) <-> alloct [ i ] = ( addr , term )
   ----------------------------------------------------------------------------------- :: Def
   ( A , M ) |= alloct ; heap
 

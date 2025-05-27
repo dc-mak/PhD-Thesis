@@ -228,7 +228,7 @@ defns
 
     N |- res = res'
     -------------------------------------------------------------------------------- :: Exists
-    N |- exists x : base_type . res = exists x : base_type . res'
+    N |- exists x : base_type .: res = exists x : base_type .: res'
 
 
     smt ( N => term1 <-> term2 )
@@ -262,7 +262,7 @@ defns
 
     N |- simp_rec ( res ) ~> res' , ty_bool
     ---------------------------------------------------------------------------------- :: Exists
-    N |- simp_rec ( exists y : base_type . res ) ~> exists y : base_type . res' , ty_bool
+    N |- simp_rec ( exists y : base_type .: res ) ~> exists y : base_type .: res' , ty_bool
 
 
     ---------------------------------- :: NoChange
@@ -295,12 +295,12 @@ defns
 
     N |- ret = ret'
     ------------------------------------------------------------ :: Comp
-    N |- sigma y : base_type . ret = sigma y : base_type . ret'
+    N |- sigma y : base_type .: ret = sigma y : base_type .: ret'
 
 
     N |- ret = ret'
     -------------------------------------------------------------- :: Log
-    N |- exists y : base_type . ret = exists y : base_type . ret'
+    N |- exists y : base_type .: ret = exists y : base_type .: ret'
 
 
     smt ( N => term <-> term' )
@@ -386,7 +386,7 @@ defns
 
     L , x : base_type ; N |- res_pat : x / y ( res ) ~> L' ; N' ; R'
     ------------------------------------------------------------------------------------------ :: Pack
-    L ; N |- pack ( x , res_pat ) : exists y : base_type . res ~> L' , x : base_type ; N' ; R'
+    L ; N |- pack ( x , res_pat ) : exists y : base_type .: res ~> L' , x : base_type ; N' ; R'
 
 
     P ( id ) = </ xi : _bti // i /> , y : _bt  |-> res
@@ -407,12 +407,12 @@ defns
     pat : base_type ~> C1 with term1
     C , C1 ; L ; N |- ret_pat : term1 / y ( ret ) ~> C2 ; L2 ; N2 ; R2
     ----------------------------------------------------------------------------------- :: Comp
-    C ; L ; N |- comp pat , ret_pat : sigma y : base_type . ret ~> C1, C2 ; L2 ; N2 ; R2
+    C ; L ; N |- comp pat , ret_pat : sigma y : base_type .: ret ~> C1, C2 ; L2 ; N2 ; R2
 
 
     C ; L , x : base_type ; N |- ret_pat : x / y ( ret ) ~> C2 ; L2 ; N2 ; R2
     -------------------------------------------------------------------------------------- :: Log
-    C ; L ; N |- log x , ret_pat : exists y : base_type . ret ~> C2 ; y : base_type , L2 ; N2 ; R2
+    C ; L ; N |- log x , ret_pat : exists y : base_type .: ret ~> C2 ; y : base_type , L2 ; N2 ; R2
 
 
     C ; L ; N |- ret_pat : ret ~> C' ; L' ; N' ; R'
@@ -542,13 +542,13 @@ defns
 
     C |- pval => base_type
     ------------------------------------------------------------ :: PVal
-    C ; L ; N |- pval => sigma y : base_type . y = inj pval /\ I
+    C ; L ; N |- pval => sigma y : base_type .: y = inj pval /\ I
 
 
     C |- pval1 => integer
     C |- pval2 => integer
     -------------------------------------------------------------------------- :: Ctor_IvXOR
-    C ; L ; N |- IvXOR ( pval1, pval2 ) => sigma y : integer . y = xor_uf ( inj pval1 , inj pval2 )  /\ I
+    C ; L ; N |- IvXOR ( pval1, pval2 ) => sigma y : integer .: y = xor_uf ( inj pval1 , inj pval2 )  /\ I
 
     % DEFER (not implemented) - ctor_expr
     % IvCOMPL     :: :: ivCOMPL     {{ com bitwise complement             }} % : ctype -> integer -> integer
@@ -566,7 +566,7 @@ defns
     x def= allocv [ inj pval1 dot alloc_id ]
     smt ( N => x dot base =< ptrt' dot addr =< x dot base + x dot len )
     ----------------------------------------------------------------- :: Array_Shift
-    C ; L ; N |- array_shift < ct > ( pval1 , pval2 ) => sigma y : loc . y = ptrt' /\ I
+    C ; L ; N |- array_shift < ct > ( pval1 , pval2 ) => sigma y : loc .: y = ptrt' /\ I
 
 
     C |- pval => loc
@@ -574,40 +574,40 @@ defns
     P ( tag ) = </ memberi : cti // i />
     smt ( N => x dot base =< member_shift < tagged tag > ( inj pval , memberj ) dot addr =< x dot base + x dot len )
     ------------------------------------------------------------ :: Member_Shift
-    C ; L ; N |- member_shift < tagged tag > ( pval , memberj ) => sigma y : loc . y = member_shift < tagged tag > ( inj pval , memberj ) /\ I
+    C ; L ; N |- member_shift < tagged tag > ( pval , memberj ) => sigma y : loc .: y = member_shift < tagged tag > ( inj pval , memberj ) /\ I
 
 
     C |- pval1 => loc
     C |- pval2 => loc
     smt ( N => inj pval1 dot addr = inj pval2 dot addr )
     ----------------------------------------------------------------- :: Ptr_Eq
-    C ; L ; N |- pval1 = pval2 => sigma y : loc . y = ( inj pval1 dot addr = inj pval2 dot addr ) /\ I
+    C ; L ; N |- pval1 = pval2 => sigma y : loc .: y = ( inj pval1 dot addr = inj pval2 dot addr ) /\ I
 
 
     C |- pval => bool
     -------------------------------- :: Not
-    C ; L ; N |- not ( pval ) => sigma y : bool . y = neg inj pval /\ I
+    C ; L ; N |- not ( pval ) => sigma y : bool .: y = neg inj pval /\ I
 
 
     % DEFER - few checks to use uninterpreted functions for non-linear arithmetic appropriately
     C |- pval1 => integer
     C |- pval2 => integer
     ------------------------------------ :: Arith_Binop
-    C ; L ; N |- pval1 arith_binop pval2 => sigma y : integer . y = ( inj pval1 ' arith_binop ' inj pval2 ) /\ I
+    C ; L ; N |- pval1 arith_binop pval2 => sigma y : integer .: y = ( inj pval1 ' arith_binop ' inj pval2 ) /\ I
 
 
     % DEFER - few checks to use uninterpreted functions for non-linear arithmetic appropriately
     C |- pval1 => integer
     C |- pval2 => integer
     ------------------------------------ :: Rel_Binop
-    C ; L ; N |- pval1 rel_binop pval2 => sigma y : bool . y = ( inj pval1 ' rel_binop ' inj pval2 ) /\ I
+    C ; L ; N |- pval1 rel_binop pval2 => sigma y : bool .: y = ( inj pval1 ' rel_binop ' inj pval2 ) /\ I
 
 
     % DEFER - few checks to use uninterpreted functions for non-linear arithmetic appropriately
     C |- pval1 => bool
     C |- pval2 => bool
     --------------------------------- :: Bool_Binop
-    C ; L ; N |- pval1 bool_binop pval2 => sigma y : bool . y = ( inj pval1 ' bool_binop ' inj pval2 ) /\ I
+    C ; L ; N |- pval1 bool_binop pval2 => sigma y : bool .: y = ( inj pval1 ' bool_binop ' inj pval2 ) /\ I
 
 
     P ( name ) = </ xi // i /> |-> pstmt : pure_fun
@@ -626,19 +626,19 @@ defns
     C |- pval => bool
     smt ( N => inj pval )
     -------------------------------- :: Assert_Undef
-    C ; L ; N |- assert_undef ( pval , UB_name ) => sigma y : unit . y = unit /\ I
+    C ; L ; N |- assert_undef ( pval , UB_name ) => sigma y : unit .: y = unit /\ I
 
 
     C |- pval => bool
     -------------------------------- :: Bool_To_Integer
-    C ; L ; N |- bool_to_integer ( pval ) => sigma y : integer . y = if inj pval then 1 else 0 /\ I
+    C ; L ; N |- bool_to_integer ( pval ) => sigma y : integer .: y = if inj pval then 1 else 0 /\ I
 
 
     C |- pval => integer
     abbrev1 def= max ct - min ct + 1
     abbrev2 def= inj pval REM abbrev1
     ------------------------------------------- :: WrapI
-    C ; L ; N |- wrapI ( ct , pval ) => sigma y : integer . y = if abbrev2 =< max ct then abbrev2 else abbrev2 - abbrev1 /\ I
+    C ; L ; N |- wrapI ( ct , pval ) => sigma y : integer .: y = if abbrev2 =< max ct then abbrev2 else abbrev2 - abbrev1 /\ I
 
 
   defn CLN |- pstmt <= pure_ret :: :: Stmt :: Stmt_
@@ -647,41 +647,41 @@ defns
     C |- pval => base_type
     smt ( N => pval / y ( term ) )
     -------------------------------------------- :: PVal
-    C ; L ; N |- pval <= sigma y : base_type . term /\ I
+    C ; L ; N |- pval <= sigma y : base_type .: term /\ I
 
 
     smt ( N => false )
     ------------------- :: UB
-    C ; L ; N |- undef UB_name <= sigma _ : _bt . _t /\ I
+    C ; L ; N |- undef UB_name <= sigma _ : _bt .: _t /\ I
 
 
-    C ; L ; N |- pexpr => sigma y1 : base_type1 . term1 /\ I
+    C ; L ; N |- pexpr => sigma y1 : base_type1 .: term1 /\ I
     pat : base_type1 ~> C1 with term
-    C , C1 ; L ; N , term / y1 ( term1 ) |- pstmt <= sigma y2 : base_type2 . term2 /\ I
+    C , C1 ; L ; N , term / y1 ( term1 ) |- pstmt <= sigma y2 : base_type2 .: term2 /\ I
     -------------------------------------------------------------------------------------------- :: PExpr
-    C ; L ; N |- let pat = pexpr in pstmt <= sigma y2 : base_type2 . term2 /\ I
+    C ; L ; N |- let pat = pexpr in pstmt <= sigma y2 : base_type2 .: term2 /\ I
 
 
-    C ; L ; N |- pstmt1 <= sigma y1 : base_type1 . term1 /\ I
+    C ; L ; N |- pstmt1 <= sigma y1 : base_type1 .: term1 /\ I
     pat : base_type1 ~> C1 with term
-    C , C1 ; L ; N , term / y1 ( term1 ) |- pstmt <= sigma y2 : base_type2 . term2 /\ I
+    C , C1 ; L ; N , term / y1 ( term1 ) |- pstmt <= sigma y2 : base_type2 .: term2 /\ I
     ---------------------------------------------------------------------------------------- :: Let
-    C ; L ; N |- let pat : pure_ret = pstmt1 in pstmt2 <= sigma y2 : base_type2 . term2 /\ I
+    C ; L ; N |- let pat : pure_ret = pstmt1 in pstmt2 <= sigma y2 : base_type2 .: term2 /\ I
 
 
     % No need for propogating constraints
     C |- pval => bool
-    C ; L ; N , inj pval = true  |- pstmt1 <= sigma y : base_type . term /\ I
-    C ; L ; N , inj pval = false |- pstmt2 <= sigma y : base_type . term /\ I
+    C ; L ; N , inj pval = true  |- pstmt1 <= sigma y : base_type .: term /\ I
+    C ; L ; N , inj pval = false |- pstmt2 <= sigma y : base_type .: term /\ I
     -------------------------------------------------------------------------------------------- :: If
-    C ; L ; N |- if pval then pstmt1 else pstmt2 <= sigma y : base_type . term /\ I
+    C ; L ; N |- if pval then pstmt1 else pstmt2 <= sigma y : base_type .: term /\ I
 
 
     C |- pval => base_type1
     indexed </ pati : base_type1 ~> Ci with termi // i />
-    indexed </ C , Ci ; L ; N , termi = inj pval |- pstmti <= sigma y2 : base_type2 . term2 /\ I // i />
+    indexed </ C , Ci ; L ; N , termi = inj pval |- pstmti <= sigma y2 : base_type2 .: term2 /\ I // i />
     ---------------------------------------------------------------------------------------------------------------- :: Case
-    C ; L ; N |- case pval of </ | pati => pstmti // i /> end <= sigma y2 : base_type2 . term2 /\ I
+    C ; L ; N |- case pval of </ | pati => pstmti // i /> end <= sigma y2 : base_type2 .: term2 /\ I
 
 
 defns
@@ -693,10 +693,10 @@ defns
 
     C ; L ; N ; R |- res_term => ptrt |- init - array n ct -> oarg
     ----------------------------------------------------------------- :: Iterate
-    C ; L ; N ; R |- iterate ( res_term , n ) => ops ( *S x . 0 =< x =< n - 1 => ptrt |- init - ct -> oarg )
+    C ; L ; N ; R |- iterate ( res_term , n ) => ops ( *S x .: 0 =< x =< n - 1 => ptrt |- init - ct -> oarg )
 
 
-    C ; L ; N ; R |- res_term => ( *S x . iguard => ptrt |- init - ct -> oarg  )
+    C ; L ; N ; R |- res_term => ( *S x .: iguard => ptrt |- init - ct -> oarg  )
     smt ( N => each (integer x; _t) { iguard <-> ( 0 =< x =< n - 1 ) } )
     y1 def= allocv [ ptrt dot alloc_id ]
     smt ( N => y1 dot base =< ptrt dot addr /\ array_shift < ct > ( ptrt , n ) dot addr  =< y1 dot base + y1 dot len )
@@ -749,7 +749,7 @@ defns
     C ; L |- oarg => base_type
     res def= each (integer x ; x = term ) { a ( array_shift < ct > ( ptrt1 , x ) , iargs2 ) } ( const oarg )
     ----------------------------------------------------------------- :: Inj
-    C ; L ; N ; R |- inj ( res_term , ptrt1 , ct , x . iargs1 ) => ops res
+    C ; L ; N ; R |- inj ( res_term , ptrt1 , ct , x .: iargs1 ) => ops res
 
 
     C ; L ; N ; R |- res_term => each (integer x ; iguard') { a ( array_shift < ct > ( ptrt , x ) , iargs ) } ( oarg )
@@ -826,11 +826,11 @@ defns
 
 
     % Has to be checking or annotated - consider type of pack (1 , l |-> 1 , 1)
-    % exists y : integer . l |-> (y,y or y,1 or 1,y or 1,1)
+    % exists y : integer .: l |-> (y,y or y,1 or 1,y or 1,1)
     C ; L |- oarg => base_type
     C ; L ; N ; R |- res_term <= oarg / y ( res )
     ---------------------------------------------------------------------------- :: Pack
-    C ; L ; N ; R |- pack ( oarg , res_term ) <= exists y : base_type . res
+    C ; L ; N ; R |- pack ( oarg , res_term ) <= exists y : base_type .: res
 
 
     C ; L ; N ; R1 |- res_term1 <= res1
@@ -878,13 +878,13 @@ defns
     C |- pval => base_type
     C ; L ; N ; R |- param_spine :: pval / x ( fon ) >> subs ; ret
     ------------------------------------------------------------------------------------- :: Comp
-    C ; L ; N ; R |-  x = pval , param_spine :: pi x : base_type . fon >> [ pval / x , subs ] ; ret
+    C ; L ; N ; R |-  x = pval , param_spine :: pi x : base_type .: fon >> [ pval / x , subs ] ; ret
 
 
     C ; L |- oarg => base_type
     C ; L ; N ; R |- param_spine :: oarg / x ( fon ) >> subs ; ret
     ---------------------------------------------------------------------------------------- :: Log
-    C ; L ; N ; R |- x = oarg , param_spine :: forall x : base_type . fon >> [ oarg / x , subs ] ; ret
+    C ; L ; N ; R |- x = oarg , param_spine :: forall x : base_type .: fon >> [ oarg / x , subs ] ; ret
 
 
     smt ( N => term )
@@ -909,7 +909,7 @@ defns
     term def= representable ( ct * , yp ) /\ alignedI ( inj pval , yp ) /\ allocv [ yp dot alloc_id ] = ( yp dot addr , sizeof ct )
     ret def= ( yp |- Uninit - ct -> x ) *o Alloc ( yp dot alloc_id ) ( ( yp dot addr , sizeof ct ) ) *o I
     ------------------------------------------------------------------------- :: Create
-    C ; L ; N ; cdot |- emp | create < ct >  ( pval ) => sigma yp : loc . term /\ exists x : to_base ( ct ) .  ret
+    C ; L ; N ; cdot |- emp | create < ct >  ( pval ) => sigma yp : loc .: term /\ exists x : to_base ( ct ) .:  ret
 
 
     % DEFER (not implemented)
@@ -922,7 +922,7 @@ defns
     C ; L ; N ; R |- res_term => ptrt |- Init - ct -> oarg
     smt ( N => ( ptrt = inj pval0 ) )
     ------------------------------------------------------------------------------ :: Load
-    C ; L ; N ; R |- res_term | load < ct > ( pval0 ) => sigma y : to_base ( ct ) . y = oarg /\ ( inj pval0 |- Init - ct -> oarg ) *o I
+    C ; L ; N ; R |- res_term | load < ct > ( pval0 ) => sigma y : to_base ( ct ) .: y = oarg /\ ( inj pval0 |- Init - ct -> oarg ) *o I
 
 
     % DEFER relax this rule - storing (partially) undefined struct preserves init
@@ -933,7 +933,7 @@ defns
     C ; L ; N ; R |- res_term => ptrt |- _init - ct -> _t
     smt ( N => ptrt = inj pval0 )
     --------------------------------------------------------------- :: Store
-    C ; L ; N ; R |- res_term | store < ct > ( pval0 , pval1 ) => sigma _ : unit . ( inj pval0 |- Init - ct -> inj pval1 ) *o I
+    C ; L ; N ; R |- res_term | store < ct > ( pval0 , pval1 ) => sigma _ : unit .: ( inj pval0 |- Init - ct -> inj pval1 ) *o I
 
 
     C |- pval => loc
@@ -941,7 +941,7 @@ defns
     term' def= ptrt dot addr = oarg dot base /\ sizeof ct = oarg dot len
     smt ( N =>  ptrt = inj pval /\ ptrt dot alloc_id = term /\ term' )
     ---------------------------------------------------------------------------- :: Kill_Static
-    C ; L ; N ; R |-  res_term | kill < ct > ( pval ) => sigma _ : unit . I
+    C ; L ; N ; R |-  res_term | kill < ct > ( pval ) => sigma _ : unit .: I
 
     % DEFER (not implemented)
     % C ; L ; N ; ?? |- kill ( dynamic , v ) => ??
@@ -960,7 +960,7 @@ defns
     smt ( N => ptrt1 dot base =< inj pval1 dot addr =< ptrt1 dot base + term1 )
     smt ( N => ptrt2 dot base =< inj pval2 dot addr =< ptrt2 dot base + term2 )
     ----------------------------------------------------------------------------- :: Rel_Binop
-    C ; L ; N ; R |- res_term | pval1 rel_binop pval2 => sigma y : bool . y = ( inj pval1 dot addr ' rel_binop ' inj pval2 dot addr ) /\ res *o I
+    C ; L ; N ; R |- res_term | pval1 rel_binop pval2 => sigma y : bool .: y = ( inj pval1 dot addr ' rel_binop ' inj pval2 dot addr ) /\ res *o I
 
 
     % DEFER ask Kayvan when/how Ptrdiff can be called with an ct = array n ct'
@@ -971,7 +971,7 @@ defns
     smt ( N => ptrt dot alloc_id = inj pval1 dot alloc_id = inj pval2 dot alloc_id ) 
     smt ( N => ptrt dot base =< ( inj pval1 dot addr , inj pval2 dot addr ) =< ptrt dot base + term )
     -------------------------------- :: PtrDiff_Arr
-    C ; L ; N ; R |- res_term | pval1 - array n ct - pval2 => sigma y : integer . y = ( x1 - x2 ) / sizeof ct /\ res *o I
+    C ; L ; N ; R |- res_term | pval1 - array n ct - pval2 => sigma y : integer .: y = ( x1 - x2 ) / sizeof ct /\ res *o I
 
 
     C |- pval1 => loc
@@ -981,7 +981,7 @@ defns
     smt ( N => ptrt dot alloc_id = inj pval1 dot alloc_id = inj pval2 dot alloc_id )
     smt ( N => ptrt dot base =< ( inj pval1 dot addr , inj pval2 dot addr ) =< ptrt dot base + term )
     -------------------------------- :: PtrDiff
-    C ; L ; N ; R |- res_term | pval1 - ct - pval2 => sigma y : integer . y = ( x1 - x2 ) / sizeof ct /\ res *o I
+    C ; L ; N ; R |- res_term | pval1 - ct - pval2 => sigma y : integer .: y = ( x1 - x2 ) / sizeof ct /\ res *o I
 
 
     % Doesn't require a bounds check in VIP
@@ -989,7 +989,7 @@ defns
     C ; L ; N ; R |- res_term => Alloc ( ptrt ) ( _t )
     smt ( N => inj pval dot alloc_id = ptrt dot alloc_id /\ representable ( ct2 , inj pval dot addr ) )
     ----------------------------------------------------------------------------------------------------- :: IntFromPtr
-    C ; L ; N ; R |- res_term | intFromPtr < ct > ( pval ) => sigma y : integer . y = inj pval dot addr /\ res *o I
+    C ; L ; N ; R |- res_term | intFromPtr < ct > ( pval ) => sigma y : integer .: y = inj pval dot addr /\ res *o I
 
 
     % This rule requires an Owned rather than an Alloc because copy_alloc_id is
@@ -1000,7 +1000,7 @@ defns
     x def= allocv [ ptrt dot alloc_id ]
     smt ( N => x dot base =< inj pval =< x dot base + x dot len  )
     ----------------------------------- :: PtrFromInt
-    C ; L ; N ; R |- res_term | ptrFromInt < ct > ( pval ) => sigma y : loc . y = ( @ ptrt dot alloc_id , inj pval ) /\ res *o I
+    C ; L ; N ; R |- res_term | ptrFromInt < ct > ( pval ) => sigma y : loc .: y = ( @ ptrt dot alloc_id , inj pval ) /\ res *o I
 
 
     % The implementation over-approximates the behaviour of PtrValidForDeref. It
@@ -1010,13 +1010,13 @@ defns
     % part of the C standard and so is not subject to pointer-liveness constraints.
     C |- pval => loc
     ---------------- :: PtrValidForDeref
-    C ; L ; N ; cdot |- emp | ptrValidForDeref < ct > ( pval ) => sigma y : bool . y = aligned ( ct , inj pval ) /\ I
+    C ; L ; N ; cdot |- emp | ptrValidForDeref < ct > ( pval ) => sigma y : bool .: y = aligned ( ct , inj pval ) /\ I
 
 
     % Similar to PtrValidForDeref.
     C |- pval => loc
     ----------------- :: PtrWellAligned
-    C ; L ; N ; cdot |- emp | ptrWellAligned < ct > ( pval ) => sigma y : bool . y = aligned ( ct , inj pval ) /\ I
+    C ; L ; N ; cdot |- emp | ptrWellAligned < ct > ( pval ) => sigma y : bool .: y = aligned ( ct , inj pval ) /\ I
 
 
     C |- pval1 => loc
@@ -1025,7 +1025,7 @@ defns
     C ; L ; N ; R |- res_term => Alloc ( ptrt  ) ( term )
     smt ( N => inj pval dot alloc_id = ptrt dot alloc_id  /\ ptrt dot base =< ptrt' dot addr =< ptrt dot base + term )
     ----------------------------------------------------------------------------- :: PtrArrayShift
-    C ; L ; N ; R |- res_term | ptrArrayShift < ct > ( pval1 , pval2 ) => sigma y : loc . y = ptrt' /\ res *o I
+    C ; L ; N ; R |- res_term | ptrArrayShift < ct > ( pval1 , pval2 ) => sigma y : loc .: y = ptrt' /\ res *o I
 
 
   % DEFER (not implemented)
