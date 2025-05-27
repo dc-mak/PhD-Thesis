@@ -458,7 +458,7 @@ defns
     P ( tag ) = </ memberi : cti // i />
     indexed </ C |- valuei => to_base ( cti ) // i />
     --------------------------------------------------------------------------------- :: Struct
-    C |- ( struct tag ) { </ dot memberi = object_valuei //  i /> } => obj struct tag
+    C |- ( struct tag ) { </ . memberi = object_valuei //  i /> } => obj struct tag
 
 
     % DEFER (not implemented): union
@@ -530,7 +530,7 @@ defns
     P ( tag ) = </ memberi : cti // i />
     indexed C |- pvali => to_base ( cti )
     --------------------------------------------------------------------- :: Struct
-    C |- ( struct tag ) { </ dot memberi = pvali // i /> } => struct tag
+    C |- ( struct tag ) { </ . memberi = pvali // i /> } => struct tag
 
 
    % DEFER (not implemented) - union
@@ -563,25 +563,25 @@ defns
     C |- pval1 => loc
     C |- pval2 => integer
     ptrt' def= array_shift < ct > ( inj pval1 , inj pval2 )
-    x def= allocv [ inj pval1 dot alloc_id ]
-    smt ( N => x dot base =< ptrt' dot addr =< x dot base + x dot len )
+    x def= allocv [ inj pval1 . alloc_id ]
+    smt ( N => x . base =< ptrt' . addr =< x . base + x . len )
     ----------------------------------------------------------------- :: Array_Shift
     C ; L ; N |- array_shift < ct > ( pval1 , pval2 ) => sigma y : loc .: y = ptrt' /\ I
 
 
     C |- pval => loc
-    x def= allocv [ inj pval dot alloc_id ]
+    x def= allocv [ inj pval . alloc_id ]
     P ( tag ) = </ memberi : cti // i />
-    smt ( N => x dot base =< member_shift < tagged tag > ( inj pval , memberj ) dot addr =< x dot base + x dot len )
+    smt ( N => x . base =< member_shift < tagged tag > ( inj pval , memberj ) . addr =< x . base + x . len )
     ------------------------------------------------------------ :: Member_Shift
     C ; L ; N |- member_shift < tagged tag > ( pval , memberj ) => sigma y : loc .: y = member_shift < tagged tag > ( inj pval , memberj ) /\ I
 
 
     C |- pval1 => loc
     C |- pval2 => loc
-    smt ( N => inj pval1 dot addr = inj pval2 dot addr )
+    smt ( N => inj pval1 . addr = inj pval2 . addr )
     ----------------------------------------------------------------- :: Ptr_Eq
-    C ; L ; N |- pval1 = pval2 => sigma y : loc .: y = ( inj pval1 dot addr = inj pval2 dot addr ) /\ I
+    C ; L ; N |- pval1 = pval2 => sigma y : loc .: y = ( inj pval1 . addr = inj pval2 . addr ) /\ I
 
 
     C |- pval => bool
@@ -698,8 +698,8 @@ defns
 
     C ; L ; N ; R |- res_term => ( *S x .: iguard => ptrt |- init - ct -> oarg  )
     smt ( N => each (integer x; _t) { iguard <-> ( 0 =< x =< n - 1 ) } )
-    y1 def= allocv [ ptrt dot alloc_id ]
-    smt ( N => y1 dot base =< ptrt dot addr /\ array_shift < ct > ( ptrt , n ) dot addr  =< y1 dot base + y1 dot len )
+    y1 def= allocv [ ptrt . alloc_id ]
+    smt ( N => y1 . base =< ptrt . addr /\ array_shift < ct > ( ptrt , n ) . addr  =< y1 . base + y1 . len )
     --------------------------------------------------------------------------------------- :: Congeal
     C ; L ; N ; R |- congeal ( res_term , n ) => ops  ptrt |- init - array n ct -> oarg
 
@@ -707,17 +707,17 @@ defns
     C ; L ; N ; R |- res_term => ptrt |- init - struct tag -> oarg
     P ( tag ) =  </ memberi : cti // i />
     ------------------------------------------------------------------------ :: Explode
-    C ; L ; N ; R |- explode ( res_term ) => ops *S ( </ member_shift < struct tag > ( ptrt , memberi ) |- init - cti -> oarg dot memberi // i /> )
+    C ; L ; N ; R |- explode ( res_term ) => ops *S ( </ member_shift < struct tag > ( ptrt , memberi ) |- init - cti -> oarg . memberi // i /> )
 
 
     C ; L ; N ; R |- res_term => *S ( </ ptrti |- init - cti -> oargi // i /> )
     P ( tag ) = </ memberi : cti // i />
-    term def= ptrt0 dot addr - offsetof tag member0
-    smt ( N => /\\ ( </ term = ptrti dot addr - offsetof tag memberi /\ ptrt0 dot alloc_id = ptrti dot alloc_id // i /> ) )
-    x def= allocv [ ptrt0 dot alloc_id ]
-    smt ( N => x dot base =< term /\ term + sizeof tagged tag =< x dot base + x dot len )
+    term def= ptrt0 . addr - offsetof tag member0
+    smt ( N => /\\ ( </ term = ptrti . addr - offsetof tag memberi /\ ptrt0 . alloc_id = ptrti . alloc_id // i /> ) )
+    x def= allocv [ ptrt0 . alloc_id ]
+    smt ( N => x . base =< term /\ term + sizeof tagged tag =< x . base + x . len )
     ----------------------------------------------------------------------------------------------- :: Implode
-    C ; L ; N ; R |- implode ( res_term , tag ) => ops ( @ ptrt0 dot alloc_id , term ) |- init - struct tag -> { </ memberi = oargi // i /> }
+    C ; L ; N ; R |- implode ( res_term , tag ) => ops ( @ ptrt0 . alloc_id , term ) |- init - struct tag -> { </ memberi = oargi // i /> }
 
 
     C ; L |- term => integer
@@ -730,22 +730,22 @@ defns
 
 
     C ; L ; N ; R |- res_term => each (integer x ; iguard) { a ( array_shift <ct> ( ptrt1 , x ) , iargs1 ) } ( oarg1 ) * a ( ptrt2 , iargs2 ) ( oarg2 )
-    term def= ( ptrt2 dot base - ptrt1 dot base ) / sizeof ct
-    smt ( N => ptrt1 dot alloc_id = ptrt2 dot alloc_id /\ ( ptrt2 dot addr = array_shift < ct > ( ptrt1 , term ) dot addr ) )
+    term def= ( ptrt2 . base - ptrt1 . base ) / sizeof ct
+    smt ( N => ptrt1 . alloc_id = ptrt2 . alloc_id /\ ( ptrt2 . addr = array_shift < ct > ( ptrt1 , term ) . addr ) )
     smt ( N => term / x ( ( iargs1 ) = ( iargs2 ) ) )
-    x def= allocv [ ptrt1 dot alloc_id ]
-    smt ( N => x dot base =< ptrt2 dot addr /\ ptrt2 dot addr + sizeof ct =< x dot base + x dot len )
+    x def= allocv [ ptrt1 . alloc_id ]
+    smt ( N => x . base =< ptrt2 . addr /\ ptrt2 . addr + sizeof ct =< x . base + x . len )
     res def= each (integer x; iguard \/ x = term) { a ( array_shift < ct > ( ptrt1 , x ) , iargs1 ) } ( oarg1 [ term ] := oarg2 )
     ----------------------------------------------------------------- :: Glue
     C ; L ; N ; R |- glue ( res_term ) => ops res
 
 
     C ; L ; N ; R |- res_term => a ( ptrt2 , iargs2 ) ( oarg )
-    term def= ( ptrt2 dot addr - ptrt1 dot addr ) / sizeof ct
-    smt ( N => ptrt1 dot alloc_id = ptrt2 dot alloc_id /\ ( ptrt2 dot addr = ptrt1 dot addr + term * sizeof ct ) )
+    term def= ( ptrt2 . addr - ptrt1 . addr ) / sizeof ct
+    smt ( N => ptrt1 . alloc_id = ptrt2 . alloc_id /\ ( ptrt2 . addr = ptrt1 . addr + term * sizeof ct ) )
     smt ( N => term / x ( ( iargs1 ) = ( iargs2 ) ) )
-    x def= allocv [ ptrt1 dot alloc_id ]
-    smt ( N => x dot base =< ptrt1 dot addr /\ ptrt2 dot addr + sizeof ct =< x dot base + x dot len )
+    x def= allocv [ ptrt1 . alloc_id ]
+    smt ( N => x . base =< ptrt1 . addr /\ ptrt2 . addr + sizeof ct =< x . base + x . len )
     C ; L |- oarg => base_type
     res def= each (integer x ; x = term ) { a ( array_shift < ct > ( ptrt1 , x ) , iargs2 ) } ( const oarg )
     ----------------------------------------------------------------- :: Inj
@@ -906,8 +906,8 @@ defns
 
 
     C |- pval => integer
-    term def= representable ( ct * , yp ) /\ alignedI ( inj pval , yp ) /\ allocv [ yp dot alloc_id ] = ( yp dot addr , sizeof ct )
-    ret def= ( yp |- Uninit - ct -> x ) *o Alloc ( yp dot alloc_id ) ( ( yp dot addr , sizeof ct ) ) *o I
+    term def= representable ( ct * , yp ) /\ alignedI ( inj pval , yp ) /\ allocv [ yp . alloc_id ] = ( yp . addr , sizeof ct )
+    ret def= ( yp |- Uninit - ct -> x ) *o Alloc ( yp . alloc_id ) ( ( yp . addr , sizeof ct ) ) *o I
     ------------------------------------------------------------------------- :: Create
     C ; L ; N ; cdot |- emp | create < ct >  ( pval ) => sigma yp : loc .: term /\ exists x : to_base ( ct ) .:  ret
 
@@ -938,8 +938,8 @@ defns
 
     C |- pval => loc
     C ; L ; N ; R |- res_term => ptrt |- _init - ct -> _t * Alloc ( term ) ( oarg )
-    term' def= ptrt dot addr = oarg dot base /\ sizeof ct = oarg dot len
-    smt ( N =>  ptrt = inj pval /\ ptrt dot alloc_id = term /\ term' )
+    term' def= ptrt . addr = oarg . base /\ sizeof ct = oarg . len
+    smt ( N =>  ptrt = inj pval /\ ptrt . alloc_id = term /\ term' )
     ---------------------------------------------------------------------------- :: Kill_Static
     C ; L ; N ; R |-  res_term | kill < ct > ( pval ) => sigma _ : unit .: I
 
@@ -956,11 +956,11 @@ defns
     C |- pval2 => loc
     C ; L ; N ; R |- res_term => res
     res def= Alloc ( ptrt1 ) ( term1 ) * Alloc ( ptrt2 ) ( term2 )
-    smt ( N => inj pval1 dot alloc_id = inj pval2 dot alloc_id = ptrt1 dot alloc_id = ptrt2 dot alloc_id )
-    smt ( N => ptrt1 dot base =< inj pval1 dot addr =< ptrt1 dot base + term1 )
-    smt ( N => ptrt2 dot base =< inj pval2 dot addr =< ptrt2 dot base + term2 )
+    smt ( N => inj pval1 . alloc_id = inj pval2 . alloc_id = ptrt1 . alloc_id = ptrt2 . alloc_id )
+    smt ( N => ptrt1 . base =< inj pval1 . addr =< ptrt1 . base + term1 )
+    smt ( N => ptrt2 . base =< inj pval2 . addr =< ptrt2 . base + term2 )
     ----------------------------------------------------------------------------- :: Rel_Binop
-    C ; L ; N ; R |- res_term | pval1 rel_binop pval2 => sigma y : bool .: y = ( inj pval1 dot addr ' rel_binop ' inj pval2 dot addr ) /\ res *o I
+    C ; L ; N ; R |- res_term | pval1 rel_binop pval2 => sigma y : bool .: y = ( inj pval1 . addr ' rel_binop ' inj pval2 . addr ) /\ res *o I
 
 
     % DEFER ask Kayvan when/how Ptrdiff can be called with an ct = array n ct'
@@ -968,8 +968,8 @@ defns
     C |- pval2 => loc
     res def= Alloc ( ptrt ) ( term )
     C ; L ; N ; R |- res_term => res
-    smt ( N => ptrt dot alloc_id = inj pval1 dot alloc_id = inj pval2 dot alloc_id ) 
-    smt ( N => ptrt dot base =< ( inj pval1 dot addr , inj pval2 dot addr ) =< ptrt dot base + term )
+    smt ( N => ptrt . alloc_id = inj pval1 . alloc_id = inj pval2 . alloc_id ) 
+    smt ( N => ptrt . base =< ( inj pval1 . addr , inj pval2 . addr ) =< ptrt . base + term )
     -------------------------------- :: PtrDiff_Arr
     C ; L ; N ; R |- res_term | pval1 - array n ct - pval2 => sigma y : integer .: y = ( x1 - x2 ) / sizeof ct /\ res *o I
 
@@ -978,8 +978,8 @@ defns
     C |- pval2 => loc
     res def= Alloc ( ptrt ) ( term )
     C ; L ; N ; R |- res_term => res
-    smt ( N => ptrt dot alloc_id = inj pval1 dot alloc_id = inj pval2 dot alloc_id )
-    smt ( N => ptrt dot base =< ( inj pval1 dot addr , inj pval2 dot addr ) =< ptrt dot base + term )
+    smt ( N => ptrt . alloc_id = inj pval1 . alloc_id = inj pval2 . alloc_id )
+    smt ( N => ptrt . base =< ( inj pval1 . addr , inj pval2 . addr ) =< ptrt . base + term )
     -------------------------------- :: PtrDiff
     C ; L ; N ; R |- res_term | pval1 - ct - pval2 => sigma y : integer .: y = ( x1 - x2 ) / sizeof ct /\ res *o I
 
@@ -987,9 +987,9 @@ defns
     % Doesn't require a bounds check in VIP
     C |- pval => loc
     C ; L ; N ; R |- res_term => Alloc ( ptrt ) ( _t )
-    smt ( N => inj pval dot alloc_id = ptrt dot alloc_id /\ representable ( ct2 , inj pval dot addr ) )
+    smt ( N => inj pval . alloc_id = ptrt . alloc_id /\ representable ( ct2 , inj pval . addr ) )
     ----------------------------------------------------------------------------------------------------- :: IntFromPtr
-    C ; L ; N ; R |- res_term | intFromPtr < ct > ( pval ) => sigma y : integer .: y = inj pval dot addr /\ res *o I
+    C ; L ; N ; R |- res_term | intFromPtr < ct > ( pval ) => sigma y : integer .: y = inj pval . addr /\ res *o I
 
 
     % This rule requires an Owned rather than an Alloc because copy_alloc_id is
@@ -997,10 +997,10 @@ defns
     % its input - thus forcing an appropriate pointer to be in the context.
     C |- pval => integer
     C ; L ; N ; R |- res_term => ptrt |- init - ct1 -> _t
-    x def= allocv [ ptrt dot alloc_id ]
-    smt ( N => x dot base =< inj pval =< x dot base + x dot len  )
+    x def= allocv [ ptrt . alloc_id ]
+    smt ( N => x . base =< inj pval =< x . base + x . len  )
     ----------------------------------- :: PtrFromInt
-    C ; L ; N ; R |- res_term | ptrFromInt < ct > ( pval ) => sigma y : loc .: y = ( @ ptrt dot alloc_id , inj pval ) /\ res *o I
+    C ; L ; N ; R |- res_term | ptrFromInt < ct > ( pval ) => sigma y : loc .: y = ( @ ptrt . alloc_id , inj pval ) /\ res *o I
 
 
     % The implementation over-approximates the behaviour of PtrValidForDeref. It
@@ -1023,7 +1023,7 @@ defns
     C |- pval2 => integer
     ptrt' def= array_shift<ct>(inj pval1, inj pval2)
     C ; L ; N ; R |- res_term => Alloc ( ptrt  ) ( term )
-    smt ( N => inj pval dot alloc_id = ptrt dot alloc_id  /\ ptrt dot base =< ptrt' dot addr =< ptrt dot base + term )
+    smt ( N => inj pval . alloc_id = ptrt . alloc_id  /\ ptrt . base =< ptrt' . addr =< ptrt . base + term )
     ----------------------------------------------------------------------------- :: PtrArrayShift
     C ; L ; N ; R |- res_term | ptrArrayShift < ct > ( pval1 , pval2 ) => sigma y : loc .: y = ptrt' /\ res *o I
 

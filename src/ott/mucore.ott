@@ -204,11 +204,11 @@ grammar
 grammar
 
   object_value :: 'OV_' ::=  {{ com C object values (inhabitants of object types), which can be read/stored }}
-    | int                                                            :: :: integer {{ com integer value  }}
-    | ptr                                                            :: :: pointer {{ com pointer value  }}
-    | array ( </ object_valuei // , // i /> )                        :: :: array   {{ com C array value  }}
-    | ( struct tag ) { </ dot memberi = object_valuei // , // i /> } :: :: struct  {{ com C struct value }}
-    | ( union tag ) { dot member = object_value }                    :: :: union   {{ com C union value  }}
+    | int                                                          :: :: integer {{ com integer value  }}
+    | ptr                                                          :: :: pointer {{ com pointer value  }}
+    | array ( </ object_valuei // , // i /> )                      :: :: array   {{ com C array value  }}
+    | ( struct tag ) { </ . memberi = object_valuei // , // i /> } :: :: struct  {{ com C struct value }}
+    | ( union tag ) { . member = object_value }                    :: :: union   {{ com C union value  }}
 
 
   value :: 'V_' ::= {{ com Core values }}
@@ -277,8 +277,8 @@ grammar
     | impl_const                                                     ::   :: implC       {{ com implementation-defined constant           }}
     | value                                                          ::   :: val         {{ com Core values                               }}
     | ctor_val ( </ pvali // , // i /> )                             ::   :: ctor        {{ com data constructor application              }}
-    | ( struct tag ) { </ dot memberi = pvali // , // i /> }         ::   :: struct      {{ com C struct expression                       }}
-    | ( union tag ) { dot member = pval }                            ::   :: union       {{ com C union expression                        }}
+    | ( struct tag ) { </ . memberi = pvali // , // i /> }         ::   :: struct      {{ com C struct expression                       }}
+    | ( union tag ) { . member = pval }                            ::   :: union       {{ com C union expression                        }}
     | subs ( pval )                                                  :: M :: subs        {{ com substitution for pure values }}
 
   pvals :: 'PVs_' ::= {{ com list of pure values }}
@@ -311,7 +311,7 @@ grammar
 
   arith_op :: 'Arith_op_' ::= {{ com SMT term arithmetic operations }}
     | term1 +   term2                   ::   :: add
-    | sum i .: iguard => term            ::   :: sum {{ tex \sum_{ [[ i ]] } { [[ iguard ]] [[ => ]] \left\{ [[ term ]] \right\}  } }}
+    | sum i .: iguard => term           ::   :: sum {{ tex \sum_{ [[ i ]] } { [[ iguard ]] [[ => ]] \left\{ [[ term ]] \right\}  } }}
     | term1 -   term2                   ::   :: sub
     | term1 *   term2                   ::   :: mul {{ tex [[term1]] \times [[term2]] }}
     | term1 /   term2                   ::   :: div
@@ -343,7 +343,7 @@ grammar
   record_op :: 'Record_op_' ::= {{ com SMT term for record operations }}
     % DEFER record update
     | { </ memberi = termi // , // i /> } :: :: lit
-    | term dot member                     :: :: member
+    | term . member                     :: :: member
 
   pointer_op :: 'Pointer_op_' ::= {{ com SMT term pointer operations }}
     | NULL                                  :: :: null
@@ -459,16 +459,16 @@ grammar
 grammar
 
   res , _res {{ tex \_ }} :: 'Res_' ::= {{ com resources }}
-    | emp                         ::     :: empty    {{ com empty heap                                  }}
-    | term                        ::     :: phi      {{ com logical assertion, implicitly with emp      }}
-    | pred                        ::     :: pred     {{ com heap predicate                              }}
-    | ipred                       ::     :: ipred    {{ com iterated (integer-indexed) heap predicate   }}
-    | res1 * res2                 ::     :: sep_conj {{ com seperating conjunction                      }}
-    | *S ( </ resi // , // i /> ) :: S   :: big_conj {{ com notation for nested sep. conj.              }}
+    | emp                          ::     :: empty    {{ com empty heap                                  }}
+    | term                         ::     :: phi      {{ com logical assertion, implicitly with emp      }}
+    | pred                         ::     :: pred     {{ com heap predicate                              }}
+    | ipred                        ::     :: ipred    {{ com iterated (integer-indexed) heap predicate   }}
+    | res1 * res2                  ::     :: sep_conj {{ com seperating conjunction                      }}
+    | *S ( </ resi // , // i /> )  :: S   :: big_conj {{ com notation for nested sep. conj.              }}
     | exists x : base_type .: res  ::     :: exists   {{ com existential                                 }}
-    | if term then res1 else res2 ::     :: if       {{ com conditional resource / ordered disjuction   }}
-    | ( res )                     :: S X :: paren    {{ com parentheses                                 }}
-    | subs ( res )                :: M   :: subs     {{ com substitute $[[subs]]$ in $[[res]]$          }}
+    | if term then res1 else res2  ::     :: if       {{ com conditional resource / ordered disjuction   }}
+    | ( res )                      :: S X :: paren    {{ com parentheses                                 }}
+    | subs ( res )                 :: M   :: subs     {{ com substitute $[[subs]]$ in $[[res]]$          }}
 
 
   norm_res {{ tex \norm{res} }} , rem :: 'Norm_res_' ::= {{ com normalised resources }}
@@ -585,24 +585,24 @@ grammar
     | ctor ( </ cpati // , // i /> ) ::  :: ctor
 
   pure_core , pce :: 'PCE_' ::= {{ com pure Cerberus Core expressions }}
-    | x                                                                ::  :: var
-    | impl_const                                                       ::  :: impl_const
-    | value                                                            ::  :: value
-    | undef ( UB_name )                                                ::  :: undef
-    | ctor ( pce1 , .. , pcen )                                        ::  :: ctor
-    | array_shift ( pce1 , ct , pce2 )                                 ::  :: array_shift
-    | member_shift ( pce , tag dot member )                            ::  :: member_shift
-    | case pce of </ cpati => pcei // i /> end                         ::  :: case
-    | if pce1 then pce2 else pce3                                      ::  :: if
-    | let cpat = pce1 in pce2                                          ::  :: let
-    | not ( pce )                                                      ::  :: not
-    | pce1 binop pce2                                                  ::  :: binop
-    | struct [ tag ] ( dot member1 = pce1 , ... , dot membern = pcen ) ::  :: struct
-    | union [ tag ] ( dot member = pce )                               ::  :: union
-    | cfunction ( pce )                                                ::  :: cfunction
-    | memberof [ tag dot member ] ( pce )                              ::  :: memberof
-    | name ( pce1 , .. , pcen )                                        ::  :: call
-    | refine_ctype ( pce1 , pce2 , pce3 )                              ::  :: refine_ctype
+    | x                                                            ::  :: var
+    | impl_const                                                   ::  :: impl_const
+    | value                                                        ::  :: value
+    | undef ( UB_name )                                            ::  :: undef
+    | ctor ( pce1 , .. , pcen )                                    ::  :: ctor
+    | array_shift ( pce1 , ct , pce2 )                             ::  :: array_shift
+    | member_shift ( pce , tag . member )                          ::  :: member_shift
+    | case pce of </ cpati => pcei // i /> end                     ::  :: case
+    | if pce1 then pce2 else pce3                                  ::  :: if
+    | let cpat = pce1 in pce2                                      ::  :: let
+    | not ( pce )                                                  ::  :: not
+    | pce1 binop pce2                                              ::  :: binop
+    | struct [ tag ] ( . member1 = pce1 , ... , . membern = pcen ) ::  :: struct
+    | union [ tag ] ( . member = pce )                             ::  :: union
+    | cfunction ( pce )                                            ::  :: cfunction
+    | memberof [ tag . member ] ( pce )                            ::  :: memberof
+    | name ( pce1 , .. , pcen )                                    ::  :: call
+    | refine_ctype ( pce1 , pce2 , pce3 )                          ::  :: refine_ctype
 
   cmemop {{ tex \cnnt{memop} }} :: 'Cmemop_'  ::= {{ com Cerberus Core memory operations }}
     | PtrEq            ::  :: ptrEq
@@ -883,7 +883,7 @@ grammar
     | :=      :: :: coloneq   {{ tex \coloneq                         }}
     | :       :: :: of_type   {{ tex \oftype                          }}
     | .:      :: :: such_that {{ tex . \:                             }}
-    | dot     :: :: dot       {{ tex \! {.} \!                        }}
+    | .       :: :: dot       {{ tex \! {.} \!                        }}
     | >>      :: :: chevron   {{ tex \gg                              }}
     | \/      :: :: or        {{ tex \vee                             }}
     | \//     :: :: big_or    {{ tex \bigvee                          }}
