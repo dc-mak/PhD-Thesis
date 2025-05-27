@@ -29,8 +29,8 @@ embed {{ tex-preamble
 
 
 % Cosmetic
-\renewcommand{\[[TEX_NAME_PREFIX]]nt}[1]{ \symit{#1} }
-\renewcommand{\[[TEX_NAME_PREFIX]]mv}[1]{ \symit{#1} }
+\renewcommand{\[[TEX_NAME_PREFIX]]nt}[1]{ \mathit{#1} }
+\renewcommand{\[[TEX_NAME_PREFIX]]mv}[1]{ \mathit{#1} }
 \renewcommand{\[[TEX_NAME_PREFIX]]kw}[1]{ \symtt{#1} }
 \renewcommand{\[[TEX_NAME_PREFIX]]drule}[4][]{ {\displaystyle\frac{\begin{array}{l}#2\end{array} }{#3}\quad\[[TEX_NAME_PREFIX]]drulename{#4} }\\[\baselineskip] }
 \renewcommand{\[[TEX_NAME_PREFIX]]grammartabular}[1]{ \begin{supertabular}{llcllll}#1\end{supertabular} }
@@ -51,16 +51,11 @@ embed {{ tex-preamble
 % https://tex.stackexchange.com/questions/33401/a-version-of-colorbox-that-works-inside-math-environments
 \setlength{\fboxsep}{1pt}
 \newcommand{\outpol}[1]{\mathchoice%
-  {\colorbox{red!8}{$\displaystyle      \symit{ #1 } $} }%
-  {\colorbox{red!8}{$\textstyle         \symit{ #1 } $} }%
-  {\colorbox{red!8}{$\scriptstyle       \symit{ #1 } $} }%
-  {\colorbox{red!8}{$\scriptscriptstyle \symit{ #1 } $} } }%
-\newcommand{\norm}[1]{ \underline{\symit{#1} } }
-\newcommand{\mathTT}[1]{\mathchoice%
-  {\displaystyle      \texttt{ #1 } }%
-  {\textstyle         \texttt{ #1 } }%
-  {\scriptstyle       \texttt{ #1 } }%
-  {\scriptscriptstyle \texttt{ #1 } } }%
+  {\colorbox{red!8}{$\displaystyle#1$} }%
+  {\colorbox{red!8}{$\textstyle#1$} }%
+  {\colorbox{red!8}{$\scriptstyle#1$} }%
+  {\colorbox{red!8}{$\scriptscriptstyle#1$} } }%
+\newcommand{\norm}[1]{ \underline{#1} }
 \newcommand{\uninitCross}{\mathord{\times} }
 }}
 
@@ -71,8 +66,8 @@ indexvar n , i , j , k ::= {{ com index variables }}
 
 grammar
 
-  % OUT_HACK|x
-  out_x {{ tex \outpol{ x } }}   :: 'Out_hack_' ::=  {{ com Ott-hack, ignore }}
+  % OUT_HACK|x,\cnnt{x}
+  out_x {{ tex \outpol{ \cnnt{x} } }}   :: 'Out_hack_' ::=  {{ com Ott-hack, ignore }}
     | x :: :: x {{ tex \outpol{ [[x]] } }}
 
 metavar tag ::=  {{ com unique identifier for struct/union type }}
@@ -89,8 +84,8 @@ grammar
 
 grammar
 
-  % OUT_HACK|member
-  out_member {{ tex \outpol{ member } }}   :: 'Out_hack_' ::=  {{ com Ott-hack, ignore }}
+  % OUT_HACK|member,\cnnt{member}
+  out_member {{ tex \outpol{ \cnnt{member} } }}   :: 'Out_hack_' ::=  {{ com Ott-hack, ignore }}
     | member :: :: member {{ tex \outpol{ [[member]] } }}
 
 grammar
@@ -102,7 +97,7 @@ grammar
     | struct tag   ::   :: struct  {{ com C struct type                               }}
     | tagged tag   :: M :: tagged  {{ com C struct or union                           }} {{ tex [[ tag ]]  }}
 
-  int , _int {{ tex \_ }} , addr , aid {{ tex \mathit{id} }} :: 'Int_' ::=    {{ com integer }}
+  int , _int {{ tex \_ }} , addr , aid {{ tex \cnnt{id} }} :: 'Int_' ::=    {{ com integer }}
     | i                   ::   :: index      {{ com literal integer                        }}
     | 1                   :: X :: one
     | 0                   :: X :: zero
@@ -145,27 +140,27 @@ grammar
 grammar
 
   % Binary operators
-  binop {{ tex \mathbin{ \mathit{binop} } }} :: 'Binop_' ::=  {{ com binary operators }}
+  binop {{ tex \oplus }} :: 'Binop_' ::=  {{ com binary operators }}
     % arithmetic operators (integer -> integer -> integer)
-    | +   :: :: add   {{ tex \mathbin{ \mathTT{+} } }} {{ com addition       }}
-    | -   :: :: sub   {{ tex \mathbin{ \mathTT{-} } }} {{ com subtraction    }}
-    | *   :: :: mul   {{ tex \mathbin{ \mathTT{*} } }} {{ com multiplication }}
-    | /   :: :: div   {{ tex \mathbin{ \mathTT{/} } }} {{ com division       }}
-    | mod :: :: rem_t {{ tex \mathbin{ \mathTT{mod} } }} {{ com modulus        }}
-    | REM :: :: rem_f {{ tex \mathbin{ \mathTT{rem} } }} {{ com remainder    }}
-    | ^   :: :: exp   {{ tex \mathbin{ \mathTT{\char`\^} } }} {{ com exponentiation }}
+    | +   :: :: add   {{ tex \mathbin{ \symtt{+} } }} {{ com addition       }}
+    | -   :: :: sub   {{ tex \mathbin{ \symtt{-} } }} {{ com subtraction    }}
+    | *   :: :: mul   {{ tex \mathbin{ \symtt{*} } }} {{ com multiplication }}
+    | /   :: :: div   {{ tex \mathbin{ \symtt{/} } }} {{ com division       }}
+    | mod :: :: rem_t {{ tex \mathbin{ \symtt{mod} } }} {{ com modulus        }}
+    | REM :: :: rem_f {{ tex \mathbin{ \symtt{rem} } }} {{ com remainder    }}
+    | ^   :: :: exp   {{ tex \mathbin{ \symtt{\char`\^} } }} {{ com exponentiation }}
     % relational operators ( ptr/int -> ptr/int -> bool)
-    | =   :: :: eq    {{ tex \mathbin{ \mathTT{=}  } }} {{ com equality, defined both for integer and C types }}
-    | !=  :: :: ne    {{ tex \mathbin{ \mathTT{!=} } }} {{ com inequality, similiarly defined                 }}
-    | >   :: :: gt    {{ tex \mathbin{ \mathTT{>}  } }} {{ com greater than, similarly defined                }}
-    | <   :: :: lt    {{ tex \mathbin{ \mathTT{<}  } }} {{ com less than, similarly defined                   }}
-    | >=  :: :: ge    {{ tex \mathbin{ \mathTT{>=} } }} {{ com greater than or equal to, similarly defined    }}
-    | <=  :: :: le    {{ tex \mathbin{ \mathTT{<=} } }} {{ com less than or equal to, similarly defined       }}
+    | =   :: :: eq    {{ tex \mathbin{ \symtt{=}  } }} {{ com equality, defined both for integer and C types }}
+    | !=  :: :: ne    {{ tex \mathbin{ \symtt{!=} } }} {{ com inequality, similiarly defined                 }}
+    | >   :: :: gt    {{ tex \mathbin{ \symtt{>}  } }} {{ com greater than, similarly defined                }}
+    | <   :: :: lt    {{ tex \mathbin{ \symtt{<}  } }} {{ com less than, similarly defined                   }}
+    | >=  :: :: ge    {{ tex \mathbin{ \symtt{>=} } }} {{ com greater than or equal to, similarly defined    }}
+    | <=  :: :: le    {{ tex \mathbin{ \symtt{<=} } }} {{ com less than or equal to, similarly defined       }}
     % logical connectives ( bool -> bool -> bool)
-    | /\  :: :: and   {{ tex \mathbin{ \mathTT{/\char`\\} } }} {{ com conjunction }}
-    | \/  :: :: or    {{ tex \mathbin{ \mathTT{\char`\\/} } }} {{ com disjunction }}
+    | /\  :: :: and   {{ tex \mathbin{ \symtt{/\char`\\} } }} {{ com conjunction }}
+    | \/  :: :: or    {{ tex \mathbin{ \symtt{\char`\\/} } }} {{ com disjunction }}
 
-  arith_binop {{ tex \mathbin{ \mathit{binop}_{arith} } }} :: 'Arith_Binop_' ::= {{ com arithmentic binary operators }}
+  arith_binop {{ tex \mathbin{ {\oplus}_A } }} :: 'Arith_Binop_' ::= {{ com arithmentic binary operators }}
     | +   :: :: add
     | -   :: :: sub
     | *   :: :: mul
@@ -174,7 +169,7 @@ grammar
     | REM :: :: rem_f
     | ^   :: :: exp
 
-  rel_binop {{ tex \mathbin{ \mathit{binop}_{rel} } }} :: 'Rel_Binop_' ::= {{ com relational binary operators }}
+  rel_binop {{ tex \mathbin{ {\oplus}_R } }} :: 'Rel_Binop_' ::= {{ com relational binary operators }}
     | =   :: :: eq
     | !=  :: :: ne
     | >   :: :: gt
@@ -182,7 +177,7 @@ grammar
     | >=  :: :: ge
     | <=  :: :: le
 
-  bool_binop {{ tex \mathbin{ \mathit{binop}_{bool} } }} :: 'Bool_Binop_' ::= {{ com boolean binary operators }}
+  bool_binop {{ tex \mathbin{ {\oplus}_B } }} :: 'Bool_Binop_' ::= {{ com boolean binary operators }}
     | /\  :: :: and
     | \/  :: :: or
 
@@ -266,7 +261,7 @@ grammar
 metavar UB_name ::=
  {{ com undefined behaviour }}
 
-metavar impl_const {{ tex \mathit{impl\_const} }}::=
+metavar impl_const ::=
   {{ com implementation-defined constant }}
 
 grammar
@@ -295,13 +290,13 @@ grammar
 
 grammar
 
-  ty_bool {{ tex bool }} , _b {{ tex \_ }} :: 'Ty_bool_' ::=  {{ com OCaml booleans }}
+  ty_bool {{ tex \cnnt{bool} }} , _b {{ tex \_ }} :: 'Ty_bool_' ::=  {{ com OCaml booleans }}
     | true                  ::   :: true
     | false                 ::   :: false
     | ty_bool || ty_bool'   :: M :: or    {{ tex [[ty_bool]] \mathrel{||} [[ty_bool']] }}
 
-  % OUT_HACK|ty_bool,bool
-  out_ty_bool {{ tex \outpol{ bool } }}   :: 'Out_hack_' ::=  {{ com Ott-hack, ignore }}
+  % OUT_HACK|ty_bool,\cnnt{bool}
+  out_ty_bool {{ tex \outpol{ \cnnt{bool} } }}   :: 'Out_hack_' ::=  {{ com Ott-hack, ignore }}
     | ty_bool :: :: ty_bool {{ tex \outpol{ [[ty_bool]] } }}
 
 grammar
@@ -320,8 +315,8 @@ grammar
     | term1 -   term2                   ::   :: sub
     | term1 *   term2                   ::   :: mul {{ tex [[term1]] \times [[term2]] }}
     | term1 /   term2                   ::   :: div
-    | term1 mod term2                   ::   :: mod
-    | term1 REM term2                   ::   :: rem
+    | term1 mod term2                   ::   :: mod {{ tex [[term1]] \mathbin{ \mathrm{mod} } [[term2]] }}
+    | term1 REM term2                   ::   :: rem {{ tex [[term1]] \mathbin{ \mathrm{rem} } [[term2]] }}
     | term1 ^   term2                   ::   :: exp
     | xor_uf ( term1 , term2 )          ::   :: xor_Uf
     | term1 ' arith_binop ' term2       :: M :: arith_binop {{ tex [[term1]] [[arith_binop]] [[term2]] }}
@@ -384,7 +379,7 @@ grammar
     | x : base_type . term      ::   :: def
 
   % DEFER align this with backend/cn/terms.ml
-  term , _t {{ tex \_ }}, iguard , ptrt {{ tex ptr }} , iarg , oarg {{ tex \mathit{oarg} }} , alloct {{ tex alloc }} , A , M :: '' ::= {{ com SMT term grammar }}
+  term , _t {{ tex \_ }}, iguard , ptrt {{ tex ptr }} , iarg , oarg , alloct {{ tex alloc }} , A , M :: '' ::= {{ com SMT term grammar }}
     | x                  ::     :: sym
     | lit                ::     :: lit
     | arith_op           ::     :: arith_op
@@ -419,8 +414,8 @@ grammar
 
 grammar
 
-  % OUT_HACK|term|oarg
-  out_term {{ tex \outpol{ term } }} , out_oarg {{ tex \outpol{ oarg } }}   :: 'Out_hack_' ::=  {{ com Ott-hack, ignore }}
+  % OUT_HACK|term,\cnnt{term}|oarg,\cnnt{oarg}
+  out_term {{ tex \outpol{ \cnnt{term} } }} , out_oarg {{ tex \outpol{ \cnnt{oarg} } }}   :: 'Out_hack_' ::=  {{ com Ott-hack, ignore }}
     | term :: :: term {{ tex \outpol{ [[term]] } }}
 
 grammar
@@ -444,8 +439,8 @@ grammar
     | pred_term  :: :: pred  {{ com predicate term          }}
     | ipred_term :: :: ipred {{ com iterated predicate term }}
 
-  % OUT_HACK|pred_ipred
-  out_pred_ipred {{ tex \outpol{ pred\_ipred } }}   :: 'Out_hack_' ::=  {{ com Ott-hack, ignore }}
+  % OUT_HACK|pred_ipred,\cnnt{pred\_ipred}
+  out_pred_ipred {{ tex \outpol{ \cnnt{pred\_ipred} } }}   :: 'Out_hack_' ::=  {{ com Ott-hack, ignore }}
     | pred_ipred :: :: pred_ipred {{ tex \outpol{ [[pred_ipred]] } }}
 
   pred , pt :: 'Pred_' ::=  {{ com \emph{precise} seperation-logic predicates }}
@@ -489,16 +484,16 @@ subrules
 
 grammar
 
-  % OUT_HACK|res|rem
-  out_res {{ tex \outpol{ res } }} , out_rem {{ tex \outpol{ rem } }}   :: 'Out_hack_' ::=  {{ com Ott-hack, ignore }}
+  % OUT_HACK|res,\cnnt{res}|rem,\cnnt{rem}
+  out_res {{ tex \outpol{ \cnnt{res} } }} , out_rem {{ tex \outpol{ \cnnt{rem} } }}   :: 'Out_hack_' ::=  {{ com Ott-hack, ignore }}
     | res :: :: res {{ tex \outpol{ [[res]] } }}
 
-  opt_out_res {{ tex \outpol{opt\_res} }} :: 'Opt_out_res' ::= {{ com optional resource }}
+  opt_out_res {{ tex \outpol{ \cnnt{opt\_res} } }} :: 'Opt_out_res' ::= {{ com optional resource }}
     | None    :: :: None
     | out_res :: :: Some
 
   % OUT_HACK|norm_res
-  out_norm_res {{ tex \outpol{ norm\_res } }}   :: 'Out_hack_' ::=  {{ com Ott-hack, ignore }}
+  out_norm_res {{ tex \outpol{ \cnnt{norm\_res} } }}   :: 'Out_hack_' ::=  {{ com Ott-hack, ignore }}
     | norm_res :: :: norm_res {{ tex \outpol{ [[norm_res]] } }}
 
 grammar
@@ -533,16 +528,16 @@ subrules
 
 grammar
 
-  % OUT_HACK|ret
-  out_ret {{ tex \outpol{ ret } }}   :: 'Out_hack_' ::=  {{ com Ott-hack, ignore }}
+  % OUT_HACK|ret,\cnnt{ret}
+  out_ret {{ tex \outpol{ \cnnt{ret} } }}   :: 'Out_hack_' ::=  {{ com Ott-hack, ignore }}
     | ret :: :: ret {{ tex \outpol{ [[ret]] } }}
 
-  % OUT_HACK|pure_ret
-  out_pure_ret {{ tex \outpol{ pure\_ret } }}   :: 'Out_hack_' ::=  {{ com Ott-hack, ignore }}
+  % OUT_HACK|pure_ret,\cnnt{pure\_ret}
+  out_pure_ret {{ tex \outpol{ \cnnt{pure\_ret} } }}   :: 'Out_hack_' ::=  {{ com Ott-hack, ignore }}
     | pure_ret :: :: pure_ret {{ tex \outpol{ [[pure_ret]] } }}
 
-  % OUT_HACK|norm_ret,\norm{ret}
-  out_norm_ret {{ tex \outpol{ \norm{ret} } }}   :: 'Out_hack_' ::=  {{ com Ott-hack, ignore }}
+  % OUT_HACK|norm_ret,\norm{ \cnnt{ret} }
+  out_norm_ret {{ tex \outpol{ \norm{ \cnnt{ret} } } }}   :: 'Out_hack_' ::=  {{ com Ott-hack, ignore }}
     | norm_ret :: :: norm_ret {{ tex \outpol{ [[norm_ret]] } }}
 
 grammar
@@ -586,12 +581,12 @@ grammar
 
 grammar
 
-  cpat {{ tex \mathit{pat} }} :: 'CPat_' ::= {{ com Cerberus Core patterns }}
+  cpat {{ tex \cnnt{pat} }} :: 'CPat_' ::= {{ com Cerberus Core patterns }}
     | id : base_type                 ::  :: var
     | _  : base_type                 ::  :: wild
     | ctor ( </ cpati // , // i /> ) ::  :: ctor
 
-  pure_core {{ tex \mathit{pure\_core} }}, pce {{ tex \mathit{e} }} :: 'PCE_' ::= {{ com pure Cerberus Core expressions }}
+  pure_core , pce :: 'PCE_' ::= {{ com pure Cerberus Core expressions }}
     | x                                                                ::  :: var
     | impl_const                                                       ::  :: impl_const
     | value                                                            ::  :: value
@@ -611,7 +606,7 @@ grammar
     | name ( pce1 , .. , pcen )                                        ::  :: call
     | refine_ctype ( pce1 , pce2 , pce3 )                              ::  :: refine_ctype
 
-  cmemop {{ tex \mathit{memop} }} :: 'Cmemop_'  ::= {{ com Cerberus Core memory operations }}
+  cmemop {{ tex \cnnt{memop} }} :: 'Cmemop_'  ::= {{ com Cerberus Core memory operations }}
     | PtrEq            ::  :: ptrEq
     | PtrNeq           ::  :: ptrNeq
     | PtrLt            ::  :: ptrLt
@@ -632,7 +627,7 @@ grammar
     | Va_arg           ::  :: va_arg
     | Va_end           ::  :: va_end
 
-  caction {{ tex \mathit{action} }} :: 'Caction_' ::= {{ com Cerberus Core memory action }}
+  caction {{ tex \cnnt{action} }} :: 'Caction_' ::= {{ com Cerberus Core memory action }}
     | create_object ( pce1 , pce2 )           ::  :: create_object
     | create_read_only ( pce1 , pce2 , pce3 ) ::  :: create_read_only
     | create_region ( pce1 , pce2 )           ::  :: create_region
@@ -641,7 +636,7 @@ grammar
     | load ( pce1 , pce2 )                    ::  :: load
     | seq_rmw ( pce1 , pce2 , x . pce3 )      ::  :: seq_rmw
 
-  core {{ tex \mathit{core} }}, ce {{ tex \mathit{E} }} :: 'CE_' ::= {{ com Cerberus Core expression }}
+  core , ce {{ tex \cnnt{E} }} :: 'CE_' ::= {{ com Cerberus Core expression }}
     | pure ( pce )                                   ::  :: pure
     | MEMOP ( cmemop , pce1 , ... , pcen )           ::  :: memop
     | caction                                        ::  :: action
@@ -662,8 +657,8 @@ grammar
 
 grammar
 
-  % OUT_HACK|pstmt
-  out_pstmt {{ tex \outpol{ pstmt } }}   :: 'Out_hack_' ::=  {{ com Ott-hack, ignore }}
+  % OUT_HACK|pstmt,\cnnt{pstmt}
+  out_pstmt {{ tex \outpol{ \cnnt{pstmt} } }}   :: 'Out_hack_' ::=  {{ com Ott-hack, ignore }}
     | pstmt :: :: pstmt {{ tex \outpol{ [[pstmt]] } }}
 
 grammar
@@ -703,7 +698,7 @@ grammar
     | subs ( res_term )             :: M   :: subs     {{ com substitution for resource terms             }}
 
 
-  res_val , def {{ tex \mathit{ def } }} :: 'ResT_Val' ::= {{ com resource term values }}
+  res_val , def :: 'ResT_Val' ::= {{ com resource term values }}
     | emp                          ::     :: empty   {{ com empty heap                                  }}
     | TERM                         ::     :: phi     {{ com term for assertion                          }}
     | pred_term                    ::     :: pred    {{ com heap predicate                              }}
@@ -719,8 +714,8 @@ subrules
 
 grammar
 
-  % OUT_HACK|res_term
-  out_res_term {{ tex \outpol{ res\_term } }}   :: 'Out_hack_' ::=  {{ com Ott-hack, ignore }}
+  % OUT_HACK|res_term,\cnnt{res\_term}
+  out_res_term {{ tex \outpol{ \cnnt{res\_term} } }}   :: 'Out_hack_' ::=  {{ com Ott-hack, ignore }}
     | res_term :: :: res_term {{ tex \outpol{ [[res_term]] } }}
 
 grammar
@@ -754,19 +749,19 @@ grammar
     | memcpy ( pval1 , pval2 , pval3 )        :: :: memcpy
     | memcmp ( pval1 , pval2 , pval3 )        :: :: memcmp
 
-  res_memop {{ tex \mathit{res\_memop} }}:: 'Res_memop_' ::= {{ com memory actions with resource term annotation }}
+  res_memop :: 'Res_memop_' ::= {{ com memory actions with resource term annotation }}
     | res_term | memop :: :: res
 
 grammar
 
-  ret_term , spine_elem {{ tex \mathit{spine\_elem} }} :: Ret_term_ ::=  {{ com return values / spine elements }}
+  ret_term , spine_elem :: Ret_term_ ::=  {{ com return values / spine elements }}
     | pval              ::   :: pval {{ com pure computational value                        }}
     | oarg              ::   :: term {{ com logical term                                    }}
     | res_term          ::   :: res  {{ com resource term                                   }}
     | subs ( ret_term ) :: M :: subs {{ com substitution for return values / spine elements }}
 
 
-  ret_terms , spine {{ tex \mathit{spine} }} :: Ret_terms_ ::=  {{ com return values / spine }}
+  ret_terms , spine :: Ret_terms_ ::=  {{ com return values / spine }}
     | ret_term , ret_terms       :: M :: cons
     | </ ret_termi // , // i />  ::   :: elems
 
@@ -789,8 +784,8 @@ grammar
 
 grammar
 
-  % OUT_HACK|res_pat
-  out_res_pat {{ tex \outpol{ res\_pat } }}   :: 'Out_hack_' ::=  {{ com Ott-hack, ignore }}
+  % OUT_HACK|res_pat,\cnnt{res\_pat}
+  out_res_pat {{ tex \outpol{ \cnnt{res\_pat} } }}   :: 'Out_hack_' ::=  {{ com Ott-hack, ignore }}
     | res_pat :: :: res_pat {{ tex \outpol{ [[res_pat]] } }}
 
 grammar
@@ -801,14 +796,14 @@ grammar
     | reso res_pat             :: :: res  (+ binders = binders( res_pat )             +) {{ com resource pattern            }}
     | </ ret_pati // , // i /> :: :: list (+ binders = binders( </ ret_pati // i /> ) +) {{ com sequence of return patterns }}
 
-  % OUT_HACK|ret_pat
-  out_ret_pat {{ tex \outpol{ ret\_pat } }} :: 'Out_hack_' ::=  {{ com Ott-hack, ignore }}
+  % OUT_HACK|ret_pat,\cnnt{ret\_pat}
+  out_ret_pat {{ tex \outpol{ \cnnt{ret\_pat} } }} :: 'Out_hack_' ::=  {{ com Ott-hack, ignore }}
     | ret_pat :: :: ret_pat {{ tex \outpol{ [[ret_pat]] } }}
 
 grammar
 
   % There used to be an effectful value (val) `skip' - I (dcm41) removed it because it seemed redundant.
-  expr {{ tex \mathit{expr} }}:: 'Expr_' ::= {{ com (effectful) expressions }}
+  expr :: 'Expr_' ::= {{ com (effectful) expressions }}
     | pure ( pexpr )            ::   :: pure      {{ com pure expression                           }}
     | res_memop                 ::   :: memop     {{ com pointer op involving memory               }}
     | res_action                ::   :: action    {{ com memory action                             }}
@@ -843,8 +838,8 @@ grammar
 
 grammar
 
-  % OUT_HACK|stmt
-  out_stmt {{ tex \outpol{ stmt } }}   :: 'Out_hack_' ::=  {{ com Ott-hack, ignore }}
+  % OUT_HACK|stmt,\cnnt{stmtm}
+  out_stmt {{ tex \outpol{ \cnnt{stmt} } }}   :: 'Out_hack_' ::=  {{ com Ott-hack, ignore }}
     | stmt :: :: stmt {{ tex \outpol{ [[stmt]] } }}
 
 grammar
@@ -881,8 +876,7 @@ grammar
     | lt      :: :: lt        {{ tex <                                }}
     | =<      :: :: lte       {{ tex \leq                             }}
     | >=      :: :: gte       {{ tex \geq                             }}
-    | mod     :: :: mod       {{ tex \mathbin{\symrm{mod} }           }}
-    | REM     :: :: rem       {{ tex \mathbin{\symrm{rem} }           }}
+    | REM     :: :: rem       {{ tex \symtt{rem}                      }}
     | &       :: :: ampersand {{ tex \mathbin{\&}                     }}
     | cdot    :: :: cdot      {{ tex \cdot                            }}
     | |       :: :: bar       {{ tex \mid                             }}
@@ -927,7 +921,7 @@ grammar
   comp_list :: Comp_list_ ::= {{ com list of computational arguments }}
     | pi id1 : base_type1 . .... . pi idk : base_typek :: :: gte_two
 
-  fon {{ tex \mathit{fun} }} :: Fun_ ::= {{ com function types }}
+  fon {{ tex \cnnt{fun} }} :: Fun_ ::= {{ com function types }}
     | pi id : base_type . fon     ::     :: comp      {{ com assume a computational value        }}
     | forall id : base_type . fon ::     :: log       {{ com assume a logical value              }}
     | res --o fon                 ::     :: res       {{ com assume a resource                   }}
@@ -943,7 +937,7 @@ grammar
     | term -) pure_fun             :: :: phi
     | pure_ret                     :: :: ret
 
-  norm_fun {{ tex \norm{ \mathit{fun} } }} :: Norm_fun_ ::= {{ com normalised function types }}
+  norm_fun {{ tex \norm{ \cnnt{fun} } }} :: Norm_fun_ ::= {{ com normalised function types }}
     | pi id : base_type . norm_fun     ::     :: comp      {{ com assume a computational value            }}
     | forall id : base_type . norm_fun ::     :: log       {{ com assume a logical value                  }}
     | norm_res --o norm_fun            ::     :: res       {{ com assume a resource                       }}
@@ -960,16 +954,16 @@ grammar
 
 grammar
 
-  % OUT_HACK|fon,\mathit{fun}
-  out_fon {{ tex \outpol{ \mathit{fun} } }}   :: 'Out_hack_' ::=  {{ com Ott-hack, ignore }}
+  % OUT_HACK|fon,\cnnt{fun}
+  out_fon {{ tex \outpol{ \cnnt{fun} } }}   :: 'Out_hack_' ::=  {{ com Ott-hack, ignore }}
     | fon :: :: fon {{ tex \outpol{ [[fon]] } }}
 
-  % OUT_HACK|pure_fun,\mathit{pure\_fun}
-  out_pure_fun {{ tex \outpol{ \mathit{pure\_fun} } }}   :: 'Out_hack_' ::=  {{ com Ott-hack, ignore }}
+  % OUT_HACK|pure_fun,\cnnt{pure\_fun}
+  out_pure_fun {{ tex \outpol{ \cnnt{pure\_fun} } }}   :: 'Out_hack_' ::=  {{ com Ott-hack, ignore }}
     | pure_fun :: :: pure_fun {{ tex \outpol{ [[pure_fun]] } }}
 
-  % OUT_HACK|norm_fun,\norm{ \mathit{fun} }
-  out_norm_fun {{ tex \outpol{ \norm{ \mathit{fun} } } }}   :: 'Out_hack_' ::=  {{ com Ott-hack, ignore }}
+  % OUT_HACK|norm_fun,\norm{ \cnnt{fun} }
+  out_norm_fun {{ tex \outpol{ \norm{ \cnnt{fun} } } }}   :: 'Out_hack_' ::=  {{ com Ott-hack, ignore }}
     | norm_fun :: :: norm_fun {{ tex \outpol{ [[norm_fun]] } }}
 
 grammar
@@ -996,7 +990,7 @@ grammar
     | None       :: :: None
     | x :: :: Some
 
-  spec {{ tex \mathit{spec} }}:: 'Spec_' ::= {{ com CN surface syntax for function specifications and predicate definitions }}
+  spec :: 'Spec_' ::= {{ com CN surface syntax for function specifications and predicate definitions }}
     | cdot                                 ::  :: empty  {{ com empty specification              }}
     | return term                          ::  :: ret    {{ com specify output arguments         }}
     | pred_ipred                           ::  :: p_ip   {{ com predicate or iterated predicate  }}
@@ -1011,16 +1005,16 @@ grammar
     | cdot          :: :: empty
     | return term   :: :: ret
 
-  pred_def {{ tex \mathit{pred\_def}\, }} :: 'Pred_' ::= {{ com predicate definition }}
+  pred_def :: 'Pred_' ::= {{ com predicate definition }}
     | predicate base_type id ( base_type1 x1 , .. , base_typek xk ) { spec } :: :: Def
 
-  func_def {{ tex \mathit{func\_def}\, }} :: 'Func_' ::= {{ com pure CN function definition }}
+  func_def :: 'Func_' ::= {{ com pure CN function definition }}
     | function base_type id ( base_type1 x1 , .. , base_typek xk ) { term } :: :: Def
 
-  datatype_def {{ tex \mathit{datatype\_def}  }} :: 'Datatype_' ::= {{ com datatype defnition }}
+  datatype_def :: 'Datatype_' ::= {{ com datatype defnition }}
     | datatype tag { ctor_def1 , .. , ctor_defn } :: :: Def
 
-  ctor_def {{ tex \mathit{ctor\_def} }} :: 'Ctor_' ::= {{ com datatype constructor definition/pattern }}
+  ctor_def :: 'Ctor_' ::= {{ com datatype constructor definition/pattern }}
     | id { base_type1 id1 , .. , base_typen idn } :: :: Def
 
   subrules
