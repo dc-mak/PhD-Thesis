@@ -1,0 +1,58 @@
+\documentclass{article}
+
+\newcommand{\fooOne}{contentsOne}
+\newcommand{\fooTwo}{contentsTwo}
+\newcommand{\fooThree}{contentsThree}
+
+\newcommand{\innercmd}[1]{#1}
+
+\newcommand{\outercmd}{
+\innercmd{\fooOne{}}
+\innercmd{\fooTwo{}}
+\innercmd{\fooThree{}}
+}
+
+\usepackage{expl3}
+\ExplSyntaxOn%
+% argument #2 calls \innercmd{\cmdX{}} with different \cmdX{}, and we want it
+% to only have an effect if \cmdX{} is in the list #1.
+\NewDocumentCommand{\onlyUse}{mm}
+{
+  \group_begin:%
+  \seq_clear:N \l_tmpa_seq
+  \clist_map_inline:nn {#1}
+  {
+    \seq_gput_right:Nn \l_tmpa_seq {##1}
+  }%
+
+  \typeout{At start}%
+  %\seq_show:N \l_tmpa_seq {}%
+
+  \NewCommandCopy{\originnercmd}{\innercmd}%
+  \renewcommand{\innercmd}[1]{%
+
+    \seq_if_in:NnT \l_tmpa_seq {##1}
+      {%
+        \typeout{Found it!}
+        \originnercmd{##1}%
+      }%
+  }
+  #2
+  \group_end:%
+}
+\ExplSyntaxOff%
+
+\begin{document}
+
+Some output to test
+
+Outer by itself:
+\outercmd%
+
+Only use first and third:
+\onlyUse{ \fooOne{}, \fooThree{} }{  \outercmd{} }%
+
+Only use second:
+\onlyUse{ \fooTwo{} }{  \outercmd{} }
+
+\end{document}

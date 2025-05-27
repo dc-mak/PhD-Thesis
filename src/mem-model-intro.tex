@@ -96,52 +96,74 @@ within the formalised and implemented type systems.
 
 \margintoc%
 
-From the perspective of \kl{Core} and \kl{ResCore}, the memory object model
-(\cref{fig:mem-model-intf}) is simply a choice of representation of pointers,
-and the interface specified in the memory operations $memop$, and memory
-$\mathit{actions}$.\sidenote{Plus some extra primitives to detect races between
-unsequenced expressions, which I will ignore.}
+From the perspective of \kl{Core} and \kl{ResCore}, the representation of
+pointers, integers and memory itself are left abstract, and memory operations
+and memory actions are defined by an interface (\cref{fig:mem-model-intf}).
+
+\begin{figure}[tbhp]
+    \small%
+    \raggedright%
+    \begingroup%
+    \renewcommand{\cnprodline}[6]{& & $#1$ & $#2$ & $#3$ & $#5$ & }
+    \grammartabularSTY{%
+        \cnkillXXkind{}\cninterrule{}
+        \cnaction{}\cninterrule{}
+        \cnmemop{}\cnafterlastrule{}
+    }
+    \endgroup%
+    \caption{\kl{ResCore} memory interface, a simplified subset of the \kl{Core}
+        memory interface. I omit constructs for handling variable-length
+        arguments and loose expression evaluation order.}\label{fig:mem-model-intf}
+\end{figure}
+
+The key concept which begins this brief overview of memory object models is that
+of provenance. To optimise our code, compilers would like to assume that a
+programmer may only create pointers in a ``reasonable'' ways, and that certain
+basic assumptions about those pointers are always true.\sidenote{Such as (a)
+function arguments may not alias local variables and (b) pointers created in a
+function may not alias the local variables of any caller (c) pointers created by
+guessing concrete addresses are always invalid.}
+
+Let us revisit the example from \cref{fig:ptr-from-int-ub}, reproduced in
+\cref{fig:mem-model-ptr-from-int} for convenience.  It guesses that
+\cinline{ADDRESS_PFI_1I} is the address of a variable local to function
+\cinline{f}, and passes that guess in as an argument \cinline{f(j)}. Inside the
+function, it declares a local variable \cinline{i} and then creates a pointer
+\cninline{p} from the argument. If this new pointer is equal to the address of
+the local variable, it writes to that location (\cinline{if (p == &i) *p=7;}).
+The value of the local variable is then printed.
+
+Assuming the address is guessed correctly, this program raises two questions:
+Does this program have undefined behaviour, and if so, where and why?  What will
+it print?
+
+Indeed, it does have undefined behaviour, because the pointer \cinline{p} is not
+constructed in a ``reasonable'' way and it can print 5, because the compiler may
+assume that \cninline{p} cannot alias the local variable \cinline{i}, and thus
+perform constant propagation over the assignment.
+
+To optimise pointer code, compilers assume that pointers in C are \emph{not}
+completely concrete, and are only constructed in ``reasonable'' ways. However,
+to support low-level idioms of \emph{computing} with pointers (incrementing,
+offsetting, casting to and from integers), compilers also assume that pointers
+are \emph{not} completely abstract.  Compilers must also be conservative in such
+assumptions. \emph{Despite a lack of dataflow between} \cinline{k} and
+\cinline{j}, uncommenting line 6 would make the program defined and print 7.
 
 \begin{marginfigure}
-    \includegraphics{figures/mem-model-intf}
-    \caption{Memory model interface of \kl{Core}.}\label{fig:mem-model-intf}
-\end{marginfigure}
+    \raggedright%
+    \cfile{code/pointer_from_integer_1i.c}
+    \caption{A modified version of examples
+        pointer\_from\_integer\_\{1i,1ie\}.c
+        from~\textcite{memarian2019exploring}}\label{fig:mem-model-ptr-from-int}
+\end{marginfigure}%
 
-The key concept which begins this brief overview of memory object models is
-that of provenance. To optimise our code, compilers would like to assume that
-not all pointers that a programmer can magically create (a) are valid, i.e.\
-point to a live allocation and (b) can alias any other live allocation in scope.
-
-Let us revisit the example from \cref{fig:ptr-from-int}, reproduced in
-\cref{fig:mem-model-ptr-from-int} for convenience. It shows a simple function
-\cinline{f}, which takes an integer \cinline{i} as an argument, assigns the
-number 5 to a local \cinline{j}, and then prints it. Interspersed are some
-seemingly irrelevant casts of the pointer \cinline{&j}, to a new local integer
-\cinline{k}, and a cast of the argument \cinline{i} to a new local pointer
-\cinline{p}, finishing with a write to \cinline{*p}. The function \cinline{f}
-is called from \cinline{main} with a value \cinline{ADDRESS_PFI_1I}, this is a
-``guess'' of the location of where \cinline{f}'s local variable \cinline{j}
-will be allocated during execution.
-
-Despite the fact that there is no data flowing between \cinline{k} and
-\cinline{i}, the mere fact that the address of \cinline{j} was taken (and
-``exposed'' via its assignment to an integer \cinline{k}) is enough to make the
-compiler wary that the pointer \cinline{p} could alias \cinline{j} and thus
-disable constant propagation.\sidenote{This example does have \kl{UB} though
-because of (demonic) allocation address non-determinism.}
-
-\begin{marginfigure}
-    \centering
-    \cfile{code/pointer_from_integer_1ie.c}
-    \caption{Example pointer\_from\_integer\_1ie.c.}\label{fig:mem-model-ptr-from-int}
-\end{marginfigure}
-
-\clearpage%
 \section{PNVI-ae-udi}
 
-The rules justifying the above are set out in the \kl{PNVI-ae-udi} memory model,
-upon which VIP is defined. Though the name is clunky and not euphonious, it is
-descriptive as each part defines a particular choice to focus on.
+The rules justifying the ``reasonable ways'' in which a pointer may be
+constructed are set out in the \kl{PNVI-ae-udi} memory model, upon which VIP is
+defined. Though the name is clunky and not euphonious, it is descriptive as each
+part defines a particular choice to focus on.
 
 \subsection{Provenance not tracked via integers}
 
@@ -158,8 +180,8 @@ Provenances are either $@\mathsf{empty}$, or allocation IDs $@i$ for integer
 $i$. Allocation IDs are allocated fresh
 globally\sidenote{PNVI-ae-udi does not support concurrency.} for every new
 allocation, and thus guaranteed to be unique. An \intro{allocation history}
-$\mathit{A}$ is a partial map indexed by allocation IDs, which tracks the size
-of allocations, base address and whether or not they are live. The pointer
+$\mathit{A}$ is a partial map indexed by allocation IDs, which tracks their
+base address, size, and liveness. The pointer
 resulting from successfully creating a fresh allocation is a pair of base
 address and the allocation ID\@. When an allocation is destroyed, the entry is
 not removed, but merely updated to record the allocation as dead. The
@@ -182,7 +204,7 @@ Reading from and writing to memory is done via the \coreinline{load} and
 \coreinline{store} actions, at a specific C type, and these actions handle
 structured \kl{Core} values, not sequences of bytes. Marshalling between the
 two is handled via $\mathrm{repr}$ and $\mathrm{abst}$ functions. So for
-example, a pointer $(a, @i)$ as a value is going to be stored as a sequence of
+example, a pointer $(@i, a)$ as a value is going to be stored as a sequence of
 bytes in memory based on its address $a$, each byte with its provenance
 $@i$.\sidenote{There is also an optional \kl{pointer index} for each byte's
 position in the pointer, see note~\ref{sn:ignore-ptr-index}.}
@@ -221,13 +243,22 @@ not just the ones which are live, but also the ones which have their addresses
 allocation has been exposed or not, and the semantics of an integer-to-pointer
 cast would then only examine those (\cref{fig:pnvi-ival-to-pval}).
 
-\begin{figure*}
-    \includegraphics{figures/mem-model-pnvi-ival-to-pval}
-    \caption{PNVI-* rules for casting an integer to a pointer. From
-    \textcite{memarian2022cerberus}. The first rule should have $x \in [ a \;
-    .. \; a + n - 1]$, and the second rule should have $p = (\mathsf{@empty},
-    x)$ (TODO\@: fix these).}\label{fig:pnvi-ival-to-pval}
-\end{figure*}
+\begin{figure}
+\begin{mathpar}
+  \inferrule[{[PNVI-ae-udi: $\textbf{ptrFromInt}\langle\tau\rangle(x) = (@i, x)$]}]{%
+    \exists \, i.\ A(i) = (n, a, \mathsf{alive}, \mathsf{\color{blue}{exposed}}) \wedge x \in [a \ldots a + n - 1]%
+  }{%
+    (A, S, M) \rightarrow (A, S, M)}
+  \\
+  \inferrule[{[PNVI-ae-udi: $\textbf{ptrFromInt}\langle\tau\rangle(x) = (@\mathsf{empty}, x)$]}]{%
+    \neg (\exists \, i.\ A(i) = (n, a, \mathsf{alive}, \mathsf{\color{blue}{exposed}}) \wedge x \in [a \ldots a + n - 1]) \\\\
+    x \neq 0 \\ x \textrm{ is not the address of a function}%
+  }{%
+    (A, S, M) \rightarrow (A, S, M)}
+\end{mathpar}\caption{Simplified PNVI-* rules for casting an integer to a
+    pointer. Based
+    on~\textcite{memarian2022cerberus}.}\label{fig:pnvi-ival-to-pval}
+\end{figure}
 
 \begin{definition}[Exposed allocation]
 An allocation is \emph{exposed} iff a pointer to anywhere within that
@@ -255,12 +286,19 @@ is cast to a one-past pointer on the boundary between two live allocations, its
 provenance is assigned to be symbolic, containing both allocations' IDs
 (\cref{fig:pnvi-ival-to-pval-symbolic}).
 
-\begin{figure*}
-    \includegraphics{figures/mem-model-pnvi-ival-to-pval-symbolic}
-    \caption{PNVI-ae-udi rule for casting an integer to a pointer when
-        the value is the address on the boundary between two live allocations.
-        From \textcite{memarian2022cerberus}.}\label{fig:pnvi-ival-to-pval-symbolic}
-\end{figure*}
+\begin{figure}
+\[
+  \inferrule[{[PNVI-ae-udi: $\textbf{ptrFromInt}\langle\tau\rangle(x) = ({\color{violet}\iota}, x)$]}]{%
+    \exists \, i_1.\ A(i_1) = (n_1, a_1, \mathsf{alive}, \mathsf{\color{blue}{exposed}}) \wedge x \in [a_1 \ldots a_1 + n_1] \\\\
+    \exists \, i_2.\ A(i_2) = (n_2, a_2, \mathsf{alive}, \mathsf{\color{blue}{exposed}}) \wedge x \in [a_2 \ldots a_2 + n_2] \\\\
+    {\color{violet}i_1 \neq i_2} \\ {\color{violet}\iota \notin \mathrm{dom}(S)}
+  }{%
+    (A, S, M) \rightarrow (A, S{\color{violet}[\iota \mapsto \{ i_1 , i_2 \}]}, M)}
+\]\caption{Simplified PNVI-ae-udi rule for casting an integer to a
+    pointer when the value is the address on the boundary between two live
+    allocations. Based
+    on~\textcite{memarian2022cerberus}.}\label{fig:pnvi-ival-to-pval-symbolic}
+\end{figure}
 
 Whilst useful for capturing many idioms and optimisations, the problem with these
 symbolic provenances is that they complicate every other rule which requires
@@ -324,8 +362,8 @@ state, and a translation into \kl{PNVI-ae-udi}.
 
 The way that both of these are achieved is a very limited form of tracking
 provenances via integers. Integer values in VIP model are represented by a
-datatype with two constructors: $\mathit{Loc(@i, a)} \mid \mathit{Int(z \in
-\mathbb{Z})}$. Casts from pointers $(@i, a)$ to integers just embed the pointer
+datatype with two constructors: $\mathit{Loc}\,(@i, a) \mid \mathit{Int}\,(z \in
+\mathbb{Z})$. Casts from pointers $(@i, a)$ to integers just embed the pointer
 into the $\mathit{Loc}$ constructor, and casts back to pointers just take the
 value out (\cref{fig:vip-ival-to-pval}). If the integer value has any
 intervening operations, only the integer parts (the address $a$ in
@@ -334,21 +372,35 @@ provenance is forgotten (\cref{fig:vip-arith-binop}). If the integer has no
 provenance, then \cinline{copy_alloc_id} can be used to annotate it with one
 (\cref{fig:vip-copy-alloc-id}).
 
-\begin{figure*}[tp]
-    \includegraphics{figures/mem-model-vip-ival-to-pval}
-    \caption{The \kl{VIP} rules to cast an integer into a pointer which
+\begin{figure}[tp]
+\[
+  \inferrule[{[VIP: $\textbf{intFromPtr}\langle\tau\rangle((@i, x)) = \mathit{Loc}\,(@i, x)$]}]{%
+    A(i) = (n, a, \mathsf{alive}, \mathsf{\color{blue}{exposed}}) \\ x \in \mathsf{range}(\tau)%
+  }{%
+    (A, M) \rightarrow (A, M)}
+\]\caption{The \kl{VIP} rules to cast an integer into a pointer which
     preserves the round-trip property.}\label{fig:vip-ival-to-pval}
-\end{figure*}
+\end{figure}
 
 \begin{marginfigure}
-    \includegraphics{figures/mem-model-vip-arith-binop}
-    \caption{\kl{VIP} arithmetic operations on integers.}\label{fig:vip-arith-binop}
+\[
+  \inferrule[{[VIP: $\textbf{arith\_bin\_op}(\oplus, x_1, x_2) = x$]}]{%
+    x = \mathit{Int}\,(\mathrm{to\_int}(x_1), \mathrm{to\_int}(x_2))
+  }{%
+    (A, M) \rightarrow (A, M)}
+\]\caption{\kl{VIP} arithmetic operations on
+    integers.}\label{fig:vip-arith-binop}
 \end{marginfigure}
 
-\begin{figure*}[tp]
-    \includegraphics{figures/mem-model-vip-copy-alloc-id}
-    \caption{\kl{VIP} \cinline{copy_alloc_id} primitive.}\label{fig:vip-copy-alloc-id}
-\end{figure*}
+\begin{figure}[tp]
+\[
+  \inferrule[{[VIP: $\textbf{copy\_alloc\_id}(x, (@i, \_)) = (@i, \mathrm{to\_int}(x))$]}]{%
+    A(i) = (n, a, \mathsf{alive}) \\ \mathrm{to\_int}(x) \in [a \ldots a + n]
+  }{%
+    (A, M) \rightarrow (A, M)}
+\]\caption{\kl{VIP} \cinline{copy_alloc_id} primitive to create a
+    pointer with a specific provenance.}\label{fig:vip-copy-alloc-id}
+\end{figure}
 
 The VIP \cinline{copy_alloc_id} primitive needs to be expressible in
 PNVI-ae-udi for it to be a sound abstract, the way this is done is by
@@ -609,7 +661,7 @@ chose to defer any implementation of subtyping resources automatically.
 \subsection{Non-deterministic pointer equality}\label{subsec:non-det-ptr-eq}
 
 The official presentation of the \kl{VIP} memory model uses a strict variant of
-the pointer-equality memory operation, which only looks at the addresses to
+the pointer equality memory operation, which only looks at the addresses to
 determine whether two pointers are considered equal.
 
 Disappointingly, things are not quite so simple in actual C
@@ -625,18 +677,108 @@ false.
 \end{marginfigure}
 
 Therefore, when the pointers of an \cinline{==} have equal
-addresses but distinct provenances are distinct, the result will be
+addresses but distinct provenances, the result will be
 non-deterministically true or false (\cref{fig:nd-ptr-eq}). In practice, this will
-only happen if one of the pointers is a one-past, out-of-bounds as
+only happen if one of the pointers is one-past, or out-of-bounds as
 the result of permissive array/member shift, or has an $@\mathsf{empty}$
 provenance as the result of a cast from an integer.
 
 \begin{figure*}
-    \includegraphics{figures/mem-model-pnvi-nd-ptr-eq}
-    \caption{The \kl{PNVI-ae-udi} rule for pointer equality. When addresses
-        are equal but provenances are distinct (captured by the fourth case),
-        the result of \cinline{==} operator will be non-deterministically either
-        true or false.}\label{fig:nd-ptr-eq}
+\begin{mathpar}
+  \begingroup%
+  \mprset{vskip=1ex}
+  \inferrule[{[PNVI-ae-udi: $\textbf{eq\_ptrval}(p_1, p_2) = b$]}]{%
+    {\color{violet} \pi_1 =_S \pi_2 \eqdef
+        \left( \pi_1 = \iota_1 \wedge \pi_2 = \iota_2 \wedge S(\iota_1) = S(\iota_2) = \{\, i \,\} \right)} \\\\%
+%
+    {\color{violet} \pi_1 \neq_S \pi_2 \eqdef
+        \left( \pi_1 = \iota_1 \wedge \pi_2 = \iota_2 \wedge \neg \left ( S(\iota_1) = S(\iota_2) = \{\, i \,\} \right) \right)} \\\\%
+%
+    \pi_1 =_\mathrm{id} \pi_2 \eqdef \left (\pi_1 = @i_1 \wedge \pi_2 = @i_2 \wedge i_1 = i_2 \right)\\\\%
+%
+    b \in {\begin{cases}
+        \{\, \mathsf{true} \,\} &
+            \mathrm{if}\ p_1 = p_2 = \mathsf{NULL} \\%
+%
+        \{\, \mathit{ident}_1 = \mathit{ident}_2 \,\} &
+            \mathrm{if}\ p_1 = \mathsf{funptr}\,(\mathit{ident_1})
+                \wedge p_2 = \mathsf{funptr}\,(\mathit{ident_2}) \\%
+%
+        \{\, a_1 =_{\mathbb{Z}} a_2 \,\} &
+            \mathrm{if}\ p_1 = (\pi_1, a_1)
+                \wedge p_2 = (\pi_2, a_2)
+                \wedge \left( {\color{violet} \pi_1 =_S \pi_2} \vee \pi_1 =_\mathrm{id} \pi_2 \right) \\%
+%
+        \{\, (a_1 =_{\mathbb{Z}} a_2),  \mathsf{false} \,\} &
+            \mathrm{if}\ p_1 = (\pi_1, a_1)
+                \wedge p_2 = (\pi_2, a_2)
+                \wedge \left( {\color{violet} \pi_1 \neq_S \pi_2} \vee {\color{red}\pi_1 \neq \pi_2} \right) \\%
+%
+        \{\, \mathsf{false} \,\} & \mathrm{otherwise} \\
+    \end{cases}}
+  }{%
+    (A, {\color{violet}S,}\, M) \rightarrow (A, {\color{violet}S,}\, M)}
+  \endgroup%
+\end{mathpar}\caption{\kl{PNVI-ae-udi} rule for pointer equality. When addresses
+    are equal but provenances are distinct (captured by the fourth case), the
+    result of \cinline{==} operator will be non-deterministically either true or
+    false. \textcolor{violet}{Parts specific to \kl{PNVI-ae-udi}, relating to
+    \kl{symbolic provenances} $\iota$ are coloured in violet}.
+    \textcolor{red}{Parts which break monotonicity with respect to the
+    $@\mathsf{empty}$ provenance are highlighted in red}.}\label{fig:nd-ptr-eq}
+\end{figure*}
+
+\begin{figure}
+\begin{mathpar}
+  \begingroup%
+  \mprset{vskip=1ex}
+  \inferrule[{[PNVI-ae-udi: $\textbf{eq\_ptrval}(p_1, p_2) = b$]}]{%
+    \mathsf{NULL} \cong \mathsf{NULL} \\
+    \mathsf{funptr}\,(\mathit{ident}) \cong \mathsf{funptr}\,(\mathit{ident}) \\
+    (@i, a) \cong (@i, a) \\\\
+%
+    {\color{violet} \iota_1 \approx \iota_2 \ \mathrm{if}\ S(\iota_1) = S(\iota_2) = \{\, i \,\}} \\
+    {\color{violet} (\iota_1, a) \cong (\iota_2, a)\ \mathrm{if}\ \iota_1 \approx \iota_2} \\
+    {\color{violet} (\iota_1, a) \questeq (\iota_2, a)\ \mathrm{if}\ \iota_1 \napprox \iota_2} \\
+    {\color{red} (\pi_1, a) \questeq (\pi_2, a)\ \mathrm{if}\ \pi_1 \neq \pi_2} \\\\
+%
+    b = \mathsf{true}\ \mathrm{if}\ p_1 \cong p_2 \\
+    b \in \{\, \mathsf{true},  \mathsf{false} \,\}\ \mathrm{if}\ p_1 \questeq p_2 \\
+    b = \mathsf{false}\ \mathrm{otherwise}
+  }{%
+    (A, {\color{violet}S,}\, M) \rightarrow (A, {\color{violet}S,}\, M)}
+  \endgroup%
+\end{mathpar}\caption{\kl{PNVI-ae-udi} rule for pointer equality, rephrased to
+    highlight the conditions for ambiguity. As in~\cref{fig:nd-ptr-eq},
+    \textcolor{violet}{parts specific to \kl{PNVI-ae-udi}, relating to
+    \kl{symbolic provenances} $\iota$ are coloured in violet};
+    \textcolor{red}{parts which break monotonicity with respect to the
+    $@\mathsf{empty}$ provenance are highlighted in red}.}\label{fig:nd-ptr-eq-rephrased}
+\end{figure}
+
+\begin{figure*}
+\begin{tikzcd}[cramped,sep=small]
+	& {(@i, @j)} && {\{\,\mathsf{true}\,\}} & & {\{\,\mathsf{false}\,\}} \\
+	{(@i, @\mathsf{empty})} && {(@\mathsf{empty}, @j)} \\
+	& {(@\mathsf{empty}, @\mathsf{empty})} &&& {\{\,\mathsf{true}, \mathsf{false}\,\}}
+	\arrow[from=2-1, to=1-2, color=gray]
+	\arrow[from=2-3, to=1-2, color=gray]
+	\arrow[from=3-2, to=2-1, color=gray]
+	\arrow[from=3-2, to=2-3, color=gray]
+    \arrow[from=3-5, to=1-4, color=gray]
+    \arrow[from=3-5, to=1-6, color=gray]
+    \arrow[from=1-2, to=1-4, dashed]
+    \arrow[from=2-1, to=3-5, dashed, crossing over, crossing over clearance=0.5ex, bend right=2]
+    \arrow[from=2-3, to=3-5, dashed, bend left=6]
+    \arrow[from=3-2, to=1-6, dashed, crossing over, color=red, bend right=8]
+\end{tikzcd}%
+\caption{Hasse diagram showing why the condition {\color{red}$\pi_1 \neq \pi_2$},
+    represented by the dashed arrows $\rightdasharrow$, is not monotonic (when
+    addresses are equal). $d_1 {\color{gray}\rightarrow} d_2$ if $d_1$ leads to
+    more undefined behaviour than $d_2$. On the left is the domain of pairs of
+    provenances, assuming $i \neq j$. On the right is the domain of sets of
+    boolean values. The problematic, non-monotonic mapping is the red dashed
+    arrow $\color{red}\rightdasharrow$.}\label{fig:ptr-eq-hasse}
 \end{figure*}
 
 This introduces a small syntactic inconsistency between the specification
@@ -649,71 +791,62 @@ them towards more informative (but verbose) named functions such as
 
 Unfortunately, adapting \kl{VIP} to handle the non-deterministic
 pointer-equality rule is not straightforward. As it is defined in the paper and
-appendix, they assume strict (address-only) pointer-equality rule for both
+appendix, they assume strict (address-only) pointer equality rule for both
 \kl{VIP} and \kl{PNVI-ae-udi}. This means they sidestep the issue I present
 next.
 
-Let us imagine we simply replace the strict (address-only) pointer equality
-rule with the non-deterministic variant in both \kl{VIP} and \kl{PNVI-ae-udi}
-at the same time. One aspect of soundness is that if \kl{PNVI-ae-udi} and
-\kl{VIP} start in related states, then taking related steps will result in
-either \kl{UB} in \kl{VIP}, or will end in related states, with related (equal)
-return values. Now consider the example in \cref{fig:vip-non-det-ptr-eq-problem}.
+The issue is that, as stated, empty provenances do not lead to strictly more
+undefined behaviour under PNVI-ae-udi, and the proof of soundness of VIP above
+PNVI-ae-udi relies on this property. The example
+in~\cref{fig:non-det-ptr-eq-problem} illustrates this problem.\sidenote{ As
+mentioned in
+\href{https://github.com/rems-project/cerberus/issues/954}{Cerberus\#954}, the
+Cerberus implementation and formalisation differ in how they treat
+$(@\mathsf{empty}, a) == (@\mathsf{empty}, a)$. The Cerberus implementation
+treats it as always $\mathsf{true}$, whereas the Cerberus formalisation treats
+it as always $\mathsf{false}$. Both are problematic as
+per~\cref{fig:ptr-eq-hasse}, but need opposite if-conditions (\cinline{p != q}
+and \cinline{p == q}, respectively) for their counter-examples
+(\cref{fig:non-det-ptr-eq-problem}).}
 
-\begin{marginfigure}
-    \cfile[breaklines]{code/vip-non-det-ptr-eq-problem.c}
-    \caption{Example code which exhibits non-deterministic behaviour under
-        \kl{PNVI-ae-udi} (with non-det.\ pointer equality), but is always false
-        under \kl{VIP} (with non-det.\ pointer equality).}\label{fig:vip-non-det-ptr-eq-problem}
-\end{marginfigure}
+\begin{figure}
+    \cfile[breaklines]{code/non-det-ptr-eq-problem.c}%
+    \caption{Counter-examples to the desirable property that
+    $@\mathsf{empty}$ provenance leads to more undefined behaviour.  As is,
+    \cinline{p} has $@\mathsf{empty}$ provenance at the time of the pointer
+    equality test and does not lead to undefined behaviour, because the
+    \cinline{p == q} always evaluates to \cinline{false} according to the rule
+    in~\cref{fig:nd-ptr-eq}. If \cinline{p = &x} is uncommented, then
+    \cinline{p} has non-$@\mathsf{empty}$ provenance, which leads to the
+    non-deterministic case, which allows for executing the then-branch. This
+    branch has undefined behaviour because \cinline{q} has $@\mathsf{empty}$
+    provenance.}\label{fig:non-det-ptr-eq-problem}
+\end{figure}
 
-\begin{itemize}
-    \item In such a variant of \kl{PNVI-ae-udi} both pointers are one-past, and
-        so have symbolic provenance, but the same address, and so the result is
-        non-deterministic.
-    \item In such a variant of \kl{VIP}, both pointers have $@\mathsf{empty}$
-        provenance, so the equality test must return false.
-    \item Both are valid steps, so in particular, the \kl{VIP} system does not demonstrate \kl{UB}.
-    \item However, the return values cannot be related. The potential `true'
-        branch for \kl{PNVI-ae-udi} could lead to \kl{UB} which would have
-        incorrectly been classed as impossible in \kl{VIP}.
-\end{itemize}
+The examples rely on being able to construct two pointers \cinline{p} and
+\cinline{q}, with the same address. What differs is that in one version, both
+have $@\mathsf{empty}$ provenances (lines 10 and 11), and in the other,
+\cinline{p} has a non-$@\mathsf{empty}$ provenance (uncommenting line 12). They
+are tested for equality in the condition of an if-statement, in which the true
+branch\sidenote{But the false branch for the Cerberus implementation.}, there is
+\cinline{*q}, which is always undefined since it has $@\mathsf{empty}$
+provenance and loads requires a non-$@\mathsf{empty}$, live allocation ID\@.
 
-Both steps start in related states; the relation given in the proof of
-soundness says that any provenance $\pi$ in \kl{PNVI-ae-udi} may be related
-($\pi \approx_w @\mathsf{empty}$) to an empty one in \kl{VIP}. But if two
-pointers have $@\mathsf{empty}$ provenances in VIP, then we are free to
-choose pointers with distinct provenances in \kl{PNVI-ae-udi}, to force the
-pointer-equality operation to end up in the non-deterministic case. At this
-point, the result values are no longer related by equality, and cannot be,
-since the non-deterministic value can affect control flow and trigger \kl{UB}
-in the path not taken by the \kl{VIP} variant.
+When \cinline{p} and \cinline{q} both have $@\mathsf{empty}$ provenance, the
+test is always \cinline{false}\sidenote{But always \cinline{true} in the
+implementation}, and so the undefined behaviour load is never run. However, when
+\cinline{p} has a non-$@\mathsf{empty}$ provenance, the value of the condition
+is non-deterministically \cinline{true} or \cinline{false}, and so both branches
+of the if-statement could run, and so if either branch has undefined behaviour,
+the whole statement (and whole program) is deemed to have undefined behaviour.
 
-The key insight is that the statement ``$@\mathsf{empty}$ provenances lead to
-strictly more \kl{UB} than other provenances'', \emph{does not hold} in the
-presence of the totally-defined, non-deterministic pointer-equality rule,
-expressed in the proof by the relation $\pi \approx_w @\mathsf{empty}$. In
-domain theoretic terms, if $@\mathsf{empty} \sqsubseteq \pi$ is supposed to
-reflect the information ordering, the issue is that the pointer equality rule
-is not monotonic with respect to this.
-
-This presents us with the classic ``pick two of three'' situation:
-\begin{itemize}
-    \item \textbf{Drop $@\mathsf{empty}$ provenances.} This adds more \kl{UB}
-        to CN's memory model, but it forbids the counter-example in
-        \cref{fig:vip-non-det-ptr-eq-problem} and other soundness
-        issues.\sidenote{Proof pending. Would have to redo above PNVI-ae-udi.}
-        In practice, the change is small, primarily just forbidding the integer
-        to pointer cast which is not a direct round-trip, requiring the
-        programmer to use \cinline{copy_alloc_id} instead.
-    \item \textbf{Drop totality for pointer equality.} An alternative approach
-        would be to make the pointer equality test \kl{UB} if either argument
-        has the $@\mathsf{empty}$ provenance. This would mean accepting a
-        different interpretation (information order) for empty provenances.
-    \item \textbf{Drop non-determinism for pointer equality.} The existing
-        \kl{VIP} system is sound with respect to \kl{PNVI-ae-udi} with strict
-        (address-only) pointer equality, meaning no non-determinism.
-\end{itemize}
+The mathematically elegant solution to this is to adjust the rule for pointer
+equality so that the $(@\mathsf{empty}, a) == (@\mathsf{emtpy}, a)$ case is also
+non-deterministic. This also benefits the \kl{CN} implementation because, in
+most cases\sidenote{Except for memory bytes, see~\nameref{subsec:smt-rep}.}
+$@\mathsf{empty}$ provenances can be represented in the SMT solver problem as
+fresh unconstrained allocation IDs, rather than requiring a datatype with two
+separate constructors.
 
 \subsection{Allocation history}\label{subsec:alloc-history}
 
@@ -726,7 +859,7 @@ An allocation being live is important for some pointer operations, such as
 relational ones, which require the operand pointers to be in bounds of the same
 live allocation for the operation to not have \kl{UB}. However, for other
 operations (such as member shifting), it must still satisfy a bounds check, but
-whether or not an allocation is live is irrelevant. There is no operation which
+whether an allocation is live is irrelevant. There is no operation which
 requires knowing that an allocation is dead.
 
 So bounds checks do not require live allocation, some operations require
@@ -763,7 +896,7 @@ with live ones, though their allocation IDs will still be distinct, so tracking
 all forms of disjointness accurately would add significant complexity for
 little benefit.
 
-\subsection{SMT representations}
+\subsection{SMT representations}\label{subsec:smt-rep}
 
 One of the tricky aspects of adapting the memory object models to \kl{CN} is
 that the models are defined over \emph{concrete} values and executions, whereas
@@ -963,8 +1096,3 @@ standard idiom of using an unconstrained variable as a default value.
         variables for addresses and allocation IDs and unconstrained ones as
         default values in morally partial operations.
 \end{itemize}
-
-\begin{figure}[h]
-    \centering
-    \includegraphics[width=\textwidth]{../misc/type-system-options.jpg}
-\end{figure}

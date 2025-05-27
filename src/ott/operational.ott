@@ -1,0 +1,640 @@
+grammar
+
+  state , s :: 'State_' ::= {{ com state }}
+    | alloct ; heap :: M :: def
+
+  heap , h , f {{ tex \cnnt{ fr } }} :: 'Heap_' ::= {{ com heaps }}
+    | cdot                    ::   :: empty
+    | { pred & def_heap }     ::   :: pointsto
+    | { ipred & arr_heap }    ::   :: ipred
+    | </ heapi // + // i />   :: M :: concat
+    | subs ( heap )           :: M :: subs
+    | def_heap . member     :: M :: def_heap_proj
+
+  def_heap :: 'Def_heap_' ::= {{ com optional pair of definition (resource value) and heap }}
+    | None              :: :: None
+    | def & heap        :: :: Some
+    | arr_heap [ term ] :: :: ArrGet
+
+
+  arr_heap :: 'Arr_heap_' ::= {{ com array of definition-heap pairs  }}
+    | cdot                                  :: :: Empty
+    | arr_heap [ term ] := def_heap :: :: Update
+
+  opsem_extra :: 'opsem_extra_' ::= {{ com extra judgements for operational semantics }}
+    | forall i lt j .: not ( pati = pval ~> subsi ) ::   :: forall_i_lt_j_not_decons {{ com all patterns prior to $[[j]]$ failed to match/deconstruct     }}
+    | alloc_id notIn dom ( alloct )                 ::   :: fresh_alloc_id           {{ com $[[alloc_id]]$ is a fresh wrt allocation history $[[alloct]]$ }}
+    | addr inEnv newAlloc ( heap , int , int' )     ::   :: newAlloc                 {{ com $[[addr]]$ is in the set of possible new addresses for an allocation, wrt $[[heap]]$, alignment $[[int]]$ and size $[[int']]$ }}
+    | heap def= heap'                               ::   :: heap_abbrev              {{ com heap abbreviations                                            }}
+
+defns
+  subs_judge :: 'Subs_' ::=
+
+  defn alloct |- smt ( qterm ) :: :: SMT :: SMT_
+  {{ com given allocation history $[[ alloct ]]$, $[[ qterm ]]$ is SMT-provable }} by
+
+    smt ( cdot => alloct / allocv < qterm > )
+    -------------------------------------- :: Alloc
+    alloct |- smt ( qterm )
+
+  defn pat = pval ~> out_subs :: :: Pat_Value_ :: Pat_Value_
+  {{ com computational value deconstruction: $[[ pat ]]$ deconstructs $[[ pval ]]$ to produce substitution $[[out_subs]]$ }} by
+
+
+    ----------------------------- :: Wild
+    _ = pval ~> cdot
+
+
+    -------------------------------------------- :: Sym
+    x = pval ~> pval / x
+
+
+    --------------------------------------------------- :: Nil
+    Nil base_type ( ) = Nil base_type ( ) ~> cdot
+
+
+    pat1 = pval1 ~> subs1
+    pat2 = pval2 ~> subs2
+    --------------------------------------------------------------------------------------------------- :: Cons
+    Cons ( pat1 , pat2 ) = Cons ( pval1 , pval2 ) ~> [ subs1 , subs2 ]
+
+
+    indexed </ pati = pvali ~> subsi // i />
+    ------------------------------------------------------------------------------------------- :: Tuple
+    Tuple ( </ pati // i /> ) = Tuple ( </ pvali // i /> ) ~> [ </ subsi // i /> ]
+
+
+    indexed </ pati = pvali ~> subsi // i />
+    -------------------------------------------------------------------------------------------- :: Array
+    Array ( </ pati // i /> ) = Array ( </ pvali // i /> ) ~> [ </ subsi // i /> ]
+
+
+  defn < h ; res_pat = res_val > ~> < h' ; out_subs > :: :: Pat_Res :: Pat_Res_
+  {{ com resource term deconstruction: $[[res_pat]]$ deconstructs $[[res_val]]$ to produce substitution $[[out_subs]]$ }} by
+
+    --------------------------------- :: Emp
+    < h ; emp = emp > ~> < h ; cdot >
+
+    ------------------------------------- :: Phi
+    < h ; TERM = TERM > ~> < h ; cdot >
+
+    % Not having pats and matching rules for (q)preds makes substitutions
+    % and their typing match up more closely.
+
+    ------------------------------------------ :: Var
+    < h ; r = res_val > ~> < h ; res_val / r >
+
+
+    < h ; res_pat1 = res_val1 > ~> < h1 ; subs1 >
+    < h1 ; res_pat2 = res_val2 > ~> < h2 ; subs2 >
+    ------------------------------------------------------------------------------------------------ :: Pair
+    < h ; < res_pat1 , res_pat2 > = < res_val1 , res_val2 > > ~> < h2 ; [ subs1 , subs2 ] >
+
+
+    < h ; res_pat = res_val > ~> < h' ; subs >
+    ----------------------------------------------------------------------------------------------------------- :: Pack
+    < h ; pack ( x , res_pat ) = pack ( oarg , res_val ) > ~> < h' ; [ oarg / x , subs ] >
+
+
+    < h + h' ; res_pat = def > ~> < h'' ; subs >
+    ----------------------------------------------------------------------------------------------- :: Fold
+    < h + { pred_term ( oarg ) & def & h' } ; fold ( res_pat ) = pred_term > ~> < h'' ; subs >
+
+
+  defn < h ; </ ret_pati = ret_termi // , // i /> > ~> < h' ; out_subs > :: :: Pat_Ret :: Pat_Ret_
+  {{ com return value deconstruction: $ret\_pat_i$ deconstructs $ret\_val_i$ to produce substitution $[[out_subs]]$ }} by
+
+
+    ------------------------- :: Empty
+    < h ; > ~> < h ; cdot >
+
+    % This more general definition only exists for the more general version of
+    % "well-typed values pattern-match successfully". You could get rid of it,
+    % and make the definitions & proofs simpler.
+    pat = pval ~> subs
+    < h ; </ ret_pati = ret_termi // i /> > ~> < h' ; psi >
+    -------------------------------------------- :: Comp
+    < h ; comp pat = pval , </ ret_pati = ret_termi // i /> > ~> < subs ( h' ) ; [ subs , psi ] >
+
+
+    % This more general definition only exists for the more general version of
+    % "well-typed values pattern-match successfully". You could get rid of it,
+    % and make the definitions & proofs simpler.
+    < h ; </ ret_pati = ret_termi // i /> > ~> < h' ; subs >
+    -------------------------------------------- :: Log
+    < h ; log y = oarg , </ ret_pati = ret_termi // i /> > ~> < oarg / y ( h' ) ; [ oarg / y , subs ] >
+
+
+    alloct | < h ; res_term > ||v < h1 ; res_val >
+    < h ; res_pat = res_val > ~> < h2 ; subs >
+    < h2 ; </ ret_pati = ret_termi // i /> > ~> < h3 ; psi >
+    --------------------------------------------- :: Res
+    < h ; reso res_pat = res_term , </ ret_pati = ret_termi // i /> > ~> < h3 ; [ subs , psi ] >
+
+
+  defn term | param_spine '::' fon >> < out_subs ; out_ret > :: :: Spine :: Spine_
+  {{ com function call spine: given alloction history $[[ term ]]$ and $[[param_spine]]$
+      for function of type $[[ fon ]]$, substitution $[[ out_subs ]]$ and result type $[[ out_ret ]]$ }} by
+
+    ------------------------------------------ :: Empty
+    alloct | :: ret >> < cdot ; ret >
+
+
+    alloct | </ xi = spine_elemi // i /> :: pval / x ( fon ) >> < subs ; ret >
+    ------------------------------------------------ :: Comp
+    alloct | x = pval , </ xi = spine_elemi // i /> :: pi x : base_type .: fon >> < [ pval / x , subs ] ; ret >
+
+
+    alloct | </ xi = spine_elemi // i /> :: oarg / x ( fon ) >> < subs ; ret >
+    ------------------------------------------------ :: Log
+    alloct | x = oarg , </ xi = spine_elemi // i /> :: forall x : base_type .: fon >> < [ oarg / x , subs ] ; ret >
+
+
+    alloct | </ xi = spine_elemi // i /> :: fon >> < subs ; ret >
+    ------------------------------------------------ :: Res
+    alloct | x = res_term , </ xi = spine_elemi // i /> ::  res --o fon >> < [ res_term / x , subs ] ; ret >
+
+
+    alloct |- smt ( term )
+    alloct | </ xi = spine_elemi // i /> :: fon >> < subs ; ret >
+    --------------------------------------------------------------- :: Phi
+    alloct | </ xi = spine_elemi // i /> ::  term -) fon >> < subs ; ret >
+
+
+defns
+  pure_opsem :: 'Op_' ::=
+
+  defn alloct | < pexpr > --> < pstmt : pure_ret > :: :: PExpr :: PExpr_
+  {{ com given allocation history $[[alloct]]$, pure expression $[[pexpr]]$ steps to pure statement $[[pstmt]]$ annotated with pure return type $[[pure_ret]]$ }} by
+
+
+    cdot |- pval => base_type
+    ------------------------------------------------------------------ :: PVal
+    _ | < pval > --> < pval : sigma y : base_type .: y = inj pval /\ I >
+
+
+    int def= xor_uf ( int1 , int2 )
+    pure_ret def= sigma y : integer .: y = xor_uf ( int1 , int2 )  /\ I
+    -------------------------------------------------------------------------- :: Ctor_IvXOR
+    _ | < ctor_expr ( int1 , int2 ) > --> < int : pure_ret >
+
+    % DEFER (not implemented) other ctor_expr
+    % ctor_expr ( </ pvali // , // i /> )
+
+    x def= alloct [ inj ptr . alloc_id ]
+    inj ptr' def= array_shift<ct>(inj ptr, int)
+    alloct |- smt ( x . base =< inj ptr' . addr =< x . base + x . len )
+    pure_ret def= sigma y : loc .: y = inj ptr' /\ I
+    --------------------------------------------------------------------------- :: Array_Shift
+    alloct | < array_shift < ct > ( ptr , int ) > --> < ptr' : pure_ret >
+
+
+    x def= alloct [ inj ptr . alloc_id ]
+    inj ptr' def= member_shift < tagged tag > ( inj ptr , member )
+    alloct |- smt ( x . base =< inj ptr' . addr =< x . base + x . len )
+    pure_ret def= sigma y : loc .: y = inj ptr' /\ I
+    --------------------------------------------------------------------- :: Member_Shift
+    alloct | < member_shift < tagged tag > ( ptr , member ) > --> < ptr' : pure_ret >
+
+
+    inj bool_value def= inj ptr1 . addr = inj ptr2 . addr
+    pure_ret def= sigma y : loc .: y = ( inj ptr1 . addr = inj ptr2 . addr ) /\ I
+    --------------------------------------------------------------------------- :: Ptr_Eq
+    _ | < ptr1 = ptr2 > --> < bool_value : pure_ret >
+
+
+    ------------------------------------ :: Not_True
+    _ | < not ( True ) > --> < False : sigma y : bool .: y = neg inj True /\ I >
+
+
+    ------------------------------------ :: Not_False
+    _ | < not ( False ) > --> < True : sigma y : bool .: y = neg inj False /\ I >
+
+
+    int def= int1 ' arith_binop ' int2
+    pure_ret def= sigma y : integer .: y = int1 ' arith_binop ' int2 /\ I
+    ----------------------------------------------------------------- :: Arith_Binop
+    _ | < int1 arith_binop int2 > --> < int : pure_ret >
+
+
+    inj bool_value def= int1 ' rel_binop ' int2
+    pure_ret def= sigma y : bool .: y = int1 ' rel_binop ' int2 /\ I
+    ------------------------------------------------------------------ :: Rel_Binop
+    _ | < int1 rel_binop int2 > --> < bool_value : pure_ret >
+
+
+    inj bool_value def= inj bool_value1 ' bool_binop ' inj bool_value2
+    pure_ret def= sigma y : bool .: y = inj bool_value1 ' bool_binop ' inj bool_value2 /\ I
+    --------------------------------------------------------------------------- :: Bool_Binop
+    _ | < bool_value1 bool_binop bool_value2 > --> < bool_value : pure_ret >
+
+
+    % DEFER (not implemented) memberof ( tag , member , pval )
+
+
+    ------------------------------------------------------------------- :: Assert_Undef
+    _ | < assert_undef ( True , UB_name ) > --> < Unit : sigma _ : unit .: I >
+
+
+    ---------------------------------------------------- :: Bool_To_Integer_True
+    _ | < bool_to_integer ( True ) > --> < 1 : sigma y : integer .: y = 1 /\ I >
+
+
+    ---------------------------------------------------- :: Bool_To_Integer_False
+    _ | < bool_to_integer ( False ) > --> < 0 : sigma y : integer .: y = 0 /\ I >
+
+    % DEFER conv_int ( ct , pval )
+
+    abbrev1 def= max ct - min ct + 1
+    abbrev2 def= inj pval REM abbrev1
+    int' def= if abbrev2 =< max ct then abbrev2 else abbrev2 - abbrev1
+    pure_ret def= sigma y : integer .: y = int' /\ I
+    ------------------------------------------------------------------------------- :: WrapI
+    _ | < wrapI ( ct , int ) > --> < int' : pure_ret >
+
+
+    P ( name ) = </ xi // i /> |-> pstmt : pure_fun
+    alloct | </ xi = pvali // i /> :: pure_fun >> < subs ; pure_ret >
+    ----------------------------------------------------------------------------- :: Call
+    alloct | < name ( </ pvali // i /> ) > --> < subs ( pstmt ) : pure_ret >
+
+
+  defn alloct | < pstmt > --> < pstmt' > :: :: PStmt :: PStmt_
+  {{ com given allocation history $[[alloct]]$, pure statement $[[pstmt]]$ steps to pure statement $[[pstmt']]$ }} by
+
+
+    pat = pval ~> subs
+    ------------------------------------------- :: PVal
+    _ | < let pat : pure_ret = pval in pstmt > --> < subs ( pstmt ) >
+
+
+    alloct | < pexpr > --> < pstmt1 : pure_ret >
+    ---------------------------------------------------------------------- :: PExpr
+    alloct | < let pat = pexpr in pstmt2 > --> < let pat : pure_ret = pstmt1 in pstmt2 >
+
+
+    alloct | < pstmt1 > --> < pstmt1' >
+    ------------------------------------------- :: Let
+    alloct | < let pat : pure_ret = pstmt1 in pstmt2 > --> < let pat : pure_ret = pstmt1' in pstmt2 >
+
+
+    ------------------------------------------------------------------------------- :: If_True
+    _ | < if True then pstmt1 else pstmt2 > --> < pstmt1 >
+
+
+    -------------------------------------------------------------------------------- :: If_False
+    _ | < if False then pstmt1 else pstmt2 > --> < pstmt2 >
+
+
+    patj = pval ~> subsj
+    forall i lt j .: not ( pati = pval ~> subsi )
+    ------------------------------------------------------------------------------------------------------- :: Case
+    _ | < case pval of </ | pati => pstmti // i /> end > --> < subsj ( pstmtj ) >
+
+
+defns
+  opsem :: 'Op_' ::=
+
+  defn term | < h ; pred_ops > ||v < h' ; res_val > :: :: PredOps :: PredOps_
+  {{ com big-step resource (q)points-to operation reduction: given alloction history $[[ term ]]$, $[[ < ]] [[ h ]] [[ ; ]] [[ pred_ops ]] [[ > ]]$ reduces to $[[ < ]] [[ h' ]] [[ ; ]] [[ res_val ]] [[ > ]]$ }} by
+
+
+   alloct | < h ; res_term > ||v < h' + { pred_term ( oarg ) & None } ; pred_term >
+   pred_term def= Owned < init , array n ct > ( ptrt )
+   ipred_term def= each (integer x; 0 =< x =< n - 1) { Owned < init , ct > ( array_shift < ct > ( ptrt , x ) ) }
+   -------------------------------------------------------------------------------------------- :: Iterate
+   alloct | < h ; iterate ( res_term , n ) > ||v < h' + { ipred_term ( oarg ) & cdot } ; ipred_term >
+
+
+   alloct | < h ; res_term > ||v < h' + { ipred_term ( oarg ) & cdot } ; ipred_term >
+   ipred_term def= each (integer x; iguard) { Owned < init , ct > ( array_shift < ct > ( ptrt , x ) ) }
+   alloct |- smt ( each ( integer x ; _t ) { iguard <-> ( 0 =< x =< n - 1 ) } )
+   x def= alloct [ ptrt . alloc_id ]
+   alloct |- smt ( x . base =< ptrt . addr /\ array_shift < ct > ( ptrt , n ) . addr  =< x . base + x . len )
+   pred_term def= Owned < init , array n ct > ( ptrt )
+   ---------------------------------------------------------------------------- :: Congeal
+   alloct | < h ; congeal ( res_term , n ) > ||v < h' + { pred_term ( oarg ) & None } ; pred_term >
+
+
+   alloct | < h ; res_term > ||v < h' + { pred & None } ; pred_term >
+   pred def= Owned < init , struct tag > ( ptrt ) ( oarg )
+   P ( tag ) = </ memberi : cti // i />
+   indexed </ ptrti def= member_shift < struct tag > ( ptrt , memberi ) // i />
+   indexed </ pred_termi def= Owned < init , cti > ( ptrti ) // i />
+   -------------------------------------------------------------------------- :: Explode
+   alloct | < h ; explode ( res_term ) > ||v < h' + </ { pred_termi ( oarg . memberi ) & None } // i /> ; < </ pred_termi // i /> > >
+
+
+   alloct | < h ;  res_term > ||v < h' + </ { pred_termi ( oargi ) & None } // i /> ; < </ pred_termi // i /> > >
+   P ( tag ) = </ memberi : cti // i />
+   indexed pred_termi def= Owned < init , cti > ( ptrti )
+   term def= ptrt0 . addr - offsetof tag member0
+   alloct |- smt ( /\\ ( </ term = ptrti . addr - offsetof tag memberi /\ ptrt0 . alloc_id = ptrti . alloc_id // i /> ) )
+   x def= alloct [ ptrt0 . alloc_id ]
+   alloct |- smt ( x . base =< ptrt . addr /\ ptrt . addr + sizeof struct tag =< x . base + x . len )
+   pred_term def= Owned < init , struct tag > ( ( @ ptrt0 . alloc_id , term ) )
+   ---------------------------------------------------------------------------------------- :: Implode
+   alloct | < h ; implode ( res_term , tag ) > ||v < h' + { pred_term ( { </ memberi = oargi // i /> } ) & None } ; pred_term >
+
+
+   alloct | < h ; res_term > ||v < h' + { ipred_term ( oarg ) & arr_heap } ; ipred_term >
+   ipred_term def= each (integer x; iguard) { a ( array_shift < ct > ( ptrt , x ) , iargs ) }
+   alloct |- smt ( term / x ( iguard ) )
+   ptrt' def=  array_shift <ct> ( ptrt , term )
+   ipred_term' def= each (integer x; iguard /\ ( x != term ) ) { a ( array_shift < ct > ( ptrt , x ) , iargs ) }
+   pred_term def= a ( ptrt' , term / x ( iargs ) )
+   h'' def= h' + { ipred_term' ( oarg ) & arr_heap } + { pred_term ( oarg [ term ] ) & arr_heap [ term ] }
+   ------------------------------------------------------------------------------------------------------------- :: Break
+   alloct | < h ; break ( res_term , term ) > ||v < h'' ;  < ipred_term' , pred_term > >
+
+
+   alloct | < h ; res_term > ||v < h' ;  < ipred_term , pred_term > >
+   h' def= h1 + { ipred_term ( oarg1 ) & arr_heap } + { pred_term ( oarg2 ) & def_heap }
+   ipred_term def= each (integer x; iguard) { a ( array_shift < ct > ( ptrt1 , x ) , iargs1 ) }
+   pred_term def= a ( ptrt2  , iargs2 )
+   term def= ( ptrt2 . addr - ptrt1 . addr ) / sizeof ct
+   alloct |- smt ( ptrt1 = array_shift < ct > ( ptrt2 , term ) )
+   alloct |- smt ( term / x ( ( iargs1 ) = ( iargs2 ) ) )
+   x def= alloct [ ptrt1 . alloc_id ]
+   alloct |- smt ( x . base =< ptrt1 . addr /\ ptrt2 . addr + sizeof ct =< x . base + x . len )
+   ipred_term' def= each (integer x; iguard \/ x = term) { a ( array_shift < ct > ( ptrt1 , x ) , iargs1 ) }
+   h2 def= { ipred_term' ( oarg1 [ term ] := oarg2 ) & arr_heap [ term ] := def_heap }
+   --------------------------------------------------------------------------------------------------------- :: Glue
+   alloct | < h ; glue ( res_term ) > ||v < h1 + h2 ; ipred_term' >
+
+
+   alloct | < h ; res_term > ||v < h1 + { pred_term ( oarg ) & def_heap } ; pred_term >
+   pred_term def= a ( ptrt2 , iargs2 )
+   term def= ( ptrt1 . addr - ptrt2 . addr ) / sizeof ct
+   alloct |- smt ( ptrt1 = array_shift < ct > ( ptrt2 , term ) ) 
+   alloct |- smt ( term / x ( ( iargs1 ) = ( iargs2 ) ) )
+   x def= alloct [ ptrt1 . alloc_id ]
+   alloct |- smt ( x . base =< ptrt1 . addr /\ ptrt2 . addr + sizeof ct =< x . base + x . len )
+   ipred_term def= each (integer x; x = term) { a ( array_shift<ct>(ptrt1, x) , iargs1 ) }
+   cdot ; cdot |- oarg => base_type
+   h2 def= { ipred_term ( const oarg ) & cdot [ term ] := def_heap }
+   ----------------------------------------------------------------- :: Inj
+   alloct | < h ; inj ( res_term , ptrt1 , ct , x .: iargs1 ) > ||v < h1 + h2 ; ipred_term >
+
+
+   alloct | < h ; res_term > ||v < h' + { ipred_term ( oarg ) & arr_heap } ; ipred_term >
+   ipred_term def= each (integer x; iguard') { a ( array_shift <ct> ( ptrt , x ) , iargs ) }
+   alloct |- smt ( each (integer x; _t) { iguard -> iguard' } )
+   ipred_term1 def= each (integer x; iguard) { a ( array_shift < ct > ( ptrt , x ) , iargs ) }
+   h1 def= { ipred_term1 ( oarg ) & arr_heap }
+   ipred_term2 def= each (integer x; iguard' /\ neg iguard) { a ( array_shift < ct > ( ptrt , x ) , iargs ) }
+   h2 def= { ipred_term2 ( oarg ) & arr_heap }
+   ------------------------------------------------------------------------------------------------------------------- :: Chop
+   alloct | < h ; chop ( res_term , iguard ) > ||v < h' + h1 + h2  ; < ipred_term1 , ipred_term2 > >
+
+
+  defn footprint_of res_val in h ~> h1 REM h2 :: :: Footprint :: Footprint_
+  {{ com footprint of $[[ res_val ]]$ in heap $[[ h ]]$ is $[[ h1 ]]$ with $[[ h2 ]]$ remainder/frame }} by
+
+    ------------------------------------------- :: Emp
+    footprint_of emp in h ~> cdot REM h
+
+    -------------------------------------------- :: Term
+    footprint_of TERM in h ~> cdot REM h
+
+    --------------------------------------------------------------------------------------------- :: Pred
+    footprint_of pred_term in h + { pred_term ( oarg ) & def_heap } ~> { pred_term ( oarg ) & def_heap } REM h
+
+    ------------------------------------------------------------------------------------------- :: IPred
+    footprint_of ipred_term in h + { ipred_term ( oarg ) & arr_heap } ~> { ipred_term ( oarg ) & arr_heap } REM h
+
+    footprint_of res_val1 in h ~> h1 REM h'
+    footprint_of res_val2 in h' ~> h2 REM h''
+    ------------------------------------------------------------ :: SepPair
+    footprint_of < res_val1 , res_val2 > in h ~> h1 + h2 REM h''
+
+    footprint_of res_val in h ~> h' REM h''
+    ----------------------------------------------------------- :: Pack
+    footprint_of pack ( oarg , res_val ) in h ~> h' REM h''
+
+
+  defn term | < h ; res_term > ||v < h' ; res_val > :: :: ResT :: ResT_
+  {{ com big-step resource term reduction: given alloction history $[[ term ]]$, $[[ < ]] [[ h ]] [[ ; ]] [[ res_term ]] [[ > ]]$ reduces to $[[ < ]] [[ h' ]] [[ ; ]] [[ res_val ]] [[ > ]]$ }} by
+
+    --------------------------------------------- :: Val
+    alloct | < h ; res_val > ||v < h ; res_val >
+
+
+    alloct | < h  ; res_term1 > ||v < h1 ; res_val1 >
+    alloct | < h1 ; res_term2 > ||v < h2 ; res_val2 >
+    -------------------------------------------------------------------------------- :: SepPair
+    alloct | < h ; < res_term1 , res_term2 > > ||v < h2 ; < res_val1 , res_val2 > >
+
+
+    alloct | < h ; pred_ops >  ||v < h' ; res_val >
+    ------------------------------------------- :: PredOps
+    alloct | < h ; pred_ops > ||v < h' ; res_val >
+
+
+    alloct | < h ; res_term > ||v < h1 ; def >
+    footprint_of def in h1 ~> h2 REM h3
+    -------------------------------------------------------------------------------------------------- :: Fold
+    alloct | < h ; fold res_term : pred_term ( oarg ) > ||v < h3 + { pred_term ( oarg ) & def & h2 }  ; pred_term >
+
+
+    alloct | < h ; res_term > ||v < h' ; res_val >
+    ---------------------------------------------------------------------------------- :: Pack
+    alloct | < h ; pack ( oarg , res_term ) > ||v < h' ; pack ( oarg , res_val ) >
+
+
+  defn < s ; res_action  > --> < s' ; stmt : ret > :: :: Action :: Action_
+  {{ com state $[[s]]$ and resource action $[[res_action]]$ steps to state $[[s']]$ and statement $[[stmt]]$ with type annotation $[[ret]]$ }} by
+
+
+    addr inEnv newAlloc ( h , int , sizeof ct )
+    @ aid notIn dom ( alloct )
+    inj ptr def= ( @ aid , addr )
+    pred_term1 def= Owned < Uninit , ct > ( inj ptr )
+    pred_term2 def= Alloc ( @ aid )
+    ret def= sigma yp : loc .: term /\ exists x : to_base ( ct ) .: pred_term1 ( x ) *o pred_term2 ( ( yp . addr , sizeof ct ) ) *o I
+    term def= representable ( ct * , inj ptr ) /\ alignedI ( int , inj ptr ) /\ allocv [ @ aid ] = ( addr , sizeof ct )
+    alloct |- smt ( term )
+    h' def= h + { pred_term1 ( default to_base ( ct ) ) & None } + { pred_term2 ( ( addr , sizeof ct ) ) & None }
+    stmt def= < ptr , default to_base ( ct ), pred_term1 , pred_term2 >
+    ------------------------------------------------------------------------- :: Create
+    < alloct ; h ; emp | create < ct > ( int ) > --> < alloct [ @ aid ] := ( addr , sizeof ct ) ;  h' ; stmt : ret >
+
+
+    alloct | < h ; res_term > ||v < h' + { pt & None } ; Owned < Init , ct > ( ptrt ) >
+    pt def= ptrt |- Init - ct -> inj pval
+    alloct |- smt ( ptrt = inj ptr )
+    ret def= sigma y : to_base ( ct ) .: y = inj pval /\ ( inj ptr |- Init - ct -> inj pval ) *o I
+    -------------------------------------------------------------------------------------------------------------------------------------- :: Load
+    < alloct ; h ; res_term | load < ct > ( ptr ) > --> < alloct ; h' + { pt & None } ; < pval , Owned < Init , ct > ( inj ptr ) > : ret >
+
+
+    alloct | < h ; res_term > ||v < h' + { pt & None } ; Owned < _init , ct > (  ptrt ) >
+    pt def= ptrt |- _init - ct -> _t
+    alloct |- smt ( ptrt = inj ptr )
+    alloct |- smt ( representable ( ct , inj pval ) )
+    pt' def= inj ptr |- Init - ct -> inj pval
+    ret def= sigma _ : unit .: ( inj ptr |- Init - ct -> inj pval ) *o I
+    ----------------------------------------------------------------------------------------- :: Store
+    < alloct ; h ; res_term | store < ct > ( ptr , pval ) > --> < alloct ; h' + { pt' & None } ; < Unit , Owned < Init , ct > ( inj ptr ) > : ret >
+
+
+    h1 def= { pred_term1 ( _t ) & None } + { pred_term2 ( term ) & None }
+    alloct | < h ; res_term > ||v < h' + h1 ; < pred_term1 , pred_term2 > >
+    pred_term1 def= Owned < _init , ct > ( ptrt1 )
+    pred_term2 def= Alloc ( @ aid )
+    alloct |- smt ( ptrt1 = ptrt2 = inj ptr /\ sizeof ct = term )
+    ret def= sigma _ : unit .: I
+    ----------------------------------------------------------------------------------- :: Kill_Static
+    < alloct ; h ; res_term | kill < ct > ( ptr ) > --> < alloct ; h' ; < Unit > : ret >
+
+  defn alloct | < h ; res_memop  > --> < h' ; stmt : ret > :: :: Memop :: Memop_
+  {{ com allocation history $[[alloct]]$, heap $[[h]]$, resource memory operation $[[res_memop]]$ steps to heap $[[h']]$ and statement $[[stmt]]$ with type annotation $[[ret]]$ }} by
+
+    alloct | < h ; res_term > ||v < h1 + h2 ;  < pred_term1 , pred_term2 > >
+    h2 def= </ { pred_termi ( termi ) & None } // i />
+    indexed </ pred_termi def= Alloc ( ptrti ) // i />
+    alloct |- smt ( @ aid1 = @ aid2 = ptrt1 . alloc_id = ptrt2 . alloc_id2 )
+    alloct |- smt ( ptrt1 . base =< addr1 =< ptrt1 . base + term1 )
+    alloct |- smt ( ptrt2 . base =< addr2 =< ptrt2 . base + term2 )
+    inj bool_value def= addr1 ' rel_binop ' addr2
+    ret def= sigma y : bool .: y = ( addr1 ' rel_binop ' addr2 ) /\ pred_term1 ( term1 ) * pred_term2 ( term2 ) *o I
+    -------------------------------------------------------------------------------------------------------------- :: Rel_Binop
+    alloct | < h ; res_term | ( @ aid1 , addr1 ) rel_binop ( @ aid2 , addr2 ) > --> < h1 + h2 ; < bool_value , < pred_term1 , pred_term2 > > : ret >
+
+
+    alloct | < h ; res_term > ||v < h1 + { pred_term ( term ) & None } ;  pred_term >
+    pred_term def= Alloc ( ptrt )
+    alloct |- smt ( @ aid1 = @ aid2 = ptrt . alloc_id )
+    alloct |- smt ( ptrt . base =< ( addr1 , addr2 ) =< ptrt . base + term )
+    int def= ( addr1 - addr2 ) / sizeof ct
+    ret def= sigma y : integer .: y = ( addr1 - addr2 ) / sizeof ct /\ res *o I
+    -------------------------------------------------------------------------------------------------------------- :: PtrDiff_Arr
+    alloct | < h ; res_term | ( @ aid1 , addr1 ) - array n ct - ( @ aid2 , addr2 ) > --> < h1 + { pred_term ( term ) & None } ; < int , pred_term > : ret >
+
+
+    alloct | < h ; res_term > ||v < h1 + { pred_term ( term ) & None } ;  pred_term >
+    pred_term def= Alloc ( ptrt )
+    alloct |- smt ( @ aid1 = @ aid2 = ptrt . alloc_id )
+    alloct |- smt ( ptrt . base =< ( addr1 , addr2 ) =< ptrt . base + term )
+    int def= ( addr1 - addr2 ) / sizeof ct
+    ret def= sigma y : integer .: y = ( addr1 - addr2 ) / sizeof ct /\ res *o I
+    -------------------------------------------------------------------------------------------------------------- :: PtrDiff
+    alloct | < h ; res_term | ( @ aid1 , addr1 ) - ct - ( @ aid2 , addr2 ) > --> < h1 + { pred_term ( term ) & None } ; < int , pred_term > : ret >
+
+
+    alloct | < h ; res_term > ||v < h' + { pred_term ( _t ) & None } ; pred_term >
+    pred_term def= Alloc ( ptrt )
+    alloct |- smt ( @ aid = ptrt . alloc_id /\ representable ( ct2 , addr ) )
+    ret def= sigma y : integer .: y = addr /\ pred_term ( _t ) *o I
+    ---------------------------------------------------------------------------------- :: IntFromPtr
+    _ | < h ; res_term | intFromPtr < ct > ( ( @ aid , addr ) ) > --> < h' + { pred_term ( _t ) & None } ; < addr , pred_term > : ret >
+
+
+    alloct | < h ; res_term > ||v < h' + { pred_term ( oarg ) & None } ; pred_term >
+    pred_term def= Owned < _init , ct > ( ptrt )
+    x def= alloct [ @ id ]
+    alloct |- smt ( x . base =< addr =< x . base + x . len )
+    inj ptr def= ( @ ptrt . alloc_id , addr )
+    ret def= sigma y : loc .: y = ( @ ptrt . alloc_id , addr ) /\ pred_term ( oarg ) *o I
+    ---------------------------------------------------------------------------------------- :: PtrFromInt
+    alloct | < h ; res_term | ptrFromInt < ct > ( addr ) > --> < h' + { pred_term ( oarg ) & None } ; < ptr , pred_term > : ret >
+
+
+    inj bool_value def= aligned ( ct , inj ptr )
+    ret def= sigma y : bool .: y = aligned ( ct , inj ptr ) /\ I
+    -------------------------------------------------------- :: PtrValidForDeref
+    _ | < h ; emp | ptrValidForDeref < ct > ( ptr ) > --> < h ; < bool_value > : ret >
+
+
+    inj bool_value def= aligned ( ct , inj ptr )
+    ret def= sigma y : bool .: y = aligned ( ct , inj ptr ) /\ I
+    ------------------------------------------------------------------ :: PtrWellAligned
+    _ | < h ; emp | ptrWellAligned < ct > ( ptr ) > --> < h ; < bool_value > : ret >
+
+
+    alloct | < h ; res_term > ||v < h' + { pred_term ( term ) & None } ; pred_term >
+    pred_term def= Alloc ( ptrt )
+    inj ptr' def= array_shift < ct > ( inj ptr , int )
+    alloct |- smt ( inj ptr' . alloc_id = ptrt . alloc_id /\ inj ptr' . addr =< ptrt . base + term )
+    ret def= sigma y : loc .: y = inj ptr' /\ pred_term ( term ) *o I
+    --------------------------------------------------------------------------------------------- :: PtrArrayShift
+    alloct | < h ; res_term | ptrArrayShift < ct > ( ptr , int ) > --> < h ; < ptr' , pred_term > : ret >
+
+
+  defn < s ; expr > --> < s' ; stmt : ret > :: :: Expr :: Expr_
+  {{ com state $[[s]]$ and expression $[[expr]]$ steps to state $[[s']]$ and statement $[[stmt]]$ annotated with return type $[[ret]]$ }} by
+
+
+    alloct | < pexpr > --> < pstmt : pure_ret >
+    --------------------------------------------------------- :: Pure
+    < alloct ; h ; pure ( pexpr ) > --> < alloct ; h ; pure ( pstmt ) : pure_ret >
+
+
+    < s ; res_action > --> < s' ; stmt : ret >
+    ---------------------------------------- :: Action
+    < s ; res_action > --> < s' ; stmt : ret >
+
+
+    alloct | < h ; res_memop > --> < h' ; stmt : ret >
+    --------------------------------------------------------- :: Memop
+    < alloct ; h ; res_memop > --> < alloct ; h' ; stmt : ret >
+
+
+    P ( id ) = </ xi // i /> |-> stmt : fon
+    alloct | </ xi = spine_elemi // i /> :: fon >> < subs ; ret >
+    ------------------------------------------------------------- :: CCall
+    < alloct ; h ; ccall ( ct , id , </ spine_elemi // i /> ) > --> < alloct ; h ; subs ( stmt ) : ret >
+
+
+    P ( name ) = </ xi // i /> |-> stmt : fon
+    alloct | </ xi = spine_elemi // i /> :: fon >> < subs ; ret >
+    --------------------------------------------------------- :: Proc
+    < alloct ; h ; pcall ( name , </ spine_elemi // i /> ) > --> < alloct ; h ; subs ( stmt ) : ret >
+
+
+  defn < s ; stmt > --> < s' ; stmt' > :: :: Stmt :: Stmt_
+  {{ com state $[[s]]$ and statement $[[stmt]]$ steps to state $[[s']]$ and statement $[[stmt']]$ }} by
+
+
+    ---------------------------------------- :: Pure_PVal
+    < s ; pure ( pval ) > --> < s ; < pval > >
+
+
+    alloct | < pstmt >  --> < pstmt' >
+    ----------------------------------------------------------- :: Pure_PStmt
+    < alloct ; h ; pure ( pstmt ) > --> < s ; pure ( pstmt' ) >
+
+
+    < h ; </ ret_pati = ret_termi // i /> > ~> < h' ; subs >
+    --------------------------------------------- :: RetT
+    < alloct ; h ; let </ ret_pati // i /> : ret = < </ ret_termi // i /> > in stmt > --> < alloct ; h' ; subs ( stmt ) >
+
+
+    < s ; expr > --> < s' ; stmt1 : ret >
+    -------------------------------------------------------- :: Expr
+    < s ; let ret_pat = expr in stmt2 > --> < s' ; let ret_pat : ret = stmt1 in stmt2 >
+
+
+    < s ; stmt1 > --> < s' ; stmt1' >
+    -------------------------------------------- :: Let
+    < s ; let ret_pat : ret = stmt1 in stmt2 > --> < s' ; let ret_pat : ret = stmt1' in stmt2 >
+
+
+    ---------------------------------------------------------- :: If_True
+    < s ; if True then stmt1 else stmt2 > --> < s ; stmt1 >
+
+
+    ----------------------------------------------------------- :: If_False
+    < s ; if False then stmt1 else stmt2 > --> < s ; stmt2 >
+
+
+    patj = pval ~> subsj
+    forall i lt j .: not ( pati = pval ~> subsi )
+    ------------------------------------------------------------ :: Case
+    < s ; case pval of </ | pati => stmti // i /> end > --> < s ; subsj ( stmtj ) >
+
+
+    P ( id ) = </ xi // i /> |-> stmt : fon
+    alloct | </ xi = pvali // i /> :: fon >> < subs ; false /\ I >
+    ------------------------------------------------------------ :: Run
+    < alloct ; h ; run id </ pvali // i /> > --> < alloct ; h ; subs ( stmt ) >

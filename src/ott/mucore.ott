@@ -1,0 +1,1017 @@
+%! Ott args="-generate_aux_rules false"
+% 'TODO'  - on critical path, current project
+% 'DEFER' - nice to haves, not urgent or on critical path
+% :: X :: - hide from Tex
+
+embed {{ tex-preamble
+% ----------------------------------------------------------------
+% For \Asterisk: mathabx conflicts with other packages sometimes..
+% ----------------------------------------------------------------
+% Setup the mathb font (from mathabx.sty)
+\DeclareFontFamily{U}{mathb}{\hyphenchar\font45}
+\DeclareFontShape{U}{mathb}{m}{n}{
+      <5> <6> <7> <8> <9> <10> gen * mathb
+      <10.95> mathb10 <12> <14.4> <17.28> <20.74> <24.88> mathb12
+      }{}
+\DeclareSymbolFont{mathb}{U}{mathb}{m}{n}
+
+% Define a subset character from that font (from mathabx.dcl)
+% to completely replace the \subset character, you can replace
+% \varsubset with \subset
+
+% Magic "06 obtained from looking at font table
+% \usepackage{fonttable}
+% \fonttable{mathb10}
+\DeclareMathSymbol{\Asterisk}{\mathop}{mathb}{"06}
+\usepackage{scalerel}
+\DeclareMathOperator*{\bigAst}{\scalerel*{\Asterisk}{\sum} }
+% ----------------------------------------------------------------
+
+
+% Cosmetic
+\renewcommand{\[[TEX_NAME_PREFIX]]nt}[1]{ \mathit{#1} }
+\renewcommand{\[[TEX_NAME_PREFIX]]mv}[1]{ \mathit{#1} }
+\renewcommand{\[[TEX_NAME_PREFIX]]kw}[1]{ \symtt{#1} }
+\renewcommand{\[[TEX_NAME_PREFIX]]drule}[4][]{ {\displaystyle\frac{\begin{array}{l}#2\end{array} }{#3}\quad\[[TEX_NAME_PREFIX]]drulename{#4} }\\[\baselineskip] }
+\renewcommand{\[[TEX_NAME_PREFIX]]grammartabular}[1]{ \begin{supertabular}{llcllll}#1\end{supertabular} }
+
+% Grammar production comments on the next line
+\renewcommand{\[[TEX_NAME_PREFIX]]prodline}[6]{%
+& & $#1$ & $#2$ & $#3 #4$ & $#5$ &%
+\ifthenelse{ \equal{}{#6} }%
+{#6}%
+{\\ & & & \multicolumn{4}{p{.5\textwidth} }{#6} } }
+\renewcommand{\[[TEX_NAME_PREFIX]]rulehead}[3]{$#1$ & & ${:}{:}{=}$ & \multicolumn{4}{l}{#3} }
+
+% Green comments - can't do colorbox because it doesn't wrap (neither does \usepackage{soul}'s \hl)
+\usepackage[dvipsnames,usenames]{xcolor}
+\definecolor{darkgreen}{rgb}{.0, 0.392, .0}
+\renewcommand{\[[TEX_NAME_PREFIX]]com}[1]{ \textcolor{darkgreen}{ #1 } }
+
+% https://tex.stackexchange.com/questions/33401/a-version-of-colorbox-that-works-inside-math-environments
+\setlength{\fboxsep}{1pt}
+\newcommand{\outpol}[1]{\mathchoice%
+  {\colorbox{red!8}{$\displaystyle#1$} }%
+  {\colorbox{red!8}{$\textstyle#1$} }%
+  {\colorbox{red!8}{$\scriptstyle#1$} }%
+  {\colorbox{red!8}{$\scriptscriptstyle#1$} } }%
+\newcommand{\norm}[1]{ \underline{#1} }
+\newcommand{\uninitCross}{\mathord{\times} }
+\newcommand{\oftype}{ {\;\!{:}\;\!} }
+}}
+
+metavar id , x , xp {{ tex {x_p} }}, y , yp {{ tex { y_p } }} , yf {{ tex f }} , _ , abbrev , r , allocv {{ tex { alloc_{\symrm{var} } } }} ::=
+  {{ com subscripts: p for pointers }}
+
+indexvar n , i , j , k ::= {{ com index variables }}
+
+grammar
+
+  % OUT_HACK|x,\cnnt{x}
+  out_x {{ tex \outpol{ \cnnt{x} } }}   :: 'Out_hack_' ::=  {{ com Ott-hack, ignore }}
+    | x :: :: x {{ tex \outpol{ [[x]] } }}
+
+metavar tag ::=  {{ com unique identifier for struct/union type }}
+
+grammar
+
+  member :: 'Member_' ::= {{ com record or C struct/union member name }}
+    | id        :: :: user_def {{ com user-defined member }}
+    | alloc_id  :: :: alloc_id {{ tex \mathrm{id}       }}
+    | addr      :: :: addr     {{ tex \mathrm{addr}      }}
+    | base      :: :: base     {{ tex \mathrm{base}      }}
+    | len       :: :: len      {{ tex \mathrm{len}       }}
+    | DEF       :: :: def      {{ tex \mathrm{def}       }}
+
+grammar
+
+  % OUT_HACK|member,\cnnt{member}
+  out_member {{ tex \outpol{ \cnnt{member} } }}   :: 'Out_hack_' ::=  {{ com Ott-hack, ignore }}
+    | member :: :: member {{ tex \outpol{ [[member]] } }}
+
+grammar
+
+  ct {{ tex \tau }} :: 'Ct_' ::=  {{ com partial/relevant grammar of C types }}
+    | array int ct ::   :: arrayN  {{ com fixed-length array of element type $[[ct]]$ }}
+    | int          ::   :: integer {{ com C (signed) integer                          }} {{ tex \cnkw{int} }}
+    | ct *         ::   :: pointer {{ com pointer to type $[[ct]]$                    }}
+    | struct tag   ::   :: struct  {{ com C struct type                               }}
+    | tagged tag   :: M :: tagged  {{ com C struct or union                           }} {{ tex [[ tag ]]  }}
+
+  int , _int {{ tex \_ }} , addr , aid {{ tex \cnnt{id} }} :: 'Int_' ::=    {{ com integer }}
+    | i                   ::   :: index      {{ com literal integer                        }}
+    | 1                   :: X :: one
+    | 0                   :: X :: zero
+    | sizeof ct           :: M :: sizeof     {{ tex \symrm{sizeof}( [[ct]] )               }}
+                                             {{ com size of a C type                       }}
+    | offsetof tag member :: M :: offsetof   {{ tex \symrm{offsetof}([[tag]], [[member]] ) }}
+                                             {{ com offset of a struct member              }}
+    | max ct              :: M :: max        {{ tex \max{ [[ct]] }                         }}
+                                             {{ com maximum of numeric type $[[ct]]$       }}
+    | min ct              :: M :: Min        {{ tex \min{ [[ct]] }                         }}
+                                             {{ com minimum of numeric type $[[ct]]$       }}
+
+  alloc_id :: 'Alloc_id_' ::= {{ com allocation IDs }}
+    | @ aid :: :: int
+
+grammar
+
+  base_type {{ tex \beta }} , _bt {{ tex \_ }} :: 'Bt_' ::= {{ com base types }}
+    | unit                                   ::   :: unit     {{ com unit                        }}
+    | bool                                   ::   :: bool     {{ com boolean                     }}
+    | integer                                ::   :: integer  {{ com integer                     }}
+    | loc                                    ::   :: loc      {{ com pointers (record of allocation ID and integer address) }} {{ tex \mathtt{pointer} }}
+%   | alloc_id                               ::   :: alloc_id {{ com allocation IDs (integers)   }} {{ tex \mathtt{alloc\_id} }}
+    | struct tag                             ::   :: struct   {{ com C structs                   }}
+    | record </ memberi : base_typei // i /> ::   :: record   {{ com res. pred. output arguments }}
+    | id_map                                 :: M :: idMap    {{ com allocs to base and length   }}
+    | array base_type                        :: M :: array    {{ com array (integer-indexed map) }}
+    | list base_type                         ::   :: list     {{ com list                        }}
+    | </ base_typei // * // i />             ::   :: tuple    {{ com tuple                       }}
+    | bool_of ( ct )                         :: M :: bool_of  {{ com boolean from C type         }} {{ tex bool_{ [[ ct ]] }           }}
+    | to_base ( ct )                         :: M :: of_ctype {{ com of a C type                 }} {{ tex \beta_{ [[ct]] }            }}
+
+grammar
+
+  % OUT_HACK|base_type,\beta
+  out_base_type {{ tex \outpol{ \beta } }}   :: 'Out_hack_' ::=  {{ com Ott-hack, ignore }}
+    | base_type :: :: base_type {{ tex \outpol{ [[base_type]] } }}
+
+grammar
+
+  % Binary operators
+  binop {{ tex \oplus }} :: 'Binop_' ::=  {{ com binary operators }}
+    % arithmetic operators (integer -> integer -> integer)
+    | +   :: :: add   {{ tex \mathbin{ \symtt{+} } }} {{ com addition       }}
+    | -   :: :: sub   {{ tex \mathbin{ \symtt{-} } }} {{ com subtraction    }}
+    | *   :: :: mul   {{ tex \mathbin{ \symtt{*} } }} {{ com multiplication }}
+    | /   :: :: div   {{ tex \mathbin{ \symtt{/} } }} {{ com division       }}
+    | mod :: :: rem_t {{ tex \mathbin{ \symtt{mod} } }} {{ com modulus        }}
+    | REM :: :: rem_f {{ tex \mathbin{ \symtt{rem} } }} {{ com remainder    }}
+    | ^   :: :: exp   {{ tex \mathbin{ \symtt{\char`\^} } }} {{ com exponentiation }}
+    % relational operators ( ptr/int -> ptr/int -> bool)
+    | =   :: :: eq    {{ tex \mathbin{ \symtt{=}  } }} {{ com equality, defined both for integer and C types }}
+    | !=  :: :: ne    {{ tex \mathbin{ \symtt{!=} } }} {{ com inequality, similiarly defined                 }}
+    | >   :: :: gt    {{ tex \mathbin{ \symtt{>}  } }} {{ com greater than, similarly defined                }}
+    | <   :: :: lt    {{ tex \mathbin{ \symtt{<}  } }} {{ com less than, similarly defined                   }}
+    | >=  :: :: ge    {{ tex \mathbin{ \symtt{>=} } }} {{ com greater than or equal to, similarly defined    }}
+    | <=  :: :: le    {{ tex \mathbin{ \symtt{<=} } }} {{ com less than or equal to, similarly defined       }}
+    % logical connectives ( bool -> bool -> bool)
+    | /\  :: :: and   {{ tex \mathbin{ \symtt{/\char`\\} } }} {{ com conjunction }}
+    | \/  :: :: or    {{ tex \mathbin{ \symtt{\char`\\/} } }} {{ com disjunction }}
+
+  arith_binop {{ tex \mathbin{ {\oplus}_A } }} :: 'Arith_Binop_' ::= {{ com arithmentic binary operators }}
+    | +   :: :: add
+    | -   :: :: sub
+    | *   :: :: mul
+    | /   :: :: div
+    | mod :: :: rem_t
+    | REM :: :: rem_f
+    | ^   :: :: exp
+
+  rel_binop {{ tex \mathbin{ {\oplus}_R } }} :: 'Rel_Binop_' ::= {{ com relational binary operators }}
+    | =   :: :: eq
+    | !=  :: :: ne
+    | >   :: :: gt
+    | <   :: :: lt
+    | >=  :: :: ge
+    | <=  :: :: le
+
+  bool_binop {{ tex \mathbin{ {\oplus}_B } }} :: 'Bool_Binop_' ::= {{ com boolean binary operators }}
+    | /\  :: :: and
+    | \/  :: :: or
+
+  subrules
+    arith_binop <:: binop
+    rel_binop   <:: binop
+    bool_binop  <:: binop
+
+grammar
+
+  ptr :: 'Ptr_' ::=  {{ com pointer in VIP model }}
+    | ( alloc_id , int ) :: :: aia    {{ com pointer with provenance (allocation id) }}
+    | NULL               :: :: null   {{ com null pointer                            }}
+% Not worth extra complication of rules
+%   | id                 :: :: funptr {{ com function pointer                        }}
+
+grammar
+
+  % OUT_HACK|ct,\tau
+  out_ct {{ tex \outpol{ \tau } }}   :: 'Out_hack_' ::=  {{ com Ott-hack, ignore }}
+    | ct :: :: ct {{ tex \outpol{ [[ct]] } }}
+
+
+grammar
+
+  object_value :: 'OV_' ::=  {{ com C object values (inhabitants of object types), which can be read/stored }}
+    | int                                                          :: :: integer {{ com integer value  }}
+    | ptr                                                          :: :: pointer {{ com pointer value  }}
+    | array ( </ object_valuei // , // i /> )                      :: :: array   {{ com C array value  }}
+    | ( struct tag ) { </ . memberi = object_valuei // , // i /> } :: :: struct  {{ com C struct value }}
+    | ( union tag ) { . member = object_value }                    :: :: union   {{ com C union value  }}
+
+
+  value :: 'V_' ::= {{ com Core values }}
+    | object_value               :: :: object {{ com C object value        }}
+    | Unit                       :: :: unit   {{ com unit                  }}
+    | True                       :: :: true   {{ com boolean true          }}
+    | False                      :: :: false  {{ com boolean false         }}
+    | [ </ valuei // , // i /> ] :: :: list   {{ com list                  }}
+    | ( </ valuei // , // i /> ) :: :: tuple  {{ com tuple                 }}
+
+  bool_value :: 'BV_' ::= {{ com Core booleans }}
+    | True                       :: :: true   {{ com boolean true          }}
+    | False                      :: :: false  {{ com boolean false         }}
+
+ subrules
+   bool_value <:: value
+
+grammar
+
+  ctor :: 'Ctor_' ::= {{ com Cerberus Core constructors }}
+    | Nil base_type :: :: nil         {{ com empty list                                      }} % : [bTy]
+    | Cons          :: :: cons        {{ com list cons                                       }} % : bTy -> [bTy] -> [bTy]
+    | Tuple         :: :: tuple       {{ com tuple                                           }} % : bTy1 -> ... -> bTyN -> (bTy1, ..., bTyN)
+    | Array         :: :: array       {{ com C fixed-size array (guaranteed to be non-empty) }} % : bTy -> ... -> bTy -> array bTy
+    | IvCOMPL       :: :: ivCOMPL     {{ com bitwise complement             }} % : ctype -> integer -> integer
+    | IvAND         :: :: ivAND       {{ com bitwise AND                    }} % : ctype -> integer -> integer -> integer
+    | IvOR          :: :: ivOR        {{ com bitwise OR                     }} % : ctype -> integer -> integer -> integer
+    | IvXOR         :: :: ivXOR       {{ com bitwise XOR                    }} % : ctype -> integer -> integer -> integer
+    | Specified     :: :: Specified
+    | Unspecified   :: :: Unspecified
+    | Ivfromfloat   :: :: ivfromfloat
+    | Fvfromint     :: :: fvfromInt
+
+  ctor_val :: 'CtorV_' ::= {{ com data constructors (values, do not reduce) }}
+    | Nil base_type :: :: nil         {{ com empty list                                      }} % : [bTy]
+    | Cons          :: :: cons        {{ com list cons                                       }} % : bTy -> [bTy] -> [bTy]
+    | Tuple         :: :: tuple       {{ com tuple                                           }} % : bTy1 -> ... -> bTyN -> (bTy1, ..., bTyN)
+    | Array         :: :: array       {{ com C fixed-size array (guaranteed to be non-empty) }} % : bTy -> ... -> bTy -> array bTy
+
+  ctor_expr :: 'CtorE_' ::= {{ com data constructors (expressions, do reduce) }}
+    | IvCOMPL       :: :: ivCOMPL     {{ com bitwise complement             }} % : ctype -> integer -> integer
+    | IvAND         :: :: ivAND       {{ com bitwise AND                    }} % : ctype -> integer -> integer -> integer
+    | IvOR          :: :: ivOR        {{ com bitwise OR                     }} % : ctype -> integer -> integer -> integer
+    | IvXOR         :: :: ivXOR       {{ com bitwise XOR                    }} % : ctype -> integer -> integer -> integer
+
+  subrules
+    ctor_val <:: ctor
+    ctor_expr <:: ctor
+
+metavar UB_name ::=
+ {{ com undefined behaviour }}
+
+metavar impl_const ::=
+  {{ com implementation-defined constant }}
+
+grammar
+
+  name :: 'Name_' ::=
+    | id         :: :: sym   {{ com Core identifier                 }}
+    | impl_const :: :: implC {{ com implementation-defined constant }}
+
+grammar
+
+  pval :: 'PV_' ::= {{ com pure values }}
+    | id                                                             ::   :: sym         {{ com Core identifier                           }}
+    | impl_const                                                     ::   :: implC       {{ com implementation-defined constant           }}
+    | value                                                          ::   :: val         {{ com Core values                               }}
+    | ctor_val ( </ pvali // , // i /> )                             ::   :: ctor        {{ com data constructor application              }}
+    | ( struct tag ) { </ . memberi = pvali // , // i /> }         ::   :: struct      {{ com C struct expression                       }}
+    | ( union tag ) { . member = pval }                            ::   :: union       {{ com C union expression                        }}
+    | subs ( pval )                                                  :: M :: subs        {{ com substitution for pure values }}
+
+  pvals :: 'PVs_' ::= {{ com list of pure values }}
+    | </ pvali // , // i /> ::   :: list
+    | subs ( pvals )        :: M :: subs
+
+  subrules
+    name <:: pval
+
+grammar
+
+  ty_bool {{ tex \cnnt{bool} }} , _b {{ tex \_ }} :: 'Ty_bool_' ::=  {{ com OCaml booleans }}
+    | true                  ::   :: true
+    | false                 ::   :: false
+    | ty_bool || ty_bool'   :: M :: or    {{ tex [[ty_bool]] \mathrel{||} [[ty_bool']] }}
+
+  % OUT_HACK|ty_bool,\cnnt{bool}
+  out_ty_bool {{ tex \outpol{ \cnnt{bool} } }}   :: 'Out_hack_' ::=  {{ com Ott-hack, ignore }}
+    | ty_bool :: :: ty_bool {{ tex \outpol{ [[ty_bool]] } }}
+
+grammar
+
+  lit :: 'Lit_' ::=
+    | int               ::   :: z
+    | ty_bool           ::   :: bool
+    | unit              ::   :: unit
+    | default base_type ::   :: default
+
+grammar
+
+  arith_op :: 'Arith_op_' ::= {{ com SMT term arithmetic operations }}
+    | term1 +   term2                   ::   :: add
+    | sum i .: iguard => term           ::   :: sum {{ tex \sum_{ [[ i ]] } { [[ iguard ]] [[ => ]] \left\{ [[ term ]] \right\}  } }}
+    | term1 -   term2                   ::   :: sub
+    | term1 *   term2                   ::   :: mul {{ tex [[term1]] \times [[term2]] }}
+    | term1 /   term2                   ::   :: div
+    | term1 mod term2                   ::   :: mod {{ tex [[term1]] \mathbin{ \mathrm{mod} } [[term2]] }}
+    | term1 REM term2                   ::   :: rem {{ tex [[term1]] \mathbin{ \mathrm{rem} } [[term2]] }}
+    | term1 ^   term2                   ::   :: exp
+    | xor_uf ( term1 , term2 )          ::   :: xor_Uf
+    | term1 ' arith_binop ' term2       :: M :: arith_binop {{ tex [[term1]] [[arith_binop]] [[term2]] }}
+
+
+  bool_op :: 'Bool_op_' ::= {{ com SMT term boolean operations }}
+    | /\\ ( terms )                    ::     :: and
+    | \// ( terms )                    ::     :: or
+    | term1 -> term2                   ::     :: impl
+    | term1 <-> term2                  :: M   :: biImp
+    | neg term                         ::     :: not
+    | if term1 then term2 else term3   ::     :: iTE
+    | term1 = term2                    ::     :: eq
+    | term1 != term2                   :: M   :: neq
+    | term1 /\ term2                   :: M X :: and_binary
+    | term1 \/ term2                   :: M X :: or_binary
+    | term1 ' bool_binop ' term2       :: M   :: bool_binop {{ tex [[term1]] [[bool_binop]] [[term2]] }}
+
+
+  tuple_op :: 'Tuple_op_' ::= {{ com SMT term tuple constructor and projections }}
+    | ( terms )      :: :: lit
+    | int th_t term  :: :: nth {{ tex [[term]]^{([[int]])}       }}
+
+  record_op :: 'Record_op_' ::= {{ com SMT term for record operations }}
+    % DEFER record update
+    | { </ memberi = termi // , // i /> } :: :: lit
+    | term . member                     :: :: member
+
+  pointer_op :: 'Pointer_op_' ::= {{ com SMT term pointer operations }}
+    | NULL                                  :: :: null
+    | @ term                                :: :: alloc_id
+    | ( term , term' )                      :: :: aia
+    | member_shift < ct > ( term , member ) :: :: member_shift
+    | array_shift < ct > ( term , term' )   :: :: array_Shift
+
+  list_op :: 'List_op_' ::= {{ com SMT term list constructors and operations }}
+    | nil              ::  :: nil
+    | term1 '::' term2 ::  :: cons
+    | tl term          ::  :: tail
+    | int th_l term    ::  :: nth  {{ tex [[term]]^{([[int]])} }}
+
+  ct_pred :: 'Ct_pred_' ::= {{ com SMT predicates for C-types }}
+    | representable ( ct , term ) :: :: representable
+    | aligned ( ct , term )       :: :: aligned
+    | alignedI ( term1 , term2 )  :: :: alignedI
+    | abst ( term , ct , term' )  :: :: abst
+
+  cmp_op :: 'Cmp_op_' ::= {{ com SMT term relational operations }}
+    | term1 <  term2            ::   :: lt        {{ tex [[term1]] < [[term2]] }}
+    | term1 =< term2            ::   :: le
+    | term1 ' rel_binop ' term2 :: M :: rel_binop {{ tex [[term1]] [[rel_binop]] [[term2]] }}
+
+
+  map_op :: 'Map_op_' ::= {{ com SMT term map operations }}
+    | [| terms |]                 :: M :: lit   {{ com array literal }} {{ tex [| \, [[terms]] \, |] }}
+    | term1 [ term2 ]             ::   :: get   {{ com array index    }}
+    | term1 [ term2 ldots term3 ] :: P :: range {{ com array range    }}
+    | const term                  ::   :: const {{ com constant array }}
+    | term1 [ term2 ] := term3    ::   :: set   {{ com array update   }}
+
+  term , _t {{ tex \_ }}, iguard , ptrt {{ tex ptr }} , iarg , oarg , alloct {{ tex alloc }} , A , M :: '' ::= {{ com SMT term grammar }}
+    | x                  ::     :: sym
+    | lit                ::     :: lit
+    | arith_op           ::     :: arith_op
+    | bool_op            ::     :: bool_op
+    | cmp_op             ::     :: cmp_op
+    | tuple_op           ::     :: tuple_op
+    | record_op          ::     :: record_op
+    | pointer_op         ::     :: pointer_op
+    | list_op            ::     :: list_op
+    | ct_pred            ::     :: ct_pred
+    | map_op             ::     :: map_op
+    | id ( terms )       ::     :: pred
+    | ( base_type ) term ::     :: cast
+    | ( term )           :: S X :: paren   {{ com parentheses                                            }}
+    | subs ( term )      :: M   :: subs    {{ com substitute $[[subs]]$ in $[[term]]$                    }}
+    | inj pval           :: M   :: of_pval {{ tex [[pval]]                                               }}
+                                           {{ com lift pure value $[[pval]]$ into corresponding SMT term }}
+
+  terms , iargs , _iargs {{ tex \_ }} :: 'Iargs_' ::= {{ com list of terms (predicate input-arguments) }}
+    | term , terms              ::   :: cons
+    | </ termi // , // i />     ::   :: list
+    | subs ( terms )            :: M :: subs
+
+
+  qterm :: 'QTerm_' ::= {{ com quantified SMT terms }}
+    | term                                  ::   :: term   {{ com unquantified SMT term                  }}
+    | each ( base_type x ; term ) { term' } ::   :: forall {{ com universally quantified SMT term        }}
+      {{ tex [[each]] \left( [[base_type]]\, [[x]]\, ; [[term]] \right)\, \left\{ [[term']] \, \right\}    }}
+    | neg < qterm >                         :: P :: neg    {{ tex [[neg]] qterm                          }}
+    | subs < qterm >                        :: M :: subs   {{ tex [[subs]] \left( [[qterm]] \right)      }}
+                                                           {{ com substitute $[[subs]]$ into $[[qterm]]$ }}
+
+grammar
+
+  % OUT_HACK|term,\cnnt{term}|oarg,\cnnt{oarg}
+  out_term {{ tex \outpol{ \cnnt{term} } }} , out_oarg {{ tex \outpol{ \cnnt{oarg} } }}   :: 'Out_hack_' ::=  {{ com Ott-hack, ignore }}
+    | term :: :: term {{ tex \outpol{ [[term]] } }}
+
+grammar
+  init , _init {{ tex \_ }}:: 'Init_' ::= {{ com initialisation status }}
+    | Init        :: :: init   {{ com initialised   }} {{ tex ✓ }}
+    | Uninit      :: :: uninit {{ com uninitialised }} {{ tex \uninitCross }}
+
+  pred_name , a {{ tex { \alpha } }} :: 'Pred_name_' ::= {{ com names of predicates }}
+    | Owned < init , ct > :: :: owned {{ com sep. logic points-to indexed by C type $[[ ct ]]$ }}
+    | Alloc               :: :: alloc {{ com (memory object model) allocation token            }}
+    | id                  :: :: user  {{ com user-defined name                                 }}
+
+  pred_term :: 'Pred_term_' ::= {{ com predicate term/request }}
+    | a ( iargs ) :: :: pred_term
+
+  ipred_term :: 'IPred_term_' ::= {{ com iterated predicate term/request }}
+    | each ( base_type x ; iguard ) { pred_term } ::  :: ipred_term (+ bind x in iguard +) (+ bind x in pred_term +)
+      {{ tex [[each]] \left( [[base_type]]\, [[x]]\, ; [[iguard]] \right)\, \left\{ [[pred_term]] \, \right\} }}
+
+  pred_ipred :: 'Res_req_' ::= {{ com predicate or iterated predicate term }}
+    | pred_term  :: :: pred  {{ com predicate term          }}
+    | ipred_term :: :: ipred {{ com iterated predicate term }}
+
+  % OUT_HACK|pred_ipred,\cnnt{pred\_ipred}
+  out_pred_ipred {{ tex \outpol{ \cnnt{pred\_ipred} } }}   :: 'Out_hack_' ::=  {{ com Ott-hack, ignore }}
+    | pred_ipred :: :: pred_ipred {{ tex \outpol{ [[pred_ipred]] } }}
+
+  pred , pt :: 'Pred_' ::=  {{ com \emph{precise} seperation-logic predicates }}
+    | pred_term ( oarg )        ::   :: pred {{ com a predicate is a term with an output argument }}
+    | ptrt |- init - ct -> term :: S :: points_to
+      {{ com pretty-printing for points-to predicate $\symtt{Owned}$ $\langle [[ init ]] , [[ ct ]] \rangle$ $( [[ ptrt ]] )$ $( [[ term ]] )$ }}
+      {{ tex [[ ptrt ]] \overunderset{ \ifthenelse{\equal{ [[ init ]] }{ \_ } }{}{ [[ init ]] } }{ [[ ct ]] }{ \mapsto } [[ term ]] }}
+
+
+  ipred :: 'IPred_' ::= {{ com iterated (integer-indexed) seperation logic predicate }}
+    | ipred_term ( oarg )                         ::   :: ipred
+      {{ com an iterated predicate is an iterated term with an array output argument }}
+    | *S x .: iguard => ptrt |- init - ct -> oarg  :: S :: ipoints_to
+      {{ com pretty-printing for iterated points-to $\cnkw{each}$ $(\!\cnkw{integer} \, [[ x ]]\, ;$ $[[ iguard ]])$ $\{ \cnkw{Owned}$ $\langle [[ init ]] , [[ ct ]] \rangle$ $( [[ ptrt ]] ) \}$ $( [[ oarg ]] )$ }}
+      {{ tex [[ *S ]]_{ [[ x ]] } { [[ iguard ]] [[ => ]] \left\{ [[ ptrt ]] \overunderset{ [[ init ]] }{ [[ ct ]] }{ \mapsto } { [[ oarg ]] [ [[ x ]]\;\! ] } \right\}  } }}
+
+
+grammar
+
+  res , _res {{ tex \_ }} :: 'Res_' ::= {{ com resources }}
+    | emp                          ::     :: empty    {{ com empty heap                                  }}
+    | term                         ::     :: phi      {{ com logical assertion, implicitly with emp      }}
+    | pred                         ::     :: pred     {{ com heap predicate                              }}
+    | ipred                        ::     :: ipred    {{ com iterated (integer-indexed) heap predicate   }}
+    | res1 * res2                  ::     :: sep_conj {{ com seperating conjunction                      }}
+    | *S ( </ resi // , // i /> )  :: S   :: big_conj {{ com notation for nested sep. conj.              }}
+    | exists x : base_type .: res  ::     :: exists   {{ com existential                                 }}
+    | if term then res1 else res2  ::     :: if       {{ com conditional resource / ordered disjuction   }}
+    | ( res )                      :: S X :: paren    {{ com parentheses                                 }}
+    | subs ( res )                 :: M   :: subs     {{ com substitute $[[subs]]$ in $[[res]]$          }}
+
+
+  norm_res {{ tex \norm{res} }} , rem :: 'Norm_res_' ::= {{ com normalised resources }}
+    | if term then res1 else res2 ::     :: if    {{ com conditional resource / ordered disjuction   }}
+    | pred                        ::     :: pred  {{ com heap predicate                              }}
+    | ipred                       ::     :: ipred {{ com quantified (integer-indexed) heap predicate }}
+    | ( norm_res )                :: S X :: paren {{ com parentheses }}
+
+subrules
+  norm_res <:: res
+
+grammar
+
+  % OUT_HACK|res,\cnnt{res}|rem,\cnnt{rem}
+  out_res {{ tex \outpol{ \cnnt{res} } }} , out_rem {{ tex \outpol{ \cnnt{rem} } }}   :: 'Out_hack_' ::=  {{ com Ott-hack, ignore }}
+    | res :: :: res {{ tex \outpol{ [[res]] } }}
+
+  opt_out_res {{ tex \outpol{ \cnnt{opt\_res} } }} :: 'Opt_out_res' ::= {{ com optional resource }}
+    | None    :: :: None
+    | out_res :: :: Some
+
+  % OUT_HACK|norm_res
+  out_norm_res {{ tex \outpol{ \cnnt{norm\_res} } }}   :: 'Out_hack_' ::=  {{ com Ott-hack, ignore }}
+    | norm_res :: :: norm_res {{ tex \outpol{ [[norm_res]] } }}
+
+grammar
+
+  ret , _r {{ tex \_ }} :: Ret_ ::= {{ com return types }}
+    | sigma id : base_type .: ret  ::   :: comp   {{ com return a computational value            }}
+    | exists id : base_type .: ret ::   :: log    {{ com return a logical (output) value         }}
+    | res *o ret                   ::   :: res    {{ com return a resource                       }}
+    | term /\ ret                  ::   :: phi    {{ com guarantee a constraint                  }}
+    | I                            ::   :: i      {{ com end return list                         }}
+    | subs ( ret )                 :: M :: subs
+                                                      {{ com substitute $[[subs]]$ in $[[ret]]$      }}
+
+  pure_ret :: Pure_ret_ ::= {{ com pure return types }}
+    | sigma id : base_type .: pure_ret ::   :: comp
+    | term /\ pure_ret                 ::   :: phi
+    | I                                ::   :: i
+    | subs ( pure_ret )                :: M :: subs
+                                                          {{ com substitute $[[subs]]$ in $[[pure_ret]]$   }}
+
+  norm_ret {{ tex \norm{ret} }} :: Norm_ret_ ::= {{ com normalised return types }}
+    | sigma id : base_type .: norm_ret  ::   :: comp
+    | exists id : base_type .: norm_ret ::   :: log
+    | norm_res *o norm_ret              ::   :: norm_res
+    | term /\ norm_ret                  ::   :: phi
+    | I                                 ::   :: i
+    | subs ( norm_ret )                 :: M :: subs
+
+subrules
+    pure_ret <:: norm_ret
+    norm_ret <:: ret
+
+grammar
+
+  % OUT_HACK|ret,\cnnt{ret}
+  out_ret {{ tex \outpol{ \cnnt{ret} } }}   :: 'Out_hack_' ::=  {{ com Ott-hack, ignore }}
+    | ret :: :: ret {{ tex \outpol{ [[ret]] } }}
+
+  % OUT_HACK|pure_ret,\cnnt{pure\_ret}
+  out_pure_ret {{ tex \outpol{ \cnnt{pure\_ret} } }}   :: 'Out_hack_' ::=  {{ com Ott-hack, ignore }}
+    | pure_ret :: :: pure_ret {{ tex \outpol{ [[pure_ret]] } }}
+
+  % OUT_HACK|norm_ret,\norm{ \cnnt{ret} }
+  out_norm_ret {{ tex \outpol{ \norm{ \cnnt{ret} } } }}   :: 'Out_hack_' ::=  {{ com Ott-hack, ignore }}
+    | norm_ret :: :: norm_ret {{ tex \outpol{ [[norm_ret]] } }}
+
+grammar
+
+  pat :: 'Pat_' ::= {{ com patterns }}
+    | id                                :: :: var  (+ binders = id +)
+    | ctor_val ( </ pati // , // i /> ) :: :: ctor (+ binders = binders( </ pati // i /> ) +)
+
+grammar
+
+  pexpr :: 'PE_' ::= {{ com pure expressions }}
+    | pval                                  ::   :: pval            {{ com pure values                                      }}
+    | ctor_expr ( </ pvali // , // i /> )   ::   :: ctor            {{ com data constructor application                     }}
+    | array_shift < ct > ( pval1 , pval2 )  ::   :: array_shift     {{ com pointer array shift                              }}
+    | member_shift < ct > ( pval , member ) ::   :: member_shift    {{ com pointer struct/union member shift                }}
+    | not ( pval )                          ::   :: not             {{ com boolean not                                      }}
+    | pval1 binop pval2                     ::   :: op              {{ com binary operations                                }}
+    | memberof  ( tag , member , pval )     ::   :: memberof        {{ com C struct/union member access                     }}
+    | name ( </ pvali // , // i /> )        ::   :: call            {{ com pure function call                               }}
+    | assert_undef ( pval , UB_name )       ::   :: assert_undef    {{ com if $[[ pval ]]$ then UB for reason $[[UB_name]]$ }}
+    | bool_to_integer ( pval )              ::   :: bool_to_integer {{ com convert boolean $[[ pval ]]$ to integer          }}
+    | conv_int ( ct , pval )                ::   :: conv_int        {{ com convert between different integer types          }}
+    | wrapI ( ct , pval )                   ::   :: wrapI           {{ com wrap integer                                     }}
+    | subs ( pexpr )                        :: M :: expr_subs       {{ com substitution for pure expressions                }}
+
+grammar
+
+  pstmt :: 'PS_' ::= {{ com pure statements }}
+    | pval                                   ::   :: pval  {{ com pure value                            }}
+    | undef UB_name                          ::   :: undef {{ com undefined behaviour                   }}
+    | let pat = pexpr in pstmt               ::   :: pexpr (+ bind binders( pat ) in pstmt              +)
+                                                           {{ com pure expression binding               }}
+    | if pval then pstmt1 else pstmt2        ::   :: if    {{ com pure if statement                     }}
+    | case pval of </ | pbranchi // i /> end ::   :: case  {{ com pattern-matching                      }}
+    | subs ( pstmt )                         :: M :: subs  {{ com substitute $[[subs]]$ in $[[pstmt]]$  }}
+    | let pat : pure_ret = pstmt1 in pstmt2  :: P :: let   (+ bind binders( pat ) in pstmt2             +)
+                                                           {{ com (proof-only) pure let statment        }}
+
+  pbranch :: 'PBranch_' ::= {{ com pure case statement branch }}
+    | pat => pstmt :: :: branch (+ bind binders( pat ) in pstmt +)
+
+grammar
+
+  cpat {{ tex \cnnt{pat} }} :: 'CPat_' ::= {{ com Cerberus Core patterns }}
+    | id : base_type                 ::  :: var
+    | _  : base_type                 ::  :: wild
+    | ctor ( </ cpati // , // i /> ) ::  :: ctor
+
+  pure_core , pce :: 'PCE_' ::= {{ com pure Cerberus Core expressions }}
+    | x                                                            ::  :: var
+    | impl_const                                                   ::  :: impl_const
+    | value                                                        ::  :: value
+    | undef ( UB_name )                                            ::  :: undef
+    | ctor ( pce1 , .. , pcen )                                    ::  :: ctor
+    | array_shift ( pce1 , ct , pce2 )                             ::  :: array_shift
+    | member_shift ( pce , tag . member )                          ::  :: member_shift
+    | case pce of </ cpati => pcei // i /> end                     ::  :: case
+    | if pce1 then pce2 else pce3                                  ::  :: if
+    | let cpat = pce1 in pce2                                      ::  :: let
+    | not ( pce )                                                  ::  :: not
+    | pce1 binop pce2                                              ::  :: binop
+    | struct [ tag ] ( . member1 = pce1 , ... , . membern = pcen ) ::  :: struct
+    | union [ tag ] ( . member = pce )                             ::  :: union
+    | cfunction ( pce )                                            ::  :: cfunction
+    | memberof [ tag . member ] ( pce )                            ::  :: memberof
+    | name ( pce1 , .. , pcen )                                    ::  :: call
+    | refine_ctype ( pce1 , pce2 , pce3 )                          ::  :: refine_ctype
+
+  cmemop {{ tex \cnnt{memop} }} :: 'Cmemop_'  ::= {{ com Cerberus Core memory operations }}
+    | PtrEq            ::  :: ptrEq
+    | PtrNeq           ::  :: ptrNeq
+    | PtrLt            ::  :: ptrLt
+    | PtrGt            ::  :: ptrGt
+    | PtrLe            ::  :: ptrLe
+    | PtrGe            ::  :: ptrGe
+    | Ptrdiff          ::  :: ptrDiff
+    | IntFromPtr       ::  :: intFromPtr
+    | PtrFromInt       ::  :: ptrFromInt
+    | PtrValidForDeref ::  :: ptrValidForDeref
+    | PtrWellAligned   ::  :: ptrWellAligned
+    | PtrArrayShift    ::  :: ptrArrayShift
+    | Memcpy           ::  :: memcpy
+    | Memcmp           ::  :: memcmp
+    | Realloc          ::  :: realloc
+    | Va_start         ::  :: va_start
+    | Va_copy          ::  :: va_copy
+    | Va_arg           ::  :: va_arg
+    | Va_end           ::  :: va_end
+
+  caction {{ tex \cnnt{action} }} :: 'Caction_' ::= {{ com Cerberus Core memory action }}
+    | create_object ( pce1 , pce2 )           ::  :: create_object
+    | create_read_only ( pce1 , pce2 , pce3 ) ::  :: create_read_only
+    | create_region ( pce1 , pce2 )           ::  :: create_region
+    | kill ( pce1 )                           ::  :: kill
+    | store ( pce1 , pce2 , pce3 )            ::  :: store
+    | load ( pce1 , pce2 )                    ::  :: load
+    | seq_rmw ( pce1 , pce2 , x .: pce3 )     ::  :: seq_rmw
+
+  core , ce {{ tex \cnnt{E} }} :: 'CE_' ::= {{ com Cerberus Core expression }}
+    | pure ( pce )                                   ::  :: pure
+    | MEMOP ( cmemop , pce1 , ... , pcen )           ::  :: memop
+    | caction                                        ::  :: action
+    | neg ( caction )                                ::  :: neg_action {{ tex \cnkw{neg}( [[caction]] ) }}
+    | case pce of </ cpati => cei // i /> end        ::  :: case
+    | let cpat = pce in ce                           ::  :: let
+    | if pce then ce1 else ce2                       ::  :: if
+    | ccall ( pce , pce1 , ... , pcen )              ::  :: ccall
+    | pcall ( name , pce1 , ... , pcen )             ::  :: pcall
+    | unseq ( ce1 , ... , cen )                      ::  :: unseq
+    | let weak cpat = ce1 in ce2                     ::  :: weak
+    | let strong cpat = ce1 in ce2                   ::  :: strong
+    | bound ( ce )                                   ::  :: bound
+    | nd ( ce1 , ... , cen )                         ::  :: nondet
+    | save id ( x1 := pce1 , .. , xn := pcen ) in ce ::  :: save
+    | run id ( pce1 , ... , pcen )                   ::  :: run
+    | par ( ce1 , ... , cen )                        ::  :: par
+
+grammar
+
+  % OUT_HACK|pstmt,\cnnt{pstmt}
+  out_pstmt {{ tex \outpol{ \cnnt{pstmt} } }}   :: 'Out_hack_' ::=  {{ com Ott-hack, ignore }}
+    | pstmt :: :: pstmt {{ tex \outpol{ [[pstmt]] } }}
+
+grammar
+
+  % Injecting into a singleton rather than empty because it
+  % (a) guarantees all qpred_terms are non-empty which
+  % (b) guarantees the resource context/heap containing qpred_terms are also non-empty which
+  % (c) makes `{ _ : qpred_term' & oarg } |- qpred_term => qpred_term' & oarg' nicely consistent
+  % (d) avoids the need to invent default-valued arrays in the SMT terms.
+  pred_ops :: 'Pred_ops_' ::= {{ com (q)points-to operation terms }}
+    | iterate ( res_term , int )                :: :: iterate {{ com transform points-to-array into iterated points-to   }}
+    | congeal ( res_term , int )                :: :: congeal {{ com transform iterated points-to into points-to-array   }}
+    | explode ( res_term )                      :: :: explode {{ com transform points-to-struct into member points-tos   }}
+    | implode ( res_term , tag )                :: :: implode {{ com transform member points-tos into points-to-struct   }}
+    | break ( res_term , term )                 :: :: break   {{ com break a ipred into a ipred and a pred               }}
+    | glue ( res_term )                         :: :: join    {{ com glue a ipred and a pred (back) into a ipred         }}
+    | inj ( res_term , ptrt , ct , x .: iargs ) :: :: inj     {{ com transform a pred into a singleton ipred             }}
+    | chop ( res_term , iguard )                :: :: chop    {{ com chop a ipred into two ipreds along $[[iguard]]$     }}
+
+  % It is subtle, but quite important, that only variables can have an
+  % ordered-disjunction type, and (since variables are not values) there is no
+  % value that corresponds to an ordered-disjunction. Why? Because the only way
+  % to prove an ordered disjunction requires you to statically choose which
+  % branch you are proving. This applies to inference (requesting an
+  % ordered-disjunction) too.
+  res_term , _rest {{ tex \_ }} :: 'Res_term_' ::= {{ com resource terms }}
+    | r                             ::     :: var      {{ com variable                                    }}
+    | emp                           ::     :: empty    {{ com empty heap                                  }}
+    | TERM                          ::     :: phi      {{ com term for assertion                          }}
+    | pred_term                     ::     :: pred     {{ com heap predicate                              }}
+    | ipred_term                    ::     :: ipred    {{ com iterated (integer-indexed) heap predicate   }}
+    | < </ res_termi // , // i /> > ::     :: pair     {{ com (nested) seperating-conjunction pair        }}
+    | pack ( oarg , res_term )      ::     :: pack     {{ com packing for existentials                    }}
+    | fold res_term : pred          ::     :: fold     {{ com fold into recursive res. pred.              }}
+    | pred_ops                      ::     :: pred_ops {{ com (i)predicate operation terms                }}
+    | ( res_term )                  :: S X :: paren    {{ com parentheses                                 }}
+    | subs ( res_term )             :: M   :: subs     {{ com substitution for resource terms             }}
+
+
+  res_val , def :: 'ResT_Val' ::= {{ com resource term values }}
+    | emp                          ::     :: empty   {{ com empty heap                                  }}
+    | TERM                         ::     :: phi     {{ com term for assertion                          }}
+    | pred_term                    ::     :: pred    {{ com heap predicate                              }}
+    | ipred_term                   ::     :: ipred   {{ com iterated (integer-indexed) heap predicate   }}
+    | < </ res_vali // , // i /> > ::     :: pair    {{ com (nested) seperating-conjunction pair        }}
+    | pack ( oarg , res_val )      ::     :: pack    {{ com packing for existentials                    }}
+    | ( res_val )                  :: S X :: paren   {{ com parentheses                                 }}
+    | subs ( res_val )             :: M   :: subs    {{ com substitution for resource terms             }}
+
+
+subrules
+  res_val <:: res_term
+
+grammar
+
+  % OUT_HACK|res_term,\cnnt{res\_term}
+  out_res_term {{ tex \outpol{ \cnnt{res\_term} } }}   :: 'Out_hack_' ::=  {{ com Ott-hack, ignore }}
+    | res_term :: :: res_term {{ tex \outpol{ [[res_term]] } }}
+
+grammar
+
+  kill_kind :: 'Kill_kind_' ::=
+    | dyn :: :: dynamic
+    | ct  :: :: static
+
+  action :: 'Action_' ::= {{ com memory actions }}
+    | create < ct > ( pval )        ::  :: create
+    | alloc ( pval1 , pval2 )       ::  :: alloc
+    | load < ct > ( pval )          ::  :: load
+    | store < ct > ( pval1 , pval ) ::  :: store
+    | kill < kill_kind > ( pval )   ::  :: kill
+
+  res_action :: 'Res_action_' ::= {{ com memory actions with resource term annotation }}
+    | res_term | action :: :: res
+
+grammar
+
+  % Factor out res_term proof for all of these (just use emp for the pure ones)
+  memop :: 'Memop__' ::=  {{ com operations involving the memory state}}
+    | pval1 rel_binop pval2                   :: :: ptrRelBinop      {{ com pointer relational binary operations             }}
+    | pval1 - ct - pval2                      :: :: ptrDiff          {{ com pointer subtraction                              }}
+                                                                     {{ tex [[ pval1 ]] -_{ [[ct]] } [[ pval2 ]]             }}
+    | intFromPtr < ct > ( pval )              :: :: intFromPtr       {{ com cast pointer value to integer value              }}
+    | ptrFromInt < ct > ( pval )              :: :: ptrFromInt       {{ com cast integer value to pointer value              }}
+    | ptrValidForDeref < ct > ( pval )        :: :: ptrValidForDeref {{ com check pointer is valid for dereferencing         }}
+    | ptrWellAligned < ct > ( pval )          :: :: ptrWellAligned   {{ com check pointer is aligned for the type $[[ ct ]]$ }}
+    | ptrArrayShift < ct > ( pval1 ,  pval2 ) :: :: ptrArrayShift    {{ com pointer-arithmetic for indexing arrays           }}
+    | memcpy ( pval1 , pval2 , pval3 )        :: :: memcpy
+    | memcmp ( pval1 , pval2 , pval3 )        :: :: memcmp
+
+  res_memop :: 'Res_memop_' ::= {{ com memory actions with resource term annotation }}
+    | res_term | memop :: :: res
+
+grammar
+
+  ret_term , spine_elem :: Ret_term_ ::=  {{ com return values / spine elements }}
+    | pval              ::   :: pval {{ com pure computational value                        }}
+    | oarg              ::   :: term {{ com logical term                                    }}
+    | res_term          ::   :: res  {{ com resource term                                   }}
+    | subs ( ret_term ) :: M :: subs {{ com substitution for return values / spine elements }}
+
+
+  ret_terms , spine :: Ret_terms_ ::=  {{ com return values / spine }}
+    | ret_term , ret_terms       :: M :: cons
+    | </ ret_termi // , // i />  ::   :: elems
+
+  param_spine :: Param_spine_ ::=  {{ com spine assigned to formal parameters }}
+    | x = spine_elem , param_spine       :: M :: cons
+    | </ xi = spine_elemi // , // i />   ::   :: elems
+    | to_param spine                     :: M :: cast  {{ tex [[ spine ]] }}
+
+grammar
+
+  res_pat :: 'Res_pat_' ::= {{ com resource patterns }}
+    | emp                     :: :: empty (+ binders = {}         +) {{ com empty heap                   }}
+    | TERM                    :: :: phi   (+ binders = {}         +) {{ com logical assertion token      }}
+    | r                       :: :: var   (+ binders = r +) {{ com variable                     }}
+    | fold ( res_pat )        :: :: fold  (+ binders = {}         +) {{ com unfold (recursive) predicate }}
+    | < res_pat1 , res_pat2 > :: :: pair  (+ binders = binders( res_pat1 ) union binders( res_pat2 ) +)
+                                          {{ com seperating-conjunction pair }}
+    | pack ( x , res_pat )    :: :: pack  (+ binders = x union binders( res_pat ) +)
+                                          {{ com packing for existentials }}
+
+grammar
+
+  % OUT_HACK|res_pat,\cnnt{res\_pat}
+  out_res_pat {{ tex \outpol{ \cnnt{res\_pat} } }}   :: 'Out_hack_' ::=  {{ com Ott-hack, ignore }}
+    | res_pat :: :: res_pat {{ tex \outpol{ [[res_pat]] } }}
+
+grammar
+
+  ret_pat , _ret_pat {{ tex \_ }} :: RetP_ ::= {{ com return pattern }}
+    | comp pat                 :: :: comp (+ binders = binders( pat )                 +) {{ com computational pattern       }}
+    | log  y                   :: :: log  (+ binders = y                              +) {{ com logical variable            }}
+    | reso res_pat             :: :: res  (+ binders = binders( res_pat )             +) {{ com resource pattern            }}
+    | </ ret_pati // , // i /> :: :: list (+ binders = binders( </ ret_pati // i /> ) +) {{ com sequence of return patterns }}
+
+  % OUT_HACK|ret_pat,\cnnt{ret\_pat}
+  out_ret_pat {{ tex \outpol{ \cnnt{ret\_pat} } }} :: 'Out_hack_' ::=  {{ com Ott-hack, ignore }}
+    | ret_pat :: :: ret_pat {{ tex \outpol{ [[ret_pat]] } }}
+
+grammar
+
+  % There used to be an effectful value (val) `skip' - I (dcm41) removed it because it seemed redundant.
+  expr :: 'Expr_' ::= {{ com (effectful) expressions }}
+    | pure ( pexpr )            ::   :: pure      {{ com pure expression                           }}
+    | res_memop                 ::   :: memop     {{ com pointer op involving memory               }}
+    | res_action                ::   :: action    {{ com memory action                             }}
+    | ccall ( ct , yf , spine ) ::   :: ccall     {{ com C function call                           }}
+    | pcall ( name , spine )    ::   :: proc      {{ com Core procedure call                       }}
+    | fold a ( pvals )          :: P :: fold      {{ com (pre-elaboration only) fold a predicate   }}
+    | unfold a ( pvals )        :: P :: unfold    {{ com (pre-elaboration only) unfold a predicate }}
+    | res_term                  :: P :: res_term  {{ com (elaboration only)                        }}
+    | subs ( expr )             :: M :: subs      {{ com substitution                              }}
+    % unseq ( </ stmti : reti // i /> ) ::  :: unseq  {{ com unsequenced expressions      }}
+
+  % nd() is only used in the elab of if/loops for the case where the condiditional expression evaluates to unspecified()
+  % We don't have unspecified() so we won't have nd()
+  stmt :: 'TE_' ::= {{ com (effectful) statement }}
+    | < ret_terms >                         ::   :: ret_terms   {{ com return values                                 }}
+    | pure ( pstmt )                        ::   :: pure        {{ com pure statement                                }}
+    | let ret_pat = expr in stmt            ::   :: expr        (+ bind binders( ret_pat ) in stmt                   +)
+                                                                {{ com (effectful) expression binding                }}
+    | if pval then stmt1 else stmt2         ::   :: if          {{ com conditional                                   }}
+    | run id pvals                          ::   :: run         {{ com run from label                                }}
+    | case pval of </ | branchi // i /> end ::   :: case        {{ com pattern-matching                              }}
+    | let ret_pat : ret = stmt1 in stmt2    :: P :: let         (+ bind binders( ret_pat ) in stmt2                  +)
+                                                                {{ com let                                           }}
+    | insert_lets ( res_bind , stmt )       :: M :: insert_lets {{ com insert let expressions for binding resources  }}
+    | subs ( stmt )                         :: M :: subs        {{ com substitute $[[subs]]$ in $[[stmt]]$           }}
+
+
+  branch :: 'Branch_' ::=  {{ com (effectful) case-expression branch }}
+    | pat => stmt :: :: branch (+ bind binders( pat ) in stmt           +)
+                                {{ com (effectful) case-expression branch }}
+
+
+grammar
+
+  % OUT_HACK|stmt,\cnnt{stmtm}
+  out_stmt {{ tex \outpol{ \cnnt{stmt} } }}   :: 'Out_hack_' ::=  {{ com Ott-hack, ignore }}
+    | stmt :: :: stmt {{ tex \outpol{ [[stmt]] } }}
+
+grammar
+
+  terminals :: 'terminals_' ::=
+    | \       :: :: lambda    {{ tex \lambda                          }}
+    | -->     :: :: red       {{ tex \longrightarrow                  }}
+    | -->*    :: :: reds      {{ tex \mathrel{ {\longrightarrow}^{*} } }}
+    | -V>     :: :: VIP_red   {{ tex \mathrel{ {\longrightarrow}_\textsc{VIP} } }}
+    | -V>*    :: :: VIP_reds  {{ tex \mathrel{ {\longrightarrow}_\textsc{VIP}^{*} } }}
+    |  ->     :: :: arrow     {{ tex \rightarrow                      }}
+    | <->     :: :: lr_arrow  {{ tex \leftrightarrow                  }}
+    |  ~>     :: :: leadsto   {{ tex \leadsto                         }}
+    |  =>     :: :: synths    {{ tex \Rightarrow                      }}
+    |  <=     :: :: checks    {{ tex \Leftarrow                       }}
+    | |-      :: :: turnstile {{ tex \vdash                           }}
+    | -|      :: :: stileturn {{ tex \dashv                           }}
+    | inEnv   :: :: inEnv     {{ tex \in                              }}
+    | notIn   :: :: notIn     {{ tex \notin                           }}
+    | in?     :: :: inQ       {{ tex \mathrel{ {\in}{?} }             }}
+    | pi      :: :: pi        {{ tex \Pi                              }}
+    | forall  :: :: forall    {{ tex \forall                          }}
+    | --o     :: :: lollipop  {{ tex \mathrel{-\mkern-6mu*}           }}
+    | --*     :: :: magicwand {{ tex \mathrel{-\mkern-6mu*}           }}
+    | -)      :: :: implies   {{ tex \supset                          }}
+    | sigma   :: :: sigma     {{ tex \Sigma                           }}
+    | exists  :: :: exists    {{ tex \exists                          }}
+    | *S      :: :: bigAst    {{ tex \bigAst                          }}
+    | *o      :: :: otimes    {{ tex \ast                             }}
+    | /\      :: :: and       {{ tex \wedge                           }}
+    | /\\     :: :: big_and   {{ tex \bigwedge                        }}
+    | neg     :: :: neg       {{ tex \neg\,                           }}
+    | !=      :: :: neq       {{ tex \neq                             }}
+    | lt      :: :: lt        {{ tex <                                }}
+    | =<      :: :: lte       {{ tex \leq                             }}
+    | >=      :: :: gte       {{ tex \geq                             }}
+    | REM     :: :: rem       {{ tex \symtt{rem}                      }}
+    | &       :: :: ampersand {{ tex \mathbin{\&}                     }}
+    | cdot    :: :: cdot      {{ tex \cdot                            }}
+    | |       :: :: bar       {{ tex \mid                             }}
+    | |->     :: :: mapsto    {{ tex \mapsto                          }}
+    | '::'    :: :: Colon     {{ tex \Colon                           }}
+    | :=      :: :: coloneq   {{ tex \coloneq                         }}
+    | :       :: :: of_type   {{ tex \oftype                          }}
+    | .:      :: :: such_that {{ tex . \:                             }}
+    | >>      :: :: chevron   {{ tex \gg                              }}
+    | \/      :: :: or        {{ tex \vee                             }}
+    | \//     :: :: big_or    {{ tex \bigvee                          }}
+    | def=    :: :: equiv     {{ tex \eqdef                           }}
+    | <       :: :: langle    {{ tex \langle                          }}
+    | >       :: :: rangle    {{ tex \rangle                          }}
+    | reso    :: :: reso      {{ tex \symtt{res}                      }}
+    | [=      :: :: sqlte     {{ tex \sqsubseteq                      }}
+    | [=?     :: :: sqlteQ    {{ tex \mathrel{ {\sqsubseteq}{?} }     }}
+    | TERM    :: :: term      {{ tex \symtt{term}                     }}
+    | MEMOP   :: :: memop     {{ tex \symtt{memop}                    }}
+    | indexed :: :: indexed   {{ tex                                  }}
+    | obj     :: :: obj       {{ tex                                  }}
+    | ops     :: :: ops       {{ tex                                  }}
+    | PAT     :: :: PAT       {{ tex                                  }}
+    | [(      :: :: openDen   {{ tex [\![ \,                          }}
+    | )]      :: :: closeDen  {{ tex \, ]\!]                          }}
+    | ||v     :: :: DownArr   {{ tex \Downarrow                       }}
+    | -?      :: :: subQ      {{ tex \mathrel{ {-}\!{?} }             }}
+    | +?      :: :: plusQ     {{ tex \mathrel{ {+}{?} }               }}
+    | ~       :: :: sim       {{ tex \sim                             }}
+    | |=      :: :: models    {{ tex \models                          }}
+    | (       :: :: lparen    {{ tex \left(                           }}
+    | )       :: :: rparen    {{ tex \right)                          }}
+    | 1       :: :: one
+    | 0       :: :: zero
+    | |-lv    :: :: lv_turnst {{ tex \vdash_{\mathrm{lv} }            }}
+    | ldots   :: :: ldots     {{ tex \ldots                           }}
+ 
+ grammar
+
+  comp_list :: Comp_list_ ::= {{ com list of computational arguments }}
+    | pi id1 : base_type1 .: .... .: pi idk : base_typek :: :: gte_two
+
+  fon {{ tex \cnnt{fun} }} :: Fun_ ::= {{ com function types }}
+    | pi id : base_type .: fon     ::     :: comp      {{ com assume a computational value        }}
+    | forall id : base_type .: fon ::     :: log       {{ com assume a logical value              }}
+    | res --o fon                  ::     :: res       {{ com assume a resource                   }}
+    | term -) fon                  ::     :: phi       {{ com assume a constraint                 }}
+    | ret                          ::     :: ret       {{ com return a value of type $[[ret]]$    }}
+    | to_fun ret                   :: M   :: of_ret    {{ com change a return to an arugment type }}
+    | subs ( fon )                 :: M   :: subs      {{ com substitute $[[subs]]$ in $[[fon]]$  }}
+    | ( fon  )                     :: S X :: paren     {{ tex [[ fon ]]                           }}
+    | comp_list .: fon             :: M   :: comp_list {{ com assume several computational values }}
+
+  pure_fun :: Pure_fun_ ::= {{ com pure function types }}
+    | pi id : base_type .: pure_fun :: :: comp
+    | term -) pure_fun              :: :: phi
+    | pure_ret                      :: :: ret
+
+  norm_fun {{ tex \norm{ \cnnt{fun} } }} :: Norm_fun_ ::= {{ com normalised function types }}
+    | pi id : base_type .: norm_fun     ::     :: comp      {{ com assume a computational value            }}
+    | forall id : base_type .: norm_fun ::     :: log       {{ com assume a logical value                  }}
+    | norm_res --o norm_fun             ::     :: res       {{ com assume a resource                       }}
+    | term -) norm_fun                  ::     :: phi       {{ com assume a constraint                     }}
+    | norm_ret                          ::     :: ret       {{ com return a value of type $[[norm_ret]]$   }}
+    | to_fun norm_ret                   :: M   :: of_ret    {{ com change a return to an arugment type     }}
+    | subs ( norm_fun )                 :: M   :: subs      {{ com substitute $[[subs]]$ in $[[norm_fun]]$ }}
+    | ( norm_fun  )                     :: S X :: paren     {{ tex [[norm_fun]]                            }}
+    | comp_list .: norm_fun             :: M   :: comp_list {{ com assume several computational values     }}
+
+  subrules
+    pure_fun <:: fon
+    norm_fun <:: fon
+
+grammar
+
+  % OUT_HACK|fon,\cnnt{fun}
+  out_fon {{ tex \outpol{ \cnnt{fun} } }}   :: 'Out_hack_' ::=  {{ com Ott-hack, ignore }}
+    | fon :: :: fon {{ tex \outpol{ [[fon]] } }}
+
+  % OUT_HACK|pure_fun,\cnnt{pure\_fun}
+  out_pure_fun {{ tex \outpol{ \cnnt{pure\_fun} } }}   :: 'Out_hack_' ::=  {{ com Ott-hack, ignore }}
+    | pure_fun :: :: pure_fun {{ tex \outpol{ [[pure_fun]] } }}
+
+  % OUT_HACK|norm_fun,\norm{ \cnnt{fun} }
+  out_norm_fun {{ tex \outpol{ \norm{ \cnnt{fun} } } }}   :: 'Out_hack_' ::=  {{ com Ott-hack, ignore }}
+    | norm_fun :: :: norm_fun {{ tex \outpol{ [[norm_fun]] } }}
+
+grammar
+
+  subs {{ tex \sigma }} , psi {{ tex \psi }} :: Subs_ ::=  {{ com simultaneous substitutions }}
+    | cdot              ::   :: empty    {{ com empty substitution                            }}
+    | id                :: M :: id       {{ com identity substitution    }} {{ tex \symrm{id} }}
+    | ret_term / x      ::   :: ret_term {{ com sub $[[ret_term]]$ for $[[x]]$                }}
+    | subs , subs'      ::   :: cons     {{ com concatenate two subsitutions                  }}
+    | </ subsi // i />  :: M :: concat   {{ com concatenate many substitutions                }}
+    | subs ( psi )      :: M :: compose  {{ com apply $[[subs]]$ to all elements in $[[psi]]$ }}
+    | [ subs ]          :: S :: bracket  {{ com brackets }} {{ tex \left[ [[subs]] \right]    }}
+
+
+grammar
+
+  % OUT_HACK|subs,\sigma
+  out_subs {{ tex \outpol{ \sigma } }}   :: 'Out_hack_' ::=  {{ com Ott-hack, ignore }}
+    | subs :: :: subs {{ tex \outpol{ [[subs]] } }}
+
+grammar
+
+  opt_ident :: 'Opt_ident_' ::= {{ com optional identifier }}
+    | None       :: :: None
+    | x :: :: Some
+
+  spec :: 'Spec_' ::= {{ com CN surface syntax for function specifications and predicate definitions }}
+    | cdot                                 ::  :: empty  {{ com empty specification              }}
+    | return term                          ::  :: ret    {{ com specify output arguments         }}
+    | pred_ipred                           ::  :: p_ip   {{ com predicate or iterated predicate  }}
+    | let x = term ; spec                  ::  :: let    (+ bind x in spec +)
+                                                         {{ com bind (pure) term                 }}
+    | take x = spec1 ; spec2               ::  :: take   (+ bind x in spec2 +)
+                                                         {{ com bind output value of $[[spec1]]$ }}
+    | assert ( qterm ) ; spec              ::  :: assert {{ com assert specification             }}
+    | if ( term ) { spec1 } else { spec2 } ::  :: if     {{ com conditional specification        }}
+
+  spec_value , sval :: 'Spec_val_' ::=  {{ com specifications terminators }}
+    | cdot          :: :: empty
+    | return term   :: :: ret
+
+  pred_def :: 'Pred_' ::= {{ com predicate definition }}
+    | predicate base_type id ( base_type1 x1 , .. , base_typek xk ) { spec } :: :: Def
+
+  func_def :: 'Func_' ::= {{ com pure CN function definition }}
+    | function base_type id ( base_type1 x1 , .. , base_typek xk ) { term } :: :: Def
+
+  datatype_def :: 'Datatype_' ::= {{ com datatype defnition }}
+    | datatype tag { ctor_def1 , .. , ctor_defn } :: :: Def
+
+  ctor_def :: 'Ctor_' ::= {{ com datatype constructor definition/pattern }}
+    | id { base_type1 id1 , .. , base_typen idn } :: :: Def
+
+  subrules
+    spec_value <:: spec

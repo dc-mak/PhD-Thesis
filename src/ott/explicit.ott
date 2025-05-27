@@ -1,0 +1,1123 @@
+grammar
+
+  C {{ tex \symcal{C} }} :: Comp_Ctx_ ::= {{ com computational variable context }}
+    | x : base_type     ::   :: cons   {{ com add to context       }}
+    | </ Ci // , // i />    ::   :: concat {{ com concatenate contexts }}
+    | cdot                  :: M :: empty  {{ com empty context        }}
+
+grammar
+
+  % OUT_HACK|C,\symcal{C}
+  out_C {{ tex \outpol{ \symcal{C} } }}   :: 'Out_hack_' ::=  {{ com Ott-hack, ignore }}
+    | C :: :: C {{ tex \outpol{ [[C]] } }}
+
+
+grammar
+
+  L {{ tex \symcal{L} }} :: Log_Ctx_ ::= {{ com logical variable context }}
+    | x : base_type      ::   :: cons   {{ com add to context       }}
+    | </ Li // , // i /> ::   :: concat {{ com concatenate contexts }}
+    | cdot               :: M :: empty  {{ com empty context        }}
+
+
+grammar
+
+  N {{ tex \symrm{ \Phi } }} :: Phi_Ctx_ ::= {{ com constraints environment }}
+    | term               ::   :: cons   {{ com add to context                                        }}
+    | </ Ni // , // i /> ::   :: concat {{ com concatenate contexts                                  }}
+    | cdot               :: M :: empty  {{ com empty context                                         }}
+    | subs ( N )         :: M :: subs   {{ com substitute $[[subs]]$ over all constraints in $[[N]]$ }}
+
+
+grammar
+
+  R {{ tex \symcal{R} }} :: Res_Ctx_ ::= {{ com resource environment }}
+    | r : res     ::   :: cons   {{ com add to context                                                            }}
+    | </ Ri // , // i />   ::   :: concat {{ com concatenate contexts                                                      }}
+    | cdot                 :: M :: empty  {{ com empty context                                                             }}
+    | subs ( R )           :: M :: subs   {{ com substitute $[[subs]]$ over all SMT terms in all resource types in $[[R]]$ }}
+
+
+  nR {{ tex \norm{\symcal{R} } }} , Rem :: NormRes_Ctx_ ::= {{ com normalised resource env }}
+    | r : norm_res        ::   :: cons   {{ com add to context                                                            }}
+    | </ nRi // , // i /> ::   :: concat {{ com concatenate contexts                                                      }}
+    | cdot                :: M :: empty  {{ com empty context                                                             }}
+    | subs ( R )          :: M :: subs   {{ com substitute $[[subs]]$ over all SMT terms in all resource types in $[[R]]$ }}
+
+subrules
+  nR <:: R
+
+grammar
+
+  % OUT_HACK|nR,\norm{\symcal{R} }|nRp,\norm{\symcal{R} }'|Rem
+  out_nR {{ tex \outpol{ \norm{\symcal{R} } } }} , out_nRp {{ tex \outpol{ \norm{\symcal{R} }' } }} , out_Rem {{ tex \outpol{ Rem } }}  :: 'Out_hack_' ::=  {{ com Ott-hack, ignore }}
+    | nR :: :: nR {{ tex \outpol{ [[nR]] } }}
+
+
+grammar
+
+  CLN {{ tex \symcal{C} ; \symcal{L} ; \Phi }} :: '' ::= {{ com Ott-hack, ignore }}
+    | C ; L ; N :: :: CLN
+
+  LNR {{ tex \symcal{L} ; \symrm{ \Phi } ; \symcal{R} }} , LNRp {{ tex \symcal{L}' ; \symrm{ \Phi' } ; \symcal{R}' }} :: '' ::= {{ com Ott-hack, ignore }}
+    | L ; N ; R :: :: LNR
+
+  LNnR {{ tex \symcal{L} ; \symrm{ \Phi } ; \norm{ symcal{R} } }} , LNnRp {{ tex \symcal{L}' ; \symrm{ \Phi' } ; \norm{\symcal{R}'} }} :: '' ::= {{ com Ott-hack, ignore }}
+    | L ; N ; nR :: :: LNnR
+
+  % OUT_HACK|LNR,\symcal{L} ; \symrm{ \Phi } ; \symcal{R}|LNRp,\symcal{L}' ; \symrm{ \Phi' } ; \symcal{R}'
+  out_LNR {{ tex \outpol{ \symcal{L} ; \symrm{ \Phi } ; \symcal{R} } }} , out_LNRp {{ tex \outpol{ \symcal{L}' ; \symrm{ \Phi' } ; \symcal{R}' } }}   :: 'Out_hack_' ::=  {{ com Ott-hack, ignore }}
+    | LNR :: :: LNR {{ tex \outpol{ [[LNR]] } }}
+
+
+  % OUT_HACK|LNnR,\symcal{L} ; \symrm{ \Phi } ; \norm{ symcal{R} }|LNnRp,\symcal{L}' ; \symrm{ \Phi' } ; \norm{\symcal{R}'}
+  out_LNnR {{ tex \outpol{ \symcal{L} ; \symrm{ \Phi } ; \norm{ symcal{R} } } }} , out_LNnRp {{ tex \outpol{ \symcal{L}' ; \symrm{ \Phi' } ; \norm{\symcal{R}'} } }}   :: 'Out_hack_' ::=  {{ com Ott-hack, ignore }}
+    | LNnR :: :: LNnR {{ tex \outpol{ [[LNnR]] } }}
+
+  CLNR {{ tex \symcal{C} ; \symcal{L} ; \Phi ; \symcal{R} }} , CLNRp {{ tex \symcal{C}' ; \symcal{L}' ; \Phi' ; \symcal{R}' }} :: '' ::= {{ com Ott-hack, ignore }}
+    | C ; L ; N ; R :: :: CLNR
+
+  CLNnR {{ tex \symcal{C} ; \symcal{L} ; \Phi ; \norm{\symcal{R} } }} :: '' ::= {{ com Ott-hack, ignore }}
+    | C ; L ; N ; nR :: :: CLNnR
+
+
+  % OUT_HACK|CLNR,\symcal{C} ; \symcal{L} ; \symrm{ \Phi } ; \symcal{R}|CLNRp,\symcal{C}' ; \symcal{L}' ; \symrm{ \Phi' } ; \symcal{R}'
+  out_CLNR {{ tex \outpol{ \symcal{C} ; \symcal{L} ; \symrm{ \Phi } ; \symcal{R} } }} , out_CLNRp {{ tex \outpol{ \symcal{C}' ; \symcal{L}' ; \symrm{ \Phi' } ; \symcal{R}' } }}   :: 'Out_hack_' ::=  {{ com Ott-hack, ignore }}
+    | CLNR :: :: CLNR {{ tex \outpol{ [[CLNR]] } }}
+
+
+grammar
+
+  ty_extra :: 'ty_extra_' ::= {{ com extra judgements for explicit and inference typing systems }}
+    | smt ( N => qterm )                                            ::  :: smt             {{ com using an SMT-solver, constraint context $[[N]]$ implies check if $[[qterm]]$ is SMT-provable in constraint context $[[N]]$ }}
+    | x : out_base_type inEnv C                                     ::  :: x_in_C          {{ com lookup: $[[x]]$ has type $[[out_base_type]]$ in context $[[C]]$                                                            }}
+    | P ( tag ) = </ out_memberi : out_cti // i />                  ::  :: tag_in_Defn     {{ com lookup: $[[tag]]$ has members $\cnnt{member}_i {:} \tau_i$ in $[[P]]$                                                      }}
+    | P ( a ) = </ out_xi : out_base_typei // , // i /> |-> out_res ::  :: pred_in_Defn    {{ com lookup: predicate $[[a]]$ has arguments $x_i : \beta_i$, and definition $[[out_res]]$ in $[[P]]$                           }}
+    | C ; L |- term => out_base_type                                ::  :: term_synth_type {{ com omitted/assumed: given contexts $[[C]]$ and $[[L]]$, $[[ term ]]$ is has type $[[out_base_type]]$                          }}
+    | pred_name1 != pred_name2                                      ::  :: pred_name_neq   {{ com $[[pred_name1]]$ and $[[pred_name2]]$ are distinct                                                                         }}
+
+grammar
+
+  formula :: 'formula_' ::=
+    | judgement                                                   ::   :: judgement
+    | ty_extra                                                    ::   :: ty_extra
+    | opsem_extra                                                 ::   :: opsem_extra
+    | misc_extra                                                  ::   :: misc_extra
+    | minicn_extra1 ... minicn_extran                             ::   :: minincn_extra
+    % both
+    | formula ldots formula'                                      ::   :: ldots
+    | indexed </ formulai // i />                                 :: X :: indexed
+    | res def= res'                                               ::   :: abbrev_res                {{ com resource type abbreviation                                  }}
+    | res_term def= res_term'                                     ::   :: abbrev_res_term           {{ com resource term abbreviation                                  }}
+    | ret def= ret'                                               ::   :: abbrev_ret                {{ com return type abbreviation                                    }}
+    | term def= term'                                             ::   :: abbrev_term               {{ com SMT term / constraint abbrevation                           }}
+    | stmt def= stmt'                                             ::   :: abbrev_stmt               {{ com statement abbreviation                                      }}
+    | P ( name ) = </ out_xi // i /> |-> out_pstmt : out_pure_fun ::   :: pure_func_body_in_globals {{ com lookup: pure function $[[name]]$ has parameters $x_i$ and body $[[out_pstmt]]$ of type $[[out_pure_fun]]$ }}
+    | P ( name ) = </ out_xi // i /> |-> out_stmt  : out_fon      ::   :: func_body_in_globals      {{ com lookup: function $[[name]]$ has parameters $x_i$ and body $[[out_stmt]]$ of type $[[out_fon]]$            }}
+
+
+defns
+  res_judge :: '' ::=
+
+  defn N |- cmp_min ( iguard , iguard' ) ~> out_opt_cmp_term :: :: IG_Cmp :: IG_Cmp_
+  {{ com given constraints $[[N]]$ , $[[iguard]]$ is potentially included in $[[iguard']]$ (or vice-versa) with ordering and minimum $[[out_opt_cmp_term]]$ }} by
+
+
+    smt ( N => each ( integer x ; _t ) { iguard <-> iguard' } )
+    ------------------------------------------------------------ :: Eq
+    N |- cmp_min ( iguard , iguard' ) ~> Eq , iguard
+
+
+    smt ( N => each (integer x; _t) { iguard -> iguard' } )
+    ------------------------------------------------------------ :: Lt
+    N |- cmp_min ( iguard , iguard' ) ~> Lt , iguard
+
+
+    smt ( N => each ( integer x; _t) { iguard' -> iguard } )
+    ------------------------------------------------------------ :: Gt
+    N |- cmp_min ( iguard , iguard' ) ~> Gt , iguard'
+
+
+    -------------------------------------------------- :: None
+    N |- cmp_min ( iguard , iguard' ) ~> None
+
+
+  defn N |- ipred_term [=? ipred_term' ~> out_opt_cmp :: :: I_Cmp :: I_Cmp_
+  {{ com given constraints $[[N]]$ , $[[ipred_term]]$ is potentially included in $[[ipred_term']]$ (or vice-versa) with ordering $[[out_opt_cmp]]$ }} by
+
+
+    a1 != a2
+    ---------------------------------------------------------------------------------------------- :: Name_Neq
+    N |- each ( integer _; _t ) { a1 ( _iargs ) } [=? each ( integer _; _t ) { a2 ( _iargs ) } ~> None
+
+
+    N |- cmp_min ( iguard , iguard' ) ~> None
+    --------------------------------------------------------------------------------------- :: IG_Neq
+    N |- each (integer x; iguard) { a ( _iargs ) } [=? each (integer x ; iguard') { a ( _iargs ) } ~> None
+
+
+    N |- cmp_min ( iguard , iguard' ) ~> cmp , iguard''
+    smt ( N => neg < each (integer x; iguard'') { ( iargs ) = ( iargs' ) } > )
+    --------------------------------------------------------------------------------------- :: IArg_Neq
+    N |- each (integer x; iguard) { a ( iargs ) } [=? each (integer x ; iguard') { a ( iargs' ) } ~> None
+
+
+    N |- cmp_min ( iguard , iguard' ) ~> cmp , iguard''
+    smt ( N => each (integer x; iguard'') { ( iargs ) = ( iargs' ) } )
+    --------------------------------------------------------------------------------------- :: Comparable
+    N |- each (integer x; iguard) { a ( iargs ) } [=? each (integer x ; iguard') { a ( iargs' ) } ~> cmp
+
+
+  defn N |- pred_ipred = pred_ipred' ~> ty_bool :: :: Req_Eq :: Req_Eq_
+  {{ com resource equality: given constraints $[[N]]$, $[[pred_ipred]]$ and $[[pred_ipred']]$ are equal according to $[[ty_bool]]$ }} by
+
+
+    a1 != a2
+    ------------------------------------------------------ :: PP_Name_Neq
+    N |- a1 ( _iargs ) = a2 ( _iargs ) ~> false
+
+
+    smt ( N => neg ( ( iargs ) = ( iargs' ) ) )
+    ------------------------------------------------------------------ :: PP_IArg_Neq
+    N |- a ( iargs ) = a ( iargs' ) ~> false
+
+
+    smt ( N => ( iargs ) = ( iargs' ) )
+    --------------------------------------------------------------- :: PP_Eq
+    N |- a ( iargs ) = a ( iargs' ) ~> true
+
+
+    N |- ipred_term [=? ipred_term' ~> Eq
+    -------------------------------------- :: II_Eq
+    N |- ipred_term = ipred_term' ~> true
+
+
+    N |- ipred_term [=? ipred_term' ~> opt_cmp
+    ------------------------------------------ :: II_Neq
+    N |- ipred_term = ipred_term' ~> false
+
+
+  defn N |- res = res' :: :: Res_Eq :: Res_Eq_
+  {{ com resource equality: given constraints $[[N]]$, $[[res]]$ is equal to $[[res']]$ }} by
+
+    -------------------- :: Emp
+    N |- emp = emp
+
+
+    % DEFER weaken this to allow imp / subtyping e.g. Annot can be stronger than what is required
+    smt ( N => term <-> term' )
+    ----------------------------------- :: Phi
+    N |- term = term'
+
+
+    N |- pred_term = pred_term' ~> true
+    --------------------------------------- :: Pred
+    N |- pred_term ( _t ) = pred_term' ( _t )
+
+
+    N |- ipred_term = ipred_term' ~> true
+    --------------------------------------- :: IPred
+    N |- ipred_term ( _t ) = ipred_term' ( _t )
+
+
+    N |- res1 = res'1
+    N |- res2 = res'2
+    ------------------------------------ :: SepConj
+    N |- res1 * res2 = res'1 * res'2
+
+
+    N |- res = res'
+    -------------------------------------------------------------------------------- :: Exists
+    N |- exists x : base_type .: res = exists x : base_type .: res'
+
+
+    smt ( N => term1 <-> term2 )
+    N , term1   |- res11 = res21
+    N , neg term1 |- res21 = res22
+    ----------------------------------------------------------------------------- :: OrdDisj
+    N |- if term1 then res11 else res12 = if term2 then res21 else res22
+
+
+  defn N |- simp_rec ( res ) ~> out_res' , out_ty_bool :: :: Res_SimpRec :: Res_SimpRec_
+  {{ com partial-simplification of resources: given constraints $[[N]]$, $[[res]]$ partially simplifies (strips ifs) to $[[out_res']]$ }} by
+
+
+    smt ( N => term )
+    N |- simp_rec ( res1 ) ~> res1' , ty_bool
+    -------------------------------------------------------------- :: If_True
+    N |- simp_rec ( if term then res1 else res2 ) ~> res1' , true
+
+
+    smt ( N => neg term )
+    N |- simp_rec ( res2 ) ~> res2' , ty_bool
+    ------------------------------------------------------------- :: If_False
+    N |- simp_rec ( if term then res1 else res2 ) ~> res2' , true
+
+
+    N |- simp_rec ( res1 ) ~> res1' , ty_bool1
+    N |- simp_rec ( res2 ) ~> res2' , ty_bool2
+    ------------------------------------------------------------------ :: SepConj
+    N |- simp_rec ( res1 * res2 ) ~> res1' * res2' , ty_bool1 || ty_bool2
+
+
+    N |- simp_rec ( res ) ~> res' , ty_bool
+    ---------------------------------------------------------------------------------- :: Exists
+    N |- simp_rec ( exists y : base_type .: res ) ~> exists y : base_type .: res' , ty_bool
+
+
+    ---------------------------------- :: NoChange
+    N |- simp_rec ( res ) ~> res , false
+
+
+  defn N |- simp ( res ) ~> opt_out_res :: :: Simp :: Simp_
+  {{ com partial-simplification of resources: given constraints $[[N]]$, $[[res]]$ attempts a partial simplification (strips ifs) to $[[opt_out_res]]$ }} by
+
+
+    N |- simp_rec ( res ) ~> res , false
+    ------------------------------------- :: NoSimp
+    N |- simp ( res ) ~> None
+
+
+    N |- simp_rec ( res ) ~> res' , true
+    -------------------------------------- :: Simp
+    N |- simp ( res ) ~> res'
+
+
+defns
+  ret_judge :: 'Ret_' ::=
+
+  defn N |- ret = ret' :: :: Eq :: Eq_
+  {{ com return type equality: given constraints $[[N]]$, $[[ret]]$ is equal to $[[ret']]$ }} by
+
+    ----------- :: End
+    N |- I = I
+
+
+    N |- ret = ret'
+    ------------------------------------------------------------ :: Comp
+    N |- sigma y : base_type .: ret = sigma y : base_type .: ret'
+
+
+    N |- ret = ret'
+    -------------------------------------------------------------- :: Log
+    N |- exists y : base_type .: ret = exists y : base_type .: ret'
+
+
+    smt ( N => term <-> term' )
+    ----------------------------------------- :: Phi
+    N |- term /\ ret = term' /\ ret'
+
+
+    N |- res = res'
+    N |- ret = ret'
+    ------------------------------- :: Res
+    N |- res *o ret = res' *o ret'
+
+defns
+  pat_judge :: 'Pat_' ::=
+
+  defn pat : base_type ~> out_C with out_term :: :: Comp :: Comp_
+  {{ com computational pattern to context: $[[pat]]$ and type $[[base_type]]$ produces context $[[out_C]]$ and constraint $[[out_term]]$ }} by
+
+
+    ---------------------------------------- :: Wild
+    _ : base_type ~> cdot with _
+
+
+    -------------------------------------------------------- :: Sym
+    x : base_type ~> x : base_type with x
+
+
+    --------------------------------------------------------- :: Nil
+    Nil base_type ( ) : list base_type ~> cdot with nil
+
+
+    pat1 : base_type ~> C1 with term1
+    pat2 : list base_type ~> C2 with term2
+    --------------------------------------------------------------------------- :: Cons
+    Cons ( pat1 , pat2 ) : list base_type ~> C1 , C2 with term1 :: term2
+
+
+    indexed pati : base_typei ~> Ci with termi
+    ----------------------------------------------------------------------------------------------------------- :: Tuple
+    Tuple ( </ pati // i /> ) : </ base_typei // i /> ~> </ Ci // i /> with ( </ termi // i /> )
+
+
+    indexed pati : base_type ~> Ci with termi
+    -------------------------------------------------------------------------------------------- :: Array
+    Array ( </ pati // i /> ) : array base_type ~> </ Ci // i /> with [| </ termi // i /> |]
+
+
+  defn L ; N |- res_pat : res ~> out_LNRp :: :: Res_Match :: Res_Match_
+  {{ com resources pattern to context: given constraints $[[N]]$, $[[res_pat]]$ of type $[[res]]$ produces contexts $[[out_LNRp]]$ }} by
+
+
+    ------------------------------------------------- :: Emp
+    L ; N |- emp : emp ~> cdot ; cdot ; cdot
+
+
+    ----------------------------------------------- :: Phi
+    L ; N |- TERM : term ~> L' ; N' , term ; R'
+
+
+    % This (and If_False) require N |- for the ~ relation
+    smt ( N => term )
+    L ; N |- res_pat : res1 ~> L ; N ; R
+    --------------------------------------------------------------- :: If_True
+    L ; N |- res_pat : if term then res1 else res2 ~> L ; N ; R
+
+
+    % This (and If_True) require N |- for the ~ relation
+    smt ( N => neg term )
+    L ; N |- res_pat : res2 ~> L ; N ; R
+    --------------------------------------------------------------- :: If_False
+    L ; N |- res_pat : if term then res1 else res2 ~> L ; N ; R
+
+
+    ------------------------------------------ :: Var
+    L ; N |- r : res ~> cdot ; cdot ; r : res
+
+
+    L ; N |- res_pat1 : res1 ~> L1 ; N1 ; R1
+    L ; N |- res_pat2 : res2 ~> L2 ; N2 ; R2
+    ------------------------------------------------------------------------------------ :: SepConj
+    L ; N |- < res_pat1 , res_pat2 > : res1 * res2 ~> L1 , L2 ; N1 , N2 ; R1 , R2
+
+
+    L , x : base_type ; N |- res_pat : x / y ( res ) ~> L' ; N' ; R'
+    ------------------------------------------------------------------------------------------ :: Pack
+    L ; N |- pack ( x , res_pat ) : exists y : base_type .: res ~> L' , x : base_type ; N' ; R'
+
+
+    P ( id ) = </ xi : _bti // i /> , y : _bt  |-> res
+    L ; N |- res_pat : [ oarg / y , </ iargi / xi // i />  ] ( res ) ~> L' ; N' ; R'
+    --------------------------------------------------------------------------------------------------- :: Fold
+    L ; N |- fold ( res_pat ) : id ( </ iargi // i /> ) ( oarg ) ~> L' ; N' ; R'
+
+
+  defn CLN |- ret_pat : ret ~> out_CLNRp :: :: Ret :: Ret_
+  {{ com return pattern to context: given context $[[ CLN ]]$, $[[ret_pat]]$ and return type $[[ret]]$ produces contexts $[[out_CLNRp]]$ }} by
+
+
+    ------------------------------------------------- :: Empty
+    C ; L ; N |-  : I ~> cdot ; cdot ; cdot ; cdot
+
+
+    % This is the rule which requires ~ relation
+    pat : base_type ~> C1 with term1
+    C , C1 ; L ; N |- ret_pat : term1 / y ( ret ) ~> C2 ; L2 ; N2 ; R2
+    ----------------------------------------------------------------------------------- :: Comp
+    C ; L ; N |- comp pat , ret_pat : sigma y : base_type .: ret ~> C1, C2 ; L2 ; N2 ; R2
+
+
+    C ; L , x : base_type ; N |- ret_pat : x / y ( ret ) ~> C2 ; L2 ; N2 ; R2
+    -------------------------------------------------------------------------------------- :: Log
+    C ; L ; N |- log x , ret_pat : exists y : base_type .: ret ~> C2 ; y : base_type , L2 ; N2 ; R2
+
+
+    C ; L ; N |- ret_pat : ret ~> C' ; L' ; N' ; R'
+    ----------------------------------------------------- :: Phi
+    C ; L ; N |- ret_pat : term /\ ret ~> C' ; L' ; N' , term ; R'
+
+
+    L ; N |- res_pat : res ~> L1 ; N1 ; R1
+    C ; L ; N |- ret_pat : ret ~> C2 ; L2 ; N2 ; R2
+    --------------------------------------------------------------------------- :: Res
+    C ; L ; N |- reso res_pat , ret_pat : res *o ret ~> C2 ; L1, L2 ; N1, N2 ; R1, R2
+
+
+  defn N |- ret_pat : ret ~> out_CLNRp :: :: Ret'_ :: Ret'_
+  {{ com return pattern to context: given constraints $[[ N ]]$, $[[ ret_pat ]]$ and return type $[[ ret ]]$ produces contexts $[[ out_CLNRp ]]$ }} by
+
+
+  cdot ; cdot ; N |- ret_pat : ret ~> CLNRp
+  ----------------------------------------- :: Aux
+  N |- ret_pat : ret ~> CLNRp
+
+
+defns
+  expl_pure :: 'Pure_' ::=
+
+  defn C |- object_value => obj out_base_type :: :: Val_Obj :: Val_Obj_
+  {{ com object value synthesises: given $[[C]]$, $[[object_value]]$ synthesises type $[[out_base_type]]$ }} by
+
+
+    ----------------------- :: Int
+    C |- int => obj integer
+
+
+    ------------------- :: Ptr
+    C |- ptr => obj loc
+
+
+    indexed </ C |- object_valuei => obj base_type // i />
+    ----------------------------------------------------------------------------------------- :: Arr
+    C |- array ( </ object_valuei // i /> ) => obj array base_type
+
+
+    P ( tag ) = </ memberi : cti // i />
+    indexed </ C |- valuei => to_base ( cti ) // i />
+    --------------------------------------------------------------------------------- :: Struct
+    C |- ( struct tag ) { </ . memberi = object_valuei //  i /> } => obj struct tag
+
+
+    % DEFER (not implemented): union
+    % UNSUPPORTED: floats
+
+  defn C |- pval => out_base_type :: :: Val :: Val_
+  {{ com pure value synthesises: given $[[C]]$, $[[ pval ]]$ synthesises type $[[out_base_type]]$ }} by
+
+
+    x : base_type inEnv C
+    --------------------------- :: Var
+    C |- x => base_type
+
+
+    % DEFER impl_const (aka globals) needs resources
+
+
+    C |- object_value => obj base_type
+    --------------------------------------------- :: Obj
+    C |- object_value => base_type
+
+
+    ------------------------- :: Unit
+    C |- Unit => unit
+
+
+    ------------------------- :: True
+    C |- True => bool
+
+
+    -------------------------- :: False
+    C |- False => bool
+
+
+    indexed </ C |- valuei => base_type // i />
+    ----------------------------------------------------------------- :: List
+    C |- [ </ valuei // i /> ] => list base_type
+
+
+    indexed </ C |- valuei =>  base_typei // i />
+    -------------------------------------------------------------- :: Tuple
+    C |- ( </ valuei // i /> ) => </ base_typei // i />
+
+
+    % DEFER (not implemented) - constrained
+
+
+    ------------------------------------------------ :: Ctor_Nil
+    C |- Nil base_type ( ) => list base_type
+
+
+    C |- pval1 => base_type
+    C |- pval2 => list base_type
+    ---------------------------------------------------------- :: Ctor_Cons
+    C |- Cons ( pval1, pval2 ) => list base_type
+
+
+    indexed C |- pvali => base_typei
+    ------------------------------------------------------------------- :: Ctor_Tuple
+    C |- Tuple ( </ pvali // i /> ) => </ base_typei // i />
+
+
+    % Arrays are guaranteed to be non-empty (§6.7.6.2#1, sentence 3)
+    indexed C |- pvali => base_type
+    ----------------------------------------------------------------------- :: Ctor_Array
+    C |- Array ( </ pvali // i /> ) => array base_type
+
+
+    P ( tag ) = </ memberi : cti // i />
+    indexed C |- pvali => to_base ( cti )
+    --------------------------------------------------------------------- :: Struct
+    C |- ( struct tag ) { </ . memberi = pvali // i /> } => struct tag
+
+
+   % DEFER (not implemented) - union
+
+
+  defn CLN |- pexpr => out_pure_ret :: :: Expr :: Expr_
+  {{ com pure expression synthesises: given $[[CLN]]$, $[[pexpr]]$ synthesises a pure (non-resourceful) return type $[[out_pure_ret]]$ }} by
+
+
+    C |- pval => base_type
+    ------------------------------------------------------------ :: PVal
+    C ; L ; N |- pval => sigma y : base_type .: y = inj pval /\ I
+
+
+    C |- pval1 => integer
+    C |- pval2 => integer
+    -------------------------------------------------------------------------- :: Ctor_IvXOR
+    C ; L ; N |- IvXOR ( pval1, pval2 ) => sigma y : integer .: y = xor_uf ( inj pval1 , inj pval2 )  /\ I
+
+    % DEFER (not implemented) - ctor_expr
+    % IvCOMPL     :: :: ivCOMPL     {{ com bitwise complement             }} % : ctype -> integer -> integer
+    % IvAND       :: :: ivAND       {{ com bitwise AND                    }} % : ctype -> integer -> integer -> integer
+    % IvOR        :: :: ivOR        {{ com bitwise OR                     }} % : ctype -> integer -> integer -> integer
+
+    % Unsupported
+    % Fvfromint   :: :: fvfromint   {{ com cast integer to floating value }} % : integer -> floating
+    % Ivfromfloat :: :: ivfromfloat {{ com cast floating to integer value }} % : ctype -> floating -> integer
+
+
+    C |- pval1 => loc
+    C |- pval2 => integer
+    ptrt' def= array_shift < ct > ( inj pval1 , inj pval2 )
+    x def= allocv [ inj pval1 . alloc_id ]
+    smt ( N => x . base =< ptrt' . addr =< x . base + x . len )
+    ----------------------------------------------------------------- :: Array_Shift
+    C ; L ; N |- array_shift < ct > ( pval1 , pval2 ) => sigma y : loc .: y = ptrt' /\ I
+
+
+    C |- pval => loc
+    x def= allocv [ inj pval . alloc_id ]
+    P ( tag ) = </ memberi : cti // i />
+    smt ( N => x . base =< member_shift < tagged tag > ( inj pval , memberj ) . addr =< x . base + x . len )
+    ------------------------------------------------------------ :: Member_Shift
+    C ; L ; N |- member_shift < tagged tag > ( pval , memberj ) => sigma y : loc .: y = member_shift < tagged tag > ( inj pval , memberj ) /\ I
+
+
+    C |- pval1 => loc
+    C |- pval2 => loc
+    smt ( N => inj pval1 . addr = inj pval2 . addr )
+    ----------------------------------------------------------------- :: Ptr_Eq
+    C ; L ; N |- pval1 = pval2 => sigma y : loc .: y = ( inj pval1 . addr = inj pval2 . addr ) /\ I
+
+
+    C |- pval => bool
+    -------------------------------- :: Not
+    C ; L ; N |- not ( pval ) => sigma y : bool .: y = neg inj pval /\ I
+
+
+    % DEFER - few checks to use uninterpreted functions for non-linear arithmetic appropriately
+    C |- pval1 => integer
+    C |- pval2 => integer
+    ------------------------------------ :: Arith_Binop
+    C ; L ; N |- pval1 arith_binop pval2 => sigma y : integer .: y = ( inj pval1 ' arith_binop ' inj pval2 ) /\ I
+
+
+    % DEFER - few checks to use uninterpreted functions for non-linear arithmetic appropriately
+    C |- pval1 => integer
+    C |- pval2 => integer
+    ------------------------------------ :: Rel_Binop
+    C ; L ; N |- pval1 rel_binop pval2 => sigma y : bool .: y = ( inj pval1 ' rel_binop ' inj pval2 ) /\ I
+
+
+    % DEFER - few checks to use uninterpreted functions for non-linear arithmetic appropriately
+    C |- pval1 => bool
+    C |- pval2 => bool
+    --------------------------------- :: Bool_Binop
+    C ; L ; N |- pval1 bool_binop pval2 => sigma y : bool .: y = ( inj pval1 ' bool_binop ' inj pval2 ) /\ I
+
+
+    P ( name ) = </ xi // i /> |-> pstmt : pure_fun
+    C ; L ; N ; cdot |- </ xi = pvali // i /> :: pure_fun >> subs ; pure_ret
+    ------------------------------------------------------------------------ :: Call
+    C ; L ; N |- name ( </ pvali // i /> ) => pure_ret
+
+
+    % DEFER (not implemented) memberof ( tag , member , pval )
+
+
+    % DEFER conv_int -- complicated
+    % conv_int ( ct , pval )
+
+
+    C |- pval => bool
+    smt ( N => inj pval )
+    -------------------------------- :: Assert_Undef
+    C ; L ; N |- assert_undef ( pval , UB_name ) => sigma y : unit .: y = unit /\ I
+
+
+    C |- pval => bool
+    -------------------------------- :: Bool_To_Integer
+    C ; L ; N |- bool_to_integer ( pval ) => sigma y : integer .: y = if inj pval then 1 else 0 /\ I
+
+
+    C |- pval => integer
+    abbrev1 def= max ct - min ct + 1
+    abbrev2 def= inj pval REM abbrev1
+    ------------------------------------------- :: WrapI
+    C ; L ; N |- wrapI ( ct , pval ) => sigma y : integer .: y = if abbrev2 =< max ct then abbrev2 else abbrev2 - abbrev1 /\ I
+
+
+  defn CLN |- pstmt <= pure_ret :: :: Stmt :: Stmt_
+  {{ com pure statement checks: given $[[CLN]]$, $[[pstmt]]$ checks against $[[pure_ret]]$ }} by
+
+    C |- pval => base_type
+    smt ( N => pval / y ( term ) )
+    -------------------------------------------- :: PVal
+    C ; L ; N |- pval <= sigma y : base_type .: term /\ I
+
+
+    smt ( N => false )
+    ------------------- :: UB
+    C ; L ; N |- undef UB_name <= sigma _ : _bt .: _t /\ I
+
+
+    C ; L ; N |- pexpr => sigma y1 : base_type1 .: term1 /\ I
+    pat : base_type1 ~> C1 with term
+    C , C1 ; L ; N , term / y1 ( term1 ) |- pstmt <= sigma y2 : base_type2 .: term2 /\ I
+    -------------------------------------------------------------------------------------------- :: PExpr
+    C ; L ; N |- let pat = pexpr in pstmt <= sigma y2 : base_type2 .: term2 /\ I
+
+
+    C ; L ; N |- pstmt1 <= sigma y1 : base_type1 .: term1 /\ I
+    pat : base_type1 ~> C1 with term
+    C , C1 ; L ; N , term / y1 ( term1 ) |- pstmt <= sigma y2 : base_type2 .: term2 /\ I
+    ---------------------------------------------------------------------------------------- :: Let
+    C ; L ; N |- let pat : pure_ret = pstmt1 in pstmt2 <= sigma y2 : base_type2 .: term2 /\ I
+
+
+    % No need for propogating constraints
+    C |- pval => bool
+    C ; L ; N , inj pval = true  |- pstmt1 <= sigma y : base_type .: term /\ I
+    C ; L ; N , inj pval = false |- pstmt2 <= sigma y : base_type .: term /\ I
+    -------------------------------------------------------------------------------------------- :: If
+    C ; L ; N |- if pval then pstmt1 else pstmt2 <= sigma y : base_type .: term /\ I
+
+
+    C |- pval => base_type1
+    indexed </ pati : base_type1 ~> Ci with termi // i />
+    indexed </ C , Ci ; L ; N , termi = inj pval |- pstmti <= sigma y2 : base_type2 .: term2 /\ I // i />
+    ---------------------------------------------------------------------------------------------------------------- :: Case
+    C ; L ; N |- case pval of </ | pati => pstmti // i /> end <= sigma y2 : base_type2 .: term2 /\ I
+
+
+defns
+  expl_res :: '' ::=
+
+  defn CLNR |- pred_ops => ops out_res :: :: Res_Syn_PredOps :: Res_Syn_PredOps_
+  {{ com resource (i)predicate operation term synthesis: given $[[CLNR]]$, $[[pred_ops]]$ synthesises resource $[[out_res]]$ }} by
+
+
+    C ; L ; N ; R |- res_term => ptrt |- init - array n ct -> oarg
+    ----------------------------------------------------------------- :: Iterate
+    C ; L ; N ; R |- iterate ( res_term , n ) => ops ( *S x .: 0 =< x =< n - 1 => ptrt |- init - ct -> oarg )
+
+
+    C ; L ; N ; R |- res_term => ( *S x .: iguard => ptrt |- init - ct -> oarg  )
+    smt ( N => each (integer x; _t) { iguard <-> ( 0 =< x =< n - 1 ) } )
+    y1 def= allocv [ ptrt . alloc_id ]
+    smt ( N => y1 . base =< ptrt . addr /\ array_shift < ct > ( ptrt , n ) . addr  =< y1 . base + y1 . len )
+    --------------------------------------------------------------------------------------- :: Congeal
+    C ; L ; N ; R |- congeal ( res_term , n ) => ops  ptrt |- init - array n ct -> oarg
+
+
+    C ; L ; N ; R |- res_term => ptrt |- init - struct tag -> oarg
+    P ( tag ) =  </ memberi : cti // i />
+    ------------------------------------------------------------------------ :: Explode
+    C ; L ; N ; R |- explode ( res_term ) => ops *S ( </ member_shift < struct tag > ( ptrt , memberi ) |- init - cti -> oarg . memberi // i /> )
+
+
+    C ; L ; N ; R |- res_term => *S ( </ ptrti |- init - cti -> oargi // i /> )
+    P ( tag ) = </ memberi : cti // i />
+    term def= ptrt0 . addr - offsetof tag member0
+    smt ( N => /\\ ( </ term = ptrti . addr - offsetof tag memberi /\ ptrt0 . alloc_id = ptrti . alloc_id // i /> ) )
+    x def= allocv [ ptrt0 . alloc_id ]
+    smt ( N => x . base =< term /\ term + sizeof tagged tag =< x . base + x . len )
+    ----------------------------------------------------------------------------------------------- :: Implode
+    C ; L ; N ; R |- implode ( res_term , tag ) => ops ( @ ptrt0 . alloc_id , term ) |- init - struct tag -> { </ memberi = oargi // i /> }
+
+
+    C ; L |- term => integer
+    C ; L ; N ; R |- res_term => each (integer x ; iguard) { a ( array_shift < ct >( ptrt , x ) , iargs ) } ( oarg )
+    smt ( N => term / x ( iguard ) )
+    ipred def= each (integer x ; iguard /\ ( x != term )) { a ( array_shift < ct > ( ptrt , x ) , iargs ) } ( oarg )
+    pred def= a ( array_shift < ct > ( ptrt, term ) , term / x ( iargs ) ) ( oarg [ term ] )
+    --------------------------------------------------------------------------------- :: Break
+    C ; L ; N ; R |- break ( res_term , term ) => ops ipred * pred
+
+
+    res1 def= each (integer x ; iguard) { a ( array_shift <ct> ( ptrt1 , x ) , iargs1 ) } ( oarg1 )
+    res2 def= a ( ptrt2 , iargs2 ) ( oarg2 )
+    C ; L ; N ; R |- res_term => res1 * res2
+    term def= ( ptrt2 . base - ptrt1 . base ) / sizeof ct
+    smt ( N => ptrt1 . alloc_id = ptrt2 . alloc_id /\ ( ptrt2 . addr = array_shift < ct > ( ptrt1 , term ) . addr ) )
+    smt ( N => term / x ( ( iargs1 ) = ( iargs2 ) ) )
+    x def= allocv [ ptrt1 . alloc_id ]
+    smt ( N => x . base =< ptrt2 . addr /\ ptrt2 . addr + sizeof ct =< x . base + x . len )
+    res def= each (integer x; iguard \/ x = term) { a ( array_shift < ct > ( ptrt1 , x ) , iargs1 ) } ( oarg1 [ term ] := oarg2 )
+    ----------------------------------------------------------------- :: Glue
+    C ; L ; N ; R |- glue ( res_term ) => ops res
+
+
+    C ; L ; N ; R |- res_term => a ( ptrt2 , iargs2 ) ( oarg )
+    term def= ( ptrt2 . addr - ptrt1 . addr ) / sizeof ct
+    smt ( N => ptrt1 . alloc_id = ptrt2 . alloc_id /\ ( ptrt2 . addr = ptrt1 . addr + term * sizeof ct ) )
+    smt ( N => term / x ( ( iargs1 ) = ( iargs2 ) ) )
+    x def= allocv [ ptrt1 . alloc_id ]
+    smt ( N => x . base =< ptrt1 . addr /\ ptrt2 . addr + sizeof ct =< x . base + x . len )
+    C ; L |- oarg => base_type
+    res def= each (integer x ; x = term ) { a ( array_shift < ct > ( ptrt1 , x ) , iargs2 ) } ( const oarg )
+    ----------------------------------------------------------------- :: Inj
+    C ; L ; N ; R |- inj ( res_term , ptrt1 , ct , x .: iargs1 ) => ops res
+
+
+    C ; L ; N ; R |- res_term => each (integer x ; iguard') { a ( array_shift < ct > ( ptrt , x ) , iargs ) } ( oarg )
+    smt ( N => each ( integer x ; _t ) { iguard -> iguard' } )
+    iguard2 def= iguard' /\ neg iguard
+    ipred1 def= each ( integer x; iguard ) { a ( array_shift <ct> (ptrt, x) , iargs ) } ( oarg )
+    ipred2 def= each (integer x; iguard2) { a ( array_shift<ct>(ptrt, x) , iargs ) } ( oarg )
+    --------------------------------------------------------------------------------- :: Chop
+    C ; L ; N ; R |- chop ( res_term , iguard ) => ops ipred1 * ipred2
+
+    % Implementation does not support un-chopping (array merging requires quantifiers).
+    % split and join reserved for regions of dynamically allocated memory.
+
+
+  defn CLNR |- res_term => out_res :: :: Res_Syn :: Res_Syn_
+  {{ com resource term synthesises: given $[[CLNR]]$, $[[res_term]]$ synthesises resource $[[out_res]]$ }} by
+
+
+    ------------------------------ :: Emp
+    C ; L ; N ; cdot |- emp => emp
+
+    N |- simp ( res ) ~> None
+    --------------------------------- :: Var
+    C ; L ; N ; r : res |- r => res
+
+
+    N |- simp ( res ) ~> res'
+    -------------------------------- :: VarSimp
+    C ; L ; N ; r : res |- r => res'
+
+
+    pred_term' def= a ( </ iarg'i // i /> )
+    P ( a )  = </ _ : base_typei // i  /> , y : base_type |-> _res
+    indexed </ C ; L |- iarg'i => base_typei // i />
+    N |- pred_term = pred_term' ~> true
+    -------------------------------------------------------------------- :: Pred
+    C ; L ; N ; _ : pred_term ( oarg ) |- pred_term' => pred_term ( oarg )
+
+
+    pred_term def= id ( </ iargi // i /> )
+    P ( id ) = </ xi : base_typei // i  /> , y : base_type |-> res
+    indexed </ C ; L |- iargi => base_typei // i />
+    C ; L |- oarg => base_type
+    C ; L ; N ; R |- res_term <= [ oarg / y , </ iargi / xi // i /> ] ( res )
+    ----------------------------------------------------------------------------------------- :: Fold
+    C ; L ; N ; R |- fold res_term : pred_term ( oarg ) => pred_term ( oarg )
+
+
+    ipred_term' def= each (integer x ; iguard) { a ( </ iarg'i // i /> ) }
+    P ( a ) = </ _ : base_typei // i  /> , _ : _bt |-> _res
+    indexed </ C ; L |- iarg'i => base_typei // i />
+    N |- ipred_term = ipred_term' ~> true
+    ------------------------------------------------------------------------------ :: IPred
+    C ; L ; N ; _ : ipred_term ( oarg ) |-  ipred_term' => ipred_term ( oarg )
+
+
+    C ; L ; N ; R |- pred_ops => ops res
+    -----------------------------------------:: PredOps
+    C ; L ; N ; R |- pred_ops => res
+
+
+    C ; L ; N ; R1 |- res_term1 => res1
+    C ; L ; N ; R2 |- res_term2 => res2
+    ------------------------------------------------------------------ :: SepConj
+    C ; L ; N ; R1 , R2 |- < res_term1 , res_term2 > => res1 * res2
+
+
+  defn CLNR |- res_term <= res :: :: Res_Chk :: Res_Chk_
+  {{ com resource term checks: given $[[CLNR]]$, $[[res_term]]$ checks against resource $[[res]]$ }} by
+
+    smt ( N => term )
+    ------------------------------------- :: Phi
+    C ; L ; N ; cdot |- TERM <= term
+
+
+    % Has to be checking or annotated - consider type of pack (1 , l |-> 1 , 1)
+    % exists y : integer .: l |-> (y,y or y,1 or 1,y or 1,1)
+    C ; L |- oarg => base_type
+    C ; L ; N ; R |- res_term <= oarg / y ( res )
+    ---------------------------------------------------------------------------- :: Pack
+    C ; L ; N ; R |- pack ( oarg , res_term ) <= exists y : base_type .: res
+
+
+    C ; L ; N ; R1 |- res_term1 <= res1
+    C ; L ; N ; R2 |- res_term2 <= res2
+    ------------------------------------------------------------------ :: SepConj
+    C ; L ; N ; R1 , R2 |- < res_term1 , res_term2 > <= res1 * res2
+
+
+    % RULE LOOPS if condition is under-determined because
+    % strip_ifs allows res' == ( if .. then .. else .. )
+    % N |- strip_ifs ( if term then res1 else res2 ) ~> res'
+    % C ; L ; N ; R |- res_term <= res'
+    % ------------------------------------------------------------ :: If
+    % C ; L ; N ; R |- res_term <= if term then res1 else res2
+
+
+    smt ( N => term )
+    C ; L ; N ; R |- res_term <= res1
+    ------------------------------------------------------------ :: If_True
+    C ; L ; N ; R |- res_term <= if term then res1 else res2
+
+
+    smt ( N => neg term )
+    C ; L ; N ; R |- res_term <= res2
+    -------------------------------------------------------- :: If_False
+    C ; L ; N ; R |- res_term <= if term then res1 else res2
+
+
+    C ; L ; N ; R |- res_term => res
+    N |- res = res'
+    --------------------------------- :: Switch
+    C ; L ; N ; R |- res_term <= res'
+
+defns
+  expl_spine :: '' ::=
+
+  defn CLNR |- param_spine '::' fon >> out_subs ; out_ret :: :: Spine :: Spine_
+  {{ com function call spine checks: given $[[ CLNR ]]$, and $[[ param_spine ]]$ for function of type $[[ fon ]]$, produce
+    term-substitution $[[ out_subs ]]$ and result type $[[ out_ret ]]$ }} by
+
+    ---------------------------------------- :: Ret
+    C ; L ; N ; cdot |- :: ret >> cdot ; ret
+
+
+    C |- pval => base_type
+    C ; L ; N ; R |- param_spine :: pval / x ( fon ) >> subs ; ret
+    ------------------------------------------------------------------------------------- :: Comp
+    C ; L ; N ; R |-  x = pval , param_spine :: pi x : base_type .: fon >> [ pval / x , subs ] ; ret
+
+
+    C ; L |- oarg => base_type
+    C ; L ; N ; R |- param_spine :: oarg / x ( fon ) >> subs ; ret
+    ---------------------------------------------------------------------------------------- :: Log
+    C ; L ; N ; R |- x = oarg , param_spine :: forall x : base_type .: fon >> [ oarg / x , subs ] ; ret
+
+
+    smt ( N => term )
+    C ; L ; N ; R |- param_spine :: fon >> subs ; ret
+    ---------------------------------------------------- :: Phi
+    C ; L ; N ; R |- param_spine :: term -) fon >> subs ; ret
+
+
+    C ; L ; N ; R1 |- res_term <= res
+    C ; L ; N ; R2 |- param_spine :: fon >> subs ; ret
+    ---------------------------------------------------------------------- :: Res
+    C ; L ; N ; R1 , R2 |- x = res_term , param_spine :: res --o fon >> [ res_term / x , subs ] ; ret
+
+defns
+  expl_action :: '' ::=
+
+  defn CLNR |- res_action => out_ret :: :: Action :: Action_
+  {{ com memory action synthesises: given $[[CLNR]]$, $[[res_action]]$ synthesises return type $[[out_ret]]$ }} by
+
+
+    C |- pval => integer
+    term def= representable ( ct * , yp ) /\ alignedI ( inj pval , yp ) /\ allocv [ yp . alloc_id ] = ( yp . addr , sizeof ct )
+    ret def= ( yp |- Uninit - ct -> x ) *o Alloc ( yp . alloc_id ) ( ( yp . addr , sizeof ct ) ) *o I
+    ------------------------------------------------------------------------- :: Create
+    C ; L ; N ; cdot |- emp | create < ct >  ( pval ) => sigma yp : loc .: term /\ exists x : to_base ( ct ) .:  ret
+
+
+    % DEFER (not implemented)
+    % C ; L ; N ; cdot |-> create_readonly ( vp , ct , v ) Symbol_prefix <= ??
+
+
+    % DEFER relax this rule - loading a (partially) undefined struct is fine
+    % DEFER (not implemented) - memory order
+    C |- pval0 => loc
+    C ; L ; N ; R |- res_term => ptrt |- Init - ct -> oarg
+    smt ( N => ( ptrt = inj pval0 ) )
+    ------------------------------------------------------------------------------ :: Load
+    C ; L ; N ; R |- res_term | load < ct > ( pval0 ) => sigma y : to_base ( ct ) .: y = oarg /\ ( inj pval0 |- Init - ct -> oarg ) *o I
+
+
+    % DEFER relax this rule - storing (partially) undefined struct preserves init
+    C |- pval0 => loc
+    C |- pval1 => to_base ( ct )
+    % DEFER (not implemented) - locking boolean
+    smt ( N => representable ( ct , inj pval1 ) )
+    C ; L ; N ; R |- res_term => ptrt |- _init - ct -> _t
+    smt ( N => ptrt = inj pval0 )
+    --------------------------------------------------------------- :: Store
+    C ; L ; N ; R |- res_term | store < ct > ( pval0 , pval1 ) => sigma _ : unit .: ( inj pval0 |- Init - ct -> inj pval1 ) *o I
+
+
+    C |- pval => loc
+    C ; L ; N ; R |- res_term => ptrt |- _init - ct -> _t * Alloc ( term ) ( oarg )
+    term' def= ptrt . addr = oarg . base /\ sizeof ct = oarg . len
+    smt ( N =>  ptrt = inj pval /\ ptrt . alloc_id = term /\ term' )
+    ---------------------------------------------------------------------------- :: Kill_Static
+    C ; L ; N ; R |-  res_term | kill < ct > ( pval ) => sigma _ : unit .: I
+
+    % DEFER (not implemented)
+    % C ; L ; N ; ?? |- kill ( dynamic , v ) => ??
+
+defns
+  expl_memop :: '' ::=
+
+  defn CLNR |- res_memop => out_ret :: :: Memop :: Memop_
+  {{ com memory operation synthesises: given $[[CLNR]]$, $[[res_memop]]$ synthesises return type $[[out_ret]]$ }} by
+
+    C |- pval1 => loc
+    C |- pval2 => loc
+    C ; L ; N ; R |- res_term => res
+    res def= Alloc ( ptrt1 ) ( term1 ) * Alloc ( ptrt2 ) ( term2 )
+    smt ( N => inj pval1 . alloc_id = inj pval2 . alloc_id = ptrt1 . alloc_id = ptrt2 . alloc_id )
+    smt ( N => ptrt1 . base =< inj pval1 . addr =< ptrt1 . base + term1 )
+    smt ( N => ptrt2 . base =< inj pval2 . addr =< ptrt2 . base + term2 )
+    ----------------------------------------------------------------------------- :: Rel_Binop
+    C ; L ; N ; R |- res_term | pval1 rel_binop pval2 => sigma y : bool .: y = ( inj pval1 . addr ' rel_binop ' inj pval2 . addr ) /\ res *o I
+
+
+    % DEFER ask Kayvan when/how Ptrdiff can be called with an ct = array n ct'
+    C |- pval1 => loc
+    C |- pval2 => loc
+    res def= Alloc ( ptrt ) ( term )
+    C ; L ; N ; R |- res_term => res
+    smt ( N => ptrt . alloc_id = inj pval1 . alloc_id = inj pval2 . alloc_id ) 
+    smt ( N => ptrt . base =< ( inj pval1 . addr , inj pval2 . addr ) =< ptrt . base + term )
+    -------------------------------- :: PtrDiff_Arr
+    C ; L ; N ; R |- res_term | pval1 - array n ct - pval2 => sigma y : integer .: y = ( x1 - x2 ) / sizeof ct /\ res *o I
+
+
+    C |- pval1 => loc
+    C |- pval2 => loc
+    res def= Alloc ( ptrt ) ( term )
+    C ; L ; N ; R |- res_term => res
+    smt ( N => ptrt . alloc_id = inj pval1 . alloc_id = inj pval2 . alloc_id )
+    smt ( N => ptrt . base =< ( inj pval1 . addr , inj pval2 . addr ) =< ptrt . base + term )
+    -------------------------------- :: PtrDiff
+    C ; L ; N ; R |- res_term | pval1 - ct - pval2 => sigma y : integer .: y = ( x1 - x2 ) / sizeof ct /\ res *o I
+
+
+    % Doesn't require a bounds check in VIP
+    C |- pval => loc
+    C ; L ; N ; R |- res_term => Alloc ( ptrt ) ( _t )
+    smt ( N => inj pval . alloc_id = ptrt . alloc_id /\ representable ( ct2 , inj pval . addr ) )
+    ----------------------------------------------------------------------------------------------------- :: IntFromPtr
+    C ; L ; N ; R |- res_term | intFromPtr < ct > ( pval ) => sigma y : integer .: y = inj pval . addr /\ res *o I
+
+
+    % This rule requires an Owned rather than an Alloc because copy_alloc_id is
+    % NOT a ghost operation, and Owned only takes computational arguments for
+    % its input - thus forcing an appropriate pointer to be in the context.
+    C |- pval => integer
+    C ; L ; N ; R |- res_term => ptrt |- init - ct1 -> _t
+    x def= allocv [ ptrt . alloc_id ]
+    smt ( N => x . base =< inj pval =< x . base + x . len  )
+    ----------------------------------- :: PtrFromInt
+    C ; L ; N ; R |- res_term | ptrFromInt < ct > ( pval ) => sigma y : loc .: y = ( @ ptrt . alloc_id , inj pval ) /\ res *o I
+
+
+    % The implementation over-approximates the behaviour of PtrValidForDeref. It
+    % doesn't check the resource context (for the resource & the init) - which
+    % is fine because any subsequent loads will have to do so anyways.
+    % Also this is part of the Cerberus memory interface, not pointer-operations
+    % part of the C standard and so is not subject to pointer-liveness constraints.
+    C |- pval => loc
+    ---------------- :: PtrValidForDeref
+    C ; L ; N ; cdot |- emp | ptrValidForDeref < ct > ( pval ) => sigma y : bool .: y = aligned ( ct , inj pval ) /\ I
+
+
+    % Similar to PtrValidForDeref.
+    C |- pval => loc
+    ----------------- :: PtrWellAligned
+    C ; L ; N ; cdot |- emp | ptrWellAligned < ct > ( pval ) => sigma y : bool .: y = aligned ( ct , inj pval ) /\ I
+
+
+    C |- pval1 => loc
+    C |- pval2 => integer
+    ptrt' def= array_shift<ct>(inj pval1, inj pval2)
+    C ; L ; N ; R |- res_term => Alloc ( ptrt  ) ( term )
+    smt ( N => inj pval . alloc_id = ptrt . alloc_id  /\ ptrt . base =< ptrt' . addr =< ptrt . base + term )
+    ----------------------------------------------------------------------------- :: PtrArrayShift
+    C ; L ; N ; R |- res_term | ptrArrayShift < ct > ( pval1 , pval2 ) => sigma y : loc .: y = ptrt' /\ res *o I
+
+
+  % DEFER (not implemented)
+  % memcpy ( pval1 , pval2 , pval3 )
+  % memcmp ( pval1 , pval2 , pval3 )
+
+
+defns
+  expl_stmt :: '' ::=
+
+  defn CLNR |- expr => out_ret :: :: Expr :: Expr_
+  {{ com expression synthesises: given $[[CLNR]]$, $[[expr]]$ synthesises return type $[[out_ret]]$ }} by
+
+
+    C ; L ; N |- pexpr => pure_ret
+    ---------------------------------------------- :: Pure
+    C ; L ; N ; cdot |- pure ( pexpr ) => pure_ret
+
+
+    C ; L ; N ; R |- res_action => ret
+    ------------------------------- :: Action
+    C ; L ; N ; R |- res_action => ret
+
+
+    C ; L ; N ; R |- res_memop => ret
+    ----------------------------- :: Memop
+    C ; L ; N ; R |- res_memop => ret
+
+
+    P ( id ) = </ xi // i /> |-> stmt : fon
+    C ; L ; N ; R |- </ xi = spine_elemi // i /> :: fon >> subs ; ret
+    ------------------------------------------------------------------ :: CCall
+    C ; L ; N ; R |- ccall ( ct , id , </ spine_elemi // i /> ) => ret
+
+
+    P ( name ) = </ xi // i /> |-> stmt : fon
+    C ; L ; N ; R |- </ xi = spine_elemi // i /> :: fon >> subs ; ret
+    ------------------------------------------------------------------ :: Proc
+    C ; L ; N ; R |- pcall ( name , </ spine_elemi // i /> ) => ret
+
+
+    % TODO add unseq rules
+    % </ C ; L ; N ; Ri |- stmti <= reti // i />
+    % -------------------------------------------------------------------------------------------- :: Unseq
+    % C ; L ; N ; </ Ri // i /> |- unseq ( </ stmti : reti // i /> ) => concat </ reti // i />
+
+
+  defn CLNR |- stmt <= ret :: :: Stmt :: Stmt_
+  {{ com statement checks: given $[[CLNR]]$, $[[stmt]]$ checks against return type $[[ret]]$ }} by
+
+
+    C ; L ; N ; R |- to_param ret_terms :: to_fun ret >> subs ; I
+    -------------------------------------------- :: RetT
+    C ; L ; N ; R |- < ret_terms > <= ret
+
+
+    C ; L ; N |- pstmt <= pure_ret
+    ------------------------------------------------ :: Pure
+    C ; L ; N ; cdot |- pure ( pstmt ) <= pure_ret
+
+
+    C ; L ; N ; R' |- expr => ret1
+    N |- ret_pat : ret1 ~> C1 ; L1 ; N1 ; R1
+    C , C1 ; L , L1 ; N , N1 ; R , R1 |- stmt <= ret2
+    ---------------------------------------------------------- :: Expr
+    C ; L ; N ; R' , R |- let ret_pat = expr in stmt <= ret2
+
+
+    C ; L ; N ; R' |- stmt1 <= ret1
+    N |- ret_pat : ret1 ~> C1 ; L1 ; N1 ; R1
+    C , C1 ; L , L1 ; N , N1 ; R , R1 |- stmt2 <= ret2
+    -------------------------------------------------------------------- :: Let
+    C ; L ; N ; R' , R |- let ret_pat : ret1 = stmt1 in stmt2 <= ret2
+
+
+    C |- pval => base_type1
+    indexed </ pati : base_type1 ~> Ci with termi // i />
+    indexed </ C , Ci ; L ; N , termi = inj pval ; R |- stmti <= ret // i />
+    -------------------------------------------------------------------------- :: Case
+    C ; L ; N ; R |- case pval of </ | pati => stmti // i /> end <= ret
+
+
+    C |- pval => bool
+    C ; L ; N , inj pval = true  ; R |- stmt1 <= ret
+    C ; L ; N , inj pval = false ; R |- stmt2 <= ret
+    -------------------------------------------------------- :: If
+    C ; L ; N ; R |- if pval then stmt1 else stmt2 <= ret
+
+
+    P ( id ) = </ xi // i /> |-> stmt : fon
+    C ; L ; N ; cdot |- </ xi = pvali // i /> :: fon >> subs ; false /\ I
+    ----------------------------------------------------------------- :: Run
+    C ; L ; N ; cdot |- run id </ pvali // i /> <= false /\ I

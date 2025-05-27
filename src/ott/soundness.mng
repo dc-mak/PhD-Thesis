@@ -1,0 +1,775 @@
+% vim: ft=tex
+% updated rules
+% PureExprArrayShift   ResSynPredOpsCongeal   ActionCreate        MemopRelBinop
+% PureExprMemberShift  ResSynPredOpsImplode   ActionKillStatic    MemopPtrDiffArr
+%                      ResSynPredOpsGlue                          MemopPtrDiff
+%                      ResSynPredOpsInj                           MemopIntFromPtr
+%                                                                 MemopPtrFromInt
+%                                                                 MemopPtrArrayShift
+
+\PassOptionsToPackage{dvipsnames,usenames}{color}
+\documentclass[11pt]{article}%
+
+\usepackage{parskip}
+
+\usepackage[unicode]{hyperref}
+\hypersetup{colorlinks=true,linkcolor=OliveGreen,urlcolor=OliveGreen,citecolor=OliveGreen}
+\usepackage{amsmath,amssymb}%
+\usepackage{unicode-math}%
+% supertabular package required if using the default grammar tabular
+\usepackage{supertabular}
+\usepackage[margin=1in]{geometry}
+
+% the un-wrapped (-tex_wrap false) generated LaTeX file for CN
+\include{cn_included.gen}
+% the package that allows customized layout described in this document
+\usepackage{ott/ottlayout}
+% the automatically generated file (with our Makefile) to link the generated
+% LaTeX with the ottlayout package
+\include{cn_override.gen}
+\include{cn_drulenames.gen}
+
+\usepackage{titlesec}
+\newcommand{\sectionbreak}{\clearpage}
+
+\renewcommand{\thesection}{B\arabic{section}}
+\makeatletter
+\renewcommand{\l@section}{\@dottedtocline{1}{1.5em}{2.6em}}
+\renewcommand{\l@subsection}{\@dottedtocline{2}{4.0em}{3.6em}}
+\renewcommand{\l@subsubsection}{\@dottedtocline{3}{7.4em}{4.5em}}
+\makeatother
+
+\newtheorem{theorem}{Theorem}
+
+\usepackage{ott/pf2}
+\beforePfSpace{15pt, 10pt, 10pt, 10pt, 5pt, 2pt}
+\afterPfSpace{15pt, 10pt, 10pt, 10pt, 5pt, 2pt}
+\interStepSpace{15pt, 10pt, 10pt, 10pt, 5pt, 2pt}
+\pflongindent%
+
+\usepackage{verbatim}
+
+\makeatletter
+\renewcommand\tableofcontents{\@starttoc{toc}}
+\makeatother
+
+\usepackage{abstract}
+\renewcommand{\abstractname}{}    % clear the title
+\renewcommand{\absnamepos}{empty} % originally center
+
+\setcounter{tocdepth}{2}
+
+\newcommand{\lemmaref}[1]{lemma~\ref{#1} (\nameref{#1})}
+
+\newcommand{\Vip}[1]{\textsc{VIP-#1}}
+\newcommand{\VipAlloc}{\Vip{alloc}}
+\newcommand{\VipKill}{\Vip{kill}}
+\newcommand{\VipLoad}{\Vip{load}}
+\newcommand{\VipStore}{\Vip{store}}
+\newcommand{\VipDiffPtr}{\Vip{diff-ptr}}
+\newcommand{\VipArray}{\Vip{array}}
+\newcommand{\VipMember}{\Vip{member}}
+\newcommand{\VipRelOpPtr}{\Vip{rel-op-ptr}}
+\newcommand{\VipEqOpPtr}{\Vip{eq-op-ptr}}
+\newcommand{\VipRelOpInt}{\Vip{rel-op-int}}
+\newcommand{\VipArithBinOp}{\Vip{arith-bin-op}}
+\newcommand{\VipEqOpInt}{\Vip{eq-op-int}}
+\newcommand{\VipCopyAllocId}{\Vip{copy-alloc-id}}
+\newcommand{\VipCastIntToPtrLoc}{\Vip{cast-int-to-ptr-loc}}
+\newcommand{\VipCastIntToPtrInt}{\Vip{cast-int-to-ptr-int}}
+\newcommand{\VipCastPtrToInt}{\Vip{cast-ptr-to-int}}
+
+\usepackage{wrapfig}
+
+\begin{document}
+\ottstyledefaults{premiselayout=justify,premisenamelayout=topright}%
+
+\begin{center}
+{\Large Soundness proof of type checking\\[1em]
+\large Dhruv C. Makwana}
+\end{center}
+
+\vspace{1em}
+
+%% \begin{abstract}
+%% CN is a type system for the C programming language. It is defined (in
+%% a separate document) over an let-normalised version of the Core language of
+%% \href{https://github.com/rems-project/cerberus}{Cerberus}.
+%% This document
+%% contains a proof of soundness of the explicit system.
+%% \end{abstract}
+
+{\let\clearpage\relax \tableofcontents}
+
+\begingroup%
+\renewcommand{\cite}[1]{}
+\newcommand{\chapter}[1]{}
+\include{soundness_proof2.gen}
+\endgroup%
+
+\section{Soundness wrt VIP}
+
+\subsection{Allocation history is partitioned}\label{subsec:alloc_hist_partitioned}
+
+Define an allocation history ($[[ A ]]$ , $[[ alloct ]]$) to be \emph{partitioned}:
+
+$[[ forall ]] i, j .$ if $[[ i != j ]] [[ /\ ]] [[ A [ i ] = ( ptrt1 , term1 , true ) ]]
+[[/\]] [[ A [ j ] = ( ptrt2 , term2, true ) ]]$ then $[ [[ ptrt1 ]] ,  [[ ptrt1 + term1 ]] ] \cap
+[ [[ ptrt2 ]] , [[ ptrt2 + term2 ]] ] = \emptyset$.
+
+\pfsketch{ Induction over the operational rules. The allocation histories are only extended
+in the \VipAlloc{} and \OpActionCreate{}, both of which use $\mathtt{newAlloc}$ as defined
+the VIP paper (Lepigre et.~al, 2022) to only allocate new addresses which (amongst other conditions)
+have ranges which are disjoint with allocations so far.}
+
+\subsection{Resource term reduction preserves VIP heap satisfaction}\label{subsec:res_term_red_sat}
+
+\begin{pfproof}
+
+\pfsketch{ Induction over the predicate operations.\\[\baselineskip]}
+
+% Where the CN heap changes but the VIP one doesn't
+
+\step{<1>1}{\case{%
+    \SubsPatResFold.
+}{%
+    \pfsketch{} We prove by induction that the pattern-matching judgement does
+    not affect heap satisfaction. Base cases for \SubsPatResEmp, \SubsPatResPhi,
+    \SubsPatResVar{} do not change the heap, so do not change satisfaction.
+    Cases for \SubsPatResPair{} and \SubsPatResPack{} proceed by induction
+    straightforwardly.\\[\baselineskip]
+
+    \pf{} For the interesting case of \SubsPatResFold{}, it suffices to note
+    that the in this situation, the satisfaction assumption would be
+    \SatHeapPred, and its sole premise shows that the VIP heap also satisfies
+    the sub-heap.}}
+
+\step{<1>2}{\case{%
+    \OpResTFold.
+}{%
+    \pfsketch{} By straightforward induction the $[[ footprint_of res_val in h ~> h1 REM h2 ]]$
+    judgement preserves heap satisfaction: if $[[ ( A , M ) |= h ]]$ then there
+    exist VIP heaps such that $[[ ( A , M1 ) |= h1 ]]$ and $[[ ( A , M2 ) |= h2 ]]$,
+    because of \SatHeapConcat.\\[\baselineskip]
+
+    \pf{} And so we prove heap satisfaction of the final result using \SatHeapPred{}
+    and \SatHeapConcat.}}
+
+\step{<1>3}{\case{%
+    \OpPredOpsBreak, \OpPredOpsInj, \OpPredOpsGlue, \ResSynPredOpsChop.
+}{%
+    \pf{} \SatHeapIPred{} quantifies over all indices in $[[ iguard ]]$, and so
+    you prove satisfaction with \SatHeapConcat{} and one of
+    \SatHeapPred{}/\SatHeapOwnedInit{}/\SatHeapOwned{} for break,
+    and \SatHeapIPred{} for glue and inject, and \SatHeapConcat{} for chop.}}
+
+\step{<1>4}{\case{%
+    \OpPredOpsIterate, \OpPredOpsCongeal, \OpPredOpsImplode, \OpPredOpsExplode.
+}{%
+    \pf{} These cases rely on the definition of $[[ abst ( A , ct , M ) ]]$ from
+    the VIP appendix. For iterating arrays, one breaks up the VIP heap into
+    chunks the size of the element type, proves satisfaction for each element using
+    \SatHeapOwnedInit/\SatHeapOwnedInit, and \SatHeapIPred{} overall. For
+    congealing arrays, the inverse applies.\\[\baselineskip]
+
+    For exploding structs, one breaks up the VIP heap into chunks which have the
+    size of the element type \emph{plus any padding bytes}. One then proves
+    satisfaction for each element using \SatHeapOwnedInit/\SatHeapOwnedInit, and
+    \SatHeapConcat{} overall. For imploding structs, the inverse applies.}}
+
+\end{pfproof}
+
+\subsection{Soundness wrt VIP Statement and Proof}
+
+\begin{pfproof}
+
+\pfsketch{ Induction over the memory action and operation rules.
+    The core idea is that the CN system only supports integers as plain
+    integers, and not $\mathrm{Loc}\, ( [[ ( @ aid , addr ) ]] )$. As such all
+    transitions preserve that invariant.\\[\baselineskip]}
+
+\assume{\begin{pfenum}
+    \item $[[ cdot ; L0 ; N ; nR |- expr => ret ]]$
+    \item $[[ cdot ; L0 ; N' ; nR' |- stmt <= ret ]]$
+    \item $[[ alloct ; h <= N ; nR ]]$
+    \item $[[ alloct' ; h' <= N' ; nR' ]]$
+    \item $[[ < alloct ; h ; expr > --> < alloct' ; h' ; stmt : ret > ]]$
+    \item $[[ ( A , M ) |= h ]]$
+\end{pfenum}\leavevmode\\}
+
+\prove{$[[ exists ]] [[ A' ]] , [[ M' ]] .$
+    \begin{pfenum}
+        \item $[[ ( A , M ) -V>* ( A' , M' )  ]]$
+        \item $[[ ( A' , M' ) |= h' ]]$
+    \end{pfenum}\leavevmode\\[\baselineskip]}
+
+\step{<1>1}{\case{%
+    \OpActionCreate.
+}{%
+    \pf{} \pflet{ $[[ A' ]] = [[ A [ @ aid ] := ( addr , sizeof ct , true ) ]]$ \\
+    $[[ M' ]] = [[ M [ addr ldots addr + sizeof ct - 1 ] ]] :=
+    ( @ \mathsf{empty} , \mathsf{unspec} , \mathsf{none} )$.\\
+    $[[ alloct' ; h' ]] = [[ alloct [ @ aid ] := ( addr , sizeof ct ) ; h + { pt & None } + { Alloc ( @ aid ) ( (addr, sizeof ct) ) & None } ]]$.\\[\baselineskip]}
+
+    The premises of this step satisfy the premises of \VipAlloc{}.\\
+    $[[ alloct' ]]$ is consistent with $[[ A' ]]$ (required by premise 2 of \SatStateDef{}).\\
+    $[[ ( A' , [| |] ) |= { Alloc ( @ aid ) ( (addr , sizeof ct) ) & None } ]]$ by \SatHeapAlloc{}.\\
+    $[[ ( A' , M [ addr ldots addr + sizeof ct - 1 ] ) |= { pt & None } ]]$ by \SatHeapOwned{}.\\
+    $[[ ( A , M ) |= h ]]$ by assumption and so \SatHeapConcat{} proves heap satisfation overall.}}
+
+\step{<1>2}{\case{%
+    \OpActionKillStatic.
+}{%
+    \pf{} Since $[[ h ]] = [[ h1 + { Owned < _init , ct > ( ptrt ) ( _t ) & None } + { Alloc ( ptrt ) ( sizeof ct ) & None }  ]]$,
+    where $[[ ptrt = ( @ aid , addr ) ]]$ and \lemmaref{subsec:res_term_red_sat},
+    we must have $[[ A [ @ aid ] = ( addr , sizeof ct , true ) ]]$.\\[\baselineskip]
+
+    \pflet{ $[[ A' ]] = [[ A [ @ aid ] := ( addr , sizeof ct , false ) ]]$.\\[\baselineskip]}
+
+    The premises of this step satisfy the premises of \VipKill{}.\\
+    $[[ alloct ]]$ remains consistent with $[[ A' ]]$ (by premise 2 of \SatStateDef{}).}}
+
+\step{<1>3}{\case{%
+    \OpMemopPtrFromInt.
+}{%
+    \pf{} Since $[[ h' ]] = [[ h1 + { Owned < _init , ct > ( ptrt ) ( _t ) & None } ]]$,
+    \lemmaref{subsec:res_term_red_sat}, and $[[ alloct ]]$ and $[[ A ]]$ are
+    consistent (by premise 2 of \SatStateDef), we must have
+    $[[ A [ @ aid ] = ( addr , sizeof ct , true ) ]]$.\\[\baselineskip]
+
+    In the CN operational semantics, integers are not $Loc$s, and all resource predicates are indexed by
+    pointers calculable at runtime (syntactic restriction), so we must step with
+    \VipCastIntToPtrInt{} followed by \VipCopyAllocId{} in the VIP semantics.\\[\baselineskip]
+
+    Since $[[ ( A , M ) ]]$ doesn't change, satisfaction is preserved.\\}}
+
+\step{<1>4}{\case{%
+    \OpMemopIntFromPtr.
+}{%
+    \pf{} Since $[[ h' ]] = [[ h1 + { Alloc ( ptrt ) ( term ) & None } ]]$,
+    \lemmaref{subsec:res_term_red_sat}, and $[[ alloct ]]$ and $[[ A ]]$ are
+    consistent (by premise 2 of \SatStateDef), we must have
+    $[[ A [ @ aid ] = ( addr , term , true ) ]]$ 
+    where $[[ ptrt . alloc_id = @ aid ]]$,
+    and $[[ addr ]] \in \mathsf{value\_range([[ ct ]])}$ because
+    $[[ representable ( ct , addr ) ]]$.\\[\baselineskip]
+    
+    
+    Hence we may step with \VipCastPtrToInt{}. However, since in the CN
+    operational semantics, integers are not $Loc$s, we must also step with
+    \VipArithBinOp{} ($ + 0$) to force the VIP value to become a regular integer
+    from the $Loc$ result of the previous step.\\[\baselineskip]
+
+    Since $[[ ( A , M ) ]]$ doesn't change, satisfaction is preserved.}}
+
+\step{<1>5}{\case{%
+    \OpActionLoad.
+}{%
+    \pf{} Since , $[[ h' ]] = [[ h1 + { ptrt |- init - ct -> inj pval & None } ]]$,
+    \lemmaref{subsec:res_term_red_sat}, and $[[ alloct ]]$ and $[[ A ]]$ are
+    consistent (by premise 2 of \SatStateDef), we must have
+    $[[ A [ ptrt . alloc_id ] = ( addr , term , true ) ]]$,
+    $[[ addr =< ptrt . addr =< addr + term ]]$.\\[\baselineskip]
+
+    We also know that $[[ sizeof ct =< term ]]$ (by construction in
+    $\mathtt{create}$, preserved via all $[[ pred_ops ]]$),
+    and that $[[ ( inj pval , nil ) = abst ( A , ct , M  [ addr' ldots addr' + sizeof ct - 1 ] ) ]]$ (by \SatHeapOwnedInit).\\[\baselineskip]
+    
+    Hence, step with \VipLoad{}.
+    Since $[[ ( A , M ) ]]$ doesn't change, satisfaction is preserved.}}
+
+\step{<1>6}{\case{%
+    \OpActionStore.
+}{%
+    \pf{} Like \OpActionLoad{}, but without the extra condition
+    using $\mathtt{abst}$ (by \SatHeapOwned). Note that since
+    $[[ ( A , M ) |= h1 + { pt & None } ]]$ (by \lemmaref{subsec:res_term_red_sat}),
+    $[[ M = M1 + M2 ]]$ where $[[ ( A , M1 ) |= h1 ]]$ and $[[ ( A , M2 ) |= { pt & None } ]]$.\\[\baselineskip]
+
+    Hence, step with \VipStore{}. We have
+    $[[ ( A , M2' ) |= { inj ptr |- Init - ct -> inj pval & None } ]]$
+    where $[[ M2' ]] = [[ M2 [ addr' ldots addr' + sizeof ct - 1 ] ]]
+    :=  \mathtt{repr} ( [[ pval ]] )$ (by \SatHeapOwnedInit{}, since
+    $\mathtt{abst/repr}$ are effectively inverses) and so
+    $[[ ( A , M1 + M2' ) |=  h1 + { inj ptr |- Init - ct -> inj pval & None } ]]$.
+    (by \SatHeapConcat{}).}}
+
+% Low priority
+
+\step{<1>7}{\case{%
+    \OpMemopPtrDiff, \OpMemopPtrDiffArr.
+}{%
+    \pf{} Since $[[ h' ]] = [[ h1 + { Alloc ( ptrt ) ( term ) & None } ]]$,
+    \lemmaref{subsec:res_term_red_sat}, and $[[ alloct ]]$ and $[[ A ]]$ are
+    consistent (by premise 2 of \SatStateDef), we must have
+    $[[ @ aid1 = @ aid2  = ptrt . alloc_id ]]$,
+    $[[ A [ ptrt . alloc_id ] = ( ptrt . base , term , true ) ]]$,
+    $[[ ptrt . base =< ( addr1 , addr2 ) =< ptrt . base + term ]]$,
+    and $[[ int def= ( addr1 - addr2 ) / sizeof ct ]]$.\\[\baselineskip]
+
+    Hence we may step with \VipDiffPtr{}. Since $[[ ( A , M ) ]]$ doesn't
+    change, satisfaction is preserved.}}
+
+\step{<1>8}{\case{%
+    \OpPExprArrayShift, \OpMemopPtrArrayShift.
+}{%
+    % \OpPExprArrayShift is not an expr but here for sake of completeness wrt VIP.
+
+    In both cases, since $[[ alloct ]]$ and $[[ A ]]$ are consistent (by premise 2 of \SatStateDef),
+    we have $[[ A [ @ aid ] = ( addri , termi , _t ) ]]$.
+    Also, from the premise of the CN steps, we know
+    $[[ addri =< inj ptr' . addr =< addri + termi ]]$
+    where $[[ inj ptr' def= array_shift < ct > ( inj ptr ,  int ) ]]$
+    $[[ inj ptr = ( @ aid , _t ) ]]$.\\[\baselineskip]
+
+    Hence we may step with \VipArray{}. Since $[[ ( A , M ) ]]$ doesn't
+    change, satisfaction is preserved.}}
+
+\step{<1>9}{\case{%
+    \OpPExprMemberShift.
+}{%
+    % \OpPExprMemberShift is not an expr but here for sake of completeness wrt VIP.
+    Similar to \OpPExprArrayShift, but stepping with \VipMember{} instead.}}
+
+\step{<1>10}{\case{%
+    \OpMemopRelBinop.
+}{%
+    \pf{} Since $[[ h' ]] = [[ h1 + { Alloc ( ptrt1 ) ( term1 ) & None } + { Alloc ( ptrt2 ) ( term2 ) & None } ]]$,
+    \lemmaref{subsec:res_term_red_sat}, and \SatHeapAlloc, we must have
+    $[[ A [ ptrt1 . alloc_id ] = ( addr1' , term1 , true ) ]]$,
+    $[[ A [ ptrt2 . alloc_id ] = ( addr1' , term2 , true ) ]]$.
+    From the premise CN step, we also know
+    $[[ @aid1 = @aid2 = ptrt1 . alloc_id = ptrt2 . alloc_id2 ]]$,
+    $[[ ptrt1 . base =< addr1 =< ptrt1 . base + term1 ]]$,
+    and $[[ ptrt2 . base =< addr2 =< ptrt2 . base + term2 ]]$.
+    $[[ addr =< ptrt . addr =< addr + term ]]$.\\[\baselineskip]
+
+    Hence we may step with \VipRelOpPtr{}. Since $[[ ( A , M ) ]]$ doesn't
+    change, satisfaction is preserved.}}
+
+\step{<1>11}{\case{%
+    \OpPExprPtrEq.
+    % \OpPExprPtrEq is not an expr but here for sake of completeness wrt VIP.
+}{%
+    \pf{} Step with \VipEqOpPtr{}; since $[[ ( A , M ) ]]$ doesn't change,
+    satisfaction is preserved.}}
+
+\step{<1>12}{\case{%
+    \OpPExprRelBinop, \OpPExprArithBinop.
+    % \OpPExpr{Rel,Arith}Binop are not expr but here for sake of completeness wrt VIP.
+}{%
+    \pf{} Step with \VipRelOpInt{} and \VipArithBinOp{}; since $[[ ( A , M ) ]]$
+    doesn't change, satisfaction is preserved.}}
+
+\end{pfproof}
+
+
+\end{document}
+
+% Typing
+\step{<0>1}{\case{\IGCmpEq}{}}
+\step{<0>2}{\case{\IGCmpLt}{}}
+\step{<0>3}{\case{\IGCmpGt}{}}
+\step{<0>4}{\case{\IGCmpNone}{}}
+\step{<0>5}{\case{\ICmpNameNeq}{}}
+\step{<0>6}{\case{\ICmpIGNeq}{}}
+\step{<0>7}{\case{\ICmpIArgNeq}{}}
+\step{<0>8}{\case{\ICmpComparable}{}}
+\step{<0>9}{\case{\ReqEqPPNameNeq}{}}
+\step{<0>10}{\case{\ReqEqPPIArgNeq}{}}
+\step{<0>11}{\case{\ReqEqPPEq}{}}
+\step{<0>12}{\case{\ReqEqIIEq}{}}
+\step{<0>13}{\case{\ReqEqIINeq}{}}
+\step{<0>14}{\case{\ResEqEmp}{}}
+\step{<0>15}{\case{\ResEqPhi}{}}
+\step{<0>16}{\case{\ResEqPred}{}}
+\step{<0>17}{\case{\ResEqIPred}{}}
+\step{<0>18}{\case{\ResEqSepConj}{}}
+\step{<0>19}{\case{\ResEqExists}{}}
+\step{<0>20}{\case{\ResEqOrdDisj}{}}
+\step{<0>21}{\case{\ResSimpRecIfTrue}{}}
+\step{<0>22}{\case{\ResSimpRecIfFalse}{}}
+\step{<0>23}{\case{\ResSimpRecSepConj}{}}
+\step{<0>24}{\case{\ResSimpRecExists}{}}
+\step{<0>25}{\case{\ResSimpRecNoChange}{}}
+\step{<0>26}{\case{\SimpNoSimp}{}}
+\step{<0>27}{\case{\SimpSimp}{}}
+\step{<0>28}{\case{\RetEqEnd}{}}
+\step{<0>29}{\case{\RetEqComp}{}}
+\step{<0>30}{\case{\RetEqLog}{}}
+\step{<0>31}{\case{\RetEqPhi}{}}
+\step{<0>32}{\case{\RetEqRes}{}}
+\step{<0>33}{\case{\PatCompWild}{}}
+\step{<0>34}{\case{\PatCompSym}{}}
+\step{<0>35}{\case{\PatCompNil}{}}
+\step{<0>36}{\case{\PatCompCons}{}}
+\step{<0>37}{\case{\PatCompTuple}{}}
+\step{<0>38}{\case{\PatCompArray}{}}
+\step{<0>39}{\case{\PatResMatchEmp}{}}
+\step{<0>40}{\case{\PatResMatchPhi}{}}
+\step{<0>41}{\case{\PatResMatchIfTrue}{}}
+\step{<0>42}{\case{\PatResMatchIfFalse}{}}
+\step{<0>43}{\case{\PatResMatchVar}{}}
+\step{<0>44}{\case{\PatResMatchSepConj}{}}
+\step{<0>45}{\case{\PatResMatchPack}{}}
+\step{<0>46}{\case{\PatResMatchFold}{}}
+\step{<0>47}{\case{\PatRetEmpty}{}}
+\step{<0>48}{\case{\PatRetComp}{}}
+\step{<0>49}{\case{\PatRetLog}{}}
+\step{<0>50}{\case{\PatRetPhi}{}}
+\step{<0>51}{\case{\PatRetRes}{}}
+\step{<0>52}{\case{\PatRetAux}{}}
+\step{<0>53}{\case{\PureValObjInt}{}}
+\step{<0>54}{\case{\PureValObjPtr}{}}
+\step{<0>55}{\case{\PureValObjArr}{}}
+\step{<0>56}{\case{\PureValObjStruct}{}}
+\step{<0>57}{\case{\PureValVar}{}}
+\step{<0>58}{\case{\PureValObj}{}}
+\step{<0>59}{\case{\PureValUnit}{}}
+\step{<0>60}{\case{\PureValTrue}{}}
+\step{<0>61}{\case{\PureValFalse}{}}
+\step{<0>62}{\case{\PureValList}{}}
+\step{<0>63}{\case{\PureValTuple}{}}
+\step{<0>64}{\case{\PureValCtorNil}{}}
+\step{<0>65}{\case{\PureValCtorCons}{}}
+\step{<0>66}{\case{\PureValCtorTuple}{}}
+\step{<0>67}{\case{\PureValCtorArray}{}}
+\step{<0>68}{\case{\PureValStruct}{}}
+\step{<0>69}{\case{\PureExprPVal}{}}
+\step{<0>70}{\case{\PureExprCtorIvXOR}{}}
+\step{<0>71}{\case{\PureExprArrayShift}{}}
+\step{<0>72}{\case{\PureExprMemberShift}{}}
+\step{<0>73}{\case{\PureExprPtrEq}{}}
+\step{<0>74}{\case{\PureExprNot}{}}
+\step{<0>75}{\case{\PureExprArithBinop}{}}
+\step{<0>76}{\case{\PureExprRelBinop}{}}
+\step{<0>77}{\case{\PureExprBoolBinop}{}}
+\step{<0>78}{\case{\PureExprCall}{}}
+\step{<0>79}{\case{\PureExprAssertUndef}{}}
+\step{<0>80}{\case{\PureExprBoolToInteger}{}}
+\step{<0>81}{\case{\PureExprWrapI}{}}
+\step{<0>82}{\case{\PureStmtPVal}{}}
+\step{<0>83}{\case{\PureStmtUB}{}}
+\step{<0>84}{\case{\PureStmtPExpr}{}}
+\step{<0>85}{\case{\PureStmtLet}{}}
+\step{<0>86}{\case{\PureStmtIf}{}}
+\step{<0>87}{\case{\PureStmtCase}{}}
+\step{<0>88}{\case{\ResSynPredOpsIterate}{}}
+\step{<0>89}{\case{\ResSynPredOpsCongeal}{}}
+\step{<0>90}{\case{\ResSynPredOpsExplode}{}}
+\step{<0>91}{\case{\ResSynPredOpsImplode}{}}
+\step{<0>92}{\case{\ResSynPredOpsBreak}{}}
+\step{<0>93}{\case{\ResSynPredOpsGlue}{}}
+\step{<0>94}{\case{\ResSynPredOpsInj}{}}
+\step{<0>95}{\case{\ResSynPredOpsChop}{}}
+\step{<0>96}{\case{\ResSynEmp}{}}
+\step{<0>97}{\case{\ResSynVar}{}}
+\step{<0>98}{\case{\ResSynVarSimp}{}}
+\step{<0>99}{\case{\ResSynPred}{}}
+\step{<0>100}{\case{\ResSynFold}{}}
+\step{<0>101}{\case{\ResSynIPred}{}}
+\step{<0>102}{\case{\ResSynPredOps}{}}
+\step{<0>103}{\case{\ResSynSepConj}{}}
+\step{<0>104}{\case{\ResChkPhi}{}}
+\step{<0>105}{\case{\ResChkPack}{}}
+\step{<0>106}{\case{\ResChkSepConj}{}}
+\step{<0>107}{\case{\ResChkIfTrue}{}}
+\step{<0>108}{\case{\ResChkIfFalse}{}}
+\step{<0>109}{\case{\ResChkSwitch}{}}
+\step{<0>110}{\case{\SpineRet}{}}
+\step{<0>111}{\case{\SpineComp}{}}
+\step{<0>112}{\case{\SpineLog}{}}
+\step{<0>113}{\case{\SpinePhi}{}}
+\step{<0>114}{\case{\SpineRes}{}}
+\step{<0>115}{\case{\ActionCreate}{}}
+\step{<0>116}{\case{\ActionLoad}{}}
+\step{<0>117}{\case{\ActionStore}{}}
+\step{<0>118}{\case{\ActionKillStatic}{}}
+\step{<0>119}{\case{\MemopRelBinop}{}}
+\step{<0>120}{\case{\MemopPtrDiffArr}{}}
+\step{<0>121}{\case{\MemopPtrDiff}{}}
+\step{<0>122}{\case{\MemopIntFromPtr}{}}
+\step{<0>123}{\case{\MemopPtrFromInt}{}}
+\step{<0>124}{\case{\MemopPtrValidForDeref}{}}
+\step{<0>125}{\case{\MemopPtrWellAligned}{}}
+\step{<0>126}{\case{\MemopPtrArrayShift}{}}
+\step{<0>127}{\case{\ExprPure}{}}
+\step{<0>128}{\case{\ExprAction}{}}
+\step{<0>129}{\case{\ExprMemop}{}}
+\step{<0>130}{\case{\ExprCCall}{}}
+\step{<0>131}{\case{\ExprProc}{}}
+\step{<0>132}{\case{\StmtRetT}{}}
+\step{<0>133}{\case{\StmtPure}{}}
+\step{<0>134}{\case{\StmtExpr}{}}
+\step{<0>135}{\case{\StmtLet}{}}
+\step{<0>136}{\case{\StmtCase}{}}
+\step{<0>137}{\case{\StmtIf}{}}
+\step{<0>138}{\case{\StmtRun}{}}
+
+% Inference
+\step{<0>139}{\case{\PinINameNeq}{}}
+\step{<0>140}{\case{\PinIIGOrIArgNeq}{}}
+\step{<0>141}{\case{\PinIComp}{}}
+\step{<0>142}{\case{\ResDiffIfNone}{}}
+\step{<0>143}{\case{\ResDiffPPNone}{}}
+\step{<0>144}{\case{\ResDiffPPExact}{}}
+\step{<0>145}{\case{\ResDiffPINone}{}}
+\step{<0>146}{\case{\ResDiffPIRem}{}}
+\step{<0>147}{\case{\ResDiffIPNone}{}}
+\step{<0>148}{\case{\ResDiffIPMore}{}}
+\step{<0>149}{\case{\ResDiffIPLast}{}}
+\step{<0>150}{\case{\ResDiffIINone}{}}
+\step{<0>151}{\case{\ResDiffIIEq}{}}
+\step{<0>152}{\case{\ResDiffIILt}{}}
+\step{<0>153}{\case{\ResCombPI}{}}
+\step{<0>154}{\case{\ReqRej}{}}
+\step{<0>155}{\case{\ReqAccClean}{}}
+\step{<0>156}{\case{\ReqAccRem}{}}
+\step{<0>157}{\case{\ReqAccMore}{}}
+\step{<0>158}{\case{\ReqWfPred}{}}
+\step{<0>159}{\case{\ReqWfIPred}{}}
+\step{<0>160}{\case{\IfAcc}{}}
+\step{<0>161}{\case{\IfRej}{}}
+%\step{<0>162}{\case{\OargEmpty}{}}
+\step{<0>163}{\case{\OargReturn}{}}
+\step{<0>164}{\case{\OargPred}{}}
+\step{<0>165}{\case{\OargIPred}{}}
+\step{<0>168}{\case{\OargAssert}{}}
+\step{<0>169}{\case{\OargIfTrue}{}}
+\step{<0>170}{\case{\OargIfFalse}{}}
+%\step{<0>170}{\case{\OargIfUndet}{}}
+\step{<0>170}{\case{\OargTake}{}}
+\step{<0>171}{\case{\ElabActionCreate}{}}
+\step{<0>172}{\case{\ElabActionLoad}{}}
+\step{<0>173}{\case{\ElabActionStore}{}}
+\step{<0>174}{\case{\ElabActionKillStatic}{}}
+\step{<0>175}{\case{\ElabMemopRest}{}}
+\step{<0>176}{\case{\ElabSpineEmpty}{}}
+\step{<0>177}{\case{\ElabSpineComp}{}}
+\step{<0>178}{\case{\ElabSpineTake}{}}
+\step{<0>181}{\case{\ElabSpinePhi}{}}
+\step{<0>182}{\case{\ElabExprPure}{}}
+\step{<0>183}{\case{\ElabExprAction}{}}
+\step{<0>184}{\case{\ElabExprMemop}{}}
+\step{<0>185}{\case{\ElabExprCCall}{}}
+\step{<0>186}{\case{\ElabExprProc}{}}
+\step{<0>187}{\case{\ElabExprFold}{}}
+\step{<0>188}{\case{\ElabExprUnfold}{}}
+\step{<0>189}{\case{\ElabResPatEmpty}{}}
+\step{<0>190}{\case{\ElabResPatPhi}{}}
+\step{<0>191}{\case{\ElabResPatIfTrue}{}}
+\step{<0>192}{\case{\ElabResPatIfFalse}{}}
+\step{<0>193}{\case{\ElabResPatVar}{}}
+\step{<0>194}{\case{\ElabResPatSepConj}{}}
+\step{<0>195}{\case{\ElabResPatPack}{}}
+\step{<0>196}{\case{\ElabRetPatI}{}}
+\step{<0>197}{\case{\ElabRetPatRes}{}}
+\step{<0>198}{\case{\ElabRetPatLog}{}}
+\step{<0>199}{\case{\ElabSimpCtxEmpty}{}}
+\step{<0>200}{\case{\ElabSimpCtxSimp}{}}
+\step{<0>201}{\case{\ElabSimpCtxSkip}{}}
+\step{<0>202}{\case{\ElabStmtRetT}{}}
+\step{<0>203}{\case{\ElabStmtPure}{}}
+\step{<0>204}{\case{\ElabStmtLet}{}}
+\step{<0>205}{\case{\ElabStmtAnnot}{}}
+\step{<0>206}{\case{\ElabStmtIf}{}}
+\step{<0>207}{\case{\ElabStmtCase}{}}
+\step{<0>208}{\case{\ElabStmtRun}{}}
+
+% Operational
+\step{<0>209}{\case{\SubsSMTAlloc}{}}
+\step{<0>210}{\case{\SubsPatValueWild}{}}
+\step{<0>211}{\case{\SubsPatValueSym}{}}
+\step{<0>212}{\case{\SubsPatValueNil}{}}
+\step{<0>213}{\case{\SubsPatValueCons}{}}
+\step{<0>214}{\case{\SubsPatValueTuple}{}}
+\step{<0>215}{\case{\SubsPatValueArray}{}}
+\step{<0>216}{\case{\SubsPatResEmp}{}}
+\step{<0>217}{\case{\SubsPatResPhi}{}}
+\step{<0>218}{\case{\SubsPatResVar}{}}
+\step{<0>219}{\case{\SubsPatResPair}{}}
+\step{<0>220}{\case{\SubsPatResPack}{}}
+\step{<0>221}{\case{\SubsPatResFold}{}}
+\step{<0>222}{\case{\SubsPatRetEmpty}{}}
+\step{<0>223}{\case{\SubsPatRetComp}{}}
+\step{<0>224}{\case{\SubsPatRetLog}{}}
+\step{<0>225}{\case{\SubsPatRetRes}{}}
+\step{<0>226}{\case{\SubsSpineEmpty}{}}
+\step{<0>227}{\case{\SubsSpineComp}{}}
+\step{<0>228}{\case{\SubsSpineLog}{}}
+\step{<0>229}{\case{\SubsSpineRes}{}}
+\step{<0>230}{\case{\SubsSpinePhi}{}}
+\step{<0>231}{\case{\OpPExprPVal}{}}
+\step{<0>232}{\case{\OpPExprCtorIvXOR}{}}
+\step{<0>233}{\case{\OpPExprArrayShift}{}}
+\step{<0>234}{\case{\OpPExprMemberShift}{}}
+\step{<0>235}{\case{\OpPExprPtrEq}{}}
+\step{<0>236}{\case{\OpPExprNotTrue}{}}
+\step{<0>237}{\case{\OpPExprNotFalse}{}}
+\step{<0>238}{\case{\OpPExprArithBinop}{}}
+\step{<0>239}{\case{\OpPExprRelBinop}{}}
+\step{<0>240}{\case{\OpPExprBoolBinop}{}}
+\step{<0>241}{\case{\OpPExprAssertUndef}{}}
+\step{<0>242}{\case{\OpPExprBoolToIntegerTrue}{}}
+\step{<0>243}{\case{\OpPExprBoolToIntegerFalse}{}}
+\step{<0>244}{\case{\OpPExprWrapI}{}}
+\step{<0>245}{\case{\OpPExprCall}{}}
+\step{<0>246}{\case{\OpPStmtPVal}{}}
+\step{<0>247}{\case{\OpPStmtPExpr}{}}
+\step{<0>248}{\case{\OpPStmtLet}{}}
+\step{<0>249}{\case{\OpPStmtIfTrue}{}}
+\step{<0>250}{\case{\OpPStmtIfFalse}{}}
+\step{<0>251}{\case{\OpPStmtCase}{}}
+\step{<0>252}{\case{\OpPredOpsIterate}{}}
+\step{<0>253}{\case{\OpPredOpsCongeal}{}}
+\step{<0>254}{\case{\OpPredOpsExplode}{}}
+\step{<0>255}{\case{\OpPredOpsImplode}{}}
+\step{<0>256}{\case{\OpPredOpsBreak}{}}
+\step{<0>257}{\case{\OpPredOpsGlue}{}}
+\step{<0>258}{\case{\OpPredOpsInj}{}}
+\step{<0>259}{\case{\OpPredOpsChop}{}}
+\step{<0>260}{\case{\OpFootprintEmp}{}}
+\step{<0>261}{\case{\OpFootprintTerm}{}}
+\step{<0>262}{\case{\OpFootprintPred}{}}
+\step{<0>263}{\case{\OpFootprintIPred}{}}
+\step{<0>264}{\case{\OpFootprintSepPair}{}}
+\step{<0>265}{\case{\OpFootprintPack}{}}
+\step{<0>266}{\case{\OpResTVal}{}}
+\step{<0>267}{\case{\OpResTSepPair}{}}
+\step{<0>268}{\case{\OpResTPredOps}{}}
+\step{<0>269}{\case{\OpResTFold}{}}
+\step{<0>270}{\case{\OpResTPack}{}}
+\step{<0>271}{\case{\OpActionCreate}{}}
+\step{<0>272}{\case{\OpActionLoad}{}}
+\step{<0>273}{\case{\OpActionStore}{}}
+\step{<0>274}{\case{\OpActionKillStatic}{}}
+\step{<0>275}{\case{\OpMemopRelBinop}{}}
+\step{<0>276}{\case{\OpMemopPtrDiffArr}{}}
+\step{<0>277}{\case{\OpMemopPtrDiff}{}}
+\step{<0>278}{\case{\OpMemopIntFromPtr}{}}
+\step{<0>279}{\case{\OpMemopPtrFromInt}{}}
+\step{<0>280}{\case{\OpMemopPtrValidForDeref}{}}
+\step{<0>281}{\case{\OpMemopPtrWellAligned}{}}
+\step{<0>282}{\case{\OpMemopPtrArrayShift}{}}
+\step{<0>283}{\case{\OpExprPure}{}}
+\step{<0>284}{\case{\OpExprAction}{}}
+\step{<0>285}{\case{\OpExprMemop}{}}
+\step{<0>286}{\case{\OpExprCCall}{}}
+\step{<0>287}{\case{\OpExprProc}{}}
+\step{<0>288}{\case{\OpStmtPurePVal}{}}
+\step{<0>289}{\case{\OpStmtPurePStmt}{}}
+\step{<0>290}{\case{\OpStmtRetT}{}}
+\step{<0>291}{\case{\OpStmtExpr}{}}
+\step{<0>292}{\case{\OpStmtLet}{}}
+\step{<0>293}{\case{\OpStmtIfTrue}{}}
+\step{<0>294}{\case{\OpStmtIfFalse}{}}
+\step{<0>295}{\case{\OpStmtCase}{}}
+\step{<0>296}{\case{\OpStmtRun}{}}
+
+% Misc
+\step{<0>297}{\case{\WeakEmpty}{}}
+\step{<0>298}{\case{\WeakConsComp}{}}
+\step{<0>299}{\case{\WeakConsLog}{}}
+\step{<0>300}{\case{\WeakConsPhi}{}}
+\step{<0>301}{\case{\WeakConsRes}{}}
+\step{<0>302}{\case{\WeakSkipComp}{}}
+\step{<0>303}{\case{\WeakSkipLog}{}}
+\step{<0>304}{\case{\WeakSkipPhi}{}}
+\step{<0>305}{\case{\SubsChkEmpty}{}}
+\step{<0>306}{\case{\SubsChkComp}{}}
+\step{<0>307}{\case{\SubsChkLog}{}}
+\step{<0>308}{\case{\SubsChkRes}{}}
+\step{<0>309}{\case{\SubsChkConcat}{}}
+\step{<0>310}{\case{\HeapEmpty}{}}
+\step{<0>311}{\case{\HeapPredOwned}{}}
+\step{<0>312}{\case{\HeapPredOther}{}}
+\step{<0>313}{\case{\HeapIPredOwned}{}}
+\step{<0>314}{\case{\HeapIPredOther}{}}
+\step{<0>315}{\case{\HeapConcat}{}}
+\step{<0>316}{\case{\HeapTy}{}}
+\step{<0>317}{\case{\AllocTy}{}}
+\step{<0>318}{\case{\StateTy}{}}
+\step{<0>319}{\case{\RelResEmp}{}}
+\step{<0>320}{\case{\RelResPhi}{}}
+\step{<0>321}{\case{\RelResIf}{}}
+\step{<0>322}{\case{\RelResExists}{}}
+\step{<0>323}{\case{\RelResSepConj}{}}
+\step{<0>324}{\case{\RelResPred}{}}
+\step{<0>325}{\case{\RelResIPred}{}}
+\step{<0>326}{\case{\RelRetI}{}}
+\step{<0>327}{\case{\RelRetComp}{}}
+\step{<0>328}{\case{\RelRetLog}{}}
+\step{<0>329}{\case{\RelRetPhi}{}}
+\step{<0>330}{\case{\RelRetRes}{}}
+\step{<0>331}{\case{\UserSpecToResNone}{}}
+\step{<0>332}{\case{\UserSpecToResReturn}{}}
+\step{<0>333}{\case{\UserSpecToResPred}{}}
+\step{<0>334}{\case{\UserSpecToResIPred}{}}
+\step{<0>335}{\case{\UserSpecToResLet}{}}
+\step{<0>336}{\case{\UserSpecToResAssert}{}}
+\step{<0>337}{\case{\UserSpecToResIf}{}}
+\step{<0>338}{\case{\UserSpecToResTake}{}}
+\step{<0>339}{\case{\UserSpecToRetNone}{}}
+\step{<0>340}{\case{\UserSpecToRetLet}{}}
+\step{<0>341}{\case{\UserSpecToRetAssert}{}}
+\step{<0>342}{\case{\UserSpecToRetTake}{}}
+\step{<0>343}{\case{\UserSpecToArgNone}{}}
+\step{<0>344}{\case{\UserSpecToArgLet}{}}
+\step{<0>345}{\case{\UserSpecToArgAssert}{}}
+\step{<0>346}{\case{\UserSpecToArgTake}{}}
+\step{<0>347}{\case{\UserFuncToFun}{}}
+\step{<0>349}{\case{\UserPredToRes}{}}
+\step{<0>350}{\case{\SatHeapEmp}{}}
+\step{<0>351}{\case{\SatHeapAlloc}{}}
+\step{<0>352}{\case{\SatHeapOwned}{}}
+\step{<0>353}{\case{\SatHeapOwnedInit}{}}
+\step{<0>354}{\case{\SatHeapPred}{}}
+\step{<0>355}{\case{\SatHeapIPred}{}}
+\step{<0>356}{\case{\SatHeapConcat}{}}
+\step{<0>357}{\case{\SatStateDef}{}}
+\step{<0>357}{\case{\MiniCondResEmp}{}}
+\step{<0>357}{\case{\MiniCondResIdSpec}{}}
+\step{<0>357}{\case{\MiniCondResSpec}{}}
+\step{<0>357}{\case{\MiniResEmp}{}}
+\step{<0>357}{\case{\MiniResOwned}{}}
+\step{<0>357}{\case{\MiniResCondTrue}{}}
+\step{<0>357}{\case{\MiniResCondFalse}{}}
+\step{<0>357}{\case{\MiniResCondUndet}{}}
+\step{<0>357}{\case{\MiniSimpResDone}{}}
+\step{<0>357}{\case{\MiniSimpResRerun}{}}
+\step{<0>357}{\case{\MiniProveVal}{}}
+\step{<0>357}{\case{\MiniProveOwned}{}}
+\step{<0>357}{\case{\MiniProvePred}{}}
+\step{<0>357}{\case{\MiniProveAssert}{}}
+\step{<0>357}{\case{\MiniProveLet}{}}
+\step{<0>357}{\case{\MiniProveTake}{}}
+\step{<0>357}{\case{\MiniProveIfTrue}{}}
+\step{<0>357}{\case{\MiniProveIfFalse}{}}
+\step{<0>357}{\case{\MiniProveRetIf}{}}
+\step{<0>357}{\case{\MiniProveNoRetIf}{}}
+\step{<0>358}{\case{\MiniAssumeValue}{}}
+\step{<0>360}{\case{\MiniAssumeAssert}{}}
+\step{<0>361}{\case{\MiniAssumeLet}{}}
+\step{<0>362}{\case{\MiniAssumeOwned}{}}
+\step{<0>363}{\case{\MiniAssumePred}{}}
+\step{<0>364}{\case{\MiniAssumeTake}{}}
+\step{<0>365}{\case{\MiniAssumeIfTrue}{}}
+\step{<0>366}{\case{\MiniAssumeIfFalse}{}}
+\step{<0>367}{\case{\MiniAssumeRetIf}{}}
+\step{<0>368}{\case{\MiniAssumeNoRetIf}{}}
+\step{<0>369}{\case{\MiniLveConst}{}}
+\step{<0>370}{\case{\MiniLveVar}{}}
+\step{<0>371}{\case{\MiniLveDeref}{}}
+\step{<0>372}{\case{\MiniExprConst}{}}
+\step{<0>373}{\case{\MiniExprVar}{}}
+\step{<0>374}{\case{\MiniExprAddr}{}}
+\step{<0>375}{\case{\MiniExprNot}{}}
+\step{<0>376}{\case{\MiniExprDeref}{}}
+\step{<0>377}{\case{\MiniExprBinop}{}}
+\step{<0>378}{\case{\MiniExprAssign}{}}
+\step{<0>379}{\case{\MiniExprIf}{}}
+\step{<0>380}{\case{\MiniExprSeq}{}}
+\step{<0>381}{\case{\MiniExprCall}{}}
+\step{<0>382}{\case{\MiniExprBlock}{}}
+\step{<0>383}{\case{\MiniExprReturn}{}}
+

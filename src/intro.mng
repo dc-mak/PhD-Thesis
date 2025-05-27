@@ -1,0 +1,991 @@
+% vim: ft=tex
+\chapter{Introduction}\label{chap:intro}
+
+\emph{“Our goal as computer scientist today, is to design the legacy systems of tomorrow.”}
+\vspace{-1.5em}
+\begin{flushright}
+  \sidecite[][Timothy G.\ Griffin]{griffin2017legacy}
+\end{flushright}
+
+\margintoc%
+
+\section{Context}
+
+On the 1\nth{9} of July, 2024, 8.5 million Windows computers inside banks, airlines, TV
+broadcasters, supermarkets and many other businesses suffered the infamous `Blue Screen of
+Death' after (ironically) a faulty security update from cybersecurity
+provider CrowdStrike was released~\sidecite[4\baselineskip]{verge2024crowdstrike}.
+
+Even though it took only 78 minutes between when the issue was identified and
+rectified, the ensuing chaos and disruption lasted hours if not days, as getting
+the fix on affected machines and restarting complex systems was very difficult.
+Although not as important as the human cost, the total financial cost in terms
+of downtime for businesses was estimated by one insurer to be between 5 and 9
+billion USD~\sidecite{fitch2024crowdstrike}.
+
+To explain what went wrong, I need to outline some key concepts. An
+\intro[OS]{operating system} (OS), such as iOS, macOS, Windows or Ubuntu, is
+the ``software you don't care about which runs the software you do care
+about'', known as applications (`apps') or programs, such as a timer, a web
+browser or a spreadsheet editor. It provides services to software, in a way
+that abstracts from the details of the particular kind of hardware, for
+example, the ability to respond to click from a mouse, or a tap from a touch
+screen, or to play a sound via headphones or speakers. At the heart of the
+operating system is the \intro[OS]{kernel} (for example Linux, or Darwin for
+Apple systems); it is the lowest level of abstraction within the operating
+system. It uses the hardware via \emph{drivers} to provide key services like
+deciding what gets to run (scheduling), and how much of the hardware it gets to
+use (resource management), and protecting itself and other code from each other
+(isolation).
+
+As such, kernels are critical bits of a sometimes precarious tower of
+abstractions, since they need to be both \emph{fast} \textemdash{} since any
+latency here compounds throughout the whole computer \textemdash{} and
+\emph{secure} \textemdash{} since any vulnerability here could crash or leak
+data throughout the whole system. They are \emph{by necessity}, low-level
+software, and need to be written in programming languages which expose lots of
+control to the programmer, known as \intro{systems programming languages}.
+However, more human control means more chance for human error. Historically,
+this did not pose a multi-million computer, multi-billion dollar risk: both
+hardware and software were much rarer, simpler and more trusted.
+
+Cyber-security providers like CrowdStrike are written in \kl{systems
+programming languages} and run at the kernel level\sidenote{A technically
+questionable design choice, likely motivated by other factors.} to scan and
+protect computers at a fundamental level, but this great power comes with great
+responsibility, since, as we witnessed, the risks of an error is magnified
+greatly.
+
+Whilst most of the commentary, including the root cause
+analysis~\sidecite{rca2024crowdstrike}, emphasised the need for better testing
+and better deployment strategies, both of which are eminently sensible,
+\emph{what} to test, and more importantly \emph{what's missing} in the tests
+are only sufficiently clear with hindsight.
+
+\begin{quote}
+\emph{%
+``The new IPC Template Type defined 21 input parameter fields, but the
+integration code \ldots supplied only 20 input values to match against. This
+\ldots evaded multiple layers of build validation and testing, as it was not
+discovered during the sensor release testing process, the Template Type (using
+a test Template Instance) stress testing or the first several successful
+deployments of IPC Template Instances in the field.''
+}
+\end{quote}
+
+Aside from testing, Microsoft is also reported to be discussing restricting
+access to the kernel with security vendors, and generally designing it to be
+more robust to rogue drivers and updates~\sidecite{verge2024microsoft}.
+
+To me, the situation seems akin to building a wall with Swiss cheese, and when
+something gets through, saying `we should have had more layers' or `layers
+designed this way'. Surely one might wonder if we can consider a less porous
+material?
+
+So far, the answer has been no: methods for improving the reliability of such
+software are \emph{costly}, mainly in terms of expertise, but also in term of
+time and effort, with little scope for critical \emph{ongoing} maintenance. And
+whilst the exact contributions of this thesis would not have prevented
+CrowdStrike (even hinting at that would be temeritous), they are extremely
+relevant to the general domain.
+
+This thesis argues that the answer is now a \emph{qualified yes}. A `less
+porous material' is possible with what we know now, and not too complex
+conceptually (though novel in its application). The main challenges come due to
+\emph{scale}. Whilst the cost of the technology is still too high for mass
+deployment, the trend is downward and should continue that way with sustained
+effort.
+
+
+\section{Thesis statement}
+
+In this thesis, I will argue that building a verification tool for C, suitable
+for handling low-level systems programming idioms, is two parts engineering,
+and one part theory. Little of the theory is novel or complex, but its
+application at scale present new challenges and insights. The proportions do
+not correspond to three different topics, which fit neatly in either bucket.
+Rather, each conceptual part of this thesis has varying mix of those
+categories, which I will explain later in \nameref{sec:contributions}.
+
+To put those parts into context, I first need to explain the role and quirks of
+the venerable C programming language, and the relevant developments in
+verification theory.
+
+\section{The C programming language}\label{sec:c-lang}
+
+More than fifty years after its introduction, and despite competition from
+C++~\sidecite{isocpp1998} and Rust~\sidecite{rust}, C remains in common use. Part
+of this is simply legacy: a lot of old and useful software is written in C.
+However, most of this is the success C had in meeting its initial design goals:
+
+\begin{itemize}
+    \item \textbf{Portability}. C was designed to have a relatively small set
+        of defined behaviours, leaving several key choices as
+        \intro[UB]{undefined behaviour}s (UBs). This allows C programs to
+        exploit the advantages of several different kinds of hardware to run
+        quickly.
+    \item \textbf{Simplicity}. C was designed to be concise and simple to
+        compile (in one pass if need be), so that it was relatively
+        straightforward to write C compilers to support new hardware.
+    \item \textbf{Proximity to hardware}. C was designed to be a `portable
+        assembly', close to hardware, so that the programmer had precise
+        control over the resources used (especially when CPUs were much slower
+        and memory far more constrained).
+\end{itemize}
+
+As time went on, hardware became faster, by becoming more complex and so C's
+proximity to it waned~\sidecite{chisnall2018c}. However, it continued to be
+used in performance critical code such as the Linux \kl{kernel}. Portability,
+assisted by a large set of \kl{UB}, became avenues for optimisations. Under
+pressure for faster code, simplicity of compilation gave way to complex alias
+analysis and pointer provenance reasoning to optimise code.
+
+\begin{marginfigure}
+    \raggedleft%
+    \cfile{code/pointer_from_integer_1i.c}
+    \caption{A modified version of examples
+        pointer\_from\_integer\_\{1i,1ie\}.c.}\label{fig:ptr-from-int-ub}
+\end{marginfigure}%
+
+\cref{fig:ptr-from-int-ub} shows a slightly contrived example (derived
+from~\sidetextcite{memarian2019exploring}), which nevertheless illustrates the
+alias assumptions at play here. It guesses that \cinline{ADDRESS_PFI_1I} is the
+address of a variable local to function \cinline{f}, and passes that guess in as
+an argument \cinline{f(j)}. Inside the function, it declares a local variable
+\cinline{i} and then creates a pointer \cninline{p} from the argument. If this
+new pointer is equal to the address of the local variable, it writes to that
+location (\cinline{if (p == &i) *p=7;}).  The value of the local variable is
+then printed.
+
+Based on this, assuming the address is guessed correctly, the reader will wish
+to ponder two questions: Does this program have undefined behaviour, and if so,
+where and why?  What will it print?
+
+If one is under the impression that C pointers and integers are interchangeable,
+one may be surprised to learn (a) the program has undefined behaviour, because
+the pointer \cinline{p} is not constructed in a ``reasonable'' way
+(\nameref{chap:mem-model-explained}) (b) it can print 5, because the compiler
+may assume that \cninline{p} cannot alias the local variable \cinline{i}, and
+thus perform constant propagation over the assignment.
+
+We can thus conclude that to optimise pointer code, compilers assume that
+pointers in C are \emph{not} completely concrete, and are only constructed in
+``reasonable'' ways. We also know that to support low-level idioms of
+\emph{computing} with pointers (incrementing, offsetting, casting to and from
+integers), compilers assume that pointers are \emph{not} completely abstract.
+Compilers must also be conservative in such assumptions. This is evident by the
+surprising fact that \emph{despite a lack of dataflow between} \cinline{k} and
+\cinline{j}, uncommenting line 6 would make the program defined and print 7.
+
+Stakeholders have attempted to resolve questions of what a compiler may assume
+by the formation of and continual updates to the \kl{ISO} standard of
+C~\cite{isoC1990}, however, the resolutions can be complex and subtle. This is
+because of the different preferences for performance, control and language
+simplicity, amongst application programmers, systems programmers and compiler
+writers. To add to the confusion, as a prose English document, the standard has
+some irreducible ambiguities, and does not necessarily reflect \intro{de facto}
+C, as is it used in practice, so even memorising the standard would not be
+enough to safeguard against unexpected language quirks.
+
+Given this state of affairs, the \intro{Cerberus}
+project~\sidecite{memarian2022cerberus} aims to provide a formally defined,
+executable and \emph{empirically validated} semantics of C, both ISO and \kl{de
+facto}. We shall explain Cerberus' particular advantages over other tools in
+\cref{sec:cerberus-core}. For now, it suffices to say that Cerberus works by
+\emph{\kl{compositional}ly} elaborating C into a first-order functional
+language (known as `\intro{Core}') with a few purpose-built constructs. It
+makes explicit many implicit quirks of C such as integer promotion, \kl{UB} and
+loose evaluation order.
+
+The \intro{compositional} nature allows a user to see how the
+elaborated \kl{Core} relates to the C a user wrote. I will use a function which
+appends two linked lists of integers as a running example.
+
+\begin{marginfigure}
+    \centering
+    \cfile[breaklines]{code/append_plain.c}
+    \caption{Linked integer list append in C.}\label{fig:append-c}
+\end{marginfigure}%
+
+In this (admittedly unidiomatic) example, \cinline{NULL} pointers represent
+empty lists, and so the function returns \cinline{ys} if \cinline{xs} is empty,
+otherwise it recurses on \cinline{xs->tail} to get the new tail
+\cinline{new_tail} and sets \cinline{xs->tail} to point to that,  returning the
+result as \cinline{xs}.
+
+This is elaborated into \kl{Core} (\cref{fig:append-core}). All the
+subtleties and sources of \kl{UB} in C are made explicit, such as signed integer over/underflow,
+use-after-free, leaking, and double-free memory management errors,
+\kl[OOB]{out-of-bounds} indexing in arrays, and dereferencing a \cinline{NULL}
+pointer. These form the contract between the compiler and the programmer, and
+violations can result in difficult to debug and costly mistakes. From the
+perspective of the compiler, they are \emph{assumptions about the program and
+its execution}; they are not things one
+can check by running the program, and should ideally be \emph{proven}
+absent.\sidenote{There are tools which can instrument code
+to find some classes of assumption violations, CN included.} To aid programmers in
+proving such \kl{UB} absent, we must understand how we can prove things about
+imperative, memory manipulating programs.
+
+\section{Verification with Separation Logic}\label{sec:sep-logic-intro}
+
+The key ideas around proving properties about imperative programs originate all
+the way back towards the end of the 1960s, with~\citeauthor{floyd1993assigning}
+and~\citeauthor{hoare1969axiomatic}. The basic setup is a triple of
+$\{P\} \;C \; \{Q\}$, where $P$ is a \intro{precondition}, a predicate describing the
+intial state of the program; $C$ is the program which executes; and $Q$ is
+\intro{postcondition}, a predicate describing the final state of the program.
+Combined with a set of inference rules to construct proofs from smaller parts
+of $C$, this gave programmers a way to do pen-and-paper proofs about the
+behaviour of imperative programs.
+
+This approach works well enough, up until the programming language introduces
+support for potentially aliasing pointers, at which it becomes
+unfeasible.\sidenote{This and the following two paragraphs rely heavily on the
+explanation of \textcite{pichon2017hlogmodc}.} In short, the issue is that
+whilst assertions in the specification language might \emph{syntactically}
+refer to different locations, \emph{semantically} those locations may alias,
+thus breaking the rule of constancy (\cref{fig:rule-of-constancy}). This rule
+is critical for \intro{modular} verification for programs because we can use it
+to glue together two separately verified programs, and compose them (e.g.\
+sequentially) so long as they refer to separate program variables.
+
+\begin{marginfigure}
+  \begin{mathpar}
+      \inferrule{
+          \vdash{} \{P\} \; C \; \{Q\}  \\ \mod{(C)} \cap{} \mathit{FV} (R) = \emptyset{}
+      }{
+          \vdash{} \{ P \wedge{} R \} \; C \; \{ Q \wedge{} R \}}
+  \end{mathpar}
+  \caption{The rule of constancy, where $\mathrm{FV}$ refers to the free
+      variables of an assertion and $\mod{}$ is a syntactic
+      over-approximation to the set of program variables a program might
+      modify. It states that \kl{precondition}s which do not refer to mutated
+      program variables remain true that program terminates.}\label{fig:rule-of-constancy}
+\end{marginfigure}
+
+To prevent this, we would have to use the following rule, which requires the
+pre- and postconditions to mention $E_3$ and $E_4$ even though they are not
+mentioned syntactically in $ [ E_1 ] \mathbin{{:}{=}} E_2$, so that the
+non-aliasing condition $E_1 \neq E_3$ can be stated, and the morally disjoint
+fact $E_3 \hookrightarrow{} E_4$ is preserved into the postcondition.%
+\[
+    \inferrule{}{\vdash{}
+        \{ \exists{} v.\ E_1 \hookrightarrow{} v \wedge{} E_1 \neq E_3 \wedge{} E_3 \hookrightarrow{} E_4 \}
+        \; [ E_1 ] \mathbin{{:}{=}} E_2 \;
+        \{ E_1 \hookrightarrow{} E_2 \wedge{} E_3 \hookrightarrow{} E_4 \} }
+\]
+
+This scales poorly: composing one program with $n$ variables and up to $O(n^2)$
+no-aliasing conditions, with another program of $m$ variables and up to
+$O(m^2)$ leads to new assertions with up to ${O(n + m)}^2$ conditions. The
+problem is bad enough that the design of the verification-oriented Euclid
+programming language put in place several restrictions to prevent aliasing in
+the language, unlike its main influence, Pascal, which permitted
+it~\sidecite{popek1977notes}.
+
+The key breakthrough came with the arrival of separation logic by 
+Reynolds, O'Hearn, Yang and Ishtiaq~\sidecite{reynolds2002separation,ishtiaq2001BI,o2001local}.
+Specifically, the introduction of the \intro{separating conjunction}, $\astRef$, allows us to
+state a version of the rule of constancy which is sound, known as a the
+\intro{frame rule} (\cref{fig:frame-rule}). Not only did this enable the
+practical pen-and-paper verification of programs with pointers, aliasing, and
+dynamic memory management, it was very soon extended to aid in reasoning about
+several types of concurrency and is now mechanised in a very general way in
+proof assistants~\cite{jung2018iris, appel2011verified}, enabling complex
+proofs about large and subtle systems.
+
+\begin{marginfigure}
+  \begin{mathpar}
+      \inferrule{
+          \vdash{} \{P\} \; C \; \{Q\}  \\ \mod{(C)} \cap{} \mathit{FV} (R) = \emptyset{}
+      }{
+          \vdash{} \{ P \ast{} R \} \; C \; \{ Q \ast{} R \}}
+  \end{mathpar}
+  \caption{The frame rule. We still need to be careful about non-intereference
+      about program variables on the stack, so we retain $\mod{(C)} \cap{}
+      \mathrm{FV}(R) = \emptyset{}$, but locations on the heap are ensured
+      disjoint by the definition of $\astRef$. The name comes from the
+      \emph{frame problem} in artificial intelligence, where using first-order
+      logic to represent the world requires many axioms simply to state that
+      things do not change arbitrarily.}\label{fig:frame-rule}
+\end{marginfigure}
+
+To conclude this section, I will continue the example of appending to a list,
+but this time in separation logic, in a simple imperative language. It says
+that expression $\mathsf{i}$ is either $\mathsf{NULL}$ and thus represents an
+empty list in memory, or there exists an integer $v$ and list $l'$ and location
+$\mathsf{j}$ such that $l = v {:}{:} l'$, $\mathsf{i}$ points to $v$, its
+adjacent cell $\mathsf{i}+1$ points to $\mathsf{j}$ and the list predicate
+holds recursively for values $\mathsf{j}$ and $l'$. In this way, it relates the
+contents of linked heaps cells, laid out in a particular format, to a
+mathematical list \intro{ghost} value, which exists only in the specification
+of the program but not in the runtime.
+
+\begin{marginfigure}
+    \centering
+    \begin{align*}
+        \mathrm{list} &(\mathsf{p}, l) \mathrel{{=}^\mathrm{def}} \\
+                      &\mathsf{emp} \astRef{} (\mathsf{p} = \mathsf{NULL} \wedge{} l = []) \\
+                      &\vee{} \exists{} \; {head}, \; {tl}, \mathsf{p\_tail}.\\
+                      &\qquad (\mathsf{p} \mapsto{} {head}) \\
+                      &\qquad \astRef{} (\mathsf{p} + 1 \mapsto{} \mathsf{p\_tail}) \\
+                      &\qquad \astRef{} \mathrm{list} (\mathsf{p\_tail}, {tl}) \\
+                      &\qquad \astRef{} l = {head} {:}{:} {tl} \\
+    \end{align*}
+    \caption{Definition of a recursive list predicate in a simple separation
+        logic.}\label{fig:list-pred}
+\end{marginfigure}
+
+With the predicate in \cref{fig:list-pred}, we can write a proof sketch of a
+version of the list \mintinline{text}{append} program from \cref{fig:append-c},
+with intermediate assertions inserted (\cref{fig:append-annot}). Because the
+definition \mintinline{text}{append} is recursive, we annotate it with a pre-
+and postcondition, and prove that the implementation matches it (assuming it
+holds at structurally smaller values). The precondition states we start with
+two disjoint heaplets representing two \kl{ghost} lists,
+$\mathrm{list}(\mathsf{xs}, l_1)$ and $\mathrm{list}(\mathsf{ys}, l_2)$, and
+the postcondition says that the value returned by this function
+($\mathsf{ret}$) represents the concatenation ($@$) of the two logical lists
+from the input.
+
+Under the true-branch of the \mintinline{text}{if}, we have that $\mathsf{xs} =
+\mathsf{NULL}$ and so it represents the empty heap, meaning the return value
+and associated \kl{ghost} list is simply $\mathsf{ys}$ and $l_2$ respectively.
+Under the false-branch, because $\mathsf{xs} \neq \mathsf{NULL}$, we may
+assume we can unroll the definition of $\mathrm{list}$, before calling
+\mintinline{text}{append} recursively on the smaller
+$\mathrm{list}(\mathsf{xs}', l_1')$, which allows us to conclude
+$\mathrm{list}(\mathsf{new\_tail}, l_1' @ l2)$. Using the frame rule, the
+$\mathsf{xs} \mapsto v \astRef (\mathsf{xs} + 1) \mapsto \mathsf{xs}'$ remains
+unchanged and so we can fold these components into $\mathrm{list}(\mathsf{xs},
+l_1 @ l_2)$.
+
+\begin{marginfigure}
+    \inputminted[breaklines,mathescape,fontsize=\small]{py}{code/append_annot.py}
+    \caption{A separation logic proof sketch of a linked integer list
+        append.}\label{fig:append-annot}
+\end{marginfigure}
+
+Whilst very useful, and certainly a huge leap forward based on what was
+available before, this example also highlights the limitations of the
+traditional approach. It works over an idealised imperative language, suitable
+for simple proofs of algorithms and their implementations, and the link between
+this and the C implementation in \cref{fig:append-c} is based on trust. This
+issue persists with contemporary, mechanised frameworks for separation
+logic,~\sidecite{appelSF5,sammler2021refinedc,jacobs2011verifast}
+which use trust-based model of C, rather than an \emph{empirically validated}
+one.
+
+\section{CN:\ C, No bugs!}\label{sec:cn-intro}
+
+\intro{CN},\sidenote{`\kl{CN}' does not stand for anything; its name is a
+historical accident, though the backronym in the section title was suggested by
+Elizabeth Austell.} in its \intro{proof mode}\sidenote{There are other modes to
+\kl{CN}, most notably instrumentation and test generation, which I will mostly
+ignore.} is a verification tool whose aspirational goal is to lower the cost of
+C verification from a Rocq~\sidecite{CDT2024} programmer who knows separation
+logic to a systems programmer who knows
+Haskell~\sidecite{haskell}.\sidenote{This pithy wording is courtesy of Neel
+Krishnaswami.} It is designed to be used pre-existing C programs (so they are
+not written or structured in a way to be verified beforehand). Before I explain
+how it \emph{works}, I will first explain how it is \emph{used}.
+
+When given a C file, \kl{CN} ensures that (a) the input code is free of
+undefined behaviour and (b) correctly implements any specification written in
+\intro{annotations} in comments with an @ symbol \cinline{/*@..@*/}
+(so that they are first and foremost, for almost all C tools, a regular C
+comment). Importantly, for compositionality, performance (paralellisability),
+and ease of annotation,\sidenote{Annotations follow the structure/units of the
+program.} these are checked on a per function basis (\cref{sec:bidir-subtyping}).
+
+This means that even in the absence of annotations, code is being checked for
+undefined behaviour. Incrementing an unsigned integer is perfectly acceptable
+(\cref{fig:un-incr}) but incrementing a signed integer triggers an error message
+(\cref{fig:incr-broken}).
+
+\begin{marginfigure}
+    \centering
+    \cfile[breaklines]{code/unsigned_increment.c}
+    \caption{Unsigned integer increment in CN.}\label{fig:un-incr}
+\end{marginfigure}%
+
+\begin{marginfigure}
+    \centering
+    \cfile[breaklines,breakafter=\_]{code/increment_broken.c}
+    \caption{Failing signed integer increment in CN.}\label{fig:incr-broken}
+\end{marginfigure}%
+
+The wording of the error message is inherited from \kl{Cerberus}, and shows its
+origins as a formal, executable specification for \kl{ISO} and \kl{de facto}
+\kl{C}. In particular, it points to the relevant section of the standard which
+has been violated, and uses jargon (``exceptional condition'') to indicate that
+there are values of \cinline{x} for which executing this function would result
+in \kl{UB}. Because of the \intro{per function} checking, the violation is not
+guaranteed, but \emph{possible}. Specifically, it is considered an error
+because there exist values, which if used to call this function, would result
+in \kl{UB}. Phrased differently, it is the combination of the absence
+\kl{annotation}s constraining the input, \emph{with respect to} what the body
+of the function does with those inputs, which is erroneous.
+
+Admittedly, as we shall discuss in \cref{sec:error-msgs}, there is much room
+for improvement to take the language of the \kl{standards committee} and
+translate it into something suitable for mere mortals. Yet the source location
+and the \intro{state file} it points to is helpful. If \kl{proof mode} fails
+because \kl{CN} was not able to prove a constraint, it produces a
+\kl{counter-example} with values assigned (\cref{fig:incr-broken-counter-ex})
+internal representations of program variables (see \cref{sec:counter-ex}).
+
+\begin{marginfigure}
+    \centering
+    \includegraphics[width=\textwidth]{figures/increment_broken_state.png}
+    \caption{Counter example for increment\_broken.c.}\label{fig:incr-broken-counter-ex}
+\end{marginfigure}
+
+We can avoid this error by constraining the values of the input with a
+precondition annotation, as in \cref{fig:incr}. Here we see the keyword
+\cinline{requires} is used to introduce a pre-condition on the input.
+\cinline{MAXi32()} is an in-built function which represents the maximum value a
+signed 32-bit integer can represent. By constraining the input so that it is
+strictly less than the maximum value, the function is now guaranteed to have
+no \kl{UB} for all its inputs, no matter what the context. This is because
+whilst pre-conditions are \emph{assumed} inside the function, they are
+\emph{required} when calling it.
+
+\begin{marginfigure}
+    \centering
+    \cfile[breaklines]{code/increment.c}
+    \caption{Successful signed integer increment in CN.}\label{fig:incr}
+\end{marginfigure}
+
+\begin{marginfigure}
+    \ContinuedFloat*
+    \centering
+    \cfile[breaklines,lastline=8]{code/call_increment.c}
+    \caption{Calling a signed integer increment in CN.}\label{fig:call-incr}
+\end{marginfigure}
+
+\begin{marginfigure}
+    \ContinuedFloat{}
+    \centering
+    \cfile[breaklines,firstline=10]{code/call_increment.c}
+    \caption{Calling a signed integer increment in CN.}\label{fig:call-incr-fail}
+\end{marginfigure}
+
+This is demonstrated in \cref{fig:call-incr} and \cref{fig:call-incr-fail}. In
+the first, we see that from the constraint \cinline{y <=
+100i32},\sidenote{Integer literals are currently written with a type
+annotation, similar to Rust.} \kl{CN} deduces that \cinline[breaklines]{y <=
+MAXi32()}\sidenote{As I shall discuss in \cref{sec:bidir-subtyping,%
+chap:kernel-statics}, this is a \kl{subtyping} relation, and integrating it smoothly
+relies on \kl{bidirectional} type-checking.} and permits the call to
+\cinline{increment}. Conversely, for the second, \cinline{INT_MAX} does not
+meet that constraint, and so \kl{CN} raises an error.
+
+\begin{marginfigure}
+    \centering
+    \cfile[breaklines,firstline=4]{code/decrement_broken.c}
+    \caption{Failing to decrement the result of a signed integer increment in
+        CN.}\label{fig:decr-broken}
+\end{marginfigure}
+
+However, if we try to decrement the result of the successful call, \kl{CN}
+raises an error (\cref{fig:decr-broken}). This is because that \kl{CN} has no
+indication on the constraints of the return value (other than those deduced
+from its C type, namely that it fits within a signed 32-bit integer). To fix
+this, we need to provide a postcondition for the function which
+expresses additional constraints on the returned value (\cref{fig:decr}).
+
+\begin{marginfigure}
+    \centering
+    \cfile[breaklines]{code/decrement.c}
+    \caption{Successfully decrementing the result of a signed integer increment
+        in CN.}\label{fig:decr}
+\end{marginfigure}
+
+To specify pointer manipulating programs, I need to introduce some new syntax.
+Where in separation logic, we may say $p \mapsto v$ for arbitrary expressions
+$p$ and $v$, in \kl{CN}, we restrict it so that $v$ is always a variable, akin
+to $\exists{} v.\ p \mapsto v \wedge v = e$ for some expression $e$. For both
+usability and technical reasons explained later (\cref{sec:monadic-syntax}), we
+write this as \cninline{take v = Owned(p);}. % chktex 36
+
+\begin{marginfigure}
+    \centering
+    \cfile[breaklines]{code/owned_increment.c}
+    \caption{Incrementing a signed integer via a pointer in CN.}\label{fig:owned-incr}
+\end{marginfigure}
+
+This generalises to work with arrays, with syntax of the form
+\cninline[breaklines,breakafter=\{=()]{take arr = each (u64 i; .. ) { Owned(p) };}, % chktex 26 chktex 37 chktex 36
+called \intro{quantified} or \intro{iterated} resources, for the pre- and
+postconditions of the function. \kl{CN} can also handle (in a limited, careful
+fashion to preserve decidability) \intro{quantified constraints}, such as the
+one in the postcondition of \cref{fig:owned-array}, to express constraints
+about the elements of an array. Within the \cninline{Owned}, we express the
+location with \cninline{array_shift(p,i)}, which is the specification language % chktex 36
+equivalent of pointer arithmetic in \cinline{&p[i]}. Within the body of the
+function, we use a \intro{CN statement}, \cninline{extract Owned<int>, 0u64;},
+which acts a proof hint to \kl{CN} to tell which index of the \kl{iterated}
+resource we wish to read or write from.
+
+\begin{figure*}[tp]
+    \centering
+    \begin{minipage}{1.5\textwidth}
+        \cfile[breaklines]{code/owned_array.c}
+    \end{minipage}
+    \caption{Summing up a two-element array of unsigned integers in
+        CN.}\label{fig:owned-array}
+\end{figure*}
+
+\kl{Iterated} resources are powerful because they supports random access
+(unlike a recursive predicate over an array, which would fix the order of
+traversal).~\cref{fig:init-arr-rev} shows how \kl{CN} can transform an array of
+uninitialised values (\cninline{Block}s) from the precondition, into an array
+of initialised values (\cninline{Owned}s) in the postcondition, by looping over
+it \emph{in reverse}. All loops in \kl{CN} must be annotated with \intro{loop
+invariants}, which are mostly as expected with exception of the verbose and
+confusing \cninline|{_} unchanged|
+syntax,\sidenote{\url{https://github.com/rems-project/cerberus/issues/443}}
+which tells CN that the loop does not mutate the function arguments.
+
+Within the loop, writing to a \cninline{Block} (or an \cninline{Owned}) transforms
+it into a new \cninline{Owned}. We need two \cninline{extract}s to tell CN we
+wish to first take a \cninline{Block} out of \cinline{Uninit} and then move
+it into the \cninline{Init}.
+
+\begin{figure*}[tp]
+    \centering
+    \begin{minipage}{1.5\textwidth}
+        \cfile{code/init_array_reverse.c}
+    \end{minipage}
+    \caption{Initialising an array of characters in reverse in
+        CN.}\label{fig:init-arr-rev}
+\end{figure*}
+
+Lastly, in the same way that separation logic predicates use $\mapsto$ as a
+building block to express more complex relations between heaps and \kl{ghost}
+values, \kl{CN} allows users to write \intro{resource predicate} to express
+more complex relations between heaps and \kl{ghost} values.
+
+Continuing our running example of appending two linked lists of
+integers, \cref{fig:append-cn} shows how one might annotate and prove such an
+example in \kl{CN}. Firstly, it declares the datatype for \cninline{i32} lists,
+since these are not part of \kl{CN}'s base logic. Notably, arguments to
+constructors are named, not positional. After that, it declares a recursive
+\cninline{[rec]} mathematical function \cninline{function} which defines what
+it means to append two lists, serving the same function that $@$ did in
+\cref{fig:append-annot}. The final \kl{CN} declaration is for the equivalent of
+the recursive list predicate in \cref{fig:list-pred}. There are many
+differences:
+\begin{itemize}
+    \item The \kl{CN} \cninline{predicate} looks like a function definition,
+        with a signature that takes a \cninline{pointer p}, and a
+        return type \cninline{(datatype seq)}, as opposed to
+        $\mathrm{list}(\mathsf{p}, l)$ which has two arguments.
+    \item It uses \cninline{return} statements to constrain the ghost list,
+        rather than $l = \mathsf{NULL}$ or $l = {head}{:}{:}{tl}$.
+    \item It uses the \cninline{take} syntax, to give names to the pointee of
+        \cninline{p} (\cninline{H}) and the tail of the list \cninline{tl},
+        rather than existentials $\exists{} \; {head}, \; {tl}, \mathsf{p}$.
+    \item The pointee of \cninline{p} is a record \cninline{H}, with fields
+        \cninline{head} and \cninline{tail} corresponding to the C struct
+        fields, rather than using pointer arithmetic $\mathsf{p} + 1$.
+\end{itemize}
+
+All of these differences will be explained in more detail and justified in
+\cref{sec:monadic-syntax}. I will note in passing that the syntax can also be
+seen as tracing out the footprint of the heaplet containing the list, and
+constructing the ghost value it represents.
+
+For now, I will move on to the annotations on the implementation. The
+precondition can be read as saying ``\emph{\cinline{IntList_append} requires
+\cninline{L1} to be the ghost list constructed using \cninline{IntList}
+with \cinline{xs}, and similarly for \cninline{L2} and \cinline{ys}}''. The
+postcondition can be read as saying ``\emph{\cinline{IntList_append} ensures that
+\cninline{L3} is a ghost list constructed using \cninline{IntList} with the
+return value \cninline{return}, and \cninline{L3} is equal to \cninline{L2}
+appended to \cninline{L1}}''.
+
+Within the body of the function, in both branches of the \cinline{if}, there is
+a \kl{CN statement}, this time to instruct CN to manually unfold the definition
+of the recursive function at that point to aid proving the postcondition.
+Conveniently, albeit
+inconsistently,\sidenote{\url{https://github.com/rems-project/cerberus/issues/483}}
+\kl{CN} auto-unfolds branching predicate definitions, including recursive ones,
+when it is able to prove or disprove the branch conditions of that predicate,
+based on the assertions in its context at a particular program point.
+
+\begin{figure*}[tp]
+    \begin{minipage}{.85\textwidth}
+        \cfile[breaklines,firstline=5,lastline=24]{code/append_annot.c}
+    \end{minipage}%
+    \begin{minipage}{.65\textwidth}
+        \cfile[breaklines,firstline=26,lastline=41]{code/append_annot.c}
+    \end{minipage}
+    \caption{Appending a linked list of integers in CN.}\label{fig:append-cn}
+\end{figure*}%
+
+\section{Contributions of this thesis}\label{sec:contributions}
+
+\kl{CN} has been developed by many people; my particular contributions relate
+to the following subsections, which provide an overview of the remaining parts
+of this thesis.
+
+\subsection{Formalisation of \kl{CN}}
+
+Whilst Christopher Pulte and Thomas Sewell are the primary implementers of
+\kl{CN}'s \kl{proof mode}; my contributions to this part of the project have
+been to clarify and formalise \kl{CN}'s theory. The end result of this work was
+not only more confidence in the theoretical merits of the approach of \kl{CN},
+but also clarifying its principles, and generating insights for feeding back to
+the implementation.
+
+My contributions in this part include:
+\begin{itemize}
+    \item A formalisation of the link between the surface syntax of \kl{CN} and
+        the formal presentation in this thesis.
+    \item A grammar of resource terms for bookkeeping resource operations.
+    \item \intro{ResCore}: A let-normal form of \kl{Cerberus}' \kl{Core} with
+        reified resources.
+    \item A novel, modular heap definition in a dynamic semantics for \kl{ResCore}.
+    \item \intro{Kernel CN}: A formal definition of a bidirectional,
+        \kl{separation logic}, \intro{refinement type} system for \kl{ResCore}.
+    \item A formalisation of two inference algorithms used by \kl{CN}, one for inferring
+        instantiations of logical (ghost) quantifiers and one for inferring
+        indices for \kl{iterated} predicates.
+    \item A proof of soundness of \kl{Kernel CN} with respect to the
+        \kl{ResCore} dynamic semantics.
+    \item An experience report on (a) iterating on the design of a very large type
+        system using Ott~\sidecite{sewell2010ott} and (b) feeding back insights
+        from the theory to the implementation.
+\end{itemize}
+
+\subsection{Design, formalisation and implementation of \kl{CN-VIP}}
+
+In its initial version, to simplify matters, \kl{CN} was built on top of a
+simple concrete \kl{memory object model}, where pointers were treated as
+interchangeable with integers. However, as I briefly alluded to in
+\cref{sec:c-lang}, this is not accurate with respect to how the standard and
+modern compilers treat pointers. To remedy this, building on the work of
+\sidetextcite{memarian2019exploring} and \sidetextcite{lepigre2022vip}, I
+designed, formalised and implemented, \intro{CN-VIP}, a memory model based on
+(and sound with respect to) prior work. Because of this, \kl{CN} will now
+automatically check and enforce a large number of subtle rules regarding the
+creation, modification and destruction of pointers and associated allocations,
+at the cost of \kl{CN} becoming harder and slower to use.
+
+
+My contributions in this part include:
+\begin{itemize}
+    \item An exploration of the design space and trade-offs when designing a
+        type system for real-world memory object models.
+    \item An in-depth discussion about soundly supporting pointer equality in
+        the presence of observed, non-deterministic pointer equality.
+    \item The formalisation of \kl{CN-VIP}, focusing on its modular integration into
+        \kl{Kernel CN} and \kl{ResCore}.
+    \item A proof of soundness of \kl{CN-VIP}, with respect to the VIP dynamic semantics.
+    \item A walk-through of the implementation of \kl{CN-VIP}, along with the
+        approach required to integrate it without causing pain to myself, other
+        developers or users.
+    \item A discussion on the problems with supporting byte-level provenance
+        and round-trip casts in \kl{CN}, potential resolutions and trade-offs.
+    \item A roadmap on the integration of mechanised, sound resourceful lemmas
+        into \kl{CN} inspired by the design of \kl{CN-VIP}.
+\end{itemize}
+
+\subsection{Will the real world C, please stand up?}
+
+Though it is developed inside academia, \kl{CN} is fundamentally a piece of
+software, and its job is not to advance cool theory for its own sake, but to
+bring a new level of assurance to \emph{existing, real-world} \kl{systems} C
+code. This requires substantial engineering effort, and benefits immensely from
+modern software development best practices. Though a lot of it seems obvious in
+retrospect, it was not initially clear \emph{if} and \emph{when} many of
+engineering challenges would become a bottleneck. I worked on three major
+problems, was successful in two of them, and collaborated closely with partners
+in industry looking to use \kl{CN}. As such, \kl{CN} is better poised to meet
+the challenges facing any verification tool aiming to be useful outside of
+academia.
+
+My contributions in this part include:
+\begin{itemize}
+    \item \intro[tree-carver]{A tree carver for C}. This is Clang based tool
+        which, given a C file in a large source tree, and a root file or
+        functions, carves out that file and its transitive dependencies,
+        including macros, for processing by other tools.
+    \item \emph{An experience report}, on updating an existing proof of a \intro{buddy
+        allocator} (used in the \intro{pKVM} hypervisor) to work with (a)
+        changes to the C implementation (b) an early version of CN-VIP and (c)
+        a change to \kl{CN} to represent integers as bit-vectors. Ports
+        for the first two succeeded, but, due to poor source location
+        information, poor proof migration path and performance degradation,
+        this port failed.
+    \item \emph{A summary and discussion of valuable feedback}, from industry
+        partners.
+    \item \emph{A discussion of major issues related to developer- and
+        user-experience}, with reference to the their technical origin and if
+        they exist, solutions.
+\end{itemize}
+
+\chapter{Example: queues in CN}
+
+\margintoc{}
+
+In this chapter, I will first present the syntax of \kl{CN}, and discuss its
+main features. After that, I will  present an extended example of a verified
+implementation of a queue (first-in, first-out) of integers in CN\@. The data
+structure is simple linked list, each node carrying an integer value and a
+pointer to the next node, or \cinline{NULL}. This list is wrapped up in a
+\cinline{struct} with pointers to the front and back for constant time pushing
+to the back of the queue, and popping from the front of the queue. The
+operations are proved to not only be memory safe, but also functionally correct
+via a user-defined datatype and predicate.
+
+I owe the idea, C implementation and initial proof structure to Benjamin Pierce;
+the final proofs and lemmas involved are my work. As presented, the queue has a
+few limitations, reflecting the earlier version of \kl{CN} against which it was
+verified. Namely, \cinline{malloc} and \cinline{free} were not supported
+directly, so were added as trusted functions. And the syntax for predicates did
+not allow for non-top-level-ifs, and so it defines a new predicate each time
+any branching is required.
+
+\section{CN Syntax}%
+
+\begin{figure*}[tp]
+    \small
+    \cngrammarcompressed{\textwidth}{
+        \cncfuncXXdef{}\cninterrule{}
+        \cnfuncXXspec{}\cninterrule{}
+        \cndatatypeXXdef{}\cninterrule{}
+        \cnctorXXdef{}\cninterrule{}
+        \cnfuncXXdef{}\cninterrule{}
+        \cnpredXXdef{}\cninterrule{}
+        \cnspec{}\cninterrule{}
+        \cnqterm{}\cninterrule{}
+        \cnpredXXipred{}\cninterrule{}
+        \cnipredXXterm{}\cninterrule{}
+        \cnpredXXterm{}\cninterrule{}
+        \cnpredXXname{}\cninterrule{}
+        \cninit{}\cnafterlastrule{}
+    }
+    \caption{High-level syntax of CN, modified for presentation and later discussion.
+    Modifications include: writing {\footnotesize$[[Owned<Init,ct>]]$} and
+    {\footnotesize$[[Owned<Uninit,ct>]]$} instead of \cninline{RW<τ>} and
+    \cninline{W<τ>} respectively; explicitly binding the return value in the
+    \cninline{ensures} clause, with an identifier $y$, rather than assuming it
+    is the keyword \cninline{return}; allowing arbitrary nesting of
+    specifications under \cninline{take}, instead of just predicates and
+    iterated predicates; allowing \cninline{if}s at places other than the
+    outermost level of a predicate definition.}\label{fig:cn-grammar}
+\end{figure*}
+
+A file for \kl{CN} consists of series of top-level declarations of annotated C
+functions, (separation logic) predicate definitions, (purely logical) function
+definitions, and datatype declarations.\sidenote{As I explain in
+\nameref{chap:kernel-grammar}, I do not discuss recursive, pure functions or
+datatypes in the kernel formalism.}
+
+Function definitions for C introduce the identifiers for the arguments into the
+scope of the preconditions (preceded by \cninline{requires}), and postconditions
+(preceded by \cninline{ensures}). Pre- and postconditions are $[[spec]]$s,
+with no explicit terminator (represented in the grammar with a $[[cdot]]$).
+
+\begin{itemize}
+    \item $[[let id = term; spec]]$ is simply an abbreviation for the expression
+        $[[term]]$ bound to $[[id]]$ in the scope of $[[spec]]$. It has no
+        effect on the context.
+    \item $[[assert (qterm); spec ]]$ is a pure assertion. It carries a
+        boolean-valued expression (perhaps quantified by a single variable)
+        $[[qterm]]$. If a quantified constraint is assumed, any quantifiers must
+        be manually provided by the user.
+    \item $[[take id = spec; spec']]$ is an assertion about the heap. It is
+        structured as a \kl{monadic} bind, to bind the return value of
+        $[[spec]]$ to the identifier $[[id]]$, in the scope of of $[[spec']]$.
+        For the implementation, $[[spec]]$ is restricted to be a $[[pred_ipred]]$. % chktex 25
+\end{itemize}
+
+\kl{CN} \kl{resource}s are either predicates $[[a ( iargs )]]$ or iterated
+predicates of the form
+$[[ each (base_type x; iguard) { a ( array_shift <ct>(yp , x) , iargs ) }]]$. % chktex 25
+Predicate names $[[a]]$ are either: \cninline{RW<τ>}/\cninline{W<τ>} (encoded as
+$[[Owned<Init,ct>]]$/$[[Owned<Uninit,ct>]]$ in the grammar in
+figure~\ref{fig:cn-grammar}) representing the ability to read-and-write/write an
+initialised/uninitialised location on the heap; an \cninline{Alloc} representing
+(permission to free) an allocation; or a user-defined predicate.
+
+\kl{CN} \kl{predicate}s are defined with
+$[[ predicate base_type id( base_type1 id1 , .. , base_typek idk) { spec }]]$ % chktex 25
+where $[[spec]]$ must terminate with a $[[return term]]$. First is a
+return \intro{base type} $[[base_type]]$, then a name $[[id]]$, and a list of % chktex 25
+parameters $[[base_type1]]\, [[id1]] , {.}{.} , [[base_typek]]\, [[idk]]$. % chktex 25
+The implementation restricts $[[spec]]$ to have no nesting beyond a single top-level
+\cninline{if}.\sidenote{\url{https://github.com/rems-project/cerberus/issues/266}}
+
+\section{Queue definitions}
+
+First, we have some \kl{CN} definitions of datatypes and logical (ghost)
+functions. The first declaration declares \cninline{List} to be a recursive
+datatype with two constructors, \cninline|Nil{}| and \cninline|Cons {head,
+tail}|. The arguments to constructors are named, not positional.
+
+The next declarations are functions for computing the head and tail of a list,
+and adding an element to the end of the list. All are defined with
+pattern-matching, and the last one is marked with \cninline{[rec]} so to allow
+it to be recursive. The first two definitions can and will be unfolded, but the
+last one requires manual annotation from the user. All functions must be total,
+so the \cninline{hd} function returns \cninline{0i32} in the empty list case.
+
+\cfile[fontsize=\footnotesize,breaklines,lastline=26]{code/queue_headers.h}
+
+Next, we have the definitions for the C structs used to represent the queue.
+The first struct contains a pointer to the front and the back of a linked list
+of \cinline{struct queue_cell} nodes, with payload \cinline{int first} and
+pointer to next node \cinline{struct queue_cell *next}.
+
+\cfile[fontsize=\footnotesize,breaklines,firstline=28,lastline=36]{code/queue_headers.h}
+
+Based on this, we define some predicates relating the shape of the heap, and
+invariants we expect to hold on the data-structure at all times, to the logical
+value represented in memory. The first is the top-level predicate
+\cninline{QueuePtr_At(p)} for a pointer \cninline{p}, with output % chktex 36
+argument \cninline{datatype List}. It takes ownership of a \cinline{struct
+queue} at that pointer, and binds the logical value at that location in memory
+to \cninline{Q}. It then asserts the key invariant that either both front and
+back pointers are \cninline{NULL} or both are non-\cninline{NULL}. It then
+binds the output of the predicate \cninline{QueueFB} to \cninline{L}, and
+returns that as its own output, the mathematical representation of the (integer
+list) value in memory.
+
+\cfile[fontsize=\footnotesize,breaklines,firstline=38,lastline=46]{code/queue_headers.h}
+
+The predicate \cninline{QueueFB} takes two pointers as its argument, a front
+and back, and returns a list of integers too. If the front is \cninline{NULL},
+then the list returned is empty. If not, it claims ownership of the back, binds
+the value of that cell to \cninline{B} and asserts the \cninline{B.next}
+pointer is \cninline{NULL} (the last cell). It also adds a constraint about
+front and back pointers which may be ignored for now. At this stage, it too
+binds the output of another predicate to a list \cninline{L}, but the value it
+returns is the \cninline{snoc} of that list, with the last integer
+\cninline{B.first}.
+
+\cfile[fontsize=\footnotesize,breaklines,firstline=48,lastline=60]{code/queue_headers.h}
+
+The predicate \cninline{QueueAux} is recursive. It takes two pointers and
+returns a list of integers too. The intuition for this predicate is that it
+represents ownership of a segment of a list from \cninline{front} inclusive to
+\cninline{back} exclusive. The \cninline{back} being exclusive is important
+because the ownership for that was already claimed in \cninline{QueueFB}. The
+base case of this predicate is when the two pointers are equal, in which case
+the returned list is empty. In the inductive case, it claims ownership of a
+\cninline{struct queue_cell} at \cninline{f}, binds the value at that location
+to \cninline{F} and then asserts that \cninline{F.next} is not \cinline{NULL}.
+It then recurses with that value, and the same back pointer, and binds the
+resulting list to \cninline{B}. The result returned is a list with head
+\cinline{F.first} and tail \cinline{B}.
+
+\cfile[fontsize=\footnotesize,breaklines,firstline=62,lastline=74]{code/queue_headers.h}
+
+Lastly there are some work-around functions to support dynamic allocation and
+freeing for the two struct definitions. The allocations are modeled as always
+succeeding to keep the example simple.
+
+\cfile[fontsize=\footnotesize,breaklines,firstline=76,lastline=98]{code/queue_headers.h}
+
+\section{Queue implementation}
+
+Let us start with the function which creates an empty queue according to the
+invariants described above. Its specification has no precondition, only a
+postcondition, which specifies not only that the return value represents a
+queue according to the layout described by \cninline{QueuePtr_At}, but also
+that the logical (ghost) value it outputs is the empty list \cninline|Nil{}|.
+
+In the C code, it allocates memory for a new \cinline{struct queue}, sets the
+front and back pointers to \cinline{NULL}, and returns a pointer to the new
+allocation.
+
+\cfile[fontsize=\footnotesize,breaklines]{code/queue_empty.c}
+
+The specification for popping from a queue has as its preconditon a queue at
+pointer \cinline{q} such that the logical (ghost) value \cninline{Q} it
+represents is not \cinline|Nil{}|, and as its postcondition similarly a queue
+at pointer \cinline{q}, with the difference that the value afterwards
+\cninline{Q_post} is the tail of \cninline{Q}, the value before, and the
+\cninline{return} value is an integer which was at the head of \cninline{Q}.
+
+In \kl{CN}, a pointer may only be dereferenced if the relevant ownership is in
+the context. And in this case, the ownership is behind a guard based on whether
+\cninline{q->front} is \cinline{NULL} or not. To unpack the resource and the
+return value from underneath the guard, \kl{CN} needs to be able to prove
+statically that it is in one of the branches. Hence, the user has to provide a
+manual \cninline{split_case} to bifurcate type checking along two branches. The
+true branch reveals a contradiction between the return value \cinline|Nil{}|
+and the precondition \cninline|Q != Nil{}|, thus terminating type % chktex 26
+checking along this (ghost) control flow path early. However, the false branch
+contains the ownership of \cinline{q} required to read \cinline{q->front}.
+
+Next, control flow bifurcates again, but this time in the C program. If the
+front and back pointers are equal, then that signals we are in the singleton
+queue case, which must be handled separately to the non-singleton case. In both
+cases, the head value must be read and then head \cinline{struct queue_cell}
+freed.
+
+In the singleton case, both queue front and back pointers must be set to
+\cninline{NULL} to maintain the invariant in \cninline{QueuePtr_At}. So far,
+this is enough to establish the resource predicate, but not the constraint that
+\cninline{Q}, which is equal to \cninline[breaklines]|Cons {head:x, tail:
+Nil{}}| is equal to \cninline|snoc(Nil{}, x)|. The reason for this % chktex 36
+is that \cninline{snoc} is a recursive function, and thus must be unfolded
+manually by the user.
+
+\cfile[fontsize=\footnotesize,breaklines,firstline=15]{code/queue_pop.c}
+
+In the non-singleton case, we need to apply a similar lemma, one which
+says \cninline{snoc} commutes iwth \cninline{cons}. Because \kl{CN} can
+only express logical (ghost) values which are derived from computational
+variables, it must invoke resources to be able to state this otherwise
+simple pure fact. The lemma required to make the proof pass is shown below;
+the resources are identical, only the pure constraints in the postcondition
+are necessary.
+
+\cfile[fontsize=\footnotesize,breaklines,lastline=13]{code/queue_pop.c}
+
+The case for pushing onto a queue is more interesting, because of the resource
+reasoning required for it. The queue stores a pointer to the back of the list
+for constant time pushing, but this same pointer can be accessed by traversing
+the list, meaning there are (in principle) two aliases to the same pointer.
+
+Upon entry to the function, it allocates a new cell and stores the new values.
+It then conditionally branches on whether or not the queue is empty or not, by
+checking the back pointer. As a result of the invariant on queues, in both
+cases we learn that the front pointer is correspondingly (not) \cninline{NULL}.
+In the true branch, both front and back pointers are set to the newly allocated
+cell. This is enough to establish the singleton case of the queue predicates.
+
+In the false branch, it adds the cell to the back of the list, and then updates
+the queue's back pointer to point to it. The reason it is able to do so is that
+ownership of the back of the list is taken by \cninline{QueueFB}, rather than
+at the end of a recursive chain of \cninline{QueueAux}. But now there are
+two such \cninline{Owned<struct queue_cell>} and like the famous Highlander,
+there can only be one. So the old cell must be moved, not in the C code, but
+in the resource predicate, to the end of the \cninline{QueueAux} recursion
+chain.
+
+\cfile[fontsize=\footnotesize,breaklines,firstline=13]{code/queue_push.c}
+
+It is precisely this fact which \cninline{push_lemma} (omitted) represents: if one has
+ownership of a segment of a list from  \cninline{front} to \cninline{p}
+(exclusive), and ownership of a cell at \cninline{p}, then that is the same as
+ownership of a longer segment from \cninline{front} to \cninline{p->next}
+(exclusive). Furthermore, the value of this longer segment, is the
+\cninline{snoc} of the first two values.
+
+\cfile[fontsize=\footnotesize,breaklines,firstline=13]{code/queue_push.c}
+
+\section{Proofs of lemmas}
+
+\kl{CN} currently does not support export and proofs of lemmas which mention
+resources, even if those resources are there just to help state a pure fact.
+Support for this is planned (\cref{sec:lemma-prover}). However, as it turns
+out, for some lemmas, such as the ones shown here, it is possible to give a
+proof in terms of a C function (\cref{sec:lemma-proof-c}).

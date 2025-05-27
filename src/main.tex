@@ -1,4 +1,5 @@
 \PassOptionsToPackage{outputdir=_build}{minted}
+\PassOptionsToPackage{dvipsnames,usenames}{color}
 % Load the kaobook class
 \documentclass[
   french,english,
@@ -37,13 +38,32 @@
 %TC:ignore
 \input{knowledge_declarations.tex}
 %TC:endignore
-\usepackage{styles/macros}
+\usepackage{tikz}
+\usetikzlibrary{arrows,automata,positioning}
+% \usepackage{styles/macros}
+\usepackage{styles/fontcd}
+\usepackage{mathtools}
+\usepackage{mathpartir}
+\usepackage{stmaryrd}
+\knowledgenewrobustcmd{\astRef}{\mathrel{\cmdkl{\ast}}}
 \usepackage{styles/alectryon-minted}
 
-\includeonly{header,intro,formal-intro,formal-kernel,formal-statics,formal-discussion,mem-model-intro,mem-model-cn,eng-intro,eng-usable,conclusion}
-%\includeonly{conclusion}
+\includeonly{header,intro.gen,formal-intro,formal-kernel.gen,formal-statics.gen,formal-discussion.gen,mem-model-intro,mem-model-cn.gen,eng-intro,eng-usable,conclusion,defns_list,soundness_proof.gen}
+%\includeonly{soundness_proof.gen}
 
 \graphicspath{{./figures/}} % Paths where images are looked for
+
+%TC:ignore
+\input{ott-helpers}
+\renewcommand{\uninitCross}{\mathord{\text{\ballotX✗}}}
+\renewcommand{\oftype}{ {:} }
+
+\usepackage{ott/pf2}
+\beforePfSpace{15pt, 10pt, 10pt, 10pt, 5pt, 2pt}
+\afterPfSpace{15pt, 10pt, 10pt, 10pt, 5pt, 2pt}
+\interStepSpace{15pt, 10pt, 10pt, 10pt, 5pt, 2pt}
+\pflongindent%
+%TC:endignore
 
 %\makeindex[columns=3, title=Alphabetical Index, intoc] % Make LaTeX produce the files required to compile the index
 
@@ -59,7 +79,7 @@
 
 \selectlanguage{english}
 
-\include{intro}
+\include{intro.gen}
 
 \pagelayout{wide} % No margins
 \addpart{Formalisation}%
@@ -67,9 +87,9 @@
 \pagelayout{margin} % Restore margins
 
 \include{formal-intro}
-\include{formal-kernel}
-\include{formal-statics}
-\include{formal-discussion}
+\include{formal-kernel.gen}
+\include{formal-statics.gen}
+\include{formal-discussion.gen}
 
 \pagelayout{wide} % No margins
 \addpart{Memory Object Model}%
@@ -77,7 +97,7 @@
 \pagelayout{margin} % Restore margins
 
 \include{mem-model-intro}
-\include{mem-model-cn}
+\include{mem-model-cn.gen}
 
 \pagelayout{wide} % No margins
 \addpart{Engineering}%
@@ -89,24 +109,42 @@
 
 \include{conclusion}
 
-\appendix % From here onwards, chapters are numbered with letters, as is the appendix convention
-
-\pagelayout{wide} % No margins
-\addpart{Appendix}
-\pagelayout{margin} % Restore margins
-
-%TC:ignore
-\include{appendix}
-%TC:endignore
-
 %----------------------------------------------------------------------------------------
 
-\backmatter% Denotes the end of the main document content
-\setchapterstyle{plain} % Output plain chapters from this point onwards
+\appendix % From here onwards, chapters are numbered with letters, as is the appendix convention
+\pagelayout{wide} % No margins
+\addpart{Appendix}
+\setchapterstyle{plain}
+
+%TC:ignore
+{\small%
+\renewcommand{\cngrammartabular}[1]{%
+\begin{supertabular}{@{}p{0.15\textwidth}@{}l@{\ \ }c@{\ \ }ll@{}l}#1\end{supertabular}}
+\renewcommand{\cnrulehead}[3]{\multirow[c]{2}{*}[1.5ex]{\begin{mathparcomma}#1\end{mathparcomma}} & & ${\Colon}{=}$ & \multicolumn{3}{l}{#3}}
+\renewcommand{\cnprodline}[6]{%
+& & $#1$ & $#2$ & $#3 #4$ & $#5$%
+\ifthenelse{ \equal{}{#6} }%
+{#6}%
+{\\ & & & \multicolumn{3}{@{}p{0.8\textwidth}}{#6}}}
+\include{defns_list}
+}
+
+\begingroup%
+\newcommand{\lemmaref}[1]{lemma~\ref{#1} (\nameref{#1})}
+\renewcommand{\cnprodline}[6]{%
+& & $#1$ & $#2$ & $#3 #4$ & $#5$%
+\ifthenelse{ \equal{}{#6} }%
+{#6}%
+{\\ & & & \multicolumn{3}{@{}p{0.8\textwidth}}{#6}}}
+\include{soundness_proof.gen}
+\endgroup%
+%TC:endignore
 
 %----------------------------------------------------------------------------------------
 %	BIBLIOGRAPHY
 %----------------------------------------------------------------------------------------
+
+\backmatter% Denotes the end of the main document content
 
 % The bibliography needs to be compiled with biber using your LaTeX editor, or on the command line with 'biber main' from the template directory
 

@@ -1,0 +1,349 @@
+% vim: ft=tex
+\PassOptionsToPackage{dvipsnames,usenames}{color}
+\documentclass[11pt]{article}%
+
+% Ignore TODOs for now
+\newcommand{\todo}[1]{}
+\newcommand{\TODO}[1]{}
+\usepackage{wrapfig}
+
+\usepackage{hyperref}
+%\hypersetup{colorlinks=true,linkcolor=DarkGreen,urlcolor=DarkGreen,citecolor=DarkGreen}
+\hypersetup{colorlinks=true,linkcolor=OliveGreen,urlcolor=OliveGreen,citecolor=OliveGreen}
+\usepackage{amsmath,amssymb}%
+\usepackage{unicode-math}%
+% supertabular package required if using the default grammar tabular
+\usepackage{supertabular}
+\usepackage[margin=1in]{geometry}
+\geometry{landscape}
+\usepackage{xstring}
+
+% the un-wrapped (-tex_wrap false) generated LaTeX file for CN
+\include{cn_included.gen}
+% the package that allows customized layout described in this document
+\usepackage{ott/ottlayout}
+% the automatically generated file (with our Makefile) to link the generated
+% LaTeX with the ottlayout package
+\include{cn_override.gen}
+\include{cn_drulenames.gen}
+\ottstyledefaults{numberpremises=yes,premisenamelayout=topright,rulelayout=nobreaks}
+
+\ExplSyntaxOn
+\NewDocumentCommand{\onlyUseNthCnPremise}{m +m}
+ {
+   \group_begin:
+
+   \seq_set_split:Nnn \l_indices { , } { #1 }
+   % \seq_show:N \l_indices
+
+   % Backup original \cndrule
+   \cs_set_eq:NN \orig_cndrule: \cndrule
+
+   % Locally override \cndrule
+   \RenewDocumentCommand{\cndrule}{O{}mmm}
+     {
+       % Split on \cnpremise
+       \seq_set_split:Nnn \l_premises { \cnpremise } { ##2 }
+       % First one is empty
+       \seq_pop_left:NN \l_premises \l_tmpa_tl%
+       % \seq_show:N \l_premises
+
+       \seq_clear_new:N \l_filtered
+       \seq_map_indexed_inline:Nn \l_premises
+         {
+           \seq_if_in:NnTF \l_indices { ####1 }
+             {
+               \seq_put_right:Nn \l_filtered { \cnpremise { ####2 } }
+               % \iow_term:x { Adding~premise~####1:~\tl_to_str:n {####2} }
+             }
+             {
+               % \iow_term:x { Skipping~premise~####1:~\tl_to_str:n {####2} }
+             }
+         }
+       % \seq_show:N \l_filtered
+
+       \orig_cndrule: [##1]{\seq_use:Nn \l_filtered {}}{##3}{##4}
+     }
+
+   #2%
+   \group_end:
+ }
+
+\cs_new_eq:NN\StrIfInTF\str_if_in:nnTF
+\ExplSyntaxOff%
+
+\usepackage{titlesec}
+\newcommand{\sectionbreak}{\clearpage}
+
+\renewcommand{\thesection}{A\arabic{section}}
+\makeatletter
+\renewcommand{\l@section}{\@dottedtocline{1}{1.5em}{2.6em}}
+\renewcommand{\l@subsection}{\@dottedtocline{2}{4.0em}{3.6em}}
+\renewcommand{\l@subsubsection}{\@dottedtocline{3}{7.4em}{4.5em}}
+\makeatother
+
+\title{\vspace{-2cm} Formal definition of the kernel type system}
+\author{Dhruv C. Makwana}
+\date{}
+
+% defns_list is also included from thesis, where chapter is supported,
+% but without this, it works like the identity macro and creates a single page
+% with the chapter title on it
+\newcommand{\chapter}[1]{}
+
+\begin{document}
+
+\maketitle%
+
+
+%% \begin{abstract}
+%% CN is a type system for the C programming language.
+\noindent
+The formalisation is defined
+over \emph{ResCore}, a let-normalised version of the Core language of
+\href{https://github.com/rems-project/cerberus}{Cerberus}. A proof of soundness
+of type checking is given in a separate document.
+%% \end{abstract}
+
+{\let\clearpage\relax \tableofcontents}
+
+\section{Commentary}\label{sec:commentary}
+
+In this document, I formalise ``kernel CN'', which is essentially ordinary CN
+with no type and resource inference. In particular, I assume that all universal
+quantifiers are explicitly instantiated, that all existential quantifiers have
+explicit witnesses, and all resource manipulations have proof terms with linear
+types. However, I do not require proof terms for the logical properties, because
+all the entailments fall into the SMT fragment by construction. Since the
+inference algorithm can be extended to an elaboration algorithm producing a
+fully-annotated program, kernel CN could serve as an intermediate representation
+for the CN implementation; I have also formalised (without any associated
+proofs) what such an elaboration would look like, focusing on iterated resource
+manipulation.  Moreover, the lack of inference makes it a simpler language for
+which to prove type safety.
+
+The kernel CN is a calculus in A-normal form, with a bidirectional
+type system. Since I handle the majority of C, the entire system is very
+large, and so I only provide commentary on the highlights.
+
+\subsection{Types and Terms}
+
+As in the paper, CN programs have both computational and logical terms.
+Every such term, computational or ghost, has a \emph{base type} $[[ base_type ]]$,
+which are things like unit, booleans, (mathematical) integers, locations,
+and records of other base types. Each C type $[[ ct ]]$ is mapped to a
+corresponding base type -- for example, \ $[[ to_base ( int * ) ]] = [[ loc ]]$.
+Logical terms are variously referred to as $[[ term ]]$, $[[ ptrt ]]$
+(for pointers), $[[ iarg ]]$ (for
+input-arguments), $[[ oarg ]]$ (output-arguments, of array type for
+iterated resources), and $[[ iguard ]]$ (for boolean guards of iterated resources).
+
+\begin{figure}[t]
+    \begingroup%
+    \renewcommand{\cngrammartabular}[1]{\begin{align*}#1\end{align*}}
+    \renewcommand{\cnrulehead}[3]{#1  &\mathrel{{:}{:}{=}}}
+    \renewcommand{\cnfirstprodline}[6]{\begingroup\begin{minipage}[t]{.8\textwidth}\ $#2$}
+    \renewcommand{\cnprodline}[6]{%
+        %\ifthenelse{\equal{#3}{} \OR \equal{#3}{\textsf{S}}}{\ $#1$~$#2$}{}
+        %\noexpandarg\IfSubStr*{#3}{M}{}{\ $#1$~$#2$}%
+        \StrIfInTF{#3}{M}{}{\ $#1$~$#2$}%
+    }
+    \renewcommand{\cnprodnewline}{}
+    \renewcommand{\cninterrule}{\end{minipage}\endgroup}
+    \renewcommand{\cnafterlastrule}{\end{minipage}\endgroup}
+    \cngrammartabular{%
+        \cnres{}\cninterrule{}\\
+        \cnpred{}\cninterrule{}\\
+        \cnpredXXterm{}\cninterrule{}\\
+        \cnipred{}\cninterrule{}\\
+        \cnipredXXterm{}\cninterrule{}\\[-.5\baselineskip]
+        \cnresXXterm{}\cninterrule{}\\
+        \cnpredXXops{}\cnafterlastrule{}
+    }
+    \endgroup%
+\caption{Grammar of Resource Terms}\label{fig:resource-grammar}
+\end{figure}
+
+In Figure~\ref{fig:resource-grammar}, I give the grammar of resource types
+(i.e., separation logic predicates) and resource terms (the proof terms used by
+the kernel Core typechecker).
+%
+The standard resources $[[ res ]]$ can be an empty heap $[[ emp ]]$, a boolean
+condition $[[ term ]]$, the separating conjunction $[[ res1 * res2 ]]$, an
+existential type $[[ exists y : base_type .: res ]]$, and the disjunction $[[ if
+term then res1 else res2 ]]$. I use a conditional rather than a traditional
+disjunction to avoid backtracking during typechecking.
+
+Resource predicates have special syntax to handle the division of their
+arguments into inputs and outputs. An occurrence of a predicate is written
+$[[ a ( iargs ) ( oarg )]]$. This is read as the predicate $[[ a ]]$
+applied to a list of input arguments
+$[[ iargs ]]$. The output argument $[[ oarg ]]$ is
+\colorbox{red!10}{highlighted} and in a second set of parentheses. Every
+predicate has exactly one output argument.
+%
+An $[[ ipred ]]$ represents the iterated separating conjunction of predicate
+instances; it quantifies over integer indices $[[ x ]]$ satisfying a guard
+$[[ iguard ]]$, with input arguments $[[ iargs ]]$ and output $[[ oarg ]]$.
+It represents instances of $[[ a ]]$ for all indices such that $[[ iguard ]]$ holds.
+
+
+Each resource type has introduction and elimination forms -- e.g.
+$[[ res1 * res2 ]]$ has pairing and pattern matching proof terms. The
+standard resource types have the expected rules, and predicate types
+can be introduced by explicitly folding a predicate definition
+$[[ fold res_term : pred ]]$, and unfolded via pattern-matching.
+
+
+In addition, there are resource operations recording the
+resource-manipulation steps inference uses to successfully type a
+program.  If I suppress the book-keeping of checking that input
+arguments match, calculating indices, and updating output arguments,
+most of these operations have simple intuitions.
+%
+$[[ explode ( res_term ) ]]$ and $[[ implode ( res_term , tag ) ]]$
+are operations on structs and their members; the first takes an
+$[[ Owned < init , struct tag > ]]$ and turns it into a
+$[[ Owned < init , cti > ]]$ for each of its members; the second does the
+inverse.  $[[ iterate ( res_term , int ) ]]$ and
+$[[ congeal ( res_term , int ) ]]$ function similarly, but for C's
+fixed-size arrays, returning a \emph{iterated} $[[ Owned < init , ct > ]]$
+instead.
+
+Morally,
+$\cnkw{break}$ has type $[[ ipred ]] [[ -> ]] [[ ipred * pred ]]$: it
+extracts a single predicate from a iterated one, and must return the
+remainder as well because resource terms are linearly typed;
+$\cnkw{glue}$ has type $[[ ipred * pred ]] [[ -> ]] [[ ipred ]]$: it
+is the inverse to $\cnkw{break}$; $\cnkw{glue}$ has type
+$[[ ipred * iguard ]] [[ -> ]] [[ ipred * ipred ]]$: given a
+iterated predicate of index-guard $[[ iguard' ]]$, and an
+$[[ iguard ]]$, if $[[ iguard -> iguard' ]]$ then it chops the given
+iterated predicate into two disjoint parts (one of index-guard
+$[[ iguard ]]$ and the other of $[[ iguard' /\ neg iguard ]]$);
+$\cnkw{inj}$ has type
+$[[ pred ]] [[ * ]] [[ ct ]] [[ * ]] [[ iargs ]] [[ -> ]] [[ ipred ]]$:
+it turns a predicate $[[ a ( iargs' ) ]]$ into a iterated
+predicate, with $[[ iguard = ( x = k ) ]]$, where
+$[[ k = ( ptrt' - ptrt ) / sizeof ct ]]$ and
+$[[ iargs' ]] = [[ k / x ( iargs ) ]]$. Because our inference
+algorithm does not support inferring merging
+arrays, there is no inverse to
+$\cnkw{chop}$ of type $[[ ipred * ipred ]] [[ -> ]] [[ ipred ]]$.
+
+\subsection{Judgements and Example Rules}
+\label{subsec:judgm_eg_rules}
+
+The contexts for the rules consist of four parts: (1) $[[ C ]]$ containing the
+computational variables from the Core program; (2) $[[ L ]]$ containing purely
+logical variables mentioned in specifications; (3) $[[ N ]]$, the constraint
+context, containing a list of (non-iterated) SMT constraints; and (4) $[[ R ]]$ a
+\emph{linear} context containing the resources available at that point during
+type-checking. Assuming a constraint context of only non-iterated constraints
+is an acceptable simplification, because the elaboration pass can annotate terms
+with fully-instantiated constraints, whose quantifiers were either supplied
+by lemmas, annotations or default instantiation.
+
+I focus on the judgements for typing resource terms and memory actions. The
+judgement $[[ C ; L ; N ; R |- res_term => res ]]$ should be read as ``under a
+context of computational variables $[[ C ]]$, logical variables $[[ L ]]$,
+constraints $[[ N ]]$ and resources $[[ R ]]$, the resource term
+$[[ res_term ]]$ synthesises resource type $[[ out_res ]]$'' (the highlighting shows the
+part of the judgement with an \colorbox{red!10}{output mode}). The judgement
+$[[ C ; L ; N ; R |- res_term <= res ]]$ reads similarly, replacing
+`synthesises' with `checks against'.
+
+I need both judgements because variables, folding, predicate operations are
+naturally typed as synthesising rules, whereas constraints, packing
+existentials, and conditional resources require checking.  Furthermore, as we
+shall see soon, memory actions require a synthesising judgement (to obtain and
+manipulate the output argument of $[[ Owned < init , ct > ]]$), whereas
+statements require checking judgements.
+
+\begin{figure}[t]
+\small
+\centering
+\begingroup
+\NewCommandCopy{\origcndrule}{\cndrule}
+\renewcommand{\cndrule}[4][]{\origcndrule[#1]{#2}{%
+\begin{minipage}{0.8\textwidth}
+    \raggedright
+    \leftskip 2em
+    \parindent -2em
+    $#3$
+\end{minipage}
+}{#4}}%
+\begin{minipage}{.4\textwidth}
+\vspace{-2\baselineskip}
+\cndruleResXXChkXXIfXXTrue{}%
+\\[-1\baselineskip]
+\cnusedrule{\onlyUseNthCnPremise{1,3}{\cndruleActionXXCreate{}}}
+\\[-1\baselineskip]
+\cnusedrule{\onlyUseNthCnPremise{4,5}{\cndruleActionXXStore{}}}
+\vspace{-2\baselineskip}
+\end{minipage}
+\begin{minipage}{.5\textwidth}
+\vspace{-2\baselineskip}
+\cnusedrule{\onlyUseNthCnPremise{1,3,6}{\cndruleResXXSynXXFold{}}}
+\\[-1\baselineskip]
+\cnusedrule{\onlyUseNthCnPremise{2,3}{\cndruleActionXXLoad{}}}
+\\[-1\baselineskip]
+\cnusedrule{\onlyUseNthCnPremise{2,4}{\cndruleActionXXKillXXStatic{}}}
+\vspace{-2\baselineskip}
+\end{minipage}
+\endgroup
+\end{figure}
+
+
+Above is one of two rules for checking a conditional resource.
+Thanks to the ordered disjunction, the rule is simple: if the SMT
+solver can statically prove $[[ term ]]$, then check the
+resource term against the $[[ res1 ]]$. The converse (omitted) checks against
+$[[ res2 ]]$ if the SMT solver can prove the negation of the condition; if
+neither is provable, the rules try to synthesise an under-determined
+conditional resource (the only way this is possible is if $[[ res_term ]]$ is a
+variable of an SMT-equivalent type).
+
+The rule for folding predicates shown is simplified for presentation (omitting
+only the type checking of the all the predicate arguments, and the exclusion of
+the $[[ Owned < init , ct > ]]$ predicate because it cannot be folded). The first line
+is a simple lookup based on the predicate name of types of the arguments, and
+the ``body'' $[[ res ]]$ of the predicate. The second checks $[[ res_term ]]$
+against the $[[ res ]]$ with its arguments (supplied by the fold term)
+substituted in.
+
+The above rules for typing memory actions are also simplified for
+presentation.  Allocating memory (which takes an alignment $[[ pval ]]$ and a C
+type $[[ ct ]]$) synthesises a return type $[[ ret ]]$ representing: a newly
+created pointer (referred to in the type by the name $[[ yp ]]$), some omitted
+constraints about alignment and representability ($[[ term ]]$), a logical
+value ($[[ y ]]$) representing the output argument of a points-to/
+$[[ Owned< init , ct > ]]$ resource, the resource itself
+($[[ Owned <init , ct> ( yp ) ( y ) ]]$ is pretty-printed in more familiar $[[ |-> ]]$
+notation), and a constraint that the points-to is not initialised.
+
+Loading from a memory location requires a correctly typed resource term,
+\emph{and} its output argument's initialisation status $[[ init ]]$ to be
+true. Because the types are linear, it not only returns the pointed-to value,
+but also the same permission it consumed.
+
+Storing to a memory location is similar to loading: it requires a points-to permission,
+but without any constraints on its initialisation. The permission it returns
+reflects the fact that the location is definitely initialised, and that a new
+value is pointed to by this location.
+
+De-allocating memory is the converse of allocating memory: a resource term is
+required, but not returned.
+
+\subsection{Differences from Implementation}
+
+There are some minor differences between the implementation and the
+formalisation. The formalisation has a richer grammar of resources:
+this means it can support tagged unions more succinctly and can open
+predicates in more cases. The formalisation assumes that iterated
+resources output arguments have type array of records, whereas the
+implementation uses records of arrays.
+
+\include{defns_list}
+
+\end{document}
