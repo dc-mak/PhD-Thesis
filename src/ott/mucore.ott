@@ -57,6 +57,7 @@ embed {{ tex-preamble
   {\colorbox{red!8}{$\scriptscriptstyle#1$} } }%
 \newcommand{\norm}[1]{ \underline{#1} }
 \newcommand{\uninitCross}{\mathord{\times} }
+\newcommand{\oftype}{ {\;\!{:}\;\!} }
 }}
 
 metavar id , x , xp {{ tex {x_p} }}, y , yp {{ tex { y_p } }} , yf {{ tex f }} , _ , abbrev , r , allocv {{ tex { alloc_{\symrm{var} } } }} ::=
@@ -105,7 +106,6 @@ grammar
                                              {{ com size of a C type                       }}
     | offsetof tag member :: M :: offsetof   {{ tex \symrm{offsetof}([[tag]], [[member]] ) }}
                                              {{ com offset of a struct member              }}
-    | stackdepth ( S )    :: M :: stackdepth {{ tex \mathrm{stackdepth}([[S]])             }}
     | max ct              :: M :: max        {{ tex \max{ [[ct]] }                         }}
                                              {{ com maximum of numeric type $[[ct]]$       }}
     | min ct              :: M :: Min        {{ tex \min{ [[ct]] }                         }}
@@ -371,13 +371,12 @@ grammar
 
 
   map_op :: 'Map_op_' ::= {{ com SMT term map operations }}
-    | [| terms |]               :: M :: lit   {{ com array literal }} {{ tex [| \, [[terms]] \, |] }}
-    | term1 [ term2 ]           ::   :: get
-    | term1 [ term2 dd term3 ]  ::   :: range
-    | const term                ::   :: const
-    | term1 [ term2 ] := term3  ::   :: set
+    | [| terms |]                 :: M :: lit   {{ com array literal }} {{ tex [| \, [[terms]] \, |] }}
+    | term1 [ term2 ]             ::   :: get   {{ com array index    }}
+    | term1 [ term2 ldots term3 ] :: P :: range {{ com array range    }}
+    | const term                  ::   :: const {{ com constant array }}
+    | term1 [ term2 ] := term3    ::   :: set   {{ com array update   }}
 
-  % DEFER align this with backend/cn/terms.ml
   term , _t {{ tex \_ }}, iguard , ptrt {{ tex ptr }} , iarg , oarg , alloct {{ tex alloc }} , A , M :: '' ::= {{ com SMT term grammar }}
     | x                  ::     :: sym
     | lit                ::     :: lit
@@ -385,7 +384,6 @@ grammar
     | bool_op            ::     :: bool_op
     | cmp_op             ::     :: cmp_op
     | tuple_op           ::     :: tuple_op
-    | struct_op          ::     :: struct_op
     | record_op          ::     :: record_op
     | pointer_op         ::     :: pointer_op
     | list_op            ::     :: list_op
@@ -393,10 +391,10 @@ grammar
     | map_op             ::     :: map_op
     | id ( terms )       ::     :: pred
     | ( base_type ) term ::     :: cast
-    | ( term )           :: S X :: paren   {{ com parentheses                                                }}
-    | subs ( term )      :: M   :: subs    {{ com substitute $[[subs]]$ in $[[term]]$                        }}
-    | inj pval           :: M   :: of_pval {{ tex [[pval]]                                                   }}
-                                           {{ com tranlate pure value $[[pval]]$ into corresponding SMT term }}
+    | ( term )           :: S X :: paren   {{ com parentheses                                            }}
+    | subs ( term )      :: M   :: subs    {{ com substitute $[[subs]]$ in $[[term]]$                    }}
+    | inj pval           :: M   :: of_pval {{ tex [[pval]]                                               }}
+                                           {{ com lift pure value $[[pval]]$ into corresponding SMT term }}
 
   terms , iargs , _iargs {{ tex \_ }} :: 'Iargs_' ::= {{ com list of terms (predicate input-arguments) }}
     | term , terms              ::   :: cons
@@ -407,7 +405,7 @@ grammar
   qterm :: 'QTerm_' ::= {{ com quantified SMT terms }}
     | term                                  ::   :: term   {{ com unquantified SMT term                  }}
     | each ( base_type x ; term ) { term' } ::   :: forall {{ com universally quantified SMT term        }}
-      {{ tex [[each]] \left( [[base_type]]\, [[x]] ; [[term]] \right)\, \left\{ [[term']] \, \right\}    }}
+      {{ tex [[each]] \left( [[base_type]]\, [[x]]\, ; [[term]] \right)\, \left\{ [[term']] \, \right\}    }}
     | neg < qterm >                         :: P :: neg    {{ tex [[neg]] qterm                          }}
     | subs < qterm >                        :: M :: subs   {{ tex [[subs]] \left( [[qterm]] \right)      }}
                                                            {{ com substitute $[[subs]]$ into $[[qterm]]$ }}
@@ -433,7 +431,7 @@ grammar
 
   ipred_term :: 'IPred_term_' ::= {{ com iterated predicate term/request }}
     | each ( base_type x ; iguard ) { pred_term } ::  :: ipred_term (+ bind x in iguard +) (+ bind x in pred_term +)
-      {{ tex [[each]] \left( [[base_type]]\, [[x]] ; [[iguard]] \right)\, \left\{ [[pred_term]] \, \right\} }}
+      {{ tex [[each]] \left( [[base_type]]\, [[x]]\, ; [[iguard]] \right)\, \left\{ [[pred_term]] \, \right\} }}
 
   pred_ipred :: 'Res_req_' ::= {{ com predicate or iterated predicate term }}
     | pred_term  :: :: pred  {{ com predicate term          }}
@@ -454,8 +452,8 @@ grammar
     | ipred_term ( oarg )                         ::   :: ipred
       {{ com an iterated predicate is an iterated term with an array output argument }}
     | *S x . iguard => ptrt |- init - ct -> oarg  :: S :: ipoints_to
-      {{ com pretty-printing for iterated points-to $\cnkw{each}$ $(\!\cnkw{integer} \, [[ x ]] ;$ $[[ iguard ]])$ $\{ \cnkw{Owned}$ $\langle [[ init ]] , [[ ct ]] \rangle$ $( [[ ptrt ]] ) \}$ $( [[ oarg ]] )$ }}
-      {{ tex [[ *S ]]_{ [[ x ]] } { [[ iguard ]] [[ => ]] \left\{ [[ ptrt ]] \overunderset{ [[ init ]] }{ [[ ct ]] }{ \mapsto } { [[ oarg ]] [ [[ x ]] ] } \right\}  } }}
+      {{ com pretty-printing for iterated points-to $\cnkw{each}$ $(\!\cnkw{integer} \, [[ x ]]\, ;$ $[[ iguard ]])$ $\{ \cnkw{Owned}$ $\langle [[ init ]] , [[ ct ]] \rangle$ $( [[ ptrt ]] ) \}$ $( [[ oarg ]] )$ }}
+      {{ tex [[ *S ]]_{ [[ x ]] } { [[ iguard ]] [[ => ]] \left\{ [[ ptrt ]] \overunderset{ [[ init ]] }{ [[ ct ]] }{ \mapsto } { [[ oarg ]] [ [[ x ]]\;\! ] } \right\}  } }}
 
 
 grammar
@@ -871,7 +869,7 @@ grammar
     | *o      :: :: otimes    {{ tex \ast                             }}
     | /\      :: :: and       {{ tex \wedge                           }}
     | /\\     :: :: big_and   {{ tex \bigwedge                        }}
-    | neg     :: :: neg       {{ tex \neg                             }}
+    | neg     :: :: neg       {{ tex \neg\,                           }}
     | !=      :: :: neq       {{ tex \neq                             }}
     | lt      :: :: lt        {{ tex <                                }}
     | =<      :: :: lte       {{ tex \leq                             }}
@@ -883,7 +881,7 @@ grammar
     | |->     :: :: mapsto    {{ tex \mapsto                          }}
     | '::'    :: :: Colon     {{ tex \Colon                           }}
     | :=      :: :: coloneq   {{ tex \coloneq                         }}
-    | :       :: :: of_type   {{ tex {\;\!\colon\;\!}                 }}
+    | :       :: :: of_type   {{ tex \oftype                          }}
     | .       :: :: such_that {{ tex . \:                             }}
     | dot     :: :: dot       {{ tex \! {.} \!                        }}
     | >>      :: :: chevron   {{ tex \gg                              }}
@@ -908,7 +906,6 @@ grammar
     | +?      :: :: plusQ     {{ tex \mathrel{ {+}{?} }               }}
     | ~       :: :: sim       {{ tex \sim                             }}
     | |=      :: :: models    {{ tex \models                          }}
-    | dd      :: :: twodot    {{ tex \mathbin{ {.} {.} }              }}
     | (       :: :: lparen    {{ tex \left(                           }}
     | )       :: :: rparen    {{ tex \right)                          }}
     | 1       :: :: one
