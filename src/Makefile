@@ -25,7 +25,7 @@ THESIS_FILTERED := intro.$(GEN).tex \
 
 PDFS := $(BUILD)/defns.pdf $(BUILD)/soundness.pdf
 
-all: $(BUILD)/main.pdf $(PDFS)
+all: $(PDFS) $(BUILD)/main.pdf
 
 .PHONY: all
 

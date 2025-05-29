@@ -581,26 +581,22 @@ judgement for synthesising a resource term and an instantiation for a logical
 quantifier is as below and in \cref{fig:elab-res-oarg}.
 {\small
 \[
-    [[ N ; nR |- res ~> bind res_bind for res_term and oarg -| nR' ]] % chktex 25
+    [[ y ; N ; nR |- res ~> bind res_bind for res_term and oarg -| nR' ]] % chktex 25
 \]}
-Given a constraint context, a resource context, an
-output parameter, and a resource type, synthesise a series of bindings for an
-output argument and resource term and which will result in the updated resource
-context.
+Given an output parameter $[[y]]$, constraint context $[[N]]$, a resource context
+$[[nR]]$, and a resource type $[[res]]$, synthesise a series of bindings
+$[[res_bind]]$ for a resource term $[[res_term]]$ and output argument $[[oarg]]$
+which will result in the updated resource context $[[nR']]$.
 
 \begin{figure*}
     \small
     \raggedright{}
     \onlyUseRules{\cndefnOarg{}}{%
-        \cndruleOargXXEmpty{},
         \cndruleOargXXReturn{},
-        \cndruleOargXXEndIfXXTrue{},
-        \cndruleOargXXEndIfXXFalse{},
-        \cndruleOargXXEndIfXXUnderDet{},
-        %\cndruleOargXXMiddleIf{},
-        %\cndruleOargXXAssert{},
-        \cndruleOargXXTakePred{}
-        %\cndruleOargXXTakeIPred{}
+        \cndruleOargXXPred{},
+        \cndruleOargXXTake{}
+        %\cndruleOargXXIfXXTrue{},
+        %\cndruleOargXXIfXXUndet{}
     }
     \caption{Select \kl{Kernel CN} rules for an elaboration pass which given
         contexts and a resource type, infers proof terms and logical quantifier
@@ -616,8 +612,8 @@ resources types. A normalised resource is either an (iterated) predicate, or an
 under-determined conditional resource. I call it normalised because (with the
 appropriate terms and pattern-matching), any resource context can be
 manipulated into such a normal form. This means it is simple to specify lookups
-in the context: if I need $b \astRef{} c$ but the context has $\{\; x : a
-\astRef b , y : c \astRef{} d \}$ then how should I proceed? Do I lookup $b$
+in the context: if I need $b \astRef{} c$ but the context has $\{\; x {:} (a
+\astRef b) , y {:} (c \astRef{} d) \}$ then how should I proceed? Do I lookup $b$
 and $c$ individually? Together? Swapped? How do I handle the case where one is
 a sub-resource of a resource in the context? I avoid these questions and simply
 require that other judgements which use resource lookup (all of them) simply
@@ -630,7 +626,7 @@ retaining `leftover' resources from a lookup.
     \grammartabularSTY{%
         \cnresXXbind{}\cnafterlastrule{}
     }
-    \caption{\kl{Kernel CN} definition of resource bindings Note that these are
+    \caption{\kl{Kernel CN} definition of resource bindings. Note that these are
         only required in the presence of explicit resource terms, and as such
         are not necessary in \kl{CN}'s implementation.}\label{fig:res-bind-def}
 \end{figure}

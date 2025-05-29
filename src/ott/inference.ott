@@ -211,8 +211,8 @@ defns
     N ; nR , x : norm_res |- if term then res1 else res2 ~> x -| nR , x : norm_res
 
 
-  defn N ; nR |- res ~> bind out_res_bind for out_res_term and out_oarg -| out_nRp :: :: Oarg :: Oarg_
-  {{ com constraint $[[N]]$ and resource $[[nR]]$ contexts fulfil request for output argument of resource $[[res]]$ (via $[[out_res_bind]]$) with \textbf{checking} $[[out_res_term]]$ and $[[out_oarg]]$, leaving resources $[[out_nRp]]$}} by
+  defn y ; N ; nR |- res ~> bind out_res_bind for out_res_term and out_oarg -| out_nRp :: :: Oarg :: Oarg_
+  {{ com constraint $[[N]]$ and resource $[[nR]]$ contexts fulfil request for output argument $[[y]]$ of resource $[[res]]$ (via $[[out_res_bind]]$) with \textbf{checking} $[[out_res_term]]$ and $[[out_oarg]]$, leaving resources $[[out_nRp]]$}} by
 
 
     % ------------------------------------------------- :: Empty
@@ -220,47 +220,46 @@ defns
 
 
     ---------------------------------------------------- :: Return
-    N ; nR |- y = term ~> bind cdot for emp and term -| nR
+    y ; N ; nR |- y = term ~> bind cdot for emp and term -| nR
 
 
     N ; nR |- pred_term ~> bind res_bind for res_term and oarg -| nR'
     ------------------------------------------------------------------------ :: Pred
-    N ; nR |- pred_term ( _ ) ~> bind res_bind for res_term and oarg  -| nR'
+    y ; N ; nR |- pred_term ( y ) ~> bind res_bind for res_term and oarg  -| nR'
 
 
     N ; nR |- ipred_term ~> bind res_bind for res_term and oarg -| nR'
     ------------------------------------------------------------------------- :: IPred
-    N ; nR |- ipred_term ( _ ) ~> bind res_bind for res_term and oarg  -| nR'
+    y ; N ; nR |- ipred_term ( y ) ~> bind res_bind for res_term and oarg  -| nR'
     
 
     smt ( N => term )
-    N ; nR |- res ~> bind res_bind for res_term and oarg -| nR'
+    y ; N ; nR |- res ~> bind res_bind for res_term and oarg -| nR'
     ----------------------------------------------------------------------------- :: Assert
-    N ; nR |- term * res ~> bind res_bind for < TERM , res_term > and oarg -| nR'
+    y ; N ; nR |- term * res ~> bind res_bind for < TERM , res_term > and oarg -| nR'
 
 
     smt ( N => term )
-    N ; nR |- res1 ~> bind res_bind for res_term and oarg -| nR'
+    y ; N ; nR |- res1 ~> bind res_bind for res_term and oarg -| nR'
     ----------------------------------------------------------------------------------- :: If_True
-    N ; nR |- if term then res1 else res2 ~> bind res_bind for res_term and oarg -| nR'
+    y ; N ; nR |- if term then res1 else res2 ~> bind res_bind for res_term and oarg -| nR'
 
 
     smt ( N => neg term )
-    N ; nR |- res2 ~> bind res_bind for res_term and oarg -| nR'
+    y ; N ; nR |- res2 ~> bind res_bind for res_term and oarg -| nR'
     ----------------------------------------------------------------------------------- :: If_False
-    N ; nR |- if term then res1 else res2 ~> bind res_bind for res_term and oarg -| nR'
+    y ; N ; nR |- if term then res1 else res2 ~> bind res_bind for res_term and oarg -| nR'
 
 
-    % % x is a fresh/unconstrained variable
-    % --------------------------------------------------------------------- :: If_Undet
-    % N ; nR |- if term then res1 else res2 ~> bind cdot for x and x -| nR'
+    --------------------------------------------------------------------- :: If_Undet
+    y ; N ; nR |- if term then res1 else res2 ~> bind cdot for y and y -| nR'
 
 
-    N ; nR |- res1 ~> bind res_bind1 for res_term1 and oarg1 -| nR1
-    N ; nR1 |- oarg1 / y1 ( res2 ) ~> bind res_bind2 for res_term2 and oarg2 -| nR2
+    y1 ; N ; nR |- res1 ~> bind res_bind1 for res_term1 and oarg1 -| nR1
+    y ; N ; nR1 |- oarg1 / y1 ( res2 ) ~> bind res_bind2 for res_term2 and oarg2 -| nR2
     res_term def= pack ( oarg2 , < res_term1 , res_term2 > )
     ---------------------------------------------------------------------------------------------------------- :: Take
-    N ; nR |- exists y1 : base_type .: res1 * res2 ~> bind res_bind1 , res_bind2 for res_term and oarg2  -| nR2
+    y ; N ; nR |- exists y1 : base_type .: res1 * res2 ~> bind res_bind1 , res_bind2 for res_term and oarg2  -| nR2
 
 
 defns
@@ -402,8 +401,8 @@ defns
     C ; L ; N ; nR |- pval , spine :: pi x : base_type .: norm_fun ~> bind res_bind for pval , spine' and norm_ret -| nR'
 
 
-    N ; nR |- norm_res ~> bind res_bind for res_term and oarg -| nR'
-    C ; L ; N ; nR' |- spine :: norm_fun ~> bind res_bind' for spine' and norm_ret -| nR''
+    y ; N ; nR |- norm_res ~> bind res_bind for res_term and oarg -| nR'
+    C ; L ; N ; nR' |- spine :: oarg / y ( norm_fun ) ~> bind res_bind' for spine' and norm_ret -| nR''
     ------------------------------------------------------------------------------------------- :: Take
     C ; L ; N ; nR |- spine :: forall y : base_type .: norm_res --o norm_fun ~> bind res_bind , res_bind' for oarg , res_term , spine' and norm_ret -| nR''
 
@@ -453,9 +452,9 @@ defns
     C ; L ; N ; nR |- pcall ( name , spine ) ~> bind res_bind for pcall ( name , </ spine_elemi // i /> ) : norm_ret -| nR'
 
 
-    P ( a ) = </ xi : base_typei // i  /> , _ : _bt |-> res
+    P ( a ) = </ xi : base_typei // i  /> , y : _bt |-> res
     % indexed </ C |- pvali => base_typei // i />
-    N ; nR |- [ </ pvali / xi // i /> ] ( res ) ~> bind res_bind for res_term and oarg -| nR'
+    y ; N ; nR |- [ </ pvali / xi // i /> ] ( res ) ~> bind res_bind for res_term and oarg -| nR'
     pred def= a ( </ inj pvali // i /> ) ( oarg )
     res_term' def= fold res_term : pred
     ---------------------------------------------------------------------------------------------------------- :: Fold
@@ -550,7 +549,7 @@ defns
 
   % DEFER out_stmt
   defn CLNnR |- stmt <= norm_ret ~> stmt' :: :: Stmt :: Stmt_
-  {{ com given contexts $[[CLNnR]]$, $[[stmt]] : [[norm_ret]]$ elaborates to $[[stmt']]$ }} by
+  {{ com given contexts $[[CLNnR]]$, $[[stmt]] {:} [[norm_ret]]$ elaborates to $[[stmt']]$ }} by
 
 
     C ; L ; N ; nR |- ret_terms :: to_fun norm_ret ~> bind res_bind for ret_terms' and I -| nR'
