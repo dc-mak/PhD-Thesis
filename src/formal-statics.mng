@@ -313,35 +313,37 @@ structurally equal, modulo SMT provability (\cref{fig:typing-res-term-check}).
 \section{Memory actions and pointer operations}\label{sec:kernel-mem-action-ops}
 
 As with resource terms, memory actions require all the contexts (computational,
-logical, constraint and resource). The judgement
-$[[ C ; L ; N ; R |- res_action => ret ]]$ % chktex 25
-means that given the contexts, a (resource term annotated) memory action
+logical, constraint and resource), using the following judgement:
+\[
+[[ C ; L ; N ; R |- res_action => ret ]]. % chktex 25
+\]
+Given the contexts, a (resource term annotated) memory action
 synthesises a return type.
 
-The rule for \coreinline{create()} is a bit busy because of % chktex 36
-constraints on allocations required by the C standard (in premise 2), which I
-will ignore. For now, the main thing to note is that the return type speaks of
-the pointer to the newly created allocation as a computational value $y_p$,
-constraints on pointer $y_p$ as required by the C standard, an unconstrained
-logical (ghost) value for the pointee of the new allocation $x$, and
-finally the two resources it creates. The first is ownership of an
-uninitialised piece of memory, at address $y_p$, and the second is an
+The rule for \coreinline{create()} requires no resources from the context
+$[[cdot]]$, and thus only the $[[emp]]$ as its resource term.
+Its return type speaks of the pointer to the newly created allocation as a
+computational value $y_p$, constraints $[[term]]$ on pointer $y_p$ as required
+by the C standard,\sidenote{I omitted the definition of $[[term]]$ here for
+clarity.} an unconstrained logical (ghost) value for the pointee of the new
+allocation $x$, and finally the two resources it creates. The first is ownership
+of an uninitialised piece of memory, at address $y_p$, and the second is an
 allocation token $\mathsf{Alloc()}$ which is related to the memory object model
 in \nameref{chap:cn-vip}.
 
-In contrast, the rules for loads, stores and kill are quite simple. Loads
-consume ownership of an initialised piece of memory\sidenote{For further
-flexibility, loads of structs and unions could can be partially or completely
+Loads consume ownership of an initialised piece of memory\sidenote{For further
+flexibility, loads of structs and unions could be partially or completely
 uninitialised, as allowed by the C standard, see
-note~\ref{sn:partial-init-read}.}, check if the address of the load and the
-address of the resource are symbolically equal, and synthesise a return type
-mentioning the loaded value and ownership of the loaded location. Stores are
-similar, but with extra checks on the stored value, which is also mentioned in
-the ownership that is synthesised in the return type. Lastly, the rule for
-\coreinline{kill()} is the converse of the one for \coreinline{create()}, % chktex 36
-in that it \emph{consumes} the ownership and allocation token for a location
-and synthesises a return type with no resources.\sidenote{I need to add the
-rule for dynamic allocations.}
+note~\ref{sn:partial-init-read}.} (premise 2), check if the address of the load
+and the address of the resource are symbolically equal (premise 3), and
+synthesise a return type mentioning the loaded value and ownership of the loaded
+location. Stores are similar, but with extra checks on the stored value (premise
+3). Note that the stored value is placed in the return type. Lastly, the rule
+for \coreinline{kill()} is the converse of the one for \coreinline{create()}, %
+chktex 36 in that it \emph{consumes} the ownership and allocation token for a
+location (premise 2), checks that the addresses and allocations being considered
+are the same (premises 3 and 4) and synthesises a return type with no
+resources.\sidenote{I need to add the rule for dynamic allocations.}
 
 \begin{figure*}[tp]
     \small
@@ -581,26 +583,22 @@ judgement for synthesising a resource term and an instantiation for a logical
 quantifier is as below and in \cref{fig:elab-res-oarg}.
 {\small
 \[
-    [[ N ; nR |- res ~> bind res_bind for res_term and oarg -| nR' ]] % chktex 25
+    [[ y ; N ; nR |- res ~> bind res_bind for res_term and oarg -| nR' ]] % chktex 25
 \]}
-Given a constraint context, a resource context, an
-output parameter, and a resource type, synthesise a series of bindings for an
-output argument and resource term and which will result in the updated resource
-context.
+Given an output parameter $[[y]]$, constraint context $[[N]]$, a resource context
+$[[nR]]$, and a resource type $[[res]]$, synthesise a series of bindings
+$[[res_bind]]$ for a resource term $[[res_term]]$ and output argument $[[oarg]]$
+which will result in the updated resource context $[[nR']]$.
 
 \begin{figure*}
     \small
     \raggedright{}
     \onlyUseRules{\cndefnOarg{}}{%
-        \cndruleOargXXEmpty{},
         \cndruleOargXXReturn{},
-        \cndruleOargXXEndIfXXTrue{},
-        \cndruleOargXXEndIfXXFalse{},
-        \cndruleOargXXEndIfXXUnderDet{},
-        %\cndruleOargXXMiddleIf{},
-        %\cndruleOargXXAssert{},
-        \cndruleOargXXTakePred{}
-        %\cndruleOargXXTakeIPred{}
+        \cndruleOargXXPred{},
+        \cndruleOargXXTake{}
+        %\cndruleOargXXIfXXTrue{},
+        %\cndruleOargXXIfXXUndet{}
     }
     \caption{Select \kl{Kernel CN} rules for an elaboration pass which given
         contexts and a resource type, infers proof terms and logical quantifier
@@ -616,8 +614,8 @@ resources types. A normalised resource is either an (iterated) predicate, or an
 under-determined conditional resource. I call it normalised because (with the
 appropriate terms and pattern-matching), any resource context can be
 manipulated into such a normal form. This means it is simple to specify lookups
-in the context: if I need $b \astRef{} c$ but the context has $\{\; x : a
-\astRef b , y : c \astRef{} d \}$ then how should I proceed? Do I lookup $b$
+in the context: if I need $b \astRef{} c$ but the context has $\{\; x {:} (a
+\astRef b) , y {:} (c \astRef{} d) \}$ then how should I proceed? Do I lookup $b$
 and $c$ individually? Together? Swapped? How do I handle the case where one is
 a sub-resource of a resource in the context? I avoid these questions and simply
 require that other judgements which use resource lookup (all of them) simply
@@ -630,7 +628,7 @@ retaining `leftover' resources from a lookup.
     \grammartabularSTY{%
         \cnresXXbind{}\cnafterlastrule{}
     }
-    \caption{\kl{Kernel CN} definition of resource bindings Note that these are
+    \caption{\kl{Kernel CN} definition of resource bindings. Note that these are
         only required in the presence of explicit resource terms, and as such
         are not necessary in \kl{CN}'s implementation.}\label{fig:res-bind-def}
 \end{figure}
@@ -722,7 +720,7 @@ it also synthesises a list of resource bindings to manipulate the context, and
 an elaborated expression containing the fold resource term with several type
 annotations to engineer into a synthesis form.
 
-\begin{figure*}[tp]
+\begin{figure}[tp]
     \small
     \raggedright{}
     \onlyUseRules{\cndefnElabXXExpr{}}{%
@@ -730,7 +728,7 @@ annotations to engineer into a synthesis form.
     }
     \caption{\kl{Kernel CN} elaboration rule for manually folding
         predicates.}\label{fig:kernel-elab-fold}
-\end{figure*}
+\end{figure}
 
 All other placements of resource terms only require (iterated) predicates, such
 as memory actions like \coreinline{load} (\cref{fig:elab-action}) and spines
@@ -742,7 +740,7 @@ always normalised.} but that the resource terms (and the resource bindings
 which precede it to manipulate the context into the right form for typing these
 terms) are the main things elaborated into the program.
 
-\begin{figure*}[tp]
+\begin{figure}[htp]
     \small
     \raggedright{}
     \onlyUseRules{\cndefnElabXXAction{}}{%
@@ -750,13 +748,13 @@ terms) are the main things elaborated into the program.
     }
     \caption{Select \kl{Kernel CN} elaboration rule for memory
         actions.}\label{fig:elab-action}
-\end{figure*}
+\end{figure}
 
-\begin{figure*}[tp]
+\begin{figure*}[hb]
     \small
     \raggedright{}
     \onlyUseRules{\cndefnElabXXSpine{}}{%
-        \cndruleElabXXSpineXXTakePred{}
+        \cndruleElabXXSpineXXTake{}
     }
     \caption{\kl{Kernel CN} elaboration rule for instantiating a logical
         quantifier when elaborating a function call spine.}\label{fig:elab-spine}
@@ -868,52 +866,69 @@ further. This is to capture the idea that predicates encapsulate their contents
 until opened.
 
 \begin{figure*}
-    \small
-    \raggedright{}
+    \small%
     \grammartabularSTY{%
+        \cnresXXval{}\cnafterlastrule{}
+    }%
+    \cngrammarcompressed{\textwidth}{%
         \cnheap{}\cninterrule{}
-        \cnresXXval{}\cninterrule{}
         \cndefXXheap{}\cninterrule{}
         \cnarrXXheap{}\cnafterlastrule{}
     }
     \caption{\kl{ResCore} dynamics heap definition.}\label{fig:kernel-heap-def}
 \end{figure*}
 
-This means that, in the dynamic semantics, folding (and via pattern matching,
-unfolding) predicates \emph{affect the shape of the heap}
-(\cref{fig:kernel-fold-unfold}). In the unfold rule, the nested definition is
-used to destruct the rest of the pattern into a substitution, and the heap is
-extended with the sub-heap associated with those values.
+This means that, in the dynamic semantics, unfolding predicates (via pattern
+matching), \emph{affect the shape of the heap} (\cref{fig:kernel-unfold}). The
+nested definition is used to destruct the rest of the pattern into a
+substitution, and the heap is extended with the sub-heap associated with those
+values. In other words, unfolding a predicate flattens the structure of the
+tree-shaped heap by one level.
 
-\begin{figure*}
-    \small
+\begin{figure}[htp]
+    \ContinuedFloat*%
+    \small%
     \raggedright{}
-    \cndruleSubsXXPatXXResXXFold{}
-    \cndruleOpXXResTXXFold{}
-    \caption{\kl{ResCore} dynamics for folding and unfolding
-        predicates.}\label{fig:kernel-fold-unfold}
-\end{figure*}
+    \onlyUseRules{\cndefnSubsXXPatXXRes{}}{%
+        \cndruleSubsXXPatXXResXXFold{}
+    }\caption{\kl{ResCore} dynamics for unfolding predicates. Note that this
+    flattens the structure of the tree-shaped heap by one level.}\label{fig:kernel-unfold}
+\end{figure}
 
-In the fold rule, the inverse happens, which requires splitting a heap into the
-\emph{footprint} of some resource values, and the remainder
-(\cref{fig:kernel-footprint}). I define the footprint of a resource value as
-the sub-heap containing the (iterated) predicates referred to in said value.
+In the fold rule (\cref{fig:kernel-fold}), the inverse happens, which requires
+splitting a heap into the \emph{footprint} of some resource values (\cref{fig:kernel-footprint}), and the
+remainder. I define the footprint of a resource value as the sub-heap containing
+the (iterated) predicates referred to in said value.
 
-\begin{figure*}
-    \small
+\begin{figure}[htp]
+    \ContinuedFloat*%
+    \small%
     \raggedright{}
-    \onlyUseRules{\cndefnOpXXFootprint{}}{%
-        \cndruleOpXXFootprintXXPred{},
-        \cndruleOpXXFootprintXXIPred{}
-    }
-    \caption{\kl{ResCore} dynamics definition of a footprint of a resource
-        value in a heap.}\label{fig:kernel-footprint}
-\end{figure*}
+    \onlyUseRules{\cndefnOpXXResT{}}{%
+        \cndruleOpXXResTXXFold{}
+    }\caption{\kl{ResCore} dynamics for folding predicates. Note the
+        sub-heap associated with the predicate, its \emph{footprint},
+        is now nested one level deeper within the tree-shaped
+        heap.}\label{fig:kernel-fold}
+\end{figure}
 
 I defined both the pattern matching and the resource term reduction dynamic
 semantics in a big-step style; this makes their definitions more concise,
 at the cost of intertwining the usually separate proofs of progress and type
 preservations for resource term reduction.
+
+\begin{figure}[htp]
+    \ContinuedFloat*%
+    \small%
+    \raggedright{}
+    \onlyUseRules{\cndefnOpXXFootprint{}}{%
+        \cndruleOpXXFootprintXXPred{}
+    }
+    \caption{\kl{ResCore} dynamics for calculating the footprint of a
+        $[[pred_term]]$ resource value (one which remains folded).
+        At runtime, resource values represent the definition of a
+        predicate.}\label{fig:kernel-footprint}
+\end{figure}
 
 The final definition required for the proof is that of the type of a heap. The
 type of a heap is a \kl{normalised resource} context
@@ -1001,12 +1016,12 @@ in the operational semantics.
 Induction over the typing assumption. Full proof in appendix.
 \end{proof}
 
-Moving on to type preservation, a few things are noteworthy about its proof.
+For type preservation, a few things are noteworthy about its proof.
 
 First is that a frame-heap has to be explicitly passed around.  Whilst this is
 inconvenient, it becomes necessary in the \textsc{Stmt\_Let} case.
 
-Second is in the lemma ``Well-typed values pattern match successfully''. %\nameref{subsec:wt_values_pat_match}.
+Second is in the lemma \nameref{subsec:wt_values_pat_match}.
 There are two substitutions at play here. As an example, let
 the value being matched be $[[ Cons ( Unit , Nil unit ( ) ) , ret_terms ]]$ and % chktex 25
 the pattern be $[[ comp Cons ( x1 , x2 ) , ret_pat ]]$. % chktex 25

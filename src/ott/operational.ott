@@ -3,15 +3,15 @@ grammar
   state , s :: 'State_' ::= {{ com state }}
     | alloct ; heap :: M :: def
 
-  heap , h , f {{ tex \cnnt{ fr } }} :: 'Heap_' ::= {{ com heaps }}
-    | cdot                    ::   :: empty
-    | { pred & def_heap }     ::   :: pointsto
-    | { ipred & arr_heap }    ::   :: ipred
-    | </ heapi // + // i />   :: M :: concat
-    | subs ( heap )           :: M :: subs
+  heap , h , f {{ tex \cnnt{ fr } }} :: 'Heap_' ::= {{ com tree-shaped heaps, (i)preds as nodes }}
+    | cdot                  ::   :: empty
+    | { pred & def_heap }   ::   :: pointsto
+    | { ipred & arr_heap }  ::   :: ipred
+    | </ heapi // + // i /> ::   :: concat
+    | subs ( heap )         :: M :: subs
     | def_heap . member     :: M :: def_heap_proj
 
-  def_heap :: 'Def_heap_' ::= {{ com optional pair of definition (resource value) and heap }}
+  def_heap :: 'Def_heap_' ::= {{ com optional defintition-heap pairs }}
     | None              :: :: None
     | def & heap        :: :: Some
     | arr_heap [ term ] :: :: ArrGet
@@ -38,7 +38,7 @@ defns
     alloct |- smt ( qterm )
 
   defn pat = pval ~> out_subs :: :: Pat_Value_ :: Pat_Value_
-  {{ com computational value deconstruction: $[[ pat ]]$ deconstructs $[[ pval ]]$ to produce substitution $[[out_subs]]$ }} by
+  {{ com $[[pat]]$ deconstructs $[[pval]]$ to produce substitution $[[out_subs]]$ }} by
 
 
     ----------------------------- :: Wild
@@ -70,7 +70,7 @@ defns
 
 
   defn < h ; res_pat = res_val > ~> < h' ; out_subs > :: :: Pat_Res :: Pat_Res_
-  {{ com resource term deconstruction: $[[res_pat]]$ deconstructs $[[res_val]]$ to produce substitution $[[out_subs]]$ }} by
+  {{ com heap $[[h]]$ and resource pattern $[[res_pat]]$ deconstruct $[[res_val]]$ to produce heap $[[h']]$ and substitution $[[out_subs]]$ }} by
 
     --------------------------------- :: Emp
     < h ; emp = emp > ~> < h ; cdot >
@@ -102,7 +102,7 @@ defns
 
 
   defn < h ; </ ret_pati = ret_termi // , // i /> > ~> < h' ; out_subs > :: :: Pat_Ret :: Pat_Ret_
-  {{ com return value deconstruction: $ret\_pat_i$ deconstructs $ret\_val_i$ to produce substitution $[[out_subs]]$ }} by
+  {{ com heap $[[h]]$ and return pattern $\cnnt{ret\_pat}_i$ deconstruct $\cnnt{ret\_val}_i$ to produce heap $[[h']]$ and substitution $[[out_subs]]$ }} by
 
 
     ------------------------- :: Empty
@@ -133,8 +133,7 @@ defns
 
 
   defn term | param_spine '::' fon >> < out_subs ; out_ret > :: :: Spine :: Spine_
-  {{ com function call spine: given alloction history $[[ term ]]$ and $[[param_spine]]$
-      for function of type $[[ fon ]]$, substitution $[[ out_subs ]]$ and result type $[[ out_ret ]]$ }} by
+  {{ com alloction history $[[ term ]]$, parameters $[[param_spine]]$ and function type $[[ fon ]]$, produce substitution $[[out_subs]]$ and return type $[[out_ret]]$ }} by
 
     ------------------------------------------ :: Empty
     alloct | :: ret >> < cdot ; ret >
@@ -397,11 +396,13 @@ defns
     -------------------------------------------- :: Term
     footprint_of TERM in h ~> cdot REM h
 
-    --------------------------------------------------------------------------------------------- :: Pred
-    footprint_of pred_term in h + { pred_term ( oarg ) & def_heap } ~> { pred_term ( oarg ) & def_heap } REM h
+    h1 def= { pred_term ( oarg ) & def_heap } 
+    --------------------------------------------- :: Pred
+    footprint_of pred_term in h1 + h2 ~> h1 REM h2
 
-    ------------------------------------------------------------------------------------------- :: IPred
-    footprint_of ipred_term in h + { ipred_term ( oarg ) & arr_heap } ~> { ipred_term ( oarg ) & arr_heap } REM h
+    h1 def= { ipred_term ( oarg ) & arr_heap }
+    ---------------------------------------------- :: IPred
+    footprint_of ipred_term in h1 + h2 ~> h1 REM h2
 
     footprint_of res_val1 in h ~> h1 REM h'
     footprint_of res_val2 in h' ~> h2 REM h''
@@ -413,8 +414,8 @@ defns
     footprint_of pack ( oarg , res_val ) in h ~> h' REM h''
 
 
-  defn term | < h ; res_term > ||v < h' ; res_val > :: :: ResT :: ResT_
-  {{ com big-step resource term reduction: given alloction history $[[ term ]]$, $[[ < ]] [[ h ]] [[ ; ]] [[ res_term ]] [[ > ]]$ reduces to $[[ < ]] [[ h' ]] [[ ; ]] [[ res_val ]] [[ > ]]$ }} by
+  defn alloct | < h ; res_term > ||v < h' ; res_val > :: :: ResT :: ResT_
+  {{ com given alloction history $[[alloct]]$, heap $[[h]]$ and resource term $[[res_term]]$ reduce to heap $[[h']]$ and resource value $[[res_val]]$ }} by
 
     --------------------------------------------- :: Val
     alloct | < h ; res_val > ||v < h ; res_val >
@@ -433,8 +434,9 @@ defns
 
     alloct | < h ; res_term > ||v < h1 ; def >
     footprint_of def in h1 ~> h2 REM h3
-    -------------------------------------------------------------------------------------------------- :: Fold
-    alloct | < h ; fold res_term : pred_term ( oarg ) > ||v < h3 + { pred_term ( oarg ) & def & h2 }  ; pred_term >
+    h2' def= { pred_term ( oarg ) & def & h2 }
+    -------------------------------------------------------------------------------- :: Fold
+    alloct | < h ; fold res_term : pred_term ( oarg ) > ||v < h3 + h2' ; pred_term >
 
 
     alloct | < h ; res_term > ||v < h' ; res_val >

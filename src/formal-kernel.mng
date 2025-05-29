@@ -31,12 +31,20 @@ may not (represented here with a $[[cdot]]$).
 
 \begin{figure*}[tpb]
     \small
-    \grammartabularSTY{
-        \cnspec{}\cninterrule{}
-        \cnpredXXipred{}\cninterrule{}
-        \cnpredXXterm{}\cninterrule{}
-        \cnipredXXterm{}\cninterrule{}
-    }
+    \begin{tabular}{p{0.7\textwidth}p{0.7\textwidth}}
+        \begingroup%
+        \renewcommand{\cnprodline}[6]{\cnprodlinecomment{#1}{#2}{#3}{}{#5}{#6}}
+        \grammartabularSTY{
+            \cnspec{}\cninterrule{}
+        }
+        \endgroup%
+        &
+        \grammartabularSTY{%
+            \cnpredXXipred{}\cninterrule{}
+            \cnpredXXterm{}\cninterrule{}
+            \cnipredXXterm{}\cninterrule{}
+        }
+    \end{tabular}
     \caption{Surface CN syntax for predicate, requires and ensures bodies.}\label{fig:surface-cn-syntax}
 \end{figure*}
 
@@ -45,26 +53,28 @@ scope of either C function parameters, or of predicate parameters, as shown
 in~\cref{fig:func-pred-def}.
 \begin{figure*}[htp]
     \small
-    \raggedright%
-    \begin{minipage}[t][0.24\textheight]{0.75\textwidth}
-    \vspace{0pt}
-    \grammartabularSTY{
-        \cncfuncXXdef{}\cninterrule{}
-        \cnfuncXXspec{}\cninterrule{}
-        \cnpredXXdef{}\cnafterlastrule{}
-    }
-    \end{minipage}%
-%
-    \begin{minipage}[t][0.24\textheight]{0.65\textwidth}
-    \vspace{0pt}
-    \grammartabularSTY{%
-        \cnret{}\cninterrule{}
-        \cnfon{}\cnafterlastrule{}
-    }
-    \end{minipage}
-    \caption{Left: surface CN syntax for function specifications and
-        predicate definitions. Right: \kl{Kernel CN} function and return
-        types.}\label{fig:func-pred-def}
+    \begin{tabular}{p{0.75\textwidth}p{0.65\textwidth}}
+        \begin{minipage}[t]{\linewidth}
+        \vspace*{0pt}%
+        \grammartabularSTY{
+            \cncfuncXXdef{}\cninterrule{}
+            \cnfuncXXspec{}\cninterrule{}
+            \cnpredXXdef{}\cnafterlastrule{}
+        }
+        \end{minipage}
+        &
+        \begin{minipage}[t]{\linewidth}
+        \vspace*{0pt}%
+        \grammartabularSTY{%
+            \cnret{}\cninterrule{}
+            \cnfon{}\cnafterlastrule{}
+        }
+        \end{minipage}
+    \end{tabular}
+    \caption{On the left, CN syntax for function specifications and predicate
+        definitions. On the right, \kl{Kernel CN} function and return types.
+        \cref{fig:prepost-to-kernel} shows the translation from the former to
+        the latter.}\label{fig:func-pred-def}
 \end{figure*}
 
 \cref{fig:func-pred-def} also shows the grammar of function types $[[ fon ]]$ which
@@ -302,15 +312,15 @@ calls and assertions. Pure statements are shown in
 should not reach, such as \coreinline{undef()} must be in a checking % chktex 36
 judgement, so are part of pure statement.
 
-\begin{figure*}
+\begin{figure}[htp]
     \small
     \grammartabularSTY{%
         \cnpstmt{}\cnafterlastrule{}
     }
     \caption{Pure statements in ResCore.}\label{fig:kernel-pstmt}
-\end{figure*}
+\end{figure}
 
-Effectful expression (\cref{fig:kernel-expr}), include memory actions, memory
+Effectful expressions (\cref{fig:kernel-expr}), include memory actions, memory
 operations, C function calls and Core procedure calls.
 
 \begin{figure}[htp]
@@ -325,14 +335,16 @@ Effectful statements include \kl{return terms}, pure statements, bound effectful
 expressions, standard conditional and pattern-matching constructs and the
 \coreinline{run} operator (\cref{fig:effectful-core-grammar}).
 
-\begin{figure*}[tp]
+\begin{figure}[htp]
     \small
+    \renewcommand{\cnrulehead}[3]{%
+    \multirow[t]{2}{0.12\textwidth}{\begin{mathbreakcomma}#1\end{mathbreakcomma}} & & ${\Colon}{=}$ & \multicolumn{3}{l}{#3}}
     \grammartabularSTY{%
         \cnretXXterm{}\cninterrule{}
         \cnstmt{}\cnafterlastrule{}
     }
     \caption{Effectful statements in ResCore.}\label{fig:kernel-stmt}
-\end{figure*}
+\end{figure}
 
 \section{Resource terms}\label{sec:res-terms}
 
@@ -382,14 +394,20 @@ writing or destroying a heap location, and for memory operations involving
 pointers which require checks that pointers are live (\cref{fig:res-term-constructs}).
 
 \begin{figure*}
-    \small
+    \small%
     \grammartabularSTY{%
-        \cnkillXXkind{}\cninterrule{}
         \cnaction{}\cninterrule{}
-        \cnresXXaction{}\cninterrule{}
-        \cnmemop{}\cninterrule{}
-        \cnresXXmemop{}\cnafterlastrule{}
+        \cnmemop{}\cnafterlastrule{}
     }
+    \begingroup%
+    \renewcommand{\cnrulehead}[3]{\begin{mathbreakcomma}#1\end{mathbreakcomma} \mathrel{{\Colon}{=}}}
+    \renewcommand{\cnfirstprodline}[6]{#2}
+    \renewcommand{\cnprodline}[6]{\StrIfInTF{#3}{M}{}{\StrIfInTF{#5}{P}{}{\ #1\ #2}}}{}
+    \renewcommand{\cnprodnewline}{}
+    \begin{align*}
+        \cnkillXXkind{} & & \cnresXXaction{} & & \cnresXXmemop{}
+    \end{align*}
+    \endgroup%
     \caption{Constructs in \kl{ResCore} extended to accommodate
     explicit resource terms.}\label{fig:res-term-constructs}
 \end{figure*}

@@ -161,7 +161,7 @@ defns
 
 
   defn N |- r1 : norm_res +? res_term2 : pred_ipred & oarg2 ~> out_res_term and out_oarg3 :: :: Res_Comb :: Res_Comb_
-  {{ com combining $[[r1]] [[:]] [[norm_res]]$, $[[res_term2]] [[:]] [[pred_ipred]] \& [[oarg2]]$, results in $[[out_res_term]]$ $[[out_oarg3]]$ }} by
+  {{ com given constraints $[[N]]$, combining $[[r1]] [[:]] [[norm_res]]$, $[[res_term2]] [[:]] [[pred_ipred]] \& [[oarg2]]$, results in $[[out_res_term]]$ $[[out_oarg3]]$ }} by
 
     N |- pred_term in? ipred_term ~> term
     C ; L |- oarg1 => base_type
@@ -170,52 +170,35 @@ defns
     N |- r : pred_term ( oarg1 ) +? res_term : ipred_term & oarg2 ~> glue( < res_term , r > ) and oarg2 [ term ] := oarg1
 
 
-  defn N ; nR |- wf pred_ipred ~> bind out_res_bind for out_res_term and out_oarg -| out_nRp :: :: Req :: Req_
-  {{ com $[[N]] ; [[nR]]$ fulfil well-formed request $[[pred_ipred]]$ (via $[[out_res_bind]]$) for answer $[[out_res_term]]$ and $[[out_oarg]]$, with $[[out_nRp]]$ leftover }} by
+  defn N ; nR |- pred_ipred ~> bind out_res_bind for out_res_term and out_oarg -| out_nRp :: :: Req :: Req_
+  {{ com constraint $[[N]]$ and resource $[[nR]]$ contexts fulfil request $[[pred_ipred]]$ (via $[[out_res_bind]]$) for answer $[[out_res_term]]$ and $[[out_oarg]]$, with $[[out_nRp]]$ leftover }} by
 
 
     N |- r : norm_res -? pred_ipred ~> None
-    N ; nR |- wf pred_ipred ~> bind res_bind for res_term and oarg -| nR
+    N ; nR |- pred_ipred ~> bind res_bind for res_term and oarg -| nR
     ------------------------------------------------------------------------------------------------ :: Rej
-    N ; nR , r : norm_res |- wf pred_ipred ~> bind res_bind for res_term and oarg -| nR , r : norm_res
+    N ; nR , r : norm_res |- pred_ipred ~> bind res_bind for res_term and oarg -| nR , r : norm_res
 
 
     N |- r : norm_res -? pred_ipred ~> res_term and oarg
     ----------------------------------------------------------------------------- :: Acc_Clean
-    N ; nR , r : norm_res |- wf pred_ipred ~> bind cdot for res_term and oarg -| nR
+    N ; nR , r : norm_res |- pred_ipred ~> bind cdot for res_term and oarg -| nR
 
 
     N |- r : norm_res -? pred_ipred ~> bind res_pat1 : res1 = res_term1 for r1 & oarg REM r2 : rem
     -------------------------------------------------------------------------------------------------------------------- :: Acc_Rem
-    N ; nR , r : norm_res |- wf pred_ipred ~> bind res_pat1 : res1 = res_term1 , cdot for r1 and oarg -| nR , r2 : rem
+    N ; nR , r : norm_res |- pred_ipred ~> bind res_pat1 : res1 = res_term1 , cdot for r1 and oarg -| nR , r2 : rem
 
 
     N |- r : norm_res -? pred_ipred1 ~> oarg1 and pred_ipred2
-    N ; nR |- wf pred_ipred2 ~> bind res_bind2 for res_term2 and oarg2 -| nR2
+    N ; nR |- pred_ipred2 ~> bind res_bind2 for res_term2 and oarg2 -| nR2
     N |- r : norm_res +? res_term2 : pred_ipred2 & oarg2 ~> res_term3 and oarg3
     -------------------------------------------------------------------------------------- :: Acc_More
-    N ; nR , r : norm_res |- wf pred_ipred1 ~> bind res_bind for res_term3 and oarg3 -| nR2
-
-
-  defn N ; nR |- pred_ipred ~> bind out_res_bind for out_res_term and out_oarg -| out_nRp :: :: Req_Wf :: Req_Wf_
-  {{ com $[[N]] ; [[nR]]$ (check well-formedness of and then) fulfil request $[[pred_ipred]]$ (via $[[out_res_bind]]$) for answer $[[out_res_term]]$ and $[[out_oarg]]$, with $[[out_nRp]]$ leftover }} by
-
-    P ( a ) = </ _i : base_typei // i  /> , _ : _bt |-> res
-    indexed </ C ; L |- iargi => base_typei // i />
-    N ; nR |- wf a ( </ iargi // i /> ) ~> bind res_bind for res_term and oarg -| nR'
-    ----------------------------------------------------------------- :: Pred
-    N ; nR |- a ( ptrt , </ iargi // i /> ) ~> bind res_bind for res_term and oarg -| nR'
-
-
-    P ( a ) = </ _i : base_typei // i  /> , _ : _bt |-> res
-    indexed </ C ; L |- iargi => base_typei // i />
-    N ; nR |- wf each (integer x; iguard) { a ( </ iargi // i /> ) } ~> bind res_bind for res_term and oarg -| nR'
-    ----------------------------------------------------------------- :: IPred
-    N ; nR |- each (integer x; iguard) { a ( </ iargi // i /> ) } ~> bind res_bind for res_term and oarg -| nR'
+    N ; nR , r : norm_res |- pred_ipred1 ~> bind res_bind for res_term3 and oarg3 -| nR2
 
 
   defn N ; nR |- if term then res1 else res2 ~> out_x -| out_nRp :: :: If :: If_
-  {{ com under-determined conditional resource request: $[[N]] ; [[nR]]$ fulfil request for $[[if]]$ $[[term]]$ $[[then]]$ $[[res1]]$ $[[else]]$ $[[res2]]$ with \textbf{synthesising} $[[out_x]]$ and $[[out_nRp]]$ leftover }} by
+  {{ com constraint $[[N]]$ and resource $[[nR]]$ contexts fulfil request for $[[if]]$ $[[term]]$ $[[then]]$ $[[res1]]$ $[[else]]$ $[[res2]]$ with \textbf{synthesising} $[[out_x]]$ and $[[out_nRp]]$ leftover }} by
 
 
     N |- norm_res = if term then res1 else res2
@@ -228,8 +211,8 @@ defns
     N ; nR , x : norm_res |- if term then res1 else res2 ~> x -| nR , x : norm_res
 
 
-  defn N ; nR |- res ~> bind out_res_bind for out_res_term and out_oarg -| out_nRp :: :: Oarg :: Oarg_
-  {{ com arbirtrary resource and output-arg request: $[[N]] ; [[nR]]$ fulfil request for output argument of resource $[[res]]$ (via $[[out_res_bind]]$) with \textbf{checking} $[[out_res_term]]$ and $[[out_oarg]]$, leaving resources $[[out_nRp]]$}} by
+  defn y ; N ; nR |- res ~> bind out_res_bind for out_res_term and out_oarg -| out_nRp :: :: Oarg :: Oarg_
+  {{ com constraint $[[N]]$ and resource $[[nR]]$ contexts fulfil request for output argument $[[y]]$ of resource $[[res]]$ (via $[[out_res_bind]]$) with \textbf{checking} $[[out_res_term]]$ and $[[out_oarg]]$, leaving resources $[[out_nRp]]$}} by
 
 
     % ------------------------------------------------- :: Empty
@@ -237,47 +220,46 @@ defns
 
 
     ---------------------------------------------------- :: Return
-    N ; nR |- term ~> bind cdot for emp and term -| nR
+    y ; N ; nR |- y = term ~> bind cdot for emp and term -| nR
 
 
     N ; nR |- pred_term ~> bind res_bind for res_term and oarg -| nR'
     ------------------------------------------------------------------------ :: Pred
-    N ; nR |- pred_term ( _t ) ~> bind res_bind for res_term and oarg  -| nR'
+    y ; N ; nR |- pred_term ( y ) ~> bind res_bind for res_term and oarg  -| nR'
 
 
     N ; nR |- ipred_term ~> bind res_bind for res_term and oarg -| nR'
     ------------------------------------------------------------------------- :: IPred
-    N ; nR |- ipred_term ( _t ) ~> bind res_bind for res_term and oarg  -| nR'
+    y ; N ; nR |- ipred_term ( y ) ~> bind res_bind for res_term and oarg  -| nR'
     
 
     smt ( N => term )
-    N ; nR |- res ~> bind res_bind for res_term and oarg -| nR'
+    y ; N ; nR |- res ~> bind res_bind for res_term and oarg -| nR'
     ----------------------------------------------------------------------------- :: Assert
-    N ; nR |- term * res ~> bind res_bind for < TERM , res_term > and oarg -| nR'
+    y ; N ; nR |- term * res ~> bind res_bind for < TERM , res_term > and oarg -| nR'
 
 
     smt ( N => term )
-    N ; nR |- res1 ~> bind res_bind for res_term and oarg -| nR'
+    y ; N ; nR |- res1 ~> bind res_bind for res_term and oarg -| nR'
     ----------------------------------------------------------------------------------- :: If_True
-    N ; nR |- if term then res1 else res2 ~> bind res_bind for res_term and oarg -| nR'
+    y ; N ; nR |- if term then res1 else res2 ~> bind res_bind for res_term and oarg -| nR'
 
 
     smt ( N => neg term )
-    N ; nR |- res2 ~> bind res_bind for res_term and oarg -| nR'
+    y ; N ; nR |- res2 ~> bind res_bind for res_term and oarg -| nR'
     ----------------------------------------------------------------------------------- :: If_False
-    N ; nR |- if term then res1 else res2 ~> bind res_bind for res_term and oarg -| nR'
+    y ; N ; nR |- if term then res1 else res2 ~> bind res_bind for res_term and oarg -| nR'
 
 
-    % % x is a fresh/unconstrained variable
-    % --------------------------------------------------------------------- :: If_Undet
-    % N ; nR |- if term then res1 else res2 ~> bind cdot for x and x -| nR'
+    --------------------------------------------------------------------- :: If_Undet
+    y ; N ; nR |- if term then res1 else res2 ~> bind cdot for y and y -| nR'
 
 
-    N ; nR |- res1 ~> bind res_bind1 for res_term1 and oarg1 -| nR1
-    N ; nR1 |- oarg1 / y1 ( res2 ) ~> bind res_bind2 for res_term2 and oarg2 -| nR2
+    y1 ; N ; nR |- res1 ~> bind res_bind1 for res_term1 and oarg1 -| nR1
+    y ; N ; nR1 |- oarg1 / y1 ( res2 ) ~> bind res_bind2 for res_term2 and oarg2 -| nR2
     res_term def= pack ( oarg2 , < res_term1 , res_term2 > )
     ---------------------------------------------------------------------------------------------------------- :: Take
-    N ; nR |- exists y1 : base_type .: res1 * res2 ~> bind res_bind1 , res_bind2 for res_term and oarg2  -| nR2
+    y ; N ; nR |- exists y1 : base_type .: res1 * res2 ~> bind res_bind1 , res_bind2 for res_term and oarg2  -| nR2
 
 
 defns
@@ -285,7 +267,7 @@ defns
 
   % DEFER out_res
   defn CLNnR |- action ~> bind out_res_bind for out_res_term & out_norm_ret -| out_nRp :: :: Action :: Action_
-  {{ com memory action return-type inference: given $[[CLNnR]]$ and $[[action]]$, infer (via $[[out_res_bind]]$) $[[out_res_term]]$ and $[[out_norm_ret]]$, with $[[out_nRp]]$ leftover }} by
+  {{ com given $[[CLNnR]]$ and $[[action]]$, infer (via $[[out_res_bind]]$) $[[out_res_term]]$ and $[[out_norm_ret]]$, with $[[out_nRp]]$ leftover }} by
 
 
     C ; L ; N ; nR |- emp | create < ct > ( pval ) => norm_ret
@@ -331,7 +313,7 @@ defns
 
   % DEFER out_memop'
   defn CLNnR |- memop ~> bind out_res_bind for out_res_term & out_norm_ret -| out_nRp :: :: Memop :: Memop_
-  {{ com memory operation return-type inference: given $[[CLNnR]]$ and $[[memop]]$, infer (via $[[out_res_bind]]$) $[[out_res_term]]$ and $[[out_norm_ret]]$, with $[[out_nRp]]$ leftover }} by
+  {{ com given $[[CLNnR]]$ and $[[memop]]$, infer (via $[[out_res_bind]]$) $[[out_res_term]]$ and $[[out_norm_ret]]$, with $[[out_nRp]]$ leftover }} by
 
 
     % DEFER - how to infer provenances
@@ -407,7 +389,7 @@ defns
 
   % DEFER out_spine'
   defn CLNnR |- spine '::' norm_fun ~> bind out_res_bind for spine' and out_norm_ret -| out_nRp :: :: Spine :: Spine_
-  {{ com spine elaboration: given $[[CLNnR]]$, arguments $[[spine]]$ and function type $[[norm_fun]]$ elaborate (via $[[out_res_bind]]$ ) to $[[spine']]$ and result type $[[out_norm_ret]]$ , with $[[out_nRp]]$ leftover }} by
+  {{ com given $[[CLNnR]]$, $[[spine]]$ and function type $[[norm_fun]]$ elaborate (via $[[out_res_bind]]$) to $[[spine']]$ and result type $[[out_norm_ret]]$ , with $[[out_nRp]]$ leftover }} by
 
     -------------------------------------------------------------- :: Empty
     C ; L ; N ; nR |- :: norm_ret ~> bind cdot for and norm_ret -| nR
@@ -419,8 +401,8 @@ defns
     C ; L ; N ; nR |- pval , spine :: pi x : base_type .: norm_fun ~> bind res_bind for pval , spine' and norm_ret -| nR'
 
 
-    N ; nR |- norm_res ~> bind res_bind for res_term and oarg -| nR'
-    C ; L ; N ; nR' |- spine :: norm_fun ~> bind res_bind' for spine' and norm_ret -| nR''
+    y ; N ; nR |- norm_res ~> bind res_bind for res_term and oarg -| nR'
+    C ; L ; N ; nR' |- spine :: oarg / y ( norm_fun ) ~> bind res_bind' for spine' and norm_ret -| nR''
     ------------------------------------------------------------------------------------------- :: Take
     C ; L ; N ; nR |- spine :: forall y : base_type .: norm_res --o norm_fun ~> bind res_bind , res_bind' for oarg , res_term , spine' and norm_ret -| nR''
 
@@ -435,7 +417,7 @@ defns
   elab_expr :: 'Elab_' ::=
 
   defn CLNnR |- expr ~> bind out_res_bind for expr' : out_ret -| out_nRp :: :: Expr :: Expr_
-  {{ com (effectful) expression elaboration: given $[[CLNnR]]$, $[[expr]]$ elaborates (via $[[out_res_bind]]$) to $[[expr']] [[:]] [[out_ret]]$, with $[[out_nRp]]$ leftover }} by
+  {{ com given $[[CLNnR]]$, $[[expr]]$ elaborates (via $[[out_res_bind]]$) to $[[expr']] [[:]] [[out_ret]]$, with $[[out_nRp]]$ leftover }} by
 
 
     C ; L ; N |- pexpr => pure_ret
@@ -470,16 +452,17 @@ defns
     C ; L ; N ; nR |- pcall ( name , spine ) ~> bind res_bind for pcall ( name , </ spine_elemi // i /> ) : norm_ret -| nR'
 
 
-    P ( a ) = </ xi : base_typei // i  /> , _ : _bt |-> res
-    indexed </ C |- pvali => base_typei // i />
-    N ; nR |- [ </ pvali / xi // i /> ] ( res ) ~> bind res_bind for res_term and oarg -| nR'
+    P ( a ) = </ xi : base_typei // i  /> , y : _bt |-> res
+    % indexed </ C |- pvali => base_typei // i />
+    y ; N ; nR |- [ </ pvali / xi // i /> ] ( res ) ~> bind res_bind for res_term and oarg -| nR'
     pred def= a ( </ inj pvali // i /> ) ( oarg )
+    res_term' def= fold res_term : pred
     ---------------------------------------------------------------------------------------------------------- :: Fold
-    C ; L ; N ; nR |- fold a ( </ pvali // i /> ) ~> bind res_bind for fold res_term : pred : pred *o I -| nR''
+    C ; L ; N ; nR |- fold a ( </ pvali // i /> ) ~> bind res_bind for res_term' : pred *o I -| nR''
 
 
     P ( a ) = </ xi : base_typei // i  /> , _ : _bt |-> res
-    indexed </ C |- pvali => base_typei // i />
+    % indexed </ C |- pvali => base_typei // i />
     N ; nR |- a ( </ inj pvali // i /> ) ~> bind res_bind for res_term and oarg -| nR'
     res' def= [ oarg / y , </ iargi / xi // i /> ] ( res )
     ------------------------------------------------------------------------------------------------ :: Unfold
@@ -490,8 +473,7 @@ defns
   elab :: 'Elab_' ::=
 
   defn N |- res ~> out_res_pat :: :: Res_Pat :: Res_Pat_
-  {{ com resource type normalisation by pattern-matching: under constraints $[[N]]$ , $[[res]]$ will produce a normalised resourced context if it matches against $[[out_res_pat]]$ }} by
-
+  {{ com under constraints $[[N]]$ , $[[res]]$ will produce a normalised resourced context if matched against $[[out_res_pat]]$ }} by
 
     ---------------- :: Empty
     N |- emp ~> emp
@@ -529,7 +511,7 @@ defns
 
 
   defn N |- ret ~> out_ret_pat :: :: Ret_Pat :: Ret_Pat_
-  {{ com return type normalisation by pattern-matching: under constraints $[[N]]$ , $[[ret]]$ will produce a normalised resourced context if it matches against $[[out_ret_pat]]$ }} by
+  {{ com under constraints $[[N]]$ , $[[ret]]$ will produce a normalised resourced context if matched against $[[out_ret_pat]]$ }} by
 
   --------- :: I
   N |- I ~>
@@ -547,7 +529,7 @@ defns
 
 
   defn N ; nR ~> out_res_bind :: :: Simp_Ctx :: Simp_Ctx_
-  {{ com partial-simplification of resource context: given $[[N]]; [[nR]]$ can partially simplify the resources using $[[out_res_bind]]$ }} by
+  {{ com contexts $[[N]]; [[nR]]$ can be partially simplified using $[[out_res_bind]]$ }} by
 
     ---------------- :: Empty
     N ; cdot ~> cdot
@@ -567,7 +549,7 @@ defns
 
   % DEFER out_stmt
   defn CLNnR |- stmt <= norm_ret ~> stmt' :: :: Stmt :: Stmt_
-  {{ com (effectful) expression elaboration: given $[[CLNnR]]$, $[[stmt]]$ elaborates to $[[stmt']]$ }} by
+  {{ com given contexts $[[CLNnR]]$, $[[stmt]] {:} [[norm_ret]]$ elaborates to $[[stmt']]$ }} by
 
 
     C ; L ; N ; nR |- ret_terms :: to_fun norm_ret ~> bind res_bind for ret_terms' and I -| nR'

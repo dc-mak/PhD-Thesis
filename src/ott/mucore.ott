@@ -228,11 +228,11 @@ grammar
 
 grammar
 
-  ctor :: 'Ctor_' ::= {{ com Cerberus Core constructors }}
-    | Nil base_type :: :: nil         {{ com empty list                                      }} % : [bTy]
-    | Cons          :: :: cons        {{ com list cons                                       }} % : bTy -> [bTy] -> [bTy]
-    | Tuple         :: :: tuple       {{ com tuple                                           }} % : bTy1 -> ... -> bTyN -> (bTy1, ..., bTyN)
-    | Array         :: :: array       {{ com C fixed-size array (guaranteed to be non-empty) }} % : bTy -> ... -> bTy -> array bTy
+  ctor :: 'Ctor_' ::= {{ com Core constructors }}
+    | Nil base_type :: :: nil         {{ com empty list                     }} % : [bTy]
+    | Cons          :: :: cons        {{ com list cons                      }} % : bTy -> [bTy] -> [bTy]
+    | Tuple         :: :: tuple       {{ com tuple                          }} % : bTy1 -> ... -> bTyN -> (bTy1, ..., bTyN)
+    | Array         :: :: array       {{ com C fixed-size array (non-empty) }} % : bTy -> ... -> bTy -> array bTy
     | IvCOMPL       :: :: ivCOMPL     {{ com bitwise complement             }} % : ctype -> integer -> integer
     | IvAND         :: :: ivAND       {{ com bitwise AND                    }} % : ctype -> integer -> integer -> integer
     | IvOR          :: :: ivOR        {{ com bitwise OR                     }} % : ctype -> integer -> integer -> integer
@@ -243,16 +243,16 @@ grammar
     | Fvfromint     :: :: fvfromInt
 
   ctor_val :: 'CtorV_' ::= {{ com data constructors (values, do not reduce) }}
-    | Nil base_type :: :: nil         {{ com empty list                                      }} % : [bTy]
-    | Cons          :: :: cons        {{ com list cons                                       }} % : bTy -> [bTy] -> [bTy]
-    | Tuple         :: :: tuple       {{ com tuple                                           }} % : bTy1 -> ... -> bTyN -> (bTy1, ..., bTyN)
-    | Array         :: :: array       {{ com C fixed-size array (guaranteed to be non-empty) }} % : bTy -> ... -> bTy -> array bTy
+    | Nil base_type :: :: nil         {{ com empty list                     }} % : [bTy]
+    | Cons          :: :: cons        {{ com list cons                      }} % : bTy -> [bTy] -> [bTy]
+    | Tuple         :: :: tuple       {{ com tuple                          }} % : bTy1 -> ... -> bTyN -> (bTy1, ..., bTyN)
+    | Array         :: :: array       {{ com C fixed-size array (non-empty) }} % : bTy -> ... -> bTy -> array bTy
 
   ctor_expr :: 'CtorE_' ::= {{ com data constructors (expressions, do reduce) }}
-    | IvCOMPL       :: :: ivCOMPL     {{ com bitwise complement             }} % : ctype -> integer -> integer
-    | IvAND         :: :: ivAND       {{ com bitwise AND                    }} % : ctype -> integer -> integer -> integer
-    | IvOR          :: :: ivOR        {{ com bitwise OR                     }} % : ctype -> integer -> integer -> integer
-    | IvXOR         :: :: ivXOR       {{ com bitwise XOR                    }} % : ctype -> integer -> integer -> integer
+    | IvCOMPL       :: :: ivCOMPL     {{ com bitwise complement               }} % : ctype -> integer -> integer
+    | IvAND         :: :: ivAND       {{ com bitwise AND                      }} % : ctype -> integer -> integer -> integer
+    | IvOR          :: :: ivOR        {{ com bitwise OR                       }} % : ctype -> integer -> integer -> integer
+    | IvXOR         :: :: ivXOR       {{ com bitwise XOR                      }} % : ctype -> integer -> integer -> integer
 
   subrules
     ctor_val <:: ctor
@@ -266,20 +266,20 @@ metavar impl_const ::=
 
 grammar
 
-  name :: 'Name_' ::=
+  name :: 'Name_' ::= {{ com Core func. name/addr. }}
     | id         :: :: sym   {{ com Core identifier                 }}
     | impl_const :: :: implC {{ com implementation-defined constant }}
 
 grammar
 
   pval :: 'PV_' ::= {{ com pure values }}
-    | id                                                             ::   :: sym         {{ com Core identifier                           }}
-    | impl_const                                                     ::   :: implC       {{ com implementation-defined constant           }}
-    | value                                                          ::   :: val         {{ com Core values                               }}
-    | ctor_val ( </ pvali // , // i /> )                             ::   :: ctor        {{ com data constructor application              }}
-    | ( struct tag ) { </ . memberi = pvali // , // i /> }         ::   :: struct      {{ com C struct expression                       }}
-    | ( union tag ) { . member = pval }                            ::   :: union       {{ com C union expression                        }}
-    | subs ( pval )                                                  :: M :: subs        {{ com substitution for pure values }}
+    | id                                                   ::   :: sym    {{ com Core identifier                 }}
+    | impl_const                                           ::   :: implC  {{ com implementation-defined constant }}
+    | value                                                ::   :: val    {{ com Core values                     }}
+    | ctor_val ( </ pvali // , // i /> )                   ::   :: ctor   {{ com data constructor application    }}
+    | ( struct tag ) { </ . memberi = pvali // , // i /> } ::   :: struct {{ com C struct expression             }}
+    | ( union tag ) { . member = pval }                    ::   :: union  {{ com C union expression              }}
+    | subs ( pval )                                        :: M :: subs   {{ com substitution for pure values    }}
 
   pvals :: 'PVs_' ::= {{ com list of pure values }}
     | </ pvali // , // i /> ::   :: list
@@ -429,13 +429,13 @@ grammar
   pred_term :: 'Pred_term_' ::= {{ com predicate term/request }}
     | a ( iargs ) :: :: pred_term
 
-  ipred_term :: 'IPred_term_' ::= {{ com iterated predicate term/request }}
+  ipred_term :: 'IPred_term_' ::= {{ com iterated pred. term/request }}
     | each ( base_type x ; iguard ) { pred_term } ::  :: ipred_term (+ bind x in iguard +) (+ bind x in pred_term +)
       {{ tex [[each]] \left( [[base_type]]\, [[x]]\, ; [[iguard]] \right)\, \left\{ [[pred_term]] \, \right\} }}
 
-  pred_ipred :: 'Res_req_' ::= {{ com predicate or iterated predicate term }}
-    | pred_term  :: :: pred  {{ com predicate term          }}
-    | ipred_term :: :: ipred {{ com iterated predicate term }}
+  pred_ipred :: 'Res_req_' ::= {{ com pred. or iterated pred. term }}
+    | pred_term  :: :: pred 
+    | ipred_term :: :: ipred
 
   % OUT_HACK|pred_ipred,\cnnt{pred\_ipred}
   out_pred_ipred {{ tex \outpol{ \cnnt{pred\_ipred} } }}   :: 'Out_hack_' ::=  {{ com Ott-hack, ignore }}
@@ -579,12 +579,12 @@ grammar
 
 grammar
 
-  cpat {{ tex \cnnt{pat} }} :: 'CPat_' ::= {{ com Cerberus Core patterns }}
+  cpat {{ tex \cnnt{pat} }} :: 'CPat_' ::= {{ com Core patterns }}
     | id : base_type                 ::  :: var
     | _  : base_type                 ::  :: wild
     | ctor ( </ cpati // , // i /> ) ::  :: ctor
 
-  pure_core , pce :: 'PCE_' ::= {{ com pure Cerberus Core expressions }}
+  pce :: 'PCE_' ::= {{ com Core pure expressions }}
     | x                                                            ::  :: var
     | impl_const                                                   ::  :: impl_const
     | value                                                        ::  :: value
@@ -604,7 +604,7 @@ grammar
     | name ( pce1 , .. , pcen )                                    ::  :: call
     | refine_ctype ( pce1 , pce2 , pce3 )                          ::  :: refine_ctype
 
-  cmemop {{ tex \cnnt{memop} }} :: 'Cmemop_'  ::= {{ com Cerberus Core memory operations }}
+  cmemop {{ tex \cnnt{memop} }} :: 'Cmemop_'  ::= {{ com Core memory ops. }}
     | PtrEq            ::  :: ptrEq
     | PtrNeq           ::  :: ptrNeq
     | PtrLt            ::  :: ptrLt
@@ -625,7 +625,7 @@ grammar
     | Va_arg           ::  :: va_arg
     | Va_end           ::  :: va_end
 
-  caction {{ tex \cnnt{action} }} :: 'Caction_' ::= {{ com Cerberus Core memory action }}
+  caction {{ tex \cnnt{action} }} :: 'Caction_' ::= {{ com Core memory action }}
     | create_object ( pce1 , pce2 )           ::  :: create_object
     | create_read_only ( pce1 , pce2 , pce3 ) ::  :: create_read_only
     | create_region ( pce1 , pce2 )           ::  :: create_region
@@ -634,7 +634,7 @@ grammar
     | load ( pce1 , pce2 )                    ::  :: load
     | seq_rmw ( pce1 , pce2 , x .: pce3 )     ::  :: seq_rmw
 
-  core , ce {{ tex \cnnt{E} }} :: 'CE_' ::= {{ com Cerberus Core expression }}
+  core , ce {{ tex \cnnt{E} }} :: 'CE_' ::= {{ com Core expression }}
     | pure ( pce )                                   ::  :: pure
     | MEMOP ( cmemop , pce1 , ... , pcen )           ::  :: memop
     | caction                                        ::  :: action
@@ -723,32 +723,32 @@ grammar
     | ct  :: :: static
 
   action :: 'Action_' ::= {{ com memory actions }}
-    | create < ct > ( pval )        ::  :: create
-    | alloc ( pval1 , pval2 )       ::  :: alloc
-    | load < ct > ( pval )          ::  :: load
-    | store < ct > ( pval1 , pval ) ::  :: store
-    | kill < kill_kind > ( pval )   ::  :: kill
+    | create < ct > ( pval )         ::  :: create {{ com allocate bytes for $[[ct]]$ object, aligned to $[[pval]]$     }}
+    | alloc ( pval1 , pval2 )        ::  :: alloc  {{ com allocate $[[pval2]]$ bytes for region, aligned to $[[pval1]]$ }}
+    | load < ct > ( pval )           ::  :: load   {{ com read a $[[ct]]$ from location $[[pval]]$         }}
+    | store < ct > ( pval1 , pval2 ) ::  :: store  {{ com write $[[pval1]] : \beta_[[ct]]$ to $[[pval2]]$  }}
+    | kill < kill_kind > ( pval )    ::  :: kill   {{ com destroy allocation at $[[pval]]$                 }}
 
-  res_action :: 'Res_action_' ::= {{ com memory actions with resource term annotation }}
-    | res_term | action :: :: res
+  res_action :: 'Res_action_' ::= {{ com mem. actions with resource term }}
+    | res_term | action :: :: res {{ tex [[res_term]] \mathrel{\&} [[action]] }}
 
 grammar
 
   % Factor out res_term proof for all of these (just use emp for the pure ones)
   memop :: 'Memop__' ::=  {{ com operations involving the memory state}}
-    | pval1 rel_binop pval2                   :: :: ptrRelBinop      {{ com pointer relational binary operations             }}
-    | pval1 - ct - pval2                      :: :: ptrDiff          {{ com pointer subtraction                              }}
-                                                                     {{ tex [[ pval1 ]] -_{ [[ct]] } [[ pval2 ]]             }}
-    | intFromPtr < ct > ( pval )              :: :: intFromPtr       {{ com cast pointer value to integer value              }}
-    | ptrFromInt < ct > ( pval )              :: :: ptrFromInt       {{ com cast integer value to pointer value              }}
-    | ptrValidForDeref < ct > ( pval )        :: :: ptrValidForDeref {{ com check pointer is valid for dereferencing         }}
-    | ptrWellAligned < ct > ( pval )          :: :: ptrWellAligned   {{ com check pointer is aligned for the type $[[ ct ]]$ }}
-    | ptrArrayShift < ct > ( pval1 ,  pval2 ) :: :: ptrArrayShift    {{ com pointer-arithmetic for indexing arrays           }}
-    | memcpy ( pval1 , pval2 , pval3 )        :: :: memcpy
-    | memcmp ( pval1 , pval2 , pval3 )        :: :: memcmp
+    | pval1 rel_binop pval2                   :: :: ptrRelBinop      {{ com pointer relational binary operations                           }}
+    | pval1 - ct - pval2                      :: :: ptrDiff          {{ com $[[ct]]$-typed pointer subtraction                             }}
+                                                                     {{ tex [[ pval1 ]] -_{ [[ct]] } [[ pval2 ]]                           }}
+    | intFromPtr < ct > ( pval )              :: :: intFromPtr       {{ com cast pointer value to $[[ct]]$ integer value                   }}
+    | ptrFromInt < ct > ( pval )              :: :: ptrFromInt       {{ com cast integer value to $[[ct]]$ pointer value                   }}
+    | ptrValidForDeref < ct > ( pval )        :: :: ptrValidForDeref {{ com check pointer $[[pval]]$ is valid for $[[ct]]$ deref.          }}
+    | ptrWellAligned < ct > ( pval )          :: :: ptrWellAligned   {{ com check pointer $[[pval]]$ is aligned for $[[ct ]]$              }}
+    | ptrArrayShift < ct > ( pval1 ,  pval2 ) :: :: ptrArrayShift    {{ com shift pointer $[[pval1]]$ by $[[pval2]]$ at type $[[ct]]$      }}
+    | memcpy ( pval1 , pval2 , pval3 )        :: :: memcpy           {{ com dest: $[[pval1]]$, src: $[[pval2]]$, len: $[[pval3]]$          }}
+    | memcmp ( pval1 , pval2 , pval3 )        :: :: memcmp           {{ com compare $[[pval3]]$ bytes, between $[[pval1]]$ and $[[pval2]]$ }}
 
-  res_memop :: 'Res_memop_' ::= {{ com memory actions with resource term annotation }}
-    | res_term | memop :: :: res
+  res_memop :: 'Res_memop_' ::= {{ com mem. ops. with resource term }}
+    | res_term | memop :: :: res {{ tex [[res_term]] \mathrel{\&} [[memop]] }}
 
 grammar
 
@@ -803,7 +803,7 @@ grammar
   % There used to be an effectful value (val) `skip' - I (dcm41) removed it because it seemed redundant.
   expr :: 'Expr_' ::= {{ com (effectful) expressions }}
     | pure ( pexpr )            ::   :: pure      {{ com pure expression                           }}
-    | res_memop                 ::   :: memop     {{ com pointer op involving memory               }}
+    | res_memop                 ::   :: memop     {{ com pointer op. involving memory              }}
     | res_action                ::   :: action    {{ com memory action                             }}
     | ccall ( ct , yf , spine ) ::   :: ccall     {{ com C function call                           }}
     | pcall ( name , spine )    ::   :: proc      {{ com Core procedure call                       }}
@@ -819,7 +819,7 @@ grammar
     | < ret_terms >                         ::   :: ret_terms   {{ com return values                                 }}
     | pure ( pstmt )                        ::   :: pure        {{ com pure statement                                }}
     | let ret_pat = expr in stmt            ::   :: expr        (+ bind binders( ret_pat ) in stmt                   +)
-                                                                {{ com (effectful) expression binding                }}
+                                                                {{ com (effectful) expr. binding                     }}
     | if pval then stmt1 else stmt2         ::   :: if          {{ com conditional                                   }}
     | run id pvals                          ::   :: run         {{ com run from label                                }}
     | case pval of </ | branchi // i /> end ::   :: case        {{ com pattern-matching                              }}
@@ -986,31 +986,31 @@ grammar
     | None       :: :: None
     | x :: :: Some
 
-  spec :: 'Spec_' ::= {{ com CN surface syntax for function specifications and predicate definitions }}
-    | cdot                                 ::  :: empty  {{ com empty specification              }}
-    | return term                          ::  :: ret    {{ com specify output arguments         }}
-    | pred_ipred                           ::  :: p_ip   {{ com predicate or iterated predicate  }}
+  spec :: 'Spec_' ::= {{ com CN spec. and pred. body }}
+    | cdot                                 ::  :: empty  {{ com empty specification                          }}
+    | return term                          ::  :: ret    {{ com specify output argument                      }}
+    | pred_ipred                           ::  :: p_ip   {{ com predicate or iterated predicate              }}
     | let x = term ; spec                  ::  :: let    (+ bind x in spec +)
-                                                         {{ com bind (pure) term                 }}
+                                                         {{ com bind (pure/SMT) term                         }}
     | take x = spec1 ; spec2               ::  :: take   (+ bind x in spec2 +)
-                                                         {{ com bind output value of $[[spec1]]$ }}
-    | assert ( qterm ) ; spec              ::  :: assert {{ com assert specification             }}
-    | if ( term ) { spec1 } else { spec2 } ::  :: if     {{ com conditional specification        }}
+                                                         {{ com bind output argument of $[[spec1]]$          }}
+    | assert ( qterm ) ; spec              ::  :: assert {{ com assert quantified SMT constraint $[[qterm]]$ }}
+    | if ( term ) { spec1 } else { spec2 } ::  :: if     {{ com conditional specification                    }}
 
   spec_value , sval :: 'Spec_val_' ::=  {{ com specifications terminators }}
     | cdot          :: :: empty
     | return term   :: :: ret
 
-  pred_def :: 'Pred_' ::= {{ com predicate definition }}
+  pred_def :: 'Pred_' ::= {{ com CN predicate definition }}
     | predicate base_type id ( base_type1 x1 , .. , base_typek xk ) { spec } :: :: Def
 
-  func_def :: 'Func_' ::= {{ com pure CN function definition }}
+  func_def :: 'Func_' ::= {{ com CN pure function definition }}
     | function base_type id ( base_type1 x1 , .. , base_typek xk ) { term } :: :: Def
 
-  datatype_def :: 'Datatype_' ::= {{ com datatype defnition }}
+  datatype_def :: 'Datatype_' ::= {{ com CN datatype defnition }}
     | datatype tag { ctor_def1 , .. , ctor_defn } :: :: Def
 
-  ctor_def :: 'Ctor_' ::= {{ com datatype constructor definition/pattern }}
+  ctor_def :: 'Ctor_' ::= {{ com CN constructor definition }}
     | id { base_type1 id1 , .. , base_typen idn } :: :: Def
 
   subrules

@@ -59,15 +59,21 @@ rulelayout=nobreaks}
 \NewDocumentCommand{\cngrammarcompressed}{mm}{
     \begingroup%
     \renewcommand{\cngrammartabular}[1]{\begin{align*}##1\end{align*}}
-    \renewcommand{\cnrulehead}[3]{##1  &\mathrel{{\Colon}{=}}}
+    \renewcommand{\cnrulehead}[3]{\text{##3} &\begin{mathbreakcomma}##1\end{mathbreakcomma} &\mathrel{{\Colon}{=}}}
     \renewcommand{\cnfirstprodline}[6]{\begingroup\begin{minipage}[t]{#1}\raggedright\ $##2$}
-    \renewcommand{\cnprodline}[6]{\StrIfInTF{##3}{M}{}{\StrIfInTF{##5}{P}{}{\ $##1$~$##2$}}}{}
+    \renewcommand{\cnprodline}[6]{\StrIfInTF{##3}{M}{}{\StrIfInTF{##5}{P}{}{\ $##1$\ $##2$}}}{}
     \renewcommand{\cnprodnewline}{}
-    \renewcommand{\cninterrule}{\end{minipage}\endgroup\\}
-    \renewcommand{\cnafterlastrule}{\end{minipage}\endgroup\\}
+    \renewcommand{\cninterrule}{\end{minipage}\endgroup\\[.5\baselineskip]}
+    \renewcommand{\cnafterlastrule}{\end{minipage}\endgroup}
     \cngrammartabular{#2}
     \endgroup%
 }
+
+\NewDocumentCommand{\cnprodlinecomment}{mmmmmm}{%
+& & $#1$ & $#2$ & $#3 #4$ & $#5$%
+\ifthenelse{ \equal{}{#6} }%
+{#6}%
+{\\ & & & \multicolumn{3}{@{}p{0.8\textwidth}}{#6}}}%
 
 %%%%%%%%%%%%%%%%%%%%%%%
 % Rule premise filter %
