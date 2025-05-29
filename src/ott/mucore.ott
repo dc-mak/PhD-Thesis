@@ -723,32 +723,32 @@ grammar
     | ct  :: :: static
 
   action :: 'Action_' ::= {{ com memory actions }}
-    | create < ct > ( pval )        ::  :: create
-    | alloc ( pval1 , pval2 )       ::  :: alloc
-    | load < ct > ( pval )          ::  :: load
-    | store < ct > ( pval1 , pval ) ::  :: store
-    | kill < kill_kind > ( pval )   ::  :: kill
+    | create < ct > ( pval )         ::  :: create {{ com allocate bytes for $[[ct]]$ object, aligned to $[[pval]]$     }}
+    | alloc ( pval1 , pval2 )        ::  :: alloc  {{ com allocate $[[pval2]]$ bytes for region, aligned to $[[pval1]]$ }}
+    | load < ct > ( pval )           ::  :: load   {{ com read a $[[ct]]$ from location $[[pval]]$         }}
+    | store < ct > ( pval1 , pval2 ) ::  :: store  {{ com write $[[pval1]] : \beta_[[ct]]$ to $[[pval2]]$  }}
+    | kill < kill_kind > ( pval )    ::  :: kill   {{ com destroy allocation at $[[pval]]$                 }}
 
-  res_action :: 'Res_action_' ::= {{ com memory actions with resource term annotation }}
-    | res_term | action :: :: res
+  res_action :: 'Res_action_' ::= {{ com mem. actions with resource term }}
+    | res_term | action :: :: res {{ tex [[res_term]] \mathrel{\&} [[action]] }}
 
 grammar
 
   % Factor out res_term proof for all of these (just use emp for the pure ones)
   memop :: 'Memop__' ::=  {{ com operations involving the memory state}}
-    | pval1 rel_binop pval2                   :: :: ptrRelBinop      {{ com pointer relational binary operations             }}
-    | pval1 - ct - pval2                      :: :: ptrDiff          {{ com pointer subtraction                              }}
-                                                                     {{ tex [[ pval1 ]] -_{ [[ct]] } [[ pval2 ]]             }}
-    | intFromPtr < ct > ( pval )              :: :: intFromPtr       {{ com cast pointer value to integer value              }}
-    | ptrFromInt < ct > ( pval )              :: :: ptrFromInt       {{ com cast integer value to pointer value              }}
-    | ptrValidForDeref < ct > ( pval )        :: :: ptrValidForDeref {{ com check pointer is valid for dereferencing         }}
-    | ptrWellAligned < ct > ( pval )          :: :: ptrWellAligned   {{ com check pointer is aligned for the type $[[ ct ]]$ }}
-    | ptrArrayShift < ct > ( pval1 ,  pval2 ) :: :: ptrArrayShift    {{ com pointer-arithmetic for indexing arrays           }}
-    | memcpy ( pval1 , pval2 , pval3 )        :: :: memcpy
-    | memcmp ( pval1 , pval2 , pval3 )        :: :: memcmp
+    | pval1 rel_binop pval2                   :: :: ptrRelBinop      {{ com pointer relational binary operations                           }}
+    | pval1 - ct - pval2                      :: :: ptrDiff          {{ com $[[ct]]$-typed pointer subtraction                             }}
+                                                                     {{ tex [[ pval1 ]] -_{ [[ct]] } [[ pval2 ]]                           }}
+    | intFromPtr < ct > ( pval )              :: :: intFromPtr       {{ com cast pointer value to $[[ct]]$ integer value                   }}
+    | ptrFromInt < ct > ( pval )              :: :: ptrFromInt       {{ com cast integer value to $[[ct]]$ pointer value                   }}
+    | ptrValidForDeref < ct > ( pval )        :: :: ptrValidForDeref {{ com check pointer $[[pval]]$ is valid for $[[ct]]$ deref.          }}
+    | ptrWellAligned < ct > ( pval )          :: :: ptrWellAligned   {{ com check pointer $[[pval]]$ is aligned for $[[ct ]]$              }}
+    | ptrArrayShift < ct > ( pval1 ,  pval2 ) :: :: ptrArrayShift    {{ com shift pointer $[[pval1]]$ by $[[pval2]]$ at type $[[ct]]$      }}
+    | memcpy ( pval1 , pval2 , pval3 )        :: :: memcpy           {{ com dest: $[[pval1]]$, src: $[[pval2]]$, len: $[[pval3]]$          }}
+    | memcmp ( pval1 , pval2 , pval3 )        :: :: memcmp           {{ com compare $[[pval3]]$ bytes, between $[[pval1]]$ and $[[pval2]]$ }}
 
-  res_memop :: 'Res_memop_' ::= {{ com memory actions with resource term annotation }}
-    | res_term | memop :: :: res
+  res_memop :: 'Res_memop_' ::= {{ com mem. ops. with resource term }}
+    | res_term | memop :: :: res {{ tex [[res_term]] \mathrel{\&} [[memop]] }}
 
 grammar
 

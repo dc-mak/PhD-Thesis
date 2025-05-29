@@ -396,14 +396,20 @@ writing or destroying a heap location, and for memory operations involving
 pointers which require checks that pointers are live (\cref{fig:res-term-constructs}).
 
 \begin{figure*}
-    \small
+    \small%
     \grammartabularSTY{%
-        \cnkillXXkind{}\cninterrule{}
         \cnaction{}\cninterrule{}
-        \cnresXXaction{}\cninterrule{}
-        \cnmemop{}\cninterrule{}
-        \cnresXXmemop{}\cnafterlastrule{}
+        \cnmemop{}\cnafterlastrule{}
     }
+    \begingroup%
+    \renewcommand{\cnrulehead}[3]{\begin{mathbreakcomma}#1\end{mathbreakcomma} \mathrel{{\Colon}{=}}}
+    \renewcommand{\cnfirstprodline}[6]{#2}
+    \renewcommand{\cnprodline}[6]{\StrIfInTF{#3}{M}{}{\StrIfInTF{#5}{P}{}{\ #1\ #2}}}{}
+    \renewcommand{\cnprodnewline}{}
+    \begin{align*}
+        \cnkillXXkind{} & & \cnresXXaction{} & & \cnresXXmemop{}
+    \end{align*}
+    \endgroup%
     \caption{Constructs in \kl{ResCore} extended to accommodate
     explicit resource terms.}\label{fig:res-term-constructs}
 \end{figure*}
