@@ -434,8 +434,8 @@ grammar
       {{ tex [[each]] \left( [[base_type]]\, [[x]]\, ; [[iguard]] \right)\, \left\{ [[pred_term]] \, \right\} }}
 
   pred_ipred :: 'Res_req_' ::= {{ com pred. or iterated pred. term }}
-    | pred_term  :: :: pred  {{ com predicate term          }}
-    | ipred_term :: :: ipred {{ com iterated predicate term }}
+    | pred_term  :: :: pred 
+    | ipred_term :: :: ipred
 
   % OUT_HACK|pred_ipred,\cnnt{pred\_ipred}
   out_pred_ipred {{ tex \outpol{ \cnnt{pred\_ipred} } }}   :: 'Out_hack_' ::=  {{ com Ott-hack, ignore }}
@@ -803,7 +803,7 @@ grammar
   % There used to be an effectful value (val) `skip' - I (dcm41) removed it because it seemed redundant.
   expr :: 'Expr_' ::= {{ com (effectful) expressions }}
     | pure ( pexpr )            ::   :: pure      {{ com pure expression                           }}
-    | res_memop                 ::   :: memop     {{ com pointer op involving memory               }}
+    | res_memop                 ::   :: memop     {{ com pointer op. involving memory              }}
     | res_action                ::   :: action    {{ com memory action                             }}
     | ccall ( ct , yf , spine ) ::   :: ccall     {{ com C function call                           }}
     | pcall ( name , spine )    ::   :: proc      {{ com Core procedure call                       }}
@@ -819,7 +819,7 @@ grammar
     | < ret_terms >                         ::   :: ret_terms   {{ com return values                                 }}
     | pure ( pstmt )                        ::   :: pure        {{ com pure statement                                }}
     | let ret_pat = expr in stmt            ::   :: expr        (+ bind binders( ret_pat ) in stmt                   +)
-                                                                {{ com (effectful) expression binding                }}
+                                                                {{ com (effectful) expr. binding                     }}
     | if pval then stmt1 else stmt2         ::   :: if          {{ com conditional                                   }}
     | run id pvals                          ::   :: run         {{ com run from label                                }}
     | case pval of </ | branchi // i /> end ::   :: case        {{ com pattern-matching                              }}
@@ -987,15 +987,15 @@ grammar
     | x :: :: Some
 
   spec :: 'Spec_' ::= {{ com CN spec. and pred. body }}
-    | cdot                                 ::  :: empty  {{ com empty specification              }}
-    | return term                          ::  :: ret    {{ com specify output arguments         }}
-    | pred_ipred                           ::  :: p_ip   {{ com predicate or iterated predicate  }}
+    | cdot                                 ::  :: empty  {{ com empty specification                          }}
+    | return term                          ::  :: ret    {{ com specify output argument                      }}
+    | pred_ipred                           ::  :: p_ip   {{ com predicate or iterated predicate              }}
     | let x = term ; spec                  ::  :: let    (+ bind x in spec +)
-                                                         {{ com bind (pure) term                 }}
+                                                         {{ com bind (pure/SMT) term                         }}
     | take x = spec1 ; spec2               ::  :: take   (+ bind x in spec2 +)
-                                                         {{ com bind output value of $[[spec1]]$ }}
-    | assert ( qterm ) ; spec              ::  :: assert {{ com assert specification             }}
-    | if ( term ) { spec1 } else { spec2 } ::  :: if     {{ com conditional specification        }}
+                                                         {{ com bind output argument of $[[spec1]]$          }}
+    | assert ( qterm ) ; spec              ::  :: assert {{ com assert quantified SMT constraint $[[qterm]]$ }}
+    | if ( term ) { spec1 } else { spec2 } ::  :: if     {{ com conditional specification                    }}
 
   spec_value , sval :: 'Spec_val_' ::=  {{ com specifications terminators }}
     | cdot          :: :: empty
