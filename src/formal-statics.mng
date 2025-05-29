@@ -313,35 +313,37 @@ structurally equal, modulo SMT provability (\cref{fig:typing-res-term-check}).
 \section{Memory actions and pointer operations}\label{sec:kernel-mem-action-ops}
 
 As with resource terms, memory actions require all the contexts (computational,
-logical, constraint and resource). The judgement
-$[[ C ; L ; N ; R |- res_action => ret ]]$ % chktex 25
-means that given the contexts, a (resource term annotated) memory action
+logical, constraint and resource), using the following judgement:
+\[
+[[ C ; L ; N ; R |- res_action => ret ]]. % chktex 25
+\]
+Given the contexts, a (resource term annotated) memory action
 synthesises a return type.
 
-The rule for \coreinline{create()} is a bit busy because of % chktex 36
-constraints on allocations required by the C standard (in premise 2), which I
-will ignore. For now, the main thing to note is that the return type speaks of
-the pointer to the newly created allocation as a computational value $y_p$,
-constraints on pointer $y_p$ as required by the C standard, an unconstrained
-logical (ghost) value for the pointee of the new allocation $x$, and
-finally the two resources it creates. The first is ownership of an
-uninitialised piece of memory, at address $y_p$, and the second is an
+The rule for \coreinline{create()} requires no resources from the context
+$[[cdot]]$, and thus only the $[[emp]]$ as its resource term.
+Its return type speaks of the pointer to the newly created allocation as a
+computational value $y_p$, constraints $[[term]]$ on pointer $y_p$ as required
+by the C standard,\sidenote{I omitted the definition of $[[term]]$ here for
+clarity.} an unconstrained logical (ghost) value for the pointee of the new
+allocation $x$, and finally the two resources it creates. The first is ownership
+of an uninitialised piece of memory, at address $y_p$, and the second is an
 allocation token $\mathsf{Alloc()}$ which is related to the memory object model
 in \nameref{chap:cn-vip}.
 
-In contrast, the rules for loads, stores and kill are quite simple. Loads
-consume ownership of an initialised piece of memory\sidenote{For further
-flexibility, loads of structs and unions could can be partially or completely
+Loads consume ownership of an initialised piece of memory\sidenote{For further
+flexibility, loads of structs and unions could be partially or completely
 uninitialised, as allowed by the C standard, see
-note~\ref{sn:partial-init-read}.}, check if the address of the load and the
-address of the resource are symbolically equal, and synthesise a return type
-mentioning the loaded value and ownership of the loaded location. Stores are
-similar, but with extra checks on the stored value, which is also mentioned in
-the ownership that is synthesised in the return type. Lastly, the rule for
-\coreinline{kill()} is the converse of the one for \coreinline{create()}, % chktex 36
-in that it \emph{consumes} the ownership and allocation token for a location
-and synthesises a return type with no resources.\sidenote{I need to add the
-rule for dynamic allocations.}
+note~\ref{sn:partial-init-read}.} (premise 2), check if the address of the load
+and the address of the resource are symbolically equal (premise 3), and
+synthesise a return type mentioning the loaded value and ownership of the loaded
+location. Stores are similar, but with extra checks on the stored value (premise
+3). Note that the stored value is placed in the return type. Lastly, the rule
+for \coreinline{kill()} is the converse of the one for \coreinline{create()}, %
+chktex 36 in that it \emph{consumes} the ownership and allocation token for a
+location (premise 2), checks that the addresses and allocations being considered
+are the same (premises 3 and 4) and synthesises a return type with no
+resources.\sidenote{I need to add the rule for dynamic allocations.}
 
 \begin{figure*}[tp]
     \small
