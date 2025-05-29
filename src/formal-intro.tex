@@ -589,26 +589,48 @@ known as \intro{contraction} and we need to forbid this to reason soundly
 (whilst keeping other assumptions, such as the type of \kl{Core} program
 variables, and constraints, contractible).
 
-Similarly, in an intuitionistic setting, we can freely forget things we know,
-in a separation logic setting this really depends on whether the user of the logic
+\begin{marginfigure}
+  \begin{mathpar}
+      \inferrule[Weakening]{
+          \Delta{} , A \vdash{} C
+      }{
+          \Delta{} \vdash{} C}
+      \\
+      \inferrule[Contraction]{
+          \Delta{} , A, A \vdash{} C
+      }{
+          \Delta{} , A \vdash{} C}
+      \\
+      \inferrule[Exchange]{
+          \Delta_1 , B , A, \Delta_2 \vdash{} C
+      }{
+          \Delta_1 , A , B, \Delta_2 \vdash{} C}
+    \\
+  \end{mathpar}
+  \caption{Substructural sequent calculus rules.}\label{fig:substructural}
+\end{marginfigure}
+
+Similarly, in an intuitionistic setting, we can freely forget things we know, in
+a separation logic setting this really depends on whether the user of the logic
 cares about memory leaks or not. In the C standard, nothing relies on an
 allocation being \emph{dead}, it only relies on it being \emph{live}, or not
 caring at all. So whilst the theory and the C standard leave this open as a
 design choice, the intended use of \kl{CN} in resource constrained settings
 requires us to be explicit about when we deallocate and more importantly
-\emph{when we forget to}.\sidenote{Though \kl{CN} does not support it yet,
-    concurrency is another setting where being explicit about a destroying a
-    resource, for example acquiring a mutex, is also useful.} This `forgetting'
-an assumption is known as \intro{weakening}, and given the intended use case we
-would like to forbid this too (whilst not requiring type information about
-variables and ambient constraints to be forgotten freely).
+\emph{when we forget to}.\sidenote{Though not yet supported by \kl{CN},
+concurrency also requires being explicit about destroying a resource, for
+example, to prevent a user from acquiring the same mutex twice.} This
+`forgetting' an assumption is known as \intro{weakening}, and given the intended
+use case we would like to forbid this too (whilst not requiring type information
+and ambient constraints to be forgotten freely).
 
 We would however like the ability to commute assumptions freely, since it is
 perfectly acceptable to free in any order, regardless of the order of
-allocation, so we keep \emph{exchange}. The confluence of these three decision
-is why we handle our (heap-related) separation logic assumptions
-\emph{linearly}~\sidecite{girard1987linear} in \kl{CN}.\sidenote{TODO Should I
-show and explain the structural sequent calculus rules?}
+allocation, so we keep \emph{exchange}. Sequent calculus rules for contraction,
+weakening, and exchange are shown in \cref{fig:substructural}. Jettisoning
+weakening and contraction but keeping exchange means that we handle our
+(heap-related) separation logic assumptions
+\emph{linearly}~\sidecite{girard1987linear} in \kl{CN}.
 
 Linearity may be necessary, but it can also be cumbersome. If a linear resource
 represents the permission to dereference a pointer, a typing rule which
@@ -620,12 +642,53 @@ proving constraints, by using SMT solvers, we need to have some scheme to
 \intro[resource inference]{infer resources} (see \cref{sec:elaboration}) to
 reduce the burden of annotations.
 
+\begin{marginfigure}
+  \begin{mathpar}
+      %\inferrule[Declarative Var]{
+      %}{
+      %    x {:} t \vdash{} x {:} t}
+      %\\
+      %\inferrule[Algorithmic Var]{
+      %}{
+      %    \Gamma{} , x {:} t \vdash{}  x {:} t \dashv{} \Gamma'}
+      %\\
+      %\{\, x {:} t \,\} = \Gamma' - \Gamma
+      %\\
+      \inferrule[Declarative Pair]{
+          \Delta_1 \vdash{} e_1 {:} t_1
+          \and
+          \Delta_2 \vdash{} e_2 {:} t_2
+      }{
+          \Delta_1, \Delta_2 \vdash{} (e_1, e_2) {:} t_1 \times{} t_2}
+      \\
+      \inferrule[Algorithmic Pair]{
+          \Gamma_1 \vdash{} e_1 {:} t_1 \dashv{} \Gamma_2
+          \\
+          \Gamma_2 \vdash{} e_2 {:} t_2 \dashv{} \Gamma_3
+      }{
+          \Gamma_1 \vdash{} (e_1, e_2) {:} t_1 \times{} t_2 \dashv{} \Gamma_3}
+      \\
+      \Delta_1 = \Gamma_2 - \Gamma_1 \and \Delta_2 = \Gamma_3 - \Gamma_2
+  \end{mathpar}
+  \caption{Declarative ($\Delta$) versus algorithmic ($\Gamma$) typing for
+  part of a linear language. A declarative system is easier to describe and
+  prove sound, because the recursion is obviously structural, but is not
+  directly implementable: for pairs, the correct split of the contexts must be
+  guessed ``ahead of time''. In contrast, an algorithmic system changes and
+  chains the contexts across premises, which is easy to implement as mutating
+  state, but requires a notion of ``context difference'' to relate to the
+  declarative version.}\label{fig:decl-alg}
+\end{marginfigure}
+
 I should note that, for the purposes of the formalisation of \kl{Kernel CN}, I
-do have explicit linear resource terms, since that makes the system easier to
-state and prove sound. It also makes it easy to specify and explain the \kl{CN}
-\kl{resource inference} algorithms as an \emph{elaboration}, which I will also
-do.\sidenote{I have not embarked on any proofs about the properties of these
-inference algorithms.}
+do use explicit linear resource terms, since that makes the system easier to
+state and prove sound. For clarity and convenience, the linear context in the
+system is used in a \intro{declarative} manner (\cref{fig:decl-alg}).
+Explicit linear resource terms also makes it easy to specify and explain the
+\kl{CN} \kl{resource inference} algorithms as an \emph{elaboration}, which I
+will also do.\sidenote{I have not embarked on any proofs about the properties of
+these inference algorithms.} Those rules use the linear context in
+an algorithmic manner.
 
 \section{Precise assertions for inferring resources and quantifiers without
 backtracking}\label{sec:precise-assertion-inferring}
@@ -642,7 +705,7 @@ carefully using an SMT solver) and minimising annotations for linear resource
 terms (by inferring them), we would also, as far as possible, like to
 infer how quantifiers are instantiated, based on what the user wrote.\sidenote{
 Note that this is not at all related to \emph{inferring specifications}, which
-is large and challenging problem in its own right.} This is a tall order,
+is a large and challenging problem in its own right.} This is a tall order,
 because the problem is not decidable in
 general\sidecite{turing1936computable,church1936unsolvable}.
 
