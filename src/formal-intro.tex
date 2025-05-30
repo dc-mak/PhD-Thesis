@@ -403,12 +403,11 @@ such a theorem would be just another sanity check (on the dynamic semantics).
 
 \begin{marginfigure}
     \centering
-    \includegraphics{figures/core-ub-typing}
-    \caption{Typing rule for the \coreinline{undef()} pure expression as % chktex 36
-        mentioned in \textcite{memarian2022cerberus}. The type system is set up
-        in a \kl{bidirectional} way, with checking judgements represented by
-        $\color{blue}{\Leftarrow}$, and synthesis with
-        $\color{red}{\Rightarrow}$.}\label{fig:core-ub-typing}
+    \begin{mathpar}
+        \inferrule{ }{\Gamma{} \vdash{} \cnkw{undef} ( \cnnt{UB\_name} ) \Leftarrow \cnnt{T}}
+    \end{mathpar}
+    \caption{Checking rule for the \coreinline{undef()} pure expression as % chktex 36
+        mentioned in \textcite{memarian2022cerberus}.}\label{fig:core-ub-typing}
 \end{marginfigure}
 
 This is evidenced by the typing rule for \coreinline{undef()} % chktex 36
@@ -504,30 +503,28 @@ when is the correct time to use the subsumption rule, as shown in
 
 \begin{marginfigure}
   \begin{mathpar}
-      \inferrule{\Gamma{} \vdash{} e \mathrel{{:}} \{ x \mid{} \phi{} (x) \}  \\ \phi(x) \Rightarrow{} \phi' (x) }
-                {\Gamma{} \vdash{} e \mathrel{{:}} \{ x \mid{} \phi' (x) \}}
+      \inferrule{\Gamma{} \vdash{} e \mathrel{{:}} \{\, x \mid{} \phi{} (x) \,\}  \\ \phi(x) \Rightarrow{} \phi' (x) }
+                {\Gamma{} \vdash{} e \mathrel{{:}} \{\, x \mid{} \phi' (x) \,\}}
   \end{mathpar}
   \caption{Subsumption rule using for a system with subset types and logical
       implication $\Rightarrow$ as the subtyping relation.}\label{fig:subsumption}
 \end{marginfigure}
 
-% TODO fix the spacing around the curly braces with \,
-
 Going back to the example in \cref{fig:dead-code}, let us imagine we are in a
-type system where the contexts $\Gamma$ are either $\cdot$ or $\Gamma, \{ x \mid
-\phi(x) \}$, where $\phi$ represents some constraint on $x$. In particular, we
+type system where the contexts $\Gamma$ are either $\cdot$ or $\Gamma, \{\, x \mid
+\phi(x) \,\}$, where $\phi$ represents some constraint on $x$. In particular, we
 are not accumulating control flow constraints in the context, only
 in the variable's subset type. We would like to check that the function
-\mintinline{py}{gt_zero} satisfies its postcondition. $ \{ \mathsf{ret} \mid
-\mathsf{ret} > 0 \} $, i.e.\ it returns a value greater than 0 and does not
+\mintinline{py}{gt_zero} satisfies its postcondition. $ \{\, \mathsf{ret} \mid
+\mathsf{ret} > 0 \,\} $, i.e.\ it returns a value greater than 0 and does not
 raise an exception.
 
-Working forwards, we start off with a type for $\{ \mathsf{x} \mid \top \}$.
+Working forwards, we start off with a type for $\{\, \mathsf{x} \mid \top \,\}$.
 Inside the function, we are checking both branches because we cannot statically
-rule one of them out. In the true case, we now \emph{refine} the type to $\{
-\mathsf{x} \mid \mathsf{x} \geq 5 \}$. Because we are not sure when to apply
+rule one of them out. In the true case, we now \emph{refine} the type to $\{\,
+\mathsf{x} \mid \mathsf{x} \geq 5 \,\}$. Because we are not sure when to apply
 the subsumption rule, and we can apply it at any time, we apply it now, and
-have $\{ \mathsf{x} \mid \mathsf{x} > 0 \}$, because $\mathsf{x} \geq 5
+have $\{\, \mathsf{x} \mid \mathsf{x} > 0 \,\}$, because $\mathsf{x} \geq 5
 \Rightarrow \mathsf{x} > 0$. At this point, we cannot statically rule out the
 \cinline{else}-branch of the condition, so we start checking the one with the
 exception, instead of skipping over it as dead code.
@@ -562,7 +559,76 @@ everywhere else from the bottom up. This is precisely the sort of problem a
 bidirectional type system can solve (see sections 4.4 and 4.6
 in~\sidetextcite{dunfield2021bidir}). Moreover, it gives a clear principle of
 when to use subsumption rule (call the SMT solver): at the boundary between
-synthesis and checking.
+synthesis and checking (\cref{fig:simple-bidir}).
+
+\begin{figure}
+    \begingroup%
+    \newcommand{\synths}[1]{\Rightarrow{} \outpol{#1}}
+    \newcommand{\checks}[1]{\Leftarrow{} #1}
+    \begin{mathpar}
+    \begin{tabular}{l@{}l@{ }l@{ }l}
+    \cncom{types}       & $T$      & $\mathrel{{\Colon}{=}}$ & $\cnkw{unit} \mid T_1 \rightarrow T_2$ \\
+    \cncom{expressions} & $e$      & $\mathrel{{\Colon}{=}}$ & $x \mid \cnkw{()} \mid (e {:} T) \mid \lambda x.\ e \mid e_1\ e_2$ \\
+    \cncom{context}     & $\Gamma$ & $\mathrel{{\Colon}{=}}$ & $\cdot \mid \Gamma{}, x {:} T$ \\
+    \\
+    \multicolumn{2}{l}{%
+        \multirow{2}{*}{%
+        \begingroup%
+        \setlength{\fboxsep}{2pt}
+        \fbox{%
+            \shortstack{$\Gamma{} \vdash{} e \synths{T}$ \\ $\Gamma{} \vdash{} e \checks{T}$ }%
+        }%
+        \endgroup%
+        }%
+    }
+                         & \multicolumn{2}{l}{\cncom{given $\Gamma$, $e$ synthesises $T$}} \\
+    \multicolumn{2}{l}{} & \multicolumn{2}{l}{\cncom{given $\Gamma$, $e$ checks $T$}} \\
+    \end{tabular}
+    \and
+    \inferrule[{[Var]}]
+        {( x {:} T ) \in \Gamma}
+        { \Gamma{} \vdash{} x \synths{T}}
+    \and
+    \inferrule[{[Sub]}]
+        { \Gamma{} \vdash{} e \synths{T_1} \and T_1 \cnkw{<:} T_2}
+        { \Gamma{} \vdash{} e \checks{T_2}}
+    \and
+    \inferrule[{[Annot]}]
+        { \Gamma{} \vdash{} e \checks{T} }
+        { \Gamma{} \vdash{} (e {:} T) \synths{T} }
+    \and
+    \inferrule[{[$\cnkw{unit}$I]}]
+        { }
+        { \Gamma{} \vdash{} \cnnt{()} \checks{\cnkw{unit}} }
+    \and
+    \inferrule[{[$\rightarrow{}$I]}]
+        { \Gamma{}, x {:} T_1 \vdash{} e \checks{ T_2 } }
+        { \Gamma{} \vdash{} \lambda x.\ e \checks{ T_1 \rightarrow T_2}}
+    \and
+    \inferrule[{[$\rightarrow{}$E]}]
+        { \Gamma{} \vdash{} e_1 \synths{T_1 \rightarrow T_2} \and \Gamma{} \vdash{} e_2 \checks{T_2}}
+        { \Gamma{} \vdash{} e_1\ e_2 \synths{T_1 \rightarrow T_2}}
+    \end{mathpar}
+    \endgroup%
+    \caption{Simple \intro{bidirectional} type, adapted
+    from~\cite{dunfield2021bidir}.  Note that its splits the traditional
+    $\Gamma{} \vdash{} e : T$ judgement, into two mutually recursive judgements,
+    one for \intro[synthesis]{synthesising} a type and one for checking it.
+    %
+    % Here, introduction forms for $\cnkw{unit}$ and $\rightarrow$
+    % (namely $\cnkw{()}$ and $\lambda x.\ e$ respectively) check their types;
+    % variables, annotated terms and elimination forms for $\rightarrow$ (namely
+    % function application $e_1\ e_2$) synthesise their types.
+    I highlight synthesised types in a \colorbox{pink!30}{light pink} to make
+    them easier to spot.
+    %
+    If a term is syntactically synthesising, but is used in a checking position,
+    then \textsc{Sub} allows it to be checked by first synthesising a type $T_1$
+    for it, and then checking whether $T_1 <: T_2$ so that it checks against a
+    type $T_2$. Here, the subtyping relation $\cnkw{<:}$ is merely structural
+    type equality $=$, but in the presence of refinement types, it
+    would be logical entailment.}\label{fig:simple-bidir}
+\end{figure}
 
 \section{Linearity to manage (non-leaky) resources}
 
@@ -654,19 +720,19 @@ reduce the burden of annotations.
       %\\
       %\{\, x {:} t \,\} = \Gamma' - \Gamma
       %\\
-      \inferrule[Declarative Pair]{
-          \Delta_1 \vdash{} e_1 {:} t_1
+      \inferrule[{[Declarative Pair]}]{
+          \Delta_1 \vdash{} e_1 {:} T_1
           \and
-          \Delta_2 \vdash{} e_2 {:} t_2
+          \Delta_2 \vdash{} e_2 {:} T_2
       }{
-          \Delta_1, \Delta_2 \vdash{} (e_1, e_2) {:} t_1 \times{} t_2}
+          \Delta_1, \Delta_2 \vdash{} (e_1, e_2) {:} T_1 \times{} T_2}
       \\
-      \inferrule[Algorithmic Pair]{
-          \Gamma_1 \vdash{} e_1 {:} t_1 \dashv{} \Gamma_2
+      \inferrule[{[Algorithmic Pair]}]{
+          \Gamma_1 \vdash{} e_1 {:} T_1 \dashv{} \Gamma_2
           \\
-          \Gamma_2 \vdash{} e_2 {:} t_2 \dashv{} \Gamma_3
+          \Gamma_2 \vdash{} e_2 {:} T_2 \dashv{} \Gamma_3
       }{
-          \Gamma_1 \vdash{} (e_1, e_2) {:} t_1 \times{} t_2 \dashv{} \Gamma_3}
+          \Gamma_1 \vdash{} (e_1, e_2) {:} T_1 \times{} T_2 \dashv{} \Gamma_3}
       \\
       \Delta_1 = \Gamma_2 - \Gamma_1 \and \Delta_2 = \Gamma_3 - \Gamma_2
   \end{mathpar}
