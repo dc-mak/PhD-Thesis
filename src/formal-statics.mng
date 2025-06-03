@@ -1,6 +1,9 @@
 % vim: ft=tex
 \chapter{Kernel CN:\ Static semantics}\label{chap:kernel-statics}
 
+% chktex-file 36, allow f()
+% chktex-file 25, underscore in Ott
+
 \margintoc{}%
 %
 I have covered a large amount of background to the type system so far:
@@ -55,15 +58,15 @@ instantiate quantified constraints to use them.
 \section{Pure values and expressions}
 
 \kl{ResCore} programs have both computational and logical (ghost) terms.
-Every such term, computational or ghost, has a \kl{base type} $[[ base_type ]]$, % chktex 25
+Every such term, computational or ghost, has a \kl{base type} $[[ base_type ]]$,
 which are things like unit, booleans, (mathematical) integers,\sidenote{After the formalisation was completed,
 \kl{CN} switched from using mathematical unbounded integers to bit vectors
 (\href{https://github.com/rems-project/cerberus/commit/8fdd4198750446de3b44d00f9e8f185db9610fab}{around
 commit 8fdd41987}) to better support common bit-twiddling idioms, used heavily
 in the buddy allocator in pKVM, without resorting to lots of lemmas about
 uninterpreted functions.} locations, and records and user-defined algebraic datatypes of
-other base types. Each C type $[[ ct ]]$ is mapped to a corresponding base type $[[ to_base ( ct ) ]]$ % chktex 25
-\textemdash{} for example, $[[ to_base ( int * ) ]] = [[ loc ]]$. % chktex 25
+other base types. Each C type $[[ ct ]]$ is mapped to a corresponding base type $[[ to_base ( ct ) ]]$
+\textemdash{} for example, $[[ to_base ( int * ) ]] = [[ loc ]]$.
 
 Logical terms are variously referred to as $[[term]]$, $[[iguard]]$ (for boolean
 index guards of iterated predicates), $[[ptr]]$ (for pointers), $[[iarg]]$ (for
@@ -77,16 +80,16 @@ factors out the precise representation of memory objects such as integers,
 pointers, arrays and structs, so I have followed a similar factorising in
 the structure of the typing judgements, and left the representation of these
 values abstract.} are very simple pure value synthesis judgements of the form
-$[[ C |- pval => base_type ]]$;  given computational context and % chktex 25
+$[[ C |- pval => base_type ]]$;  given computational context and
 a pure value, synthesise a base type.
 
 Building on top of this (in the same figure), the pure expression synthesis judgement
-is not that much more complicated: $[[ C ; L ; N |- pexpr => pure_ret ]]$. % chktex 25
+is not that much more complicated: $[[ C ; L ; N |- pexpr => pure_ret ]]$.
 Given a computational context, a logical context, a constraint context and a pure expression,
 synthesise a \emph{pure} return type (a return type without any resources or
 logical variables). The use of return types starts to introduce a few more of
 the refinement type features gestured at earlier. The type
-$[[ sigma y : base_type .: term /\ I ]]$ is simply the usual refinement type % chktex 25
+$[[ sigma y : base_type .: term /\ I ]]$ is simply the usual refinement type
 $\left\{ \, y \in \beta \mid \mathit{ term } \, \right\}$, translated over to the grammar of types in \kl{Kernel
 CN}. Recall that $\Sigma$ is used to bind a computational value in a
 \emph{return} type, so these types are simply expressing, symbolically, in
@@ -138,7 +141,7 @@ computation.
 Whilst the rules for typing pure \emph{statements}
 share the same context as typing pure values and expressions, they differ in
 that they are \emph{checking} judgements instead of synthesising ones, of the
-form $[[ C ; L ; N |- pstmt <= pure_ret ]]$. % chktex 25
+form $[[ C ; L ; N |- pstmt <= pure_ret ]]$.
 Given the computational, logical and constraint contexts, check the pure
 statement satisfies this type.
 
@@ -147,7 +150,7 @@ bidirectional (\cref{sec:bidir-subtyping}) approaches pay off. A pure statement
 value is checked against a pure return type by checking if the constraint
 attached to it is true given the context by calling the SMT solver, which is
 another reason why the constraints being decidable is important and helpful.
-Similarly, the \coreinline{undef()} which we wish to rule-out checks against % chktex 36
+Similarly, the \coreinline{undef()} which we wish to rule-out checks against
 \emph{any} type, so long as the constraint context is inconsistent (can prove
 $\mathsf{false}$). Conditional statements check each branch with an extra
 constraint on the condition being true or false. Let-statements sequence
@@ -315,7 +318,7 @@ structurally equal, modulo SMT provability (\cref{fig:typing-res-term-check}).
 As with resource terms, memory actions require all the contexts (computational,
 logical, constraint and resource), using the following judgement:
 \[
-[[ C ; L ; N ; R |- res_action => ret ]]. % chktex 25
+[[ C ; L ; N ; R |- res_action => ret ]].
 \]
 Given the contexts, a (resource term annotated) memory action
 synthesises a return type.
@@ -351,9 +354,9 @@ resources.\sidenote{I need to add the rule for dynamic allocations.}
     \NewCommandCopy{\origcndrule}{\cndrule}
     \renewcommand{\cndrule}[4][]{\origcndrule[#1]{#2}{%
     \begin{minipage}{0.65\textwidth}
-        \raggedright
-        \leftskip 2em
-        \parindent -2em
+        \raggedright%
+        \leftskip2em
+        \parindent-2em
         $#3$
     \end{minipage}
     }{#4}}%
@@ -386,9 +389,9 @@ prove the pointer is live.
 
 There are two parts of the grammar which use spines (lists of values). The first
 is its typical use in calls to pure Core functions, elaborated C functions, and
-effectful Core procedures, as well as to the \coreinline{run()} % chktex 36
+effectful Core procedures, as well as to the \coreinline{run()}
 operator. Second is the less typical one, in as values for statements corresponding to 
-return types $[[ ret ]]$, written $[[ < ret_terms > ]]$.  I showed % chktex 36
+return types $[[ ret ]]$, written $[[ < ret_terms > ]]$.  I showed
 how expressions have return types, now I will how to type the corresponding
 values to which those expressions reduce.
 
@@ -405,7 +408,7 @@ rules (\cref{fig:typing-spine}).
         spines.}\label{fig:typing-spine}
 \end{figure*}
 
-The judgement for typing spines is $[[ C ; L ; N ; R |- param_spine :: fon >> subs ; ret ]]$, % chktex 25
+The judgement for typing spines is $[[ C ; L ; N ; R |- param_spine :: fon >> subs ; ret ]]$,
 which means that given the contexts, a spine of matched-up parameters and
 arguments and a function type, produce a substitution $[[ subs ]]$ and a return
 type $[[ ret ]]$.
@@ -428,10 +431,10 @@ produced substitution with one for the resource too.
 \section{Effectful values and expressions}
 
 The spine typing is used in the rules for calling elaborated C function
-\coreinline{ccall()}, and effectful Core procedures % chktex 36
-\coreinline{pcall()}, in \cref{fig:typing-ret-terms}. Both are % chktex 36
+\coreinline{ccall()}, and effectful Core procedures
+\coreinline{pcall()}, in \cref{fig:typing-ret-terms}. Both are
 syntactically effectful sequenced expressions, typed with a judgement of the
-form $[[ C ; L ; N ; R |- expr => ret ]]$, % chktex 25 
+form $[[ C ; L ; N ; R |- expr => ret ]]$, 
 which says that given the contexts and an effectful
 sequenced expression, synthesise a return type. Both lookup a function type for
 the called function/procedure,\sidenote{\kl{CN} does not support
@@ -457,7 +460,7 @@ function type before using the spine judgement.
 \textbf{Pattern matching is an unusually important crux of \kl{kernel CN}'s type
 system because it is \emph{the} canal which directs the rich grammar of
 resource and return types into contexts.} The judgement for this is
-$[[ C ; L ; N |- ret_pat : ret ~> C' ; L' ; N' ; R' ]]$, % chktex 25
+$[[ C ; L ; N |- ret_pat : ret ~> C' ; L' ; N' ; R' ]]$,
 which says that given the contexts, a return pattern and a return type,
 synthesise computational, logical, constraint and resource contexts.
 
@@ -500,7 +503,7 @@ resource type and pattern, and the rest of the return type and patterns.
 
 This brings us on to how resource patterns synthesise contexts
 (\cref{fig:typing-res-pat}). The judgement for this is
-$[[ L ; N |- res_pat : res ~> L' ; N' ; R' ]]$, which means that % chktex 25
+$[[ L ; N |- res_pat : res ~> L' ; N' ; R' ]]$, which means that
 given contexts,\sidenote{I abuse the notation slightly and omit the
     computational context $[[ C ]]$ because it remains the same in all the
 rules.} a resource pattern and a type, synthesise logical, constraint and
@@ -528,17 +531,17 @@ definition of that predicate (with the arguments substituted).
 
 With pattern matching in hand, I can explain the typing rules for effectful
 statements (\cref{fig:typing-stmt}). I will focus only on
-\coreinline{let} and \coreinline{run()} statements, % chktex 36
+\coreinline{let} and \coreinline{run()} statements,
 the remaining rules are as one would expect presented in the appendix.
 
 Statements are all checked, but the bound expression in the
 \coreinline{let} is synthesised, so that the type can be used as part of
 destructing the pattern it is bound against to synthesise extra contexts. Those
 contexts are then appended to the existing one to check the body of the
-\coreinline{let}. As for the \coreinline{run()} operator, the rule % chktex 36
+\coreinline{let}. As for the \coreinline{run()} operator, the rule
 looks up the function type belonging to the label being run, and then checks
 that the spine satisfies that function type. Unlike the previous function call
-operators, control flow does not return from a \coreinline{run()} % chktex 36
+operators, control flow does not return from a \coreinline{run()}
 and so the type synthesised is expected to be false, and it checks against any
 type.\sidenote{Need to update the rule.}
 
@@ -583,7 +586,7 @@ judgement for synthesising a resource term and an instantiation for a logical
 quantifier is as below and in \cref{fig:elab-res-oarg}.
 {\small
 \[
-    [[ y ; N ; nR |- res ~> bind res_bind for res_term and oarg -| nR' ]] % chktex 25
+    [[ y ; N ; nR |- res ~> bind res_bind for res_term and oarg -| nR' ]]
 \]}
 Given an output parameter $[[y]]$, constraint context $[[N]]$, a resource context
 $[[nR]]$, and a resource type $[[res]]$, synthesise a series of bindings
@@ -673,7 +676,7 @@ constant integer. Given these, inferring an index (for either
 \mathit{step}$ where $p'$ is the pointer in the first argument of the request
 predicate. This is made precise in \cref{fig:res-diff-break}.\sidenote{This
 allows for empty iterated remainder: change it?}  The judgement
-$[[ N |- r : norm_res -? pred_ipred ~> res_diff ]]$ % chktex 25
+$[[ N |- r : norm_res -? pred_ipred ~> res_diff ]]$
 says that given constraint context, a
 \kl{normalised} resource,\sidenote{Predicate (iterated) or an under-determined
 ordered-disjunction.} and a request for a predicate (iterated), synthesise the
@@ -768,8 +771,8 @@ I proved that it was sound. The whole proof is large and in the appendix; in
 this chapter, I will discuss the key definitions, lemmas and proof sketches. I
 will first define an operational semantics for \kl{ResCore}, and then do a
 straightforward, if not slightly tedious, syntactic proof of type
-safety.\sidenote{The continuation-like behaviour of the \coreinline{run()} % chktex 36
-and \coreinline{save()} operators make it more challenging to prove % chktex 36
+safety.\sidenote{The continuation-like behaviour of the \coreinline{run()}
+and \coreinline{save()} operators make it more challenging to prove
 soundness in a denotational manner.} This suffices because \kl{ResCore} is a
 first-order language, and all functions and labels are annotated with the
 correct type,  despite the presence of linear types, which usually require
@@ -822,7 +825,7 @@ then $[[forall]]\ [[ C ]], [[ L ]], [[ R ]], [[ subs ]].\
 [[ C ; L ; subs ( N ) ; R ]] [[|-]] [[ subs ]] ( J ) $.
 
 For types, substitutions are only defined over resource types $[[res]]$, and
-return types $[[ret]]$, not base types $[[base_type]]$. Similarly, % chktex 25
+return types $[[ret]]$, not base types $[[base_type]]$. Similarly,
 for terms, substitutions are only defined over expressions (including SMT terms
 $[[term]]$), but not (computational, resource or return) patterns.
 
@@ -957,14 +960,14 @@ appendix). We now have all the ingredients to state and sketch a proof for the
 progress and type preservation for resource terms.
 
 \begin{theorem}[Progress and type preservation for resource terms]
-For all closed resource terms ($[[ res_term ]]$) which type check or % chktex 25
-synthesise ($[[ cdot ; cdot ; N ; nR |- res_term <= res ]]$) and all well-typed % chktex 25
-heaps ($[[ h <= nR ]]$) there exists a resource value ($[[ res_val ]]$), % chktex 25
+For all closed resource terms ($[[ res_term ]]$) which type check or
+synthesise ($[[ cdot ; cdot ; N ; nR |- res_term <= res ]]$) and all well-typed
+heaps ($[[ h <= nR ]]$) there exists a resource value ($[[ res_val ]]$),
 context ($[[ nR' ]]$) and heap ($[[ h' ]]$), such that: the value is
-well-typed ($[[ cdot ; cdot ; N ; nR' |- res_val <= res ]]$); the heap is % chktex 25
+well-typed ($[[ cdot ; cdot ; N ; nR' |- res_val <= res ]]$); the heap is
 well-typed ($[[ h' <= nR' ]]$); for all frame-heaps ($[[ f ]]$), the
 resource term reduces to the resource value without affecting the frame-heap
-($[[ _t | < h + f ; res_term > ||v < h' + f ; res_val > ]]$). % chktex 25
+($[[ _t | < h + f ; res_term > ||v < h' + f ; res_val > ]]$).
 \end{theorem}
 
 \begin{proof}
@@ -992,7 +995,7 @@ pattern (this is required to record, in the constraint context, which branch
 the type system is assuming it is in) is not exactly equal to the values it can
 match in the operational semantics (nor would we want it to be: the pattern
 $[[ Cons ( x1 , x2 ) ]]$ should match the value
-$[[ Cons ( pval1 , Cons ( pval21 , Nil base_type ( ) ) ) ]]$). % chktex 25
+$[[ Cons ( pval1 , Cons ( pval21 , Nil base_type ( ) ) ) ]]$).
 Hence, we must weaken the notion of equality on
 types to $~$ relatedness, which links the two, so that during the proof,
 we can substitute the constraint term $[[ x1 :: x2 ]]$ at the type-level, and
@@ -1023,13 +1026,13 @@ inconvenient, it becomes necessary in the \textsc{Stmt\_Let} case.
 
 Second is in the lemma \nameref{subsec:wt_values_pat_match}.
 There are two substitutions at play here. As an example, let
-the value being matched be $[[ Cons ( Unit , Nil unit ( ) ) , ret_terms ]]$ and % chktex 25
-the pattern be $[[ comp Cons ( x1 , x2 ) , ret_pat ]]$. % chktex 25
+the value being matched be $[[ Cons ( Unit , Nil unit ( ) ) , ret_terms ]]$ and
+the pattern be $[[ comp Cons ( x1 , x2 ) , ret_pat ]]$.
 For the return type $[[ sigma y : list unit .: ret ]]$, the type-level
 substitution will be $[[ Cons ( x1 , x2 ) / y ( ret )]]$.  However, at the
 term-level, the substitution will be $[[ [ Unit / x1 , Nil unit ( ) / x2 ] ]]$.
 \emph{Bridging this difference is the main reason for the $[[ ~ ]]$ relation}
-(the other is the use of $[[ to_fun ret ]]$).  \emph{The type-level substitution % chktex 25
+(the other is the use of $[[ to_fun ret ]]$).  \emph{The type-level substitution
 is open}, and only makes sense with respect to the variables introduced in the
 pattern-match.
 
