@@ -229,21 +229,26 @@ desugared and consolidated grammar closely resembling C.
 
 This approach drastically simplifies many tricky parts of C. For example,
 \cref{fig:perplexing-ub} is accepted by the frontend, complete with strange
-scoping and strange control flow which jumps \emph{into} a loop body. And in
-this particular program, the fact that the \emph{mutable variables} \cinline{x}
-and \cinline{*p} alias, or the myriad of \kl[UB]{undefined} or \kl{unspecified}
-behaviours programmers might usually be familiar with, is not the reason it is
-illegal, but due to subtle rules around block scopes and variable
-initialisation. The way Cerberus does this is by making explicit C features
-such as \kl{UB}, \kl{unspecified} or implementation-defined behaviours,
-coercions, loose evaluation order and so on.
+scoping and strange control flow which jumps \emph{into} a loop body. This
+program is illegal because of the subtle rules regarding block scopes, object
+lifetimes and initialisation (as explained in the caption). Whilst contrived,
+any C function which happens to have exception handling and retry behaviour,
+and be longer than a programmer's screen height, could make the same error.
+Cerberus handles C features such as mutable and potentially aliasing variables,
+and the myriad other \kl[UB]{undefined} or \kl{unspecified} behaviours, for
+example loose evaluation order and coercions respectively, by making them all
+\emph{explicit} in the syntax.
 
 \begin{marginfigure}
     \cfile[breaklines]{code/perplexing-ub.c}
-    \caption{This example has undefined behaviour because of the subtle
-        interaction between block scopes, variable initialisation and
-        \cinline{goto} statements in C. But, if the comment is uncommented,
-        then the program has defined behaviour.}\label{fig:perplexing-ub}
+    \caption{Example of subtle scoping and control-flow issues leading to UB
+        (courtesy~\cite[p70]{memarian2022cerberus}).
+        Jumping to \cinline{l2} starts the lifetime of an object, but does not
+        initialise it. Jumping to \cinline{l1} then \emph{ends that lifetime}
+        because it exits the block (lines 5\textendash{}12). By the time
+        execution reaches line 8, \cinline{p} \emph{refers to a dead object}.
+        This is why the seemingly redundant re-assignment of \cinline{p = &x}
+        on line 7 would prevent UB in this example.}\label{fig:perplexing-ub}
 \end{marginfigure}
 
 Instead of working directly over something similar to C and trying to express
@@ -610,10 +615,10 @@ synthesis and checking (\cref{fig:simple-bidir}).
         { \Gamma{} \vdash{} e_1\ e_2 \synths{T_1 \rightarrow{} T_2}}
     \end{mathpar}
     \endgroup%
-    \caption{Simple \intro{bidirectional} type, adapted
+    \caption{Simple \intro{bidirectional} type system, adapted
     from~\cite{dunfield2021bidir}.  Note that its splits the traditional
     $\Gamma{} \vdash{} e : T$ judgement, into two mutually recursive judgements,
-    one for \intro[synthesis]{synthesising} a type and one for checking it.
+    one for \intro[synthesis]{synthesising} a type and one for checking a type.
     %
     % Here, introduction forms for $\cnkw{unit}$ and $\rightarrow$
     % (namely $\cnkw{()}$ and $\lambda x.\ e$ respectively) check their types;
@@ -624,10 +629,10 @@ synthesis and checking (\cref{fig:simple-bidir}).
     %
     If a term is syntactically synthesising, but is used in a checking position,
     then \textsc{Sub} allows it to be checked by first synthesising a type $T_1$
-    for it, and then checking whether $T_1 <: T_2$ so that it checks against a
-    type $T_2$. Here, the subtyping relation $\cnkw{<:}$ is merely structural
-    type equality $=$, but in the presence of refinement types, it
-    would be logical entailment.}\label{fig:simple-bidir}
+    for it, and then checking whether $T_1 <: T_2$. Here, the subtyping
+    relation $\cnkw{<:}$ is merely structural type equality $=$, but in the
+    presence of refinement types, it would be logical
+    entailment.}\label{fig:simple-bidir}
 \end{figure}
 
 \section{Linearity to manage (non-leaky) resources}
@@ -692,7 +697,7 @@ and ambient constraints to be forgotten freely).
 
 We would however like the ability to commute assumptions freely, since it is
 perfectly acceptable to free in any order, regardless of the order of
-allocation, so we keep \emph{exchange}. Sequent calculus rules for contraction,
+allocation, so we keep \intro{exchange}. Sequent calculus rules for contraction,
 weakening, and exchange are shown in \cref{fig:substructural}. Jettisoning
 weakening and contraction but keeping exchange means that we handle our
 (heap-related) separation logic assumptions
