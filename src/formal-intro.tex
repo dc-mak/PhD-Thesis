@@ -251,6 +251,8 @@ example loose evaluation order and coercions respectively, by making them all
         on line 7 would prevent UB in this example.}\label{fig:perplexing-ub}
 \end{marginfigure}
 
+\section{Core grammar}
+
 Instead of working directly over something similar to C and trying to express
 static and dynamic semantics over something so complex, \kl{Cerberus}
 elaborates C into \intro{Core}, a not-too-large calculus where each construct
@@ -296,14 +298,14 @@ specific memory object model.
 
 The following constructs are all related to evaluation order:
 \coreinline{neg()}, \coreinline{unseq()}, \coreinline{let weak}, % chktex 36
-\coreinline{let strong}, \coreinline{bound()}, \coreinline{nd()}, % chktex 36
-\coreinline{par()}. These were supported in the implementation at one % chktex 36
-point,\sidenote{See note~\ref{sn:new-inf}.} but stopped working due to a change
-in the resource inference scheme, and not enough of a priority to re-enable. I
-did not attempt to formalise their complex operational behaviour;
-I considered supporting these constructs using fractional permissions,
-but decided to leave that for future work because of the noise and complexity
-it would add to the initial version of the formalisation.
+\coreinline{let strong}, \coreinline{bound()}, \coreinline{par()}. % chktex 36
+These were supported in the implementation at one point,\sidenote{See
+note~\ref{sn:new-inf}.} but stopped working due to a change in the resource
+inference scheme, and not enough of a priority to re-enable. I did not attempt
+to formalise their complex operational behaviour; I considered supporting these
+constructs using fractional permissions, but decided to leave that for future
+work because of the noise and complexity it would add to the initial version of
+the formalisation.
 
 The \coreinline{ccall()} and \coreinline{pcall()} constructs for calling % chktex 36
 elaborate C functions and Core procedures (effectful functions) respectively.
@@ -334,30 +336,168 @@ only returns from the first two and not the last.
     \caption{The effectful fragment of Core.}\label{fig:effectful-core-grammar}
 \end{figure*}
 
+\section{Elaboration example: list append}
+
 We can see an example of Cerberus' elaboration into \kl{Core}, by recalling the
-linked integer list append function from \cref{fig:append-c}, reproduced
-in \cref{fig:append-c-formal} for convenience.
+linked integer list append function from \cref{fig:append-c}.
 
-\begin{marginfigure}
-    \centering
-    \cfile[breaklines]{code/append_plain.c}
-    \caption{Linked integer list append in C.}\label{fig:append-c-formal}
-\end{marginfigure}%
+The first thing it does it declare its parameters. In C, these are mutable
+local variables.
 
-\begin{figure*}[p]
-    \centering
-    \begin{minipage}{1.2\textwidth}
-        \corefile{code/append_plain.core}
-    \end{minipage}
-    \caption{Elaboration of linked int list append in C into
-        \kl{Cerberus} \kl{Core}; library functions and \cinline{else}-branch
-        omitted.}\label{fig:append-core}
-\end{figure*}%
+\cfile[firstline=5, lastline=6]{code/append_plain.c}
 
-The elaboration is presented in \cref{fig:append-core}. To save space,
-the definitions \kl{Core} standard library are omitted, as are choices about
-implementation-defined details and the elaboration of the
-\cinline{else}-branch. A few things are note-worthy:
+In Core, the pointer value passed into the function, and the mutable storage
+for it are separated syntactically. The parameters have type
+\coreinline{loaded pointer}, where \coreinline{loaded t} is either a
+\coreinline{Specified(v:t)} or an \coreinline{Unspecified} value % chktex 36
+(an option monad for potentially uninitialised values read from memory). The
+result of the function has type \coreinline{eff loaded t} where
+\coreinline{eff t} is a value of type \coreinline{t} produced with effects
+(also a monad). The \coreinline{create()} and \coreinline{store()} operations are % chktex 36
+memory actions, and produce values of type \coreinline{eff pointer} and
+\coreinline{eff unit} respectively. Binding constructs \coreinline{let strong}
+and \coreinline{let weak} (monadically) bind effectful values, and sequence
+their effects.\sidenote{$\cnkw{let}\ \cnkw{strong}\ \cnnt{pat}\ \cnkw{=}\
+    \cnnt{E}_1\ \cnkw{in}\ \cnnt{E}_2$ sequences all memory
+    actions performed by $\cnnt{E}_1$ before those performed by $\cnnt{E}_2$.
+    $\cnkw{let}\ \cnkw{weak}$ only sequences positive memory actions similarly;
+    in other words, $\cnkw{let}\ \cnkw{weak}\ \cnnt{pat}\ \cnkw{=}\
+    \cnnt{E}_1\ \cnkw{in}\ \cnnt{E}_2$, any negative memory actions
+    ($\cnkw{neg}(\cnnt{action})$) performed by $\cnnt{E}_1$ race with all
+    memory actions performed by $\cnnt{E}_2$.}
+In this example, weak sequencing has no observable effect, and so it is
+safe to read both as \coreinline{let strong}.
+
+\corefile[firstline=3, lastline=10]{code/append_plain.core}
+
+
+In C, the test to check if \cinline{x} is \cinline{NULL} looks like this.
+
+\cfile[firstline=8, lastline=8]{code/append_plain.c}
+
+First this requires loading the \coreinline{xs} from memory, and then doing a
+\coreinline{PtrEq} memory operation to check if it is \coreinline{NULL}.
+Because booleans are represented by 0 and 1 in C, the result of this expression
+is a \coreinline{loaded integer}.
+
+\corefile[firstline=15, lastline=25]{code/append_plain.core}
+
+That result is bound to \coreinline{a_432} and then converted (omitted) into a
+Core boolean, bound to \coreinline{a_431}, which is in turn used in a Core
+if-expression. Recall the true-branch of the C code.
+
+\cfile[firstline=9, lastline=9]{code/append_plain.c}
+
+This elaborates into the following true-branch in Core. First, the value
+\coreinline{ys} is loaded from memory. Core marks the boundary of a \emph{full
+expression} (§6.8p4), such as the optional expression of a return statement,
+using the \coreinline{bound()} operator. After that is one % chktex 36
+\coreinline{kill()} per live local variable. Lastly there is a % chktex 36
+\coreinline{run()} to the return label \coreinline{ret_430}. % chktex 36
+
+\corefile[firstline=48, lastline=56]{code/append_plain.core}
+
+The \coreinline{ret_430} label is defined with a \coreinline{save}, at the end
+of the procedure. Like C labels, Core labels can be reached by fall-through
+execution as well as being jumped to. In the fall-through case, the arguments
+to the label still need to be given a value; these default values are defined
+by the right-hand-side of the \coreinline{:=}, here an \coreinline{undef()} % chktex 36
+value because it is UB to reach the end of a function with a non-void return
+type without returning a value.
+
+\corefile[firstline=143, lastline=144]{code/append_plain.core}
+
+In the C code, the else-branch defines a new local variable \cinline{new_tail},
+and assigns it to the result of a recursive call.
+
+\cfile[firstline=11, lastline=11]{code/append_plain.c}
+
+In Core, these two lines are expanded considerably, so I shall omit some
+details and focus only on the key parts. First is the allocation of memory for
+the local variable.
+
+\corefile[firstline=59, lastline=60]{code/append_plain.core}
+
+Next is getting the pointer for the C function to be called. This expression is
+bound to \coreinline{a_447}.
+
+\corefile[firstline=59, lastline=60]{code/append_plain.core}
+
+The first argument is \cinline{xs->tail}; in Core that is represented by a
+\coreinline{load()} of \cinline{&xs} (which in Core is just % chktex 36
+\coreinline{xs}), a case-split on the loaded value (UB if it is
+\coreinline{Unspecified}), a \coreinline{member_shift()}, and then another % chktex 36
+\coreinline{load()}. The whole expression is bound to \coreinline{a_454}. % chktex 36
+
+\corefile[firstline=71, lastline=81]{code/append_plain.core}
+
+The second argument is \cinline{ys}; in Core that is just a \coreinline{load()} % chktex 36
+of \cinline{&ys} (which in Core is just \coreinline{ys}). The whole expression
+is bound to \coreinline{a_461}.
+
+\corefile[firstline=83, lastline=84]{code/append_plain.core}
+
+Finally, the elaboration of the function call itself performs a large amount of
+run-time type checking; in the general case this supports calling variadic
+function via function pointers, but for this example, because the function is
+(a) known and compile time and (b) not variadic, it simplifies to the below.
+
+\begin{corecode}
+ccall("struct int_list* (*) (struct int_list*, struct int_list*)",
+      a_447 (* &IntList_append *),
+      a_454 (* xs->tail *),
+      a_461 (* ys *))
+\end{corecode}
+
+The result of this is in turn bound to \coreinline{a_445}, which is then
+stored in at \cinline{&new_tail} (in Core, just \coreinline{new_tail}).
+
+\corefile[firstline=105, lastline=107]{code/append_plain.core}
+
+Penultimately, the \cinline{IntList_append} function needs to update the tail
+of the first list.
+
+\cfile[firstline=12, lastline=12]{code/append_plain.c}
+
+In Core, \cinline{xs->tail} is elaborated into a \coreinline{load()} % chktex 36
+and a member shift, whose result is bound to \coreinline{a_472}.
+
+\corefile[firstline=110, lastline=118]{code/append_plain.core}
+
+The right-hand-side is just a \coreinline{load()} from \cinline{&new_tail} % chktex 36
+(which in Core, is just \coreinline{new_tail}), whose result is bound to
+\coreinline{a_479}.
+
+\corefile[firstline=122, lastline=123]{code/append_plain.core}
+
+In C, assignments can be used as expressions. In the jargon of the standard,
+any loads used to evaluate the operands form a \emph{value computation}, but
+the stores do not: they are classed as \emph{side effects}.\sidenote{%
+§5.1.2.3\#2: [\ldots] Evaluation of an expression in general includes both
+value computations and initiation of side effects.} As
+per~\textcite[p61, p66, p99]{memarian2022cerberus}, \emph{``intuitively, a Core action
+is negative when it elaborates what the C standard calls a `side
+effect'\,''}.
+% p61 and p66 have more about value computations and side effects
+
+\corefile[firstline=125, lastline=129]{code/append_plain.core}
+
+Finally, there's the return statement at the end of the function.
+
+\cfile[firstline=13, lastline=13]{code/append_plain.c}
+
+In Core, this is elaborated into the following. First, a
+\coreinline{load()}, enclosed in a \coreinline{bound()} operator % chktex 36
+to mark the boundary of the \emph{full expression} (§6.8p4) inside the return
+statement. After that is one \coreinline{kill()} per live  % chktex 36
+local variable. Lastly there is a \coreinline{run()} to the % chktex 36
+return label \coreinline{ret_430} mentioned earlier.
+
+\corefile[firstline=132, lastline=140]{code/append_plain.core}
+
+\section{Discussion}
+
+A few things are note-worthy about the Core elaboration:
 \begin{itemize}
     \item The translation is \intro{compositional}. Each function, block,
         statement and expression is elaborated in isolation, based only
@@ -368,10 +508,8 @@ implementation-defined details and the elaboration of the
         represented with \coreinline{load}, \coreinline{store},
         \coreinline{kill} respectively.
     \item Loose evaluation order (for example between the expressions of a \cinline{==})
-        are represented using \coreinline{unseq} and \coreinline{let weak} constructs.
-    \item UB is made explicit in the syntax of the program, for example if \cinline{xs} was
-        an unspecified pointer value (line 23) or if the function exited without a return statement
-        and its `return value' was used elsewhere (line 71).
+        is represented using \coreinline{unseq} and \coreinline{let weak} constructs.
+    \item \kl{UB} is made explicit in the syntax of the program.
 \end{itemize}
 
 In particular, \kl{compositional}ity is just as important, if not more, than the
@@ -508,7 +646,7 @@ when is the correct time to use the subsumption rule, as shown in
 
 \begin{marginfigure}
   \begin{mathpar}
-      \inferrule{\Gamma{} \vdash{} e \mathrel{{:}} \{\, x \mid{} \phi{} (x) \,\}  \\ \phi(x) \Rightarrow{} \phi' (x) }
+      \inferrule{\Gamma{} \vdash{} e \mathrel{{:}} \{\, x \mid{} \phi (x) \,\}  \\ \phi (x) \Rightarrow{} \phi' (x) }
                 {\Gamma{} \vdash{} e \mathrel{{:}} \{\, x \mid{} \phi' (x) \,\}}
   \end{mathpar}
   \caption{Subsumption rule using for a system with subset types and logical
