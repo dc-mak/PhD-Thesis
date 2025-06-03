@@ -1,4 +1,11 @@
 % vim: ft=tex
+% chktex-file 12
+% chktex-file 25
+% chktex-file 26
+% chktex-file 36
+% chktex-file 37
+
+
 % updated rules
 % PureExprArrayShift   ResSynPredOpsCongeal   ActionCreate        MemopRelBinop
 % PureExprMemberShift  ResSynPredOpsImplode   ActionKillStatic    MemopPtrDiffArr
@@ -59,7 +66,7 @@
 
 \setcounter{tocdepth}{2}
 
-\newcommand{\lemmaref}[1]{lemma~\ref{#1} (\nameref{#1})}
+\newcommand{\lemmaref}[1]{Lemma~\ref{#1} (\nameref{#1})}
 
 \newcommand{\Vip}[1]{\textsc{VIP-#1}}
 \newcommand{\VipAlloc}{\Vip{alloc}}
@@ -113,8 +120,8 @@
 
 Define an allocation history ($[[ A ]]$ , $[[ alloct ]]$) to be \emph{partitioned}:
 
-$[[ forall ]] i, j .$ if $[[ i != j ]] [[ /\ ]] [[ A [ i ] = ( ptrt1 , term1 , true ) ]]
-[[/\]] [[ A [ j ] = ( ptrt2 , term2, true ) ]]$ then $[ [[ ptrt1 ]] ,  [[ ptrt1 + term1 ]] ] \cap
+$[[ forall ]] i, j $.\ if $[[ i != j ]] [[ /\ ]] [[ A [ i ] = ( ptrt1 , term1 , true ) ]]% chktex 12
+[[/\]] [[ A [ j ] = ( ptrt2 , term2, true ) ]]$ then $[ [[ ptrt1 ]] ,  [[ ptrt1 + term1 ]] ] \cap{}
 [ [[ ptrt2 ]] , [[ ptrt2 + term2 ]] ] = \emptyset$.
 
 \pfsketch{ Induction over the operational rules. The allocation histories are only extended
@@ -147,7 +154,7 @@ have ranges which are disjoint with allocations so far.}
 \step{<1>2}{\case{%
     \OpResTFold.
 }{%
-    \pfsketch{} By straightforward induction the $[[ footprint_of res_val in h ~> h1 REM h2 ]]$
+    \pfsketch{} By straightforward induction the $[[ footprint_of res_val in h ~> h1 REM h2 ]]$% chktex 39
     judgement preserves heap satisfaction: if $[[ ( A , M ) |= h ]]$ then there
     exist VIP heaps such that $[[ ( A , M1 ) |= h1 ]]$ and $[[ ( A , M2 ) |= h2 ]]$,
     because of \SatHeapConcat.\\[\baselineskip]
@@ -207,14 +214,14 @@ have ranges which are disjoint with allocations so far.}
     \OpActionCreate.
 }{%
     \pf{} \pflet{ $[[ A' ]] = [[ A [ @ aid ] := ( addr , sizeof ct , true ) ]]$ \\
-    $[[ M' ]] = [[ M [ addr ldots addr + sizeof ct - 1 ] ]] :=
+    $[[ M' ]] = [[ M [ addr ldots addr + sizeof ct - 1 ] ]] \coloneq%chktex 8
     ( @ \mathsf{empty} , \mathsf{unspec} , \mathsf{none} )$.\\
     $[[ alloct' ; h' ]] = [[ alloct [ @ aid ] := ( addr , sizeof ct ) ; h + { pt & None } + { Alloc ( @ aid ) ( (addr, sizeof ct) ) & None } ]]$.\\[\baselineskip]}
 
     The premises of this step satisfy the premises of \VipAlloc{}.\\
     $[[ alloct' ]]$ is consistent with $[[ A' ]]$ (required by premise 2 of \SatStateDef{}).\\
     $[[ ( A' , [| |] ) |= { Alloc ( @ aid ) ( (addr , sizeof ct) ) & None } ]]$ by \SatHeapAlloc{}.\\
-    $[[ ( A' , M [ addr ldots addr + sizeof ct - 1 ] ) |= { pt & None } ]]$ by \SatHeapOwned{}.\\
+    $[[ ( A' , M [ addr ldots addr + sizeof ct - 1 ] ) |= { pt & None } ]]$ by \SatHeapOwned{}.\\%chktex 8
     $[[ ( A , M ) |= h ]]$ by assumption and so \SatHeapConcat{} proves heap satisfation overall.}}
 
 \step{<1>2}{\case{%
@@ -250,8 +257,8 @@ have ranges which are disjoint with allocations so far.}
     \lemmaref{subsec:res_term_red_sat}, and $[[ alloct ]]$ and $[[ A ]]$ are
     consistent (by premise 2 of \SatStateDef), we must have
     $[[ A [ @ aid ] = ( addr , term , true ) ]]$ 
-    where $[[ ptrt . alloc_id = @ aid ]]$,
-    and $[[ addr ]] \in \mathsf{value\_range([[ ct ]])}$ because
+    where $[[ ptrt . alloc_id = @ aid ]]$,% chktex 12
+    and $[[ addr ]] \in{} \mathsf{value\_range([[ ct ]])}$ because
     $[[ representable ( ct , addr ) ]]$.\\[\baselineskip]
     
     
@@ -265,15 +272,15 @@ have ranges which are disjoint with allocations so far.}
 \step{<1>5}{\case{%
     \OpActionLoad.
 }{%
-    \pf{} Since , $[[ h' ]] = [[ h1 + { ptrt |- init - ct -> inj pval & None } ]]$,
+    \pf{} Since , $[[ h' ]] = [[ h1 + { ptrt |- init - ct -> inj pval & None } ]]$,% chktex 8
     \lemmaref{subsec:res_term_red_sat}, and $[[ alloct ]]$ and $[[ A ]]$ are
     consistent (by premise 2 of \SatStateDef), we must have
-    $[[ A [ ptrt . alloc_id ] = ( addr , term , true ) ]]$,
-    $[[ addr =< ptrt . addr =< addr + term ]]$.\\[\baselineskip]
+    $[[ A [ ptrt . alloc_id ] = ( addr , term , true ) ]]$,% chktex 12
+    $[[ addr =< ptrt . addr =< addr + term ]]$.\\[\baselineskip]% chktex 12
 
     We also know that $[[ sizeof ct =< term ]]$ (by construction in
     $\mathtt{create}$, preserved via all $[[ pred_ops ]]$),
-    and that $[[ ( inj pval , nil ) = abst ( A , ct , M  [ addr' ldots addr' + sizeof ct - 1 ] ) ]]$ (by \SatHeapOwnedInit).\\[\baselineskip]
+    and that $[[ ( inj pval , nil ) = abst ( A , ct , M  [ addr' ldots addr' + sizeof ct - 1 ] ) ]]$ (by \SatHeapOwnedInit).\\[\baselineskip]% chktex 8
     
     Hence, step with \VipLoad{}.
     Since $[[ ( A , M ) ]]$ doesn't change, satisfaction is preserved.}}
@@ -287,11 +294,11 @@ have ranges which are disjoint with allocations so far.}
     $[[ M = M1 + M2 ]]$ where $[[ ( A , M1 ) |= h1 ]]$ and $[[ ( A , M2 ) |= { pt & None } ]]$.\\[\baselineskip]
 
     Hence, step with \VipStore{}. We have
-    $[[ ( A , M2' ) |= { inj ptr |- Init - ct -> inj pval & None } ]]$
-    where $[[ M2' ]] = [[ M2 [ addr' ldots addr' + sizeof ct - 1 ] ]]
+    $[[ ( A , M2' ) |= { inj ptr |- Init - ct -> inj pval & None } ]]$% chktex 8
+    where $[[ M2' ]] = [[ M2 [ addr' ldots addr' + sizeof ct - 1 ] ]]% chktex 8
     :=  \mathtt{repr} ( [[ pval ]] )$ (by \SatHeapOwnedInit{}, since
     $\mathtt{abst/repr}$ are effectively inverses) and so
-    $[[ ( A , M1 + M2' ) |=  h1 + { inj ptr |- Init - ct -> inj pval & None } ]]$.
+    $[[ ( A , M1 + M2' ) |=  h1 + { inj ptr |- Init - ct -> inj pval & None } ]]$.% chktex 8
     (by \SatHeapConcat{}).}}
 
 % Low priority
@@ -305,7 +312,7 @@ have ranges which are disjoint with allocations so far.}
     $[[ @ aid1 = @ aid2  = ptrt . alloc_id ]]$,
     $[[ A [ ptrt . alloc_id ] = ( ptrt . base , term , true ) ]]$,
     $[[ ptrt . base =< ( addr1 , addr2 ) =< ptrt . base + term ]]$,
-    and $[[ int def= ( addr1 - addr2 ) / sizeof ct ]]$.\\[\baselineskip]
+    and $[[ int def= ( addr1 - addr2 ) / sizeof ct ]]$.\\[\baselineskip]% chktex 8
 
     Hence we may step with \VipDiffPtr{}. Since $[[ ( A , M ) ]]$ doesn't
     change, satisfaction is preserved.}}
@@ -769,4 +776,3 @@ have ranges which are disjoint with allocations so far.}
 \step{<0>381}{\case{\MiniExprCall}{}}
 \step{<0>382}{\case{\MiniExprBlock}{}}
 \step{<0>383}{\case{\MiniExprReturn}{}}
-
