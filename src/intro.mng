@@ -311,6 +311,65 @@ proofs about large and subtle systems.
       things do not change arbitrarily.}\label{fig:frame-rule}
 \end{marginfigure}
 
+\subsection{Toy language}
+
+\begin{figure}
+    \begingroup%
+    \newcommand{\synths}[1]{\Rightarrow{} \outpol{#1}}
+    \newcommand{\checks}[1]{\Leftarrow{} #1}
+    \begin{mathpar}
+    \begin{tabular}{l@{}l@{ }l@{ }l}
+    \cncom{boolean expr.} & $B$ & $\mathrel{{\Colon}{=}}$ & $\cnkw{true} \mid{} \cnkw{false} \mid{} B\ \cnkw{\&\&}\ B' \mid{} B\ \cnkw{||}\ B' \mid{} \ldots$ \\
+    \cncom{arith. expr.}  & $E$ & $\mathrel{{\Colon}{=}}$ & $ n \in{} \mathbb{N} \mid{} E + E' \mid{} E - E' \mid{} E \times{} E \mid{} \ldots $ \\ % chktex 8
+    \cncom{commands}      & $C$ & $\mathrel{{\Colon}{=}}$ & $\cnkw{skip} \mid{} C; C' \mid{} X := E \mid{} \ldots \mid{} X := [E]$ \\ % chktex 26 chktex 13
+                          &     &                         & $[E] := E' \mid{} \cnkw{alloc}(E_0, \ldots, E_n) \mid{} \cnkw{free}(E)$ \\ % chktex 36 chktex 26
+    \cncom{predicates}    & $P$ & $\mathrel{{\Colon}{=}}$ & $ \cnkw{emp} \mid{} t = t' \mid{} t \mapsto{} t' \mid{} p(t_1, \ldots, t_n)$ \\ % chktex 36
+    \cncom{assertions}    & $A$ & $\mathrel{{\Colon}{=}}$ & $ \bot{} \mid{} \top{} \mid{} P \mid{} A \wedge{} A' \mid{} A \vee{} A' \mid{} A \Rightarrow{} A'$ \\
+                          &     &                         & $ A \ast{} A' \mid{} \forall{} x.\ A \mid{} \exists{} x.\ A$ \\
+    % \\
+    % \multicolumn{2}{l}{%
+    %     \multirow{2}{*}{%
+    %     \begingroup%
+    %     \setlength{\fboxsep}{2pt}
+    %     \fbox{%
+    %         \shortstack{$\Gamma{} \vdash{} e \synths{T}$ \\ $\Gamma{} \vdash{} e \checks{T}$ }%
+    %     }%
+    %     \endgroup%
+    %     }%
+    % }
+    %                      & \multicolumn{2}{l}{\cncom{given $\Gamma$, $e$ synthesises $T$}} \\
+    % \multicolumn{2}{l}{} & \multicolumn{2}{l}{\cncom{given $\Gamma$, $e$ checks $T$}} \\
+    \end{tabular}
+    \and
+    \inferrule[{[Var]}]
+        {(x {:} T) \in{} \Gamma}
+        { \Gamma{} \vdash{} x \synths{T}}
+    \and
+    \inferrule[{[Sub]}]
+        { \Gamma{} \vdash{} e \synths{T_1} \and T_1 \cnkw{<:} T_2}
+        { \Gamma{} \vdash{} e \checks{T_2}}
+    \and
+    \inferrule[{[Annot]}]
+        { \Gamma{} \vdash{} e \checks{T} }
+        { \Gamma{} \vdash{} (e {:} T) \synths{T} }
+    \and
+    \inferrule[{[$\cnkw{unit}$I]}]
+        { }
+        { \Gamma{} \vdash{} \cnnt{()} \checks{\cnkw{unit}} }
+    \and
+    \inferrule[{[$\rightarrow{}$I]}]
+        { \Gamma{}, x {:} T_1 \vdash{} e \checks{ T_2 } }
+        { \Gamma{} \vdash{} \lambda{} x.\ e \checks{ T_1 \rightarrow{} T_2}}
+    \and
+    \inferrule[{[$\rightarrow{}$E]}]
+        { \Gamma{} \vdash{} e_1 \synths{T_1 \rightarrow{} T_2} \and \Gamma{} \vdash{} e_2 \checks{T_2}}
+        { \Gamma{} \vdash{} e_1\ e_2 \synths{T_1 \rightarrow{} T_2}}
+    \end{mathpar}
+    \endgroup%
+    \caption{Simple separation logic.}\label{fig:simple-sep-logic}
+\end{figure}
+\subsection{Example: list append}
+
 To conclude this section, I will continue the example of appending to a list,
 but this time in separation logic, in a simple imperative language. It says
 that expression $\mathsf{i}$ is either $\mathsf{NULL}$ and thus represents an
