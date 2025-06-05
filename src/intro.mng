@@ -232,16 +232,16 @@ imperative, memory manipulating programs.
 The key ideas around proving properties about imperative programs originate all
 the way back towards the end of the 1960s, with~\citeauthor{floyd1993assigning}
 and~\citeauthor{hoare1969axiomatic}. The basic setup is a triple of
-$\{P\} \;C \; \{Q\}$, where $P$ is a \intro{precondition}, a predicate describing the
-intial state of the program; $C$ is the program which executes; and $Q$ is
-\intro{postcondition}, a predicate describing the final state of the program.
+$\{A\} \; C \; \{A'\}$, where $A$ is a \intro{precondition}, an assertion describing the
+intial state of the program; $C$ is the program which executes; and $A'$ is
+\intro{postcondition}, an assertion describing the final state of the program.
 Combined with a set of inference rules to construct proofs from smaller parts
 of $C$, this gave programmers a way to do pen-and-paper proofs about the
 behaviour of imperative programs.
 
 This approach works well enough, up until the programming language introduces
 support for potentially aliasing pointers, at which it becomes
-unfeasible.\sidenote{This and the following two paragraphs rely heavily on the
+unfeasible.\sidenote{This and the following two sections rely heavily on the
 explanation of \textcite{pichon2017hlogmodc}.} In short, the issue is that
 whilst assertions in the specification language might \emph{syntactically}
 refer to different locations, \emph{semantically} those locations may alias,
@@ -253,9 +253,9 @@ sequentially) so long as they refer to separate program variables.
 \begin{marginfigure}
   \begin{mathpar}
       \inferrule{
-          \vdash{} \{P\} \; C \; \{Q\}  \\ \mod{(C)} \cap{} \mathit{FV} (R) = \emptyset{}
+          \vdash{} \{\, A \,\} \; C \; \{\, A' \,\}  \\ \mod{(C)} \cap{} \mathrm{FV}(A'') = \emptyset{}
       }{
-          \vdash{} \{ P \wedge{} R \} \; C \; \{ Q \wedge{} R \}}
+          \vdash{} \{\, A \wedge{} A'' \,\}\, C \,\{\, A' \wedge{} A'' \,\}}
   \end{mathpar}
   \caption{The rule of constancy, where $\mathrm{FV}$ refers to the free
       variables of an assertion and $\mod{}$ is a syntactic
@@ -288,28 +288,181 @@ The key breakthrough came with the arrival of separation logic by
 Reynolds, O'Hearn, Yang and Ishtiaq~\sidecite{reynolds2002separation,ishtiaq2001BI,o2001local}.
 Specifically, the introduction of the \intro{separating conjunction}, $\astRef$, allows us to
 state a version of the rule of constancy which is sound, known as a the
-\intro{frame rule} (\cref{fig:frame-rule}). Not only did this enable the
+\intro{frame rule} (\cref{fig:simple-sep-logic}). Not only did this enable the
 practical pen-and-paper verification of programs with pointers, aliasing, and
 dynamic memory management, it was very soon extended to aid in reasoning about
 several types of concurrency and is now mechanised in a very general way in
 proof assistants~\cite{jung2018iris, appel2011verified}, enabling complex
 proofs about large and subtle systems.
 
-\begin{marginfigure}
-  \begin{mathpar}
-      \inferrule{
-          \vdash{} \{P\} \; C \; \{Q\}  \\ \mod{(C)} \cap{} \mathit{FV} (R) = \emptyset{}
-      }{
-          \vdash{} \{ P \ast{} R \} \; C \; \{ Q \ast{} R \}}
-  \end{mathpar}
-  \caption{The frame rule. We still need to be careful about non-interference
-      about program variables on the stack, so we retain $\mod{(C)} \cap{}
-      \mathrm{FV}(R) = \emptyset{}$, but locations on the heap are ensured
-      disjoint by the definition of $\astRef$. The name comes from the
-      \emph{frame problem} in artificial intelligence, where using first-order
-      logic to represent the world requires many axioms simply to state that
-      things do not change arbitrarily.}\label{fig:frame-rule}
-\end{marginfigure}
+\subsection{Simple separation logic}
+
+The core ideas of separation logic are best illustrated by example through a
+toy imperative language, $\textsc{While}_p$ and an assertion language
+resembling first-order logic (\cref{fig:whilep-grammar}).
+
+$\textsc{While}_p$ is a an imperative language with while-loops (omitted),
+conditional branching (omitted) and sequencing ($C; C'$) for control-flow, a
+class of boolean expressions $B$ for conditions, and a class of arithmetic
+expressions $E$ as data. It features mutable, stack-based variables $X$, and
+constructs for allocating and initialising contiguous memory cells
+($\cnkw{alloc}(E_1, \ldots, E_n)$), as well as loading ($X \coloneq{} [E]$),
+storing ($[E] \coloneq{} E'$), and deallocating ($\cnkw{free}(E)$) them.
+
+On this, we add a grammar of terms (mathematical expressions denoting values in
+$\mathbb{N}$), predicates and assertions. Assertions include familiar ones from
+first-order logic, as well as $\cnkw{emp}$ stating that the heap is empty, $t
+\mapsto{} t'$ stating that the location $t$ holds value $t'$ and $A \ast{} A'$
+which asserts that the heap can be split into two disjoint parts, one
+satisfying $A$ and other satisfying $A'$.
+
+\begin{figure}
+    \ContinuedFloat*%
+    \begin{tabular}{l@{}l@{ }l@{ }l}
+    \cncom{arith.\ expr.}  & $E$ & $\mathrel{{\Colon}{=}}$ & $ n \in{} \mathbb{N} \mid{} E + E' \mid{} E \times{} E' \mid{} \ldots $ \\ % chktex 8
+    \cncom{boolean expr.} & $B$ & $\mathrel{{\Colon}{=}}$ & $\cnkw{T} \mid{} \cnkw{F} \mid{} E \leq{} E' \mid{} B\ \mathop{\cnkw{\&\&}} B' \mid{} \ldots$ \\
+    \cncom{commands}      & $C$ & $\mathrel{{\Colon}{=}}$ & $\cnkw{skip} \mid{} C; C' \mid{} X := E \mid{} \ldots \mid{} X := [E]$ \\ % chktex 26 chktex 13
+                          &     &                         & $[E] := E' \mid{} \cnkw{alloc}(E_0, \ldots, E_n) \mid{} \cnkw{free}(E)$ \\ % chktex 36 chktex 26
+    \cncom{terms}         & $t$ & $\mathrel{{\Colon}{=}}$ & $ x \mid{} X \mid{} n \in{} \mathbb{N} \mid{} f (t_1, \ldots, t_n)$ \\
+    \cncom{predicates}    & $P$ & $\mathrel{{\Colon}{=}}$ & $ \cnkw{emp} \mid{} t = t' \mid{} t \mapsto{} t' \mid{} p(t_1, \ldots, t_n)$ \\ % chktex 36
+    \cncom{assertions}    & $A$ & $\mathrel{{\Colon}{=}}$ & $ \bot{} \mid{} \top{} \mid{} P \mid{} A \wedge{} A' \mid{} A \vee{} A' \mid{} A \Rightarrow{} A'$ \\
+                          &     &                         & $ A \ast{} A' \mid{} \forall{} x.\ A \mid{} \exists{} x.\ A$ \\
+    \end{tabular}%
+    \caption{Syntax of $\textsc{While}_p$ simple imperative language with
+        pointers. Arithmetic expressions denote values in $\mathbb{N}$, and
+        boolean expressions denote either true ($\cnkw{T}$) or false
+        $(\cnkw{F})$. Commands $C$ denote a change in configuration $\langle{}
+        C, s, h \rangle{} \rightarrow \langle{} C', s', h' \rangle{}$, with a
+        stack $s$ and a heap $h$. Terms $t$ are mathematical expressions (with
+        functions $f(t_1, \ldots, t_n)$) denoting values in $\mathbb{N}$, and
+        may refer to stack or logical variables. The semantics of stacks, heaps,
+        predicates and assertions $A$ are discussed in the next
+        figure.}\label{fig:whilep-grammar}
+\end{figure}
+
+Semantically, assertions represent sets of heaps (\cref{fig:whilep-assertions}).
+No heap satisfies $\bot{}$, so it denotes the empty set. Conversely, all heaps
+satisfy $\top{}$, so it denotes the set of all heaps $\mathsf{Heap} \eqdef{}
+\mathbb{N} \rightharpoonup{} \mathbb{N}$. Only the empty heap satisfies
+$\cnkw{emp}$, and in this presentation of a \emph{linear} separation logic,
+only singleton heaps satisfy $t \mapsto{} t'$.\sidenote{In an affine setting,
+$\mathrm{dom}(h) \subseteq{} \{\, n \,\}$.} Lastly, any heap $h$ satisfies $A
+\ast{} A'$ when it can be split into two disjoint heaps $h_1$ and $h_2$ such
+that $h_1$ satisfies $A$ and $h_2$ satisfies $A'$.
+
+\begin{figure}
+    \ContinuedFloat%
+    \begingroup%
+    \newcommand{\denof}[1]{[\![#1]\!]}
+    \begin{align*}
+        \denof{-}(=) &: \mathsf{Assertion} \rightarrow \mathsf{Stack} \rightarrow \mathcal{P}(\mathsf{Heap}) \\
+        \denof{\bot}(s) &\eqdef{} \emptyset{} \\
+        \denof{\top}(s) &\eqdef{} \mathsf{Heap} \\
+        \denof{A \Rightarrow A'} &\eqdef{} \{\, h \in{} \mathsf{Heap} \mid{} h \in{} \denof{A}(s) \Rightarrow{} h \in{} \denof{A'}(s) \,\} \\
+                                 &\vdots{} \\
+        \denof{\cnkw{emp}}(s) &\eqdef{} \{\, h \in{} \mathsf{Heap} \mid{} \mathrm{dom}(h) = \emptyset{} \,\} \\
+        \denof{t \mapsto{} t'}(s) &\eqdef{} \left\{\, h \in{} \mathsf{Heap} \,\middle\vert{}\,
+                \begin{matrix}
+                    \exists n, n'.\ \denof{t}(s) = n \wedge n \neq{} 0 \wedge \denof{t'}(s) = n' \\
+                    \qquad{} \wedge{} \mathrm{dom}(h) = \{\,n\,\} \wedge{} h(n) = n'
+                \end{matrix} \,\right\}\\
+       \denof{A \ast{} A'}(s) &\eqdef{} \left\{\, h \in{} \mathsf{Heap} \,\middle\vert{}\,
+                \begin{matrix}
+                    \exists h_1, h_2.\ h_1 \in{} \denof{A}(s) \wedge h_2 \in{} \denof{A'}(s) \qquad{} \\
+                    \mathrm{dom}(h_1) \cap{} \mathrm{dom}(h_2) = \emptyset{} \wedge{} h = h_1 \cup{} h_2
+                \end{matrix} \,\right\}\\
+    \end{align*}%
+    \endgroup%
+    \caption{Semantics of assertions in this \emph{linear} separation logic.
+        Stacks are finite maps from program variables to $\mathbb{N}$, and
+        heaps are finite maps $\mathbb{N} \rightharpoonup{} \mathbb{N}$. The
+        denotations are parameterised over a stack and represent sets of
+        heaps. The semantics are \emph{linear} because the points-to assertion
+        $t \mapsto{} t'$ requires the heap's domain to be exactly $[\![t]\!](s)$,
+        rather than a superset of it.}\label{fig:whilep-assertions}
+\end{figure}
+
+With this setup, we can given inference rules for triples $\{A\} \; C \;
+\{A'\}$ for pointer and heap manipulating programs
+(\cref{fig:simple-sep-logic}). For example, the \textsc{Alloc} rule assumes an
+empty heap, and produces a heap with $n+1$ contiguous memory cells initialised
+with the provided values $E_0, \ldots, E_n$, and updates the stack variables
+$X$ with the location of the base of the new allocations. The \textsc{Load}
+rule assumes a singleton heap $E_1 \mapsto{} v$ which remains semantically
+unchanged,\sidenote{Syntactically, any occurrences of $X$ within the location
+expression $E$ must be replaced with their original values.} with the value
+loaded is written into a stack variable $X$. The \textsc{Store} rule also
+assumes a singleton heap $E_1 \mapsto{} \_$, but updates its value to store
+$E_2$. The \textsc{Free} rule also assumes a singleton heap, but deallocates
+it, leaving the heap $\cnkw{emp}$ty.
+
+What allows these rules to be usable is \textsc{Frame}, which is a
+\emph{structural} rule, allowing any framing assertion $A_F$ to be
+separating-conjoined with a triple, enabling compositional program verification
+for commands that touch distinct parts of the heap, so long as they do not
+modify the same stack variables (a check which in this setting can be soundly
+approximated syntactically).
+
+\begin{figure}
+    \ContinuedFloat%
+    \begin{mathpar}
+    \inferrule[{[Alloc]}]
+        { }
+        { \{\, X = x \wedge{} \cnkw{emp} \,\}\, X \coloneq{} \cnkw{alloc}(E_0, \ldots, E_n) \,\{\, X \mapsto{} x/X (E_0, \ldots, E_n) \,\} }
+    \and
+    \inferrule[{[Load]}]
+        { }
+        { \{\, E \mapsto{} v \wedge{} X = x \,\}\, X \coloneq{} [E] \,\{\, x/X (E) \mapsto{} v \wedge{} X = v \,\} }
+    \and
+    \inferrule[{[Store]}]
+        { }
+        {\vdash{} \{\, E_1 \mapsto{} \_ \,\}\, [E_1] \coloneq{} E_2 \,\{\, E_1 \mapsto{} E_2 \,\}}
+    \and
+    \inferrule[{[Free]}]
+        { }
+        { \{\, E \mapsto{} \_ \,\}\, \cnkw{free}(E) \,\{\, \cnkw{emp} \,\} }
+    \and
+    \inferrule[{[Frame]}]
+        {\vdash{} \{\, A \,\} \, C \, \{\, A' \,\}  \\ \mod{(C)} \cap{} \mathrm{FV}(A_F) = \emptyset{}}
+        {\vdash{} \{\, A \ast{} A_F \,\} \, C \, \{\, A' \ast{} A_F \,\}}
+    \end{mathpar}
+    \caption{Simple separation logic. The key rule is \textsc{Frame}: we still
+      need to be careful about non-interference about program variables on the
+      stack, so we retain $\mod{(C)} \cap{} \mathrm{FV}(R) = \emptyset{}$, but
+      locations on the heap are ensured disjoint by the definition of
+      $\astRef$. The name comes from the \emph{frame problem} in artificial
+      intelligence, where using first-order logic to represent the world
+      requires many axioms to state that things do not change
+      arbitrarily.}\label{fig:simple-sep-logic}
+\end{figure}
+
+The inference rules for separation logic commands are justified sound with
+respect to some semantic interpretation, which here states that the operational
+semantics (omitted) do not get stuck, and that all executions which start with
+a sub-heap $h_1 \in [\![ A ]\!](s)$ and a frame-heap $h_F$, and end with a
+$\cnkw{skip}$ command, do so with a heap which can be split up to recover the
+frame heap and the changed sub-heap $h_1' \in [\![A']\!]$.
+
+\begin{figure}
+    \ContinuedFloat%
+    \[\begin{array}{l}
+        \vDash{} \{\, A \,\}\, C \,\{\, A' \,\} \eqdef{} \\
+        \quad{} \forall{} s, h_1, h_F.\ \mathrm{dom}(h_1) \cap{} \mathrm{dom}(h_F) = \emptyset{} \wedge{} h_1 \in{} [\![A]\!](s) \Rightarrow{} \\
+        \qquad{} \begin{array}{l}
+             \langle{} C, s, h_1 \cup{} h_F \rangle{} \rightarrow^* \langle{} \cnkw{skip}, \_, \_ \rangle{} \wedge{} \\
+             \forall{} s', h'.\ \langle{} C, s, h_1 \cup{} h_F \rangle{} \rightarrow^* \langle{} \cnkw{skip}, s', h' \rangle{} \Rightarrow \\
+              \quad{} \exists{} h_1'.\ \mathrm{dom}(h_1') \cap{} \mathrm{dom}(h_F) = \emptyset{} \wedge \\
+              \qquad{} h' = h_1' \cup{} h_F \wedge{} h_1' \in{} [\![ A' ]\!](s)
+        \end{array}
+    \end{array}\]
+    \caption{Semantics of separation logic triples. Informally and at a
+        high-level, it states that for any heap satisfying the precondition,
+        if combined with a frame-heap and run to termination, there exists
+        a splitting of the final heap which recovers both the original frame,
+        and a part which satisfies the postcondition.}\label{fig:simple-sep-logic-triple}
+\end{figure}
+
+\subsection{Example: list append}
 
 To conclude this section, I will continue the example of appending to a list,
 but this time in separation logic, in a simple imperative language. It says
@@ -373,7 +526,7 @@ traditional approach. It works over an idealised imperative language, suitable
 for simple proofs of algorithms and their implementations, and the link between
 this and the C implementation in \cref{fig:append-c} is based on trust. This
 issue persists with contemporary, mechanised frameworks for separation
-logic,~\sidecite{appelSF5,sammler2021refinedc,jacobs2011verifast}
+logic~\sidecite{appelSF5,sammler2021refinedc,jacobs2011verifast},
 which use trust-based model of C, rather than an \emph{empirically validated}
 one.
 
