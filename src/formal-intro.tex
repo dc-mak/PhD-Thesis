@@ -819,9 +819,9 @@ variables, and constraints, contractible).
   \caption{Substructural sequent calculus rules.}\label{fig:substructural}
 \end{marginfigure}
 
-Similarly, in an intuitionistic setting, we can freely forget things we know, in
-a separation logic setting this really depends on whether the user of the logic
-cares about memory leaks or not. In the C standard, nothing relies on an
+Similarly, in an intuitionistic setting, we can freely forget things we know,
+in a separation logic setting this really depends on whether the user of the
+logic cares about memory leaks or not. In the C standard, nothing relies on an
 allocation being \emph{dead}, it only relies on it being \emph{live}, or not
 caring at all. So whilst the theory and the C standard leave this open as a
 design choice, the intended use of \kl{CN} in resource constrained settings
@@ -829,9 +829,9 @@ requires us to be explicit about when we deallocate and more importantly
 \emph{when we forget to}.\sidenote{Though not yet supported by \kl{CN},
 concurrency also requires being explicit about destroying a resource, for
 example, to prevent a user from acquiring the same mutex twice.} This
-`forgetting' an assumption is known as \intro{weakening}, and given the intended
-use case we would like to forbid this too (whilst not requiring type information
-and ambient constraints to be forgotten freely).
+`forgetting' an assumption is known as \intro{weakening}, and given the
+intended use case we would like to forbid this too (whilst not requiring type
+information and ambient constraints to be forgotten freely).
 
 We would however like the ability to commute assumptions freely, since it is
 perfectly acceptable to free in any order, regardless of the order of
@@ -840,6 +840,14 @@ weakening, and exchange are shown in \cref{fig:substructural}. Jettisoning
 weakening and contraction but keeping exchange means that we handle our
 (heap-related) separation logic assumptions
 \emph{linearly}~\sidecite{girard1987linear} in \kl{CN}.
+
+Note that this is in constrast to popular approaches such as the drop trait in
+Rust,\sidenote{\url{https://doc.rust-lang.org/std/ops/trait.Drop.html}} or RAII
+(Resource Acquisition Is Initialisation) in
+C++,\sidenote{\url{https://isocpp.github.io/CppCoreGuidelines/CppCoreGuidelines\#Re-raii}}.
+These allow the programmer to elide explicit resource deallocation, by
+automatically inserting such a call when the resources goes out of scope.
+Modelling that would require an \kl{affine} rather than linear resources.
 
 Linearity may be necessary, but it can also be cumbersome. If a linear resource
 represents the permission to dereference a pointer, a typing rule which
