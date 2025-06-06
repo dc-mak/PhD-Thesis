@@ -60,7 +60,7 @@ embed {{ tex-preamble
 \newcommand{\oftype}{ {\;\!{:}\;\!} }
 }}
 
-metavar id , x , xp {{ tex {x_p} }}, y , yp {{ tex { y_p } }} , yf {{ tex f }} , _ , abbrev , r , allocv {{ tex { alloc_{\symrm{var} } } }} ::=
+metavar id , x , xp {{ tex {x_p} }}, y , yp {{ tex { y_p } }} , yf {{ tex f }} , _x {{ tex \_ }}, abbrev , r , allocv {{ tex { alloc_{\symrm{var} } } }} ::=
   {{ com subscripts: p for pointers }}
 
 indexvar n , i , j , k ::= {{ com index variables }}
@@ -581,7 +581,7 @@ grammar
 
   cpat {{ tex \cnnt{pat} }} :: 'CPat_' ::= {{ com Core patterns }}
     | id : base_type                 ::  :: var
-    | _  : base_type                 ::  :: wild
+    | _x  : base_type                 ::  :: wild
     | ctor ( </ cpati // , // i /> ) ::  :: ctor
 
   pce :: 'PCE_' ::= {{ com Core pure expressions }}
@@ -653,6 +653,16 @@ grammar
     | run id ( pce1 , ... , pcen )                   ::  :: run
     | par ( ce1 , ... , cen )                        ::  :: par
 
+  core_ctxt , cc {{ tex \cnnt{C} }} :: 'CC_' ::= {{ com Core context }}
+    | __                                               :: :: empty
+    | unseq ( ce1 , .. , cej , __ , ce'1 , .. , ce'k ) :: :: unseq
+    | let weak cpat = __ in ce                         :: :: weak
+    | let strong cpat = __ in ce                       :: :: strong
+    | bound ( __ )                                     :: :: bound
+
+  contextrules
+    core_ctxt _:: core :: core
+
 grammar
 
   % OUT_HACK|pstmt,\cnnt{pstmt}
@@ -664,7 +674,7 @@ grammar
   % Injecting into a singleton rather than empty because it
   % (a) guarantees all qpred_terms are non-empty which
   % (b) guarantees the resource context/heap containing qpred_terms are also non-empty which
-  % (c) makes `{ _ : qpred_term' & oarg } |- qpred_term => qpred_term' & oarg' nicely consistent
+  % (c) makes `{ _x : qpred_term' & oarg } |- qpred_term => qpred_term' & oarg' nicely consistent
   % (d) avoids the need to invent default-valued arrays in the SMT terms.
   pred_ops :: 'Pred_ops_' ::= {{ com (q)points-to operation terms }}
     | iterate ( res_term , int )                :: :: iterate {{ com transform points-to-array into iterated points-to   }}
@@ -911,6 +921,7 @@ grammar
     | 0       :: :: zero
     | |-lv    :: :: lv_turnst {{ tex \vdash_{\mathrm{lv} }            }}
     | ldots   :: :: ldots     {{ tex \ldots                           }}
+%   | __      :: :: ctxt      {{ tex \cdot                            }}
  
  grammar
 
