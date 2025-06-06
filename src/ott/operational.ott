@@ -42,7 +42,7 @@ defns
 
 
     ----------------------------- :: Wild
-    _ = pval ~> cdot
+    _x = pval ~> cdot
 
 
     -------------------------------------------- :: Sym
@@ -169,13 +169,13 @@ defns
 
     cdot |- pval => base_type
     ------------------------------------------------------------------ :: PVal
-    _ | < pval > --> < pval : sigma y : base_type .: y = inj pval /\ I >
+    _t | < pval > --> < pval : sigma y : base_type .: y = inj pval /\ I >
 
 
     int def= xor_uf ( int1 , int2 )
     pure_ret def= sigma y : integer .: y = xor_uf ( int1 , int2 )  /\ I
     -------------------------------------------------------------------------- :: Ctor_IvXOR
-    _ | < ctor_expr ( int1 , int2 ) > --> < int : pure_ret >
+    _t | < ctor_expr ( int1 , int2 ) > --> < int : pure_ret >
 
     % DEFER (not implemented) other ctor_expr
     % ctor_expr ( </ pvali // , // i /> )
@@ -199,48 +199,48 @@ defns
     inj bool_value def= inj ptr1 . addr = inj ptr2 . addr
     pure_ret def= sigma y : loc .: y = ( inj ptr1 . addr = inj ptr2 . addr ) /\ I
     --------------------------------------------------------------------------- :: Ptr_Eq
-    _ | < ptr1 = ptr2 > --> < bool_value : pure_ret >
+    _t | < ptr1 = ptr2 > --> < bool_value : pure_ret >
 
 
     ------------------------------------ :: Not_True
-    _ | < not ( True ) > --> < False : sigma y : bool .: y = neg inj True /\ I >
+    _t | < not ( True ) > --> < False : sigma y : bool .: y = neg inj True /\ I >
 
 
     ------------------------------------ :: Not_False
-    _ | < not ( False ) > --> < True : sigma y : bool .: y = neg inj False /\ I >
+    _t | < not ( False ) > --> < True : sigma y : bool .: y = neg inj False /\ I >
 
 
     int def= int1 ' arith_binop ' int2
     pure_ret def= sigma y : integer .: y = int1 ' arith_binop ' int2 /\ I
     ----------------------------------------------------------------- :: Arith_Binop
-    _ | < int1 arith_binop int2 > --> < int : pure_ret >
+    _t | < int1 arith_binop int2 > --> < int : pure_ret >
 
 
     inj bool_value def= int1 ' rel_binop ' int2
     pure_ret def= sigma y : bool .: y = int1 ' rel_binop ' int2 /\ I
     ------------------------------------------------------------------ :: Rel_Binop
-    _ | < int1 rel_binop int2 > --> < bool_value : pure_ret >
+    _t | < int1 rel_binop int2 > --> < bool_value : pure_ret >
 
 
     inj bool_value def= inj bool_value1 ' bool_binop ' inj bool_value2
     pure_ret def= sigma y : bool .: y = inj bool_value1 ' bool_binop ' inj bool_value2 /\ I
     --------------------------------------------------------------------------- :: Bool_Binop
-    _ | < bool_value1 bool_binop bool_value2 > --> < bool_value : pure_ret >
+    _t | < bool_value1 bool_binop bool_value2 > --> < bool_value : pure_ret >
 
 
     % DEFER (not implemented) memberof ( tag , member , pval )
 
 
     ------------------------------------------------------------------- :: Assert_Undef
-    _ | < assert_undef ( True , UB_name ) > --> < Unit : sigma _ : unit .: I >
+    _t | < assert_undef ( True , UB_name ) > --> < Unit : sigma _x : unit .: I >
 
 
     ---------------------------------------------------- :: Bool_To_Integer_True
-    _ | < bool_to_integer ( True ) > --> < 1 : sigma y : integer .: y = 1 /\ I >
+    _t | < bool_to_integer ( True ) > --> < 1 : sigma y : integer .: y = 1 /\ I >
 
 
     ---------------------------------------------------- :: Bool_To_Integer_False
-    _ | < bool_to_integer ( False ) > --> < 0 : sigma y : integer .: y = 0 /\ I >
+    _t | < bool_to_integer ( False ) > --> < 0 : sigma y : integer .: y = 0 /\ I >
 
     % DEFER conv_int ( ct , pval )
 
@@ -249,7 +249,7 @@ defns
     int' def= if abbrev2 =< max ct then abbrev2 else abbrev2 - abbrev1
     pure_ret def= sigma y : integer .: y = int' /\ I
     ------------------------------------------------------------------------------- :: WrapI
-    _ | < wrapI ( ct , int ) > --> < int' : pure_ret >
+    _t | < wrapI ( ct , int ) > --> < int' : pure_ret >
 
 
     P ( name ) = </ xi // i /> |-> pstmt : pure_fun
@@ -264,7 +264,7 @@ defns
 
     pat = pval ~> subs
     ------------------------------------------- :: PVal
-    _ | < let pat : pure_ret = pval in pstmt > --> < subs ( pstmt ) >
+    _x | < let pat : pure_ret = pval in pstmt > --> < subs ( pstmt ) >
 
 
     alloct | < pexpr > --> < pstmt1 : pure_ret >
@@ -278,17 +278,17 @@ defns
 
 
     ------------------------------------------------------------------------------- :: If_True
-    _ | < if True then pstmt1 else pstmt2 > --> < pstmt1 >
+    _t | < if True then pstmt1 else pstmt2 > --> < pstmt1 >
 
 
     -------------------------------------------------------------------------------- :: If_False
-    _ | < if False then pstmt1 else pstmt2 > --> < pstmt2 >
+    _t | < if False then pstmt1 else pstmt2 > --> < pstmt2 >
 
 
     patj = pval ~> subsj
     forall i lt j .: not ( pati = pval ~> subsi )
     ------------------------------------------------------------------------------------------------------- :: Case
-    _ | < case pval of </ | pati => pstmti // i /> end > --> < subsj ( pstmtj ) >
+    _t | < case pval of </ | pati => pstmti // i /> end > --> < subsj ( pstmtj ) >
 
 
 defns
@@ -475,7 +475,7 @@ defns
     alloct |- smt ( ptrt = inj ptr )
     alloct |- smt ( representable ( ct , inj pval ) )
     pt' def= inj ptr |- Init - ct -> inj pval
-    ret def= sigma _ : unit .: ( inj ptr |- Init - ct -> inj pval ) *o I
+    ret def= sigma _x : unit .: ( inj ptr |- Init - ct -> inj pval ) *o I
     ----------------------------------------------------------------------------------------- :: Store
     < alloct ; h ; res_term | store < ct > ( ptr , pval ) > --> < alloct ; h' + { pt' & None } ; < Unit , Owned < Init , ct > ( inj ptr ) > : ret >
 
@@ -485,7 +485,7 @@ defns
     pred_term1 def= Owned < _init , ct > ( ptrt1 )
     pred_term2 def= Alloc ( @ aid )
     alloct |- smt ( ptrt1 = ptrt2 = inj ptr /\ sizeof ct = term )
-    ret def= sigma _ : unit .: I
+    ret def= sigma _x : unit .: I
     ----------------------------------------------------------------------------------- :: Kill_Static
     < alloct ; h ; res_term | kill < ct > ( ptr ) > --> < alloct ; h' ; < Unit > : ret >
 
@@ -529,7 +529,7 @@ defns
     alloct |- smt ( @ aid = ptrt . alloc_id /\ representable ( ct2 , addr ) )
     ret def= sigma y : integer .: y = addr /\ pred_term ( _t ) *o I
     ---------------------------------------------------------------------------------- :: IntFromPtr
-    _ | < h ; res_term | intFromPtr < ct > ( ( @ aid , addr ) ) > --> < h' + { pred_term ( _t ) & None } ; < addr , pred_term > : ret >
+    _t | < h ; res_term | intFromPtr < ct > ( ( @ aid , addr ) ) > --> < h' + { pred_term ( _t ) & None } ; < addr , pred_term > : ret >
 
 
     alloct | < h ; res_term > ||v < h' + { pred_term ( oarg ) & None } ; pred_term >
@@ -545,13 +545,13 @@ defns
     inj bool_value def= aligned ( ct , inj ptr )
     ret def= sigma y : bool .: y = aligned ( ct , inj ptr ) /\ I
     -------------------------------------------------------- :: PtrValidForDeref
-    _ | < h ; emp | ptrValidForDeref < ct > ( ptr ) > --> < h ; < bool_value > : ret >
+    _t | < h ; emp | ptrValidForDeref < ct > ( ptr ) > --> < h ; < bool_value > : ret >
 
 
     inj bool_value def= aligned ( ct , inj ptr )
     ret def= sigma y : bool .: y = aligned ( ct , inj ptr ) /\ I
     ------------------------------------------------------------------ :: PtrWellAligned
-    _ | < h ; emp | ptrWellAligned < ct > ( ptr ) > --> < h ; < bool_value > : ret >
+    _t | < h ; emp | ptrWellAligned < ct > ( ptr ) > --> < h ; < bool_value > : ret >
 
 
     alloct | < h ; res_term > ||v < h' + { pred_term ( term ) & None } ; pred_term >

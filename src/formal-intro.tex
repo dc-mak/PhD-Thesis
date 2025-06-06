@@ -298,19 +298,55 @@ specific memory object model.
 
 The following constructs are all related to evaluation order:
 \coreinline{neg()}, \coreinline{unseq()}, \coreinline{let weak}, % chktex 36
-\coreinline{let strong}, \coreinline{bound()}, \coreinline{par()}. % chktex 36
-These were supported in the implementation at one point,\sidenote{See
-note~\ref{sn:new-inf}.} but stopped working due to a change in the resource
-inference scheme, and not enough of a priority to re-enable. I did not attempt
-to formalise their complex operational behaviour; I considered supporting these
-constructs using fractional permissions, but decided to leave that for future
-work because of the noise and complexity it would add to the initial version of
-the formalisation.
+\coreinline{let strong}, \coreinline{bound()}. These were supported % chktex 36
+in the implementation at one point,\sidenote{See note~\ref{sn:new-inf}.} but
+stopped working due to a change in the resource inference scheme, and not
+enough of a priority to re-enable. I did not attempt to formalise their complex
+operational behaviour; I considered supporting these constructs using
+fractional permissions, but decided to leave that for future work because of
+the noise and complexity it would add to the initial version of the
+formalisation. The \coreinline{par()} construct is for spawning % chktex 36
+threads. The \coreinline{nd()} construct models non-determinism % chktex 36
+as required or implied by aspects of the standard.
 
-The \coreinline{ccall()} and \coreinline{pcall()} constructs for calling % chktex 36
-elaborate C functions and Core procedures (effectful functions) respectively.
-They differ only in how the name of the procedure to be called is found, with
-\coreinline{ccall()} using the memory interface to do so. % chktex 36
+The \coreinline{ccall()} and \coreinline{pcall()} constructs for % chktex 36
+calling elaborate C functions and Core procedures (effectful functions)
+respectively. They differ only in how the name of the procedure to be called is
+found, with \coreinline{ccall()} using the memory interface to do so. % chktex 36
+
+The (thread-local) Core operational semantics is defined as a small-step
+transition from a configuration to either undefined behaviour or a new
+configuration. Formally, it looks like this $\langle h, E, \kappa \rangle
+\rightarrow (\textsc{Undef} \mid{} \langle h', E', \kappa' \rangle)$, for a
+heap $h$, effectful expressions $E$ and stack $\kappa$ (list of evaluation
+contexts $C$). These steps rely on evaluating pure expressions (in a big-step
+style) to either undefined behaviour or a value $\cnnt{pce} \Downarrow
+(\textsc{Undef} \mid{} \cnnt{value})$.
+
+For example, procedure calls pop the enclosing evaluation context $C$ on
+to the stack $\kappa$, evaluate the arguments into values, lookup the function
+body $E$ and substitute the parameters for the values, and proceed with
+executing the body.
+
+{\small%
+\[
+\inferrule[{[PCall]}]
+ { \mathrm{funmap} ( \cnnt{name} ) = \left(\cncomp{x_i {:} \beta_i}{i}\right).\ E \\
+   \cncomp{\cnnt{pce}_i \Downarrow \cnnt{value}_i}{i} }
+ { \left< h , C\left[ \cnkw{pcall} \, \left( \cnnt{name}, \cncomp{\cnnt{pce}_i}{i} \right) \right] , \kappa \right>
+   \rightarrow \left< h , \left[ \cncomp{\cnnt{value}_i / x_i}{i} \right] E , C \Colon \kappa \right> }
+\]}
+
+Conversely, returns pop an evaluation context off of the stack, applies it to
+the values, and proceeds with the resulting expression.
+
+{\small%
+\[
+\inferrule[{[Return]}]
+  { }
+  { \langle \cnnt{h} , \cnkw{pure}(v) , C \Colon \kappa \rangle
+    \rightarrow \langle h, C [\cnkw{pure}(v)] , \kappa \rangle }
+\]}
 
 The \coreinline{save()} operator is \kl{Core}'s way of introducing named % chktex 36
 continuations with default arguments. The label $l$ and arguments $x_1, \ldots,
@@ -319,6 +355,37 @@ provided by the \coreinline{run()} operator or with the default $e_1, \ldots, % 
 e_n$, if the operator is reached otherwise. This is the \cinline{goto}-like
 operator referred to earlier, which is used to elaborate all of C's iteration
 and \cinline{goto} statements.
+
+Formally, reaching a label via \coreinline{save()} evaluates its % chktex 36
+default expressions into values and then substitutes those values into its
+expression.\sidenote{Since this does not manipulate the heap or the stack, it
+    is phrased purely as is expression reduction, with a separated, omitted
+    rule to lift expression reductions to thread-local reductions.}
+
+{\small%
+\[
+\inferrule[{[Save]}]
+  { \cncomp{\cnnt{e}_i \Downarrow{} \cnnt{value}_i}{i} }
+  { \cnkw{save} \, \cnnt{id} \left( \cncomp{x_i \cnkw{:=} e_i}{i} \right) \, \cnkw{in} \, \cnnt{E}
+    \rightsquigarrow \left[ \cncomp{ \cnnt{value}_i / x_i }{i} \right] E }
+\]}
+
+Reaching the same label via a \coreinline{run()} however, is more % chktex 36
+complicated. Like a procedure call, it evaluates its arguments into values and
+looks up the label $\cnnt{id}$. Unlike a procedure call, the result of the
+lookup is \emph{a context} $C_{\cnnt{id}}$ and an expression $E_{\cnnt{id}}$.
+It substitutes the values for the parameters in $E_\cnnt{id}$, \emph{discards
+the current context} $C$, and uses $C_\cnnt{id}$ instead. All the while, the
+stack $\kappa$ is unchanged.
+
+{\small%
+\[
+\inferrule[{[Run]}]
+  { \mathrm{labelmap} ( \cnnt{id} ) = \left(\cncomp{x_i}{i}\right).\ C_{\cnnt{id}} [ E_{\cnnt{id}} ] \\
+    \cncomp{e_i \Downarrow \cnnt{value}_i}{i} }
+  { \langle h , C\left[ \cnkw{run}\, \cnnt{id} \left( \cncomp{e_i}{i} \right) \right] , \kappa \rangle
+    \rightarrow \left< h , C_{\cnnt{id}} \left[ \left[ \cncomp{\cnnt{value}_i / x_i}{i} \right] E_{\cnnt{id}} \right] , \kappa \right> }
+\]}
 
 The important aspect for our purposes is that while control flows into
 \coreinline{ccall()}, \coreinline{pcall()} and \coreinline{run()}, it % chktex 36
@@ -330,6 +397,7 @@ only returns from the first two and not the last.
     \small%
     \cngrammarcompressed{\textwidth}{%
         \cncore{}\cninterrule{}
+        \cncoreXXctxt{}\cninterrule{}
         \cncmemop{}\cninterrule{}
         \cncaction{}\cnafterlastrule{}
     }
@@ -361,12 +429,14 @@ their effects.\sidenote{$\cnkw{let}\ \cnkw{strong}\ \cnnt{pat}\ \cnkw{=}\
     \cnnt{E}_1\ \cnkw{in}\ \cnnt{E}_2$ sequences all memory
     actions performed by $\cnnt{E}_1$ before those performed by $\cnnt{E}_2$.
     $\cnkw{let}\ \cnkw{weak}$ only sequences positive memory actions similarly;
-    in other words, $\cnkw{let}\ \cnkw{weak}\ \cnnt{pat}\ \cnkw{=}\
+    in other words, for $\cnkw{let}\ \cnkw{weak}\ \cnnt{pat}\ \cnkw{=}\
     \cnnt{E}_1\ \cnkw{in}\ \cnnt{E}_2$, any negative memory actions
-    ($\cnkw{neg}(\cnnt{action})$) performed by $\cnnt{E}_1$ race with all
-    memory actions performed by $\cnnt{E}_2$.}
-In this example, weak sequencing has no observable effect, and so it is
-safe to read both as \coreinline{let strong}.
+    ($\cnkw{neg}(\cnnt{action})$) performed by $\cnnt{E}_1$ are
+    unsequenced with respect to all memory actions performed by $\cnnt{E}_2$.
+    A race only occurs if unsequenced memory actions have overlapping
+   footprints, and is deemed \kl{UB}.}
+In this example, weak sequencing has no observable effect, and so is
+safe to read as \coreinline{let strong}.
 
 \corefile[firstline=3, lastline=10]{code/append_plain.core}
 
