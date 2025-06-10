@@ -1002,6 +1002,7 @@ append from \cref{fig:append-annot,fig:list-pred}, reproduced in
 \cref{fig:append-annot-formal,fig:list-pred-formal} for convenience.
 
 \begin{marginfigure}
+    \small
     \centering
     \begin{align*}
         \mathrm{list} &(\mathsf{p}, l) \mathrel{{=}^\mathrm{def}} \\
@@ -1016,11 +1017,11 @@ append from \cref{fig:append-annot,fig:list-pred}, reproduced in
         logic.}\label{fig:list-pred-formal}
 \end{marginfigure}
 
-\begin{marginfigure}
+\begin{figure}[h]
     \inputminted[breaklines,mathescape,fontsize=\small]{py}{code/append_annot.py}
     \caption{A separation logic proof sketch of a linked integer list
         append.}\label{fig:append-annot-formal}
-\end{marginfigure}
+\end{figure}
 
 We see that in addition to the pointers $\mathsf{xs}$ and $\mathsf{ys}$, which
 can be thought of as a quantification over \intro{computational} variables, the
@@ -1087,56 +1088,53 @@ It is a cute idea, but it glosses over several details, such as
 I will tackle the first three questions here, and leave the latter three
 to be discussed in~\nameref{sec:heap-types}.
 
-For the first question, the answer is \emph{yes}: such assertions are
-characterisable as \kl{precise}~\sidecite{reynolds2008intro}.
+For the first question, the answer is: in practice, \emph{yes}. If one assigns
+input and output \kl{modes} to the arguments of separation logic predicates,
+and ensures that predicates are \emph{mode-correct} via a syntactic check
+(\nameref{sec:monadic-syntax}), then that suffices to guarantee that the system
+can \emph{always infer quantifiers}.
+
+However, the theoretical justification for this unclear. Such assertions happen
+to be characterisable as \kl{precise}~\sidecite{reynolds2008intro}, but the
+connection to modes has not been formally explained.
 
 \subsection{Precise assertions}\label{subsec:precise-assertion}
 
 \begin{definition}[Precise assertions]%
 \label{def:precise-assertion}
     \AP{} An assertion $Q$ is \intro{precise} iff, for all stores $s$, and heaps
-    $h$, there is at most one $h' \subseteq{} h$ such that $s , h' \vDash{} Q$.
+    $h$, there is at most one $h' \subseteq{} h$ such that $h' \in [\![ Q ]\!] (s)$.
 
     In other words, if a \kl{precise} assertion holds on a subheap, then it
     does so uniquely.
 \end{definition}
 
-This makes sense when you consider that in C, if you have a location, you can
-dereference it to get the value at that location, but if you have an arbitrary
-value, there is no way of answering `what locations contain this
-value?'\sidenote{I am talking about values, not variables, whose address can
-always be taken in C, because they are allocated as globals or on the stack.}
-without already having the pointers at hand, and the intuition generalises to
-the $\mathrm{list}(\_, \_)$ predicate too.
+Based on this definition, one can derive some examples and properties of
+precise assertions as shown in~\cref{fig:precise} (examples of imprecise
+assertions are shown in~\cref{fig:imprecise}). As I shall show later, each
+production in the grammar for \kl{linear} \kl{resource types}
+(\cref{fig:kernel-res}), stays within the precise fragment.
 
-In the formal definition, the store is what `fixes' the program (computational)
-variables, and so any assertion which does not use those variables as locations
-in the heap, on the left of a $\colorbox{yellow}{\_} \mapsto{} \_$, cannot be
-uniquely determined; it is the stuff on the left, the locations of subheaps,
-not values, which are guaranteed to be disjoint by the separating conjunction
-$\astRef{}$.
+\begin{marginfigure}
+\begin{mathpar}
+    \mathsf{emp}
+    \and p \mapsto v
+    \and \exists v.\ p \mapsto v
+    \and \mathrm{list}(\mathsf{p}, l)
+    \and \exists l.\ \mathrm{list}(\mathsf{p}, l)
+    \and P \wedge Q \text{ when $P$ or $Q$ is precise}
+    \and P \ast Q \text{ when $P$ and $Q$ are precise}
+\end{mathpar}%
+\caption{Some examples and properties of precise assertions.}\label{fig:precise}
+\end{marginfigure}
 
-\begin{itemize}
-    \item Not sure about the above two paragraphs. Is there a better intuition?
-    \item How does this relate to \emph{symbolic} heaps?
-    \item In a concrete setting, a precise assertion is defined with respect to
-        a bigger heap, in which, if the assertion holds, it does so for a
-        unique subheap. In a concrete setting, a $\exists v.\ \mathsf{p}
-        \mapsto{} v$ is a \emph{precise} assertion, but not an \emph{strictly
-        exact} one (would have to introduce definition for this).
-    \item Is it exact in a symbolic setting?
-    \item Or is the distinction more related to linear vs affine?
-    \item Is it the case, that in a linear setting, all pure assertions only
-        satisfy the empty heap, rather than any heap?
-    \item In a linear setting, does the definition of a precise assertion
-        coincide with a strictly exact assertion?
-\end{itemize}
-
-The guarantee that a subheap satisfying a precise assertion is unique is very
-useful because it means that if the inference scheme I sketched out above is
-used in a setting where all assertions are \kl{precise}, then any answer it
-finds is guaranteed to be unique, and there is no need to backtrack and explore
-other alternatives.
+\citeauthor{brotherston2016model}~\sidecite{brotherston2016model}~showed that
+precise assertions allow for efficient model checking without backtracking;
+in~\nameref{sec:elaboration}, I show how the same allow for \kl{CN} to infer
+instantiations of quantifiers without backtracking. I do so by leaning on input
+and output \kl{modes} which (a) is intuitive, given that in C source a pointer
+is an ``input'' and dereferenced value an ``output'' and (b) happens to
+coincide.
 
 This brings us nicely to the second question about disjunctions. As visible
 from \cref{fig:imprecise}, we see that arbitrary disjunctions pose a problem.
@@ -1146,24 +1144,13 @@ definition of precise, despite including a disjunction in its definition
 (\cref{fig:list-pred-formal}).
 
 \begin{marginfigure}
-\begin{itemize}
-    \item $\mathsf{p} \mapsto{} v$
-    \item $\exists v.\ \mathsf{p} \mapsto{} v$
-    \item $P \ast{} Q$ when $P$ and $Q$ are both precise
-    \item $\mathrm{list}(\mathsf{xs}, l)$
-    \item $\exists l.\ \mathrm{list}(\mathsf{xs}, l)$
-\end{itemize}
-\caption{Examples of \kl{precise} assertions.}\label{fig:precise}
-\end{marginfigure}
-
-\begin{marginfigure}
-\begin{itemize}
-    \item $\mathsf{true}$
-    \item $\mathsf{emp} \vee{} \mathsf{x} \mapsto{} 42$
-    \item $\mathsf{x} \mapsto{} 3 \vee{} \mathsf{y} \mapsto{} 7$
-    \item $\exists \mathsf{x}.\ \mathsf{x} \mapsto{} 1$
-    \item $\exists \mathsf{xs}.\ \mathrm{list}(\mathsf{xs}, l)$.
-\end{itemize}
+\begin{mathpar}
+    \mathsf{true}
+    \and \mathsf{emp} \vee{} \mathsf{x} \mapsto{} 42
+    \and \mathsf{x} \mapsto{} 3 \vee{} \mathsf{y} \mapsto{} 7
+    \and \exists \mathsf{p}.\ \mathsf{p} \mapsto{} 1
+    \and \exists \mathsf{p}.\ \mathrm{list}(\mathsf{p}, l).
+\end{mathpar}
 \caption{Examples of im\kl{precise} assertions.}\label{fig:imprecise}
 \end{marginfigure}
 
@@ -1180,11 +1167,11 @@ program variables.
 At this point, a keen reader may have noticed that while this may be true at
 the `top-level' of the predicate, the recursive call does use the existentially
 quantified ghost value $\mathsf{p\_tail}$, which is on the right of $\mathsf{p}
-+ 1 \mapsto{} \mathsf{p\_tail}$. So why does this make it im\kl{precise}? It is
-because in any heap which satisfies the non-empty branch of the list
++ 1 \mapsto{} \mathsf{p\_tail}$. So why is this definition still \kl{precise}?
+It is because in any heap which satisfies the non-empty branch of the list
 predicate, $\mathsf{p\_tail}$ is \emph{uniquely} determined by its relation as
 the value in the location adjacent to $\mathsf{p}$.\sidenote{A proof of this is
-left as an exercise to the reader.} This can be formalised with a \kl{mode}
+left as an exercise to the reader.} This can be operationalised with a \kl{mode}
 discipline for predicate arguments, which I shall discuss in
 \nameref{sec:monadic-syntax}.
 
@@ -1193,21 +1180,31 @@ Finally, the third question is an empirical one, but our experience using
 yes, it is sufficient for small to medium tutorial examples, all the way up to
 specifying the buddy allocator (\cref{chap:buddy}) used in pKVM\@.
 
-\begin{itemize}
-    \item Add a note about string manipulation library, ghost parameters:
-        \url{https://github.com/rems-project/cerberus/issues/540}
-\end{itemize}
+That being said, we have found that being able to abstract over, and supply
+quantifiers manually can sometimes be useful for ergonomics, even if not
+strictly necessary. An example came from the efforts of Cassia Torczon to
+verify a basic string manipulation library in \kl{CN}.%
+\sidenote{\href{https://github.com/rems-project/cerberus/issues/540}{see
+Cerberus\#540}} The natural representation of null-terminated strings, as
+required by many of the library functions, is a recursive predicate. However,
+the implementation of such library functions use while-loops and
+array-indexing, for which it is convenient (but not neccessary) for proof (and
+library clients) to express the string as an array (represented by an iterated
+predicate), over a finite range. The end of that range is fixed, but not
+present before looping and indexing in the program code. Hence to refer to it
+in the specification, we need the ability to abstract over and supply
+quantifiers manually.
 
-\section{Monadic syntax to enforce precision}\label{sec:monadic-syntax}
+\section{Monadic syntax to mode-correctness}\label{sec:monadic-syntax}
 
-\intro[mode]{Modes} help us ensure that quantifiers preserve precision as
-follows. We start with separation logic predicates, and label their arguments
-as either $\mathsf{in}$puts or $\mathsf{out}$puts, as shown in
+\intro[mode]{Modes} help us ensure that we can infer quantifiers instantiations
+as follows. We start with separation logic predicates, and label their
+arguments as either $\mathsf{in}$puts or $\mathsf{out}$puts, as shown in
 \cref{fig:mode-pred}. In the scope of each quantifier, for each predicate, we
 check the mode of each parameter matches the mode of each argument.
-Computational arguments the user provides are considered inputs. If a quantified
-variable is used in an input position, it must also be used elsewhere in an
-output position.
+Computational arguments the user provides are considered inputs. If a
+quantified variable is used in an input position, it must also be used
+elsewhere in an output position.
 
 \begin{marginfigure}
     \centering
