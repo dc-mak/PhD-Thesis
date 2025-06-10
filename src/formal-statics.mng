@@ -88,10 +88,14 @@ is not that much more complicated: $[[ C ; L ; N |- pexpr => pure_ret ]]$.
 Given a computational context, a logical context, a constraint context and a pure expression,
 synthesise a \emph{pure} return type (a return type without any resources or
 logical variables). The use of return types starts to introduce a few more of
-the refinement type features gestured at earlier. The type
-$[[ sigma y : base_type .: term /\ I ]]$ is simply the usual refinement type
-$\left\{ \, y \in \beta \mid \mathit{ term } \, \right\}$, translated over to the grammar of types in \kl{Kernel
-CN}. Recall that $\Sigma$ is used to bind a computational value in a
+the refinement type features gestured at earlier.
+
+\textbf{The type $[[pure_ret]] \mathop{{\Colon}{=}} [[ sigma y : base_type .: term /\ I ]]$ is the
+  \kl{Kernel CN} version of the traditional
+  $\left\{ \, y \in \beta \mid \mathit{ term } \, \right\}$
+  refinement type.}
+
+Recall that $\Sigma$ is used to bind a computational value in a
 \emph{return} type, so these types are simply expressing, symbolically, in
 constraints, that these expressions will evaluate to a value. Pure values are
 lifted into the grammar of SMT constraints with an equality constraint;
@@ -193,6 +197,13 @@ assume all patterns are complete.
 Typing resource terms requires the addition of an extra \emph{linear} context
 $[[ R ]]$ of resources. I will start with the synthesising judgements first,
 and move on to checking judgements after.
+
+Fo readers familiar with a program logic presentation of rules the following
+may provide a helpful intution (at the cost of some abuse of notation).
+\textbf{A judgement $[[ C ; L ; N ; R |- res_term => res ]]$ (or similarly for
+checking) is the \kl{Kernel CN} version of a proof of
+$\{\, [[N]] \wedge{} [[R]] \,\} \, \_ \, \{\, [[res]]\, \}$
+using only structural rules as dictated by $[[res_term]]$.}
 
 \subsection{Synthesis for resource terms}\label{subsec:synth-res-term}
 
@@ -322,6 +333,13 @@ logical, constraint and resource), using the following judgement:
 \]
 Given the contexts, a (resource term annotated) memory action
 synthesises a return type.
+
+Fo readers familiar with a program logic presentation of rules the following
+may provide a helpful intution (at the cost of some abuse of notation).
+\textbf{A judgement $[[ C ; L ; N ; R |- res_term | action => sigma y : base_type .: ret ]]$
+is the \kl{Kernel CN} version of a proof of
+$\{\, [[N]] \wedge{} [[R]] \,\} \, [[action]] \, \{\, y {:} [[base_type]].\ [[ret]]\, \}$,
+where $[[res_term]]$ dictates the required structural rules.}
 
 The rule for \coreinline{create()} requires no resources from the context
 $[[cdot]]$, and thus only the $[[emp]]$ as its resource term.
