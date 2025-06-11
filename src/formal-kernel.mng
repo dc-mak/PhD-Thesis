@@ -515,3 +515,47 @@ inferring quantified constraints, the type system does not support merging array
     \caption{Explicit resource terms in \kl{ResCore}.}\label{fig:res-terms}
 \end{figure*}
 
+\section{Core to ResCore example}\label{sec:core-to-rescore}
+
+To conclude, I will show how a simple C function and its specification are
+translated into \kl{Kernel CN} types and a \kl{ResCore} program, via a
+heavily simplified \kl{Core} program.\sidenote{Simplifications include:
+sequentialising \coreinline{unseq()} operations, replacing % chktex 36
+\coreinline{let weak} with \coreinline{let strong}, rewriting
+\coreinline{let strong} merely as \coreinline{let} for brevity, treating
+\coreinline{loaded T} as \coreinline{T} by removing any
+\coreinline{Unspecified} values and control-flow paths depending on them,
+rewriting \coreinline{Specified(x)} to \coreinline{x}, assuming % chktex 36
+\coreinline{PtrValidForDeref} always returns true, inlining \kl{Core}
+library functions, renaming auto-generated variables for clarity.}
+
+The C function take a pointer to an integer as an argument, increments it, and
+then returns the result. Its specification requires read-write ownership of the
+argument pointers (line 2), asserts the pointee to is strictly less than the
+maximum for signed integers (line 3), and ensures read-write ownership (line 4)
+where the return value is equal to the new pointee (line 5) and that the new
+pointee is equal to the old one incremented by one (line 6).
+
+\cfile{code/incr_pointer.c}
+
+As a \kl{Kernel CN} function type, the specification is represented as this:
+{\small%
+\begin{gather*}
+    [[ pi yp : loc .: forall x : integer .: yp |- Init - int -> x --o x < max int -) ret ]] % chktex 9 chktex 35
+    \\ \text{ where } [[ret]] = [[ sigma r : integer .: exists x2 : integer .: yp |- Init - int -> x2 *o r = x2 /\  x2 = x + 1 /\ I ]]. % chktex 8 chktex 12 chktex 26
+\end{gather*}} % chktex 10
+
+The corresponding \kl{Core} is as below. First, it allocates storage for the
+function's argument \coreinline{&p}, and initialises it (line 4). Then it loads
+from that storage for the lvalue of the assignment, \coreinline{p2}. After
+that, it loads from the argument storage twice (\coreinline{p3} and
+\coreinline{star_p}, lines 9\textendash{}10), to compute \cinline{*p} as an
+rvalue. Then it computes \cinline{*p + 1} (line 13) and checks it is within bounds for a
+\cinline{signed int} type (lines 14\textendash{}15). If not, it signals
+undefined behaviour (line 18); if so, then it stores the value (line 20), and
+returns \coreinline{pure(incremented)} (line 21) to be bound to \coreinline{ret_int}. % chktex 36
+The storage for the function's argument is then deallocated (line 23),
+and \coreinline{ret_int} is passed to the return label (line 24), where
+it is wrapped in a \coreinline{pure(..)} expression (line 26). % chktex 36
+
+\corefile{code/incr_pointer.core}  % chktex 17
