@@ -553,9 +553,35 @@ that, it loads from the argument storage twice (\coreinline{p3} and
 rvalue. Then it computes \cinline{*p + 1} (line 13) and checks it is within bounds for a
 \cinline{signed int} type (lines 14\textendash{}15). If not, it signals
 undefined behaviour (line 18); if so, then it stores the value (line 20), and
-returns \coreinline{pure(incremented)} (line 21) to be bound to \coreinline{ret_int}. % chktex 36
+returns \coreinline{pure(incr)} (line 21) to be bound to \coreinline{ret_int}. % chktex 36
 The storage for the function's argument is then deallocated (line 23),
 and \coreinline{ret_int} is passed to the return label (line 24), where
 it is wrapped in a \coreinline{pure(..)} expression (line 26). % chktex 36
 
-\corefile{code/incr_pointer.core}  % chktex 17
+\corefile{code/incr_pointer.core}
+
+This is translated into the following \kl{ResCore}. The main difference is the
+control-flow has raised to the top-level via A-normalisation, and that
+resources and constraints have been added in comments.
+
+First, we give names to the additional parameters: the pointee is named
+\coreinline{x}, the permission \coreinline{RW(p)(x)} for \coreinline{p} is % chktex 36
+named \coreinline{r}, and the constraint \coreinline{x < MAXi32()} is listed
+explicitly.
+
+\corefile[lastline=2]{code/incr_pointer.rescore}
+
+Next, it creates the storage for \cinline{&p}. This requires an resource term
+annotation, but no resources, so it is annotated with $[[ emp ]]$. To bind the
+value, constraints and resources it returns, it needs a pattern. The
+computational part of the pattern (the returned pointer, \cinline{&p}) is there
+already; the constraints on the pointer (for example, alignment) are bound
+to the SMT term \coreinline{term}. To bind the resources, we need a pattern
+for the output arguments of the resources, and then then resource itself.
+The pattern for the output argument (uninitialised value in the newly allocated
+storage) is a wildcard, and the resource is named \coreinline{r': W(p)(_)}. % chktex 36
+
+
+\corefile[firstline=4, lastline=6]{code/incr_pointer.rescore}
+
+% chktex 17

@@ -1,0 +1,30 @@
+proc incr_pointer
+  (p: pointer (* x: integer, r: RW(p)(x), x < MAXi32() *))
+  : eff integer :=
+  let align = pure(Ivalignof("signed int*")) in
+  let &p: pointer (* term, _: integer, r': W(p)(_), .. *) =
+    (* emp *) create(align, "signed int*") in
+  let () (* r': RW(&p)(p) *) =
+    (* r': W(&p)(_) *) store("signed int*", &p, p) in
+  let p2 (* p2 == p, r': RW(&p)(p) *) =
+    (* r': RW(&p)(p) *) load("signed int*", &p) in
+  let p3 (* p3 == p, r': RW(&p)(p) *) =
+    (* r': RW(&p)(p) *) load("signed int*", &p) in
+  let star_p: integer (* star_p == x, r: RW(p)(x) *) =
+    (* r: RW(p)(x) *) load("signed int", p3) in
+  let one = pure(1) in
+  let n (* n == star_p + one *) =
+    pure(star_p + one) in
+  if Ivmin("signed int") <= n
+     && n <= Ivmax("signed int") then
+    let incr (* incr == n *) = pure(n) in
+    let () (* r: RW(p)(incr) *) =
+      (* r: RW(p)(x) *) store("signed int", p2, incr) in
+    let ret_int (* ret_int == incr *) = pure(incr) in
+    let () = (* r': RW(&p)(p) *) kill("signed int*", &p) in
+    ( pure (ret_int)
+      (* r: RW(p)(incr),
+         ret_int == incr,
+         incr == star_p + 1 *))
+  else
+    undef(..)
