@@ -573,15 +573,99 @@ explicitly.
 
 Next, it creates the storage for \cinline{&p}. This requires an resource term
 annotation, but no resources, so it is annotated with $[[ emp ]]$. To bind the
-value, constraints and resources it returns, it needs a pattern. The
-computational part of the pattern (the returned pointer, \cinline{&p}) is there
-already; the constraints on the pointer (for example, alignment) are bound
-to the SMT term \coreinline{term}. To bind the resources, we need a pattern
-for the output arguments of the resources, and then then resource itself.
-The pattern for the output argument (uninitialised value in the newly allocated
-storage) is a wildcard, and the resource is named \coreinline{r': W(p)(_)}. % chktex 36
-
+value, constraints and resources it produces, it needs a pattern, which has
+four parts:
+\begin{enumerate}
+    \item \textbf{Computational}. \cinline{&p}, the returned pointer.
+    \item \textbf{Constraints}. \cinline{term}, constraints on the returned pointer.
+        Note that \kl{ResCore} does not have explicit syntax for pattern-matching
+        constraints, but I show it here to make it clear where constraints are
+        introduced.
+    \item \textbf{Logical/ghost}. \cinline{u}, for the uninitialised
+        value of the new storage.
+    \item \textbf{Resource.} \coreinline{r'}, for the produced resource. Note
+        that \kl{ResCore} does not have explicit syntax for type annotations
+        on resource variables, but I show it here to make it clear exactly
+        what resource is associated with a resource variable. For the sake of
+        brevity, I omit other resources produced by \coreinline{create()} % chktex 36
+        (\nameref{chap:cn-vip}).
+\end{enumerate}
 
 \corefile[firstline=4, lastline=6]{code/incr_pointer.rescore}
+
+After the storage for \cinline{&p} has been created, the code proceeds to
+initialise it. Doing so requires either at least a write permission, which is
+supplied as \coreinline{r': W(&p)(u)}. The store consumes this permission, % chktex 36
+and produces a new read-write permission, which is re-bound to
+\coreinline{r': RW(&p)(p)}. % chktex 36
+
+\corefile[firstline=7, lastline=8]{code/incr_pointer.rescore}
+
+Next, there is a load from the same location. This consumes a read-write
+permission \coreinline{r': RW(&p)(p)} which is available due to the % chktex 36
+previous step. It produces an identical permission, which is rebound to
+\coreinline{r': RW(&p)(p)}. It also generates a constraint, that the % chktex 36
+binder \coreinline{p2} is equal to the loaded value \coreinline{p}.
+An identical process happens with \coreinline{p3}.
+
+\corefile[firstline=9, lastline=12]{code/incr_pointer.rescore}
+
+After all this, we can finally dereference the pointer passed in as an
+argument. Because we know \coreinline{p3 == p}, we may supply
+\coreinline{r: RW(p)(x)}, assumed from the function precondition, % chktex 36
+as the permission to be consumed by the load. It produces an identical
+permission, along with a constraint that the binder \coreinline{star_p} is
+equal to the returned value \coreinline{x}.
+
+\corefile[firstline=13, lastline=14]{code/incr_pointer.rescore}
+
+We then compute that value incremented, and check if the result is within
+bounds for the C type \cinline{signed int}.
+
+\corefile[firstline=15, lastline=19]{code/incr_pointer.rescore}
+
+Due to A-normalisation, the \coreinline{if} is at the top-level, and so instead
+of producing a value, the rest of the program after the \coreinline{if} is
+inlined. In the true-branch, the condition of the \coreinline{if} is implicitly
+added to the constraint context. After that, it rebinds the result to
+\coreinline{incr}, which adds an equality constraint to the context. Then, it
+updates the pointer with the incremented value. Because we know
+\coreinline{p2 == p}, this consumes the resource \coreinline{r: RW(p)(x)}  % chktex 36
+and produces \coreinline{r: RW(p)(incr)}. % chktex 36
+
+\corefile[firstline=20, lastline=22]{code/incr_pointer.rescore}
+
+Next, the storage for \coreinline{&p} is deallocated. This consumes at least a
+write permission \coreinline{r: RW(&p)(p)} but produces no resources, % chktex 36 
+returning only an empty-tuple of type unit.
+
+\corefile[firstline=23, lastline=23]{code/incr_pointer.rescore}
+
+Lastly for the true-branch, due to A-normalisation, all the labels (and their
+arguments) are inlined. This return value needs to satisfy the post-condition.
+
+\begin{itemize}
+    \item \coreinline{pure(ret_int)} satisfies $\sigma r {:} \cnkw{integer}$. % chktex 36
+    \item \coreinline{incr} satisfies $\exists x_2 {:} \cnkw{integer}$.
+    \item \coreinline{r: RW(p)(incr)} satisfies $[[ yp |- Init - int -> x2 ]]$. % chktex 36
+    \item \coreinline{ret_int == incr} satisfies $[[ r = x2 ]]$.
+    \item \coreinline{incr == x + 1} satisfies $[[ x2 = x + 1 ]]$, via
+      \coreinline{incr == n}, \coreinline{n == star_p + 1} and
+      \coreinline{star_p == x}.
+\end{itemize}
+
+\corefile[firstline=24, lastline=29]{code/incr_pointer.rescore}
+
+The false-branch models the undefined behaviour due to signed integer underflow
+or overflow in C. To check it, the negation of the condition is assumed.
+Then, based on it, \coreinline{n == star_p + one} and
+\coreinline{star_p == x}, we have:
+\coreinline{x < Ivmin("signed int") <= x || Ivmax("signed int")}. % chktex 18 chktex 36 
+The latter is false by the assumption that \coreinline{x} fits into
+32 bits, but the former is contradicted by the assumption that
+\coreinline{x <= MAXi32()}. From this, we deduce false:
+this \coreinline{undef(..)} is not reachable. % chktex 36
+
+\corefile[firstline=30, lastline=31]{code/incr_pointer.rescore}
 
 % chktex 17
