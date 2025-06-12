@@ -1,0 +1,26 @@
+proc incr_pointer (p: pointer): eff integer :=
+  let align = pure(Ivalignof("signed int*")) in
+  let &p: pointer = create(align, "signed int*") in
+  store("signed int*", &p, p) ;
+  let ret_int =
+    let p2 = load("signed int*", &p) in
+    let incr: integer =
+      let star_p: integer =
+        let p3 = load("signed int*", &p) in
+        load("signed int", p3) in
+      let one = pure(1) in
+      pure(
+        let n = star_p + one in
+        if Ivmin("signed int") <= n
+           && n <= Ivmax("signed int") then
+          n
+        else
+          undef(..)
+      ) in
+    store("signed int", p2, incr) ;
+    pure(incr)
+  in
+  kill("signed int*", &p) ;
+  run ret_label(ret_int) ;
+  save ret_label(ret_val: integer := undef(..)) in
+    pure(ret_val)
