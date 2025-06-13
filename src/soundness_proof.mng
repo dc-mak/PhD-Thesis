@@ -1654,7 +1654,7 @@ arbitrary (not normalised).
 
 \step{<1>16}{\case{\ExprPure.}{%
 }{%
-    \pf{} By indunction.}}
+    \pf{} By induction.}}
 
 \step{<1>17}{\case{\ActionCreate.}{}}
 
@@ -1662,7 +1662,7 @@ arbitrary (not normalised).
 
     \step{<2>1}{%
         $[[ pval ]]$ must be a $[[ int ]]$.\\
-        \pf{} By \PureValObjPtr.}
+        \pf{} By \PureValObjInt.}
 
     \step{<2>2}{%
         $[[ h ]]$ must be $[[ cdot ]]$ (empty).\\
@@ -1670,6 +1670,26 @@ arbitrary (not normalised).
 
     \step{<2>3}{%
         Step with \OpActionCreate.\\
+        \pf{} Since we assume all allocations succeed, $[[ addr ]]$ is
+        constructible.  $[[ alloc_id ]]$ is simply a fresh allocation ID, and so
+        $[[ ptr ]]$ can be constructed to satisfy the requirements.}
+
+    \end{pfproof}
+
+\step{<1>17a}{\case{\ActionAlloc.}{}}
+
+    \begin{pfproof}
+
+    \step{<2>1}{%
+        $[[ pval1 ]]$ and $[[ pval2 ]]$ must both be $[[ int ]]$.\\
+        \pf{} By \PureValObjInt.}
+
+    \step{<2>2}{%
+        $[[ h ]]$ must be $[[ cdot ]]$ (empty).\\
+        \pf{} By \HeapEmpty.}
+
+    \step{<2>3}{%
+        Step with \OpActionAlloc.\\
         \pf{} Since we assume all allocations succeed, $[[ addr ]]$ is
         constructible.  $[[ alloc_id ]]$ is simply a fresh allocation ID, and so
         $[[ ptr ]]$ can be constructed to satisfy the requirements.}
@@ -2086,18 +2106,18 @@ to deduce that $[[ nR' ]]$ can only be what you would have supplied anyways.
     \ActionCreate.
 }{%
     \pflet{%
-        $[[ ret ]] = [[ sigma yp : loc .: term /\ exists x : to_base ( ct ) .: ( yp |- Uninit - ct -> x ) *o I  ]]$\\
-        where $[[ term ]] = [[ representable ( ct * , yp ) /\ alignedI ( int , yp )  /\ allocv [ @ aid ] = ( addr , sizeof ct ) ]]$.\\
-        $[[ pt ]] = [[ Owned < Uninit, ct > ( inj ptr ) ( default to_base ( ct ) ) ]]$.\\[\baselineskip]}
+        $[[ ret ]] = [[ sigma yp : loc .: term /\ exists x : to_base ( ct ) .: pred_term1 ( x ) *o pred_term2 ( ( yp . addr , sizeof ct ) ) *o I  ]]$\\
+        where $[[ term ]] = [[ representable ( ct * , yp ) /\ alignedI ( int , yp )  /\ allocv [ @ aid ] = ( yp . addr , sizeof ct ) ]]$,\\
+        $[[ pred_term1 ]] = [[ Owned < Uninit, ct > ( inj ptr ) ]]$ and $[[ pred_term2 ]] = [[ Alloc ( @ aid ) ]]$.}
 
     \assume{%
-        $[[ cdot ; L0 ; N ; cdot |- emp | create < ct > ( int ) => ret ]]$
-        and so $[[ h ]] = [[ cdot ]]$ (by inversion, \HeapEmpty)
-        and $[[ heap ]] = [[ f + { pt & None } + { Alloc ( @ aid ) ( ( addr , sizeof ct) ) & None } ]]$.\\}
+        $[[ cdot ; L0 ; N ; cdot |- emp | create < ct > ( int ) => ret ]]$ \\
+        and so $[[ h ]] = [[ cdot ]]$ (by inversion, \HeapEmpty) \\
+        and $[[ heap ]] = [[ f + { pred_term1 ( default to_base ( ct ) ) & None } + { pred_term2 ( ( addr , sizeof ct) ) & None } ]]$.\\}
 
     \pflet{%
-        $[[ h' ]] = [[ { pt & None } + { Alloc ( @ aid ) ( ( addr , sizeof ct) ) & None } ]]$,
-        $[[ nR' ]] = [[ _x : pt , _x : Alloc ( @ aid ) ( ( addr , sizeof ct) ) ]]$,
+        $[[ h' ]] = [[ { pred_term1 ( default to_base ( ct ) ) & None } + { pred_term2 ( ( addr , sizeof ct ) ) & None } ]]$,
+        $[[ nR' ]] = [[ _x : pred_term1 ( default to_base ( ct ) ) , _x : pred_term2 ( ( addr , sizeof ct) ) ]]$,
         $[[ alloct' ]] = ( [[ alloct [ @ aid ] := ( addr , sizeof ct ) ]])$,
         $[[ N' ]] = [[ N , allocv [ @ aid ] = ( addr , sizeof ct )  ]]$.}}
     This means $[[ heap ]] = [[ h' + f ]]$ (trivially).
@@ -2106,7 +2126,7 @@ to deduce that $[[ nR' ]]$ can only be what you would have supplied anyways.
     (by \HeapPredOwned, \AllocTy, \StateTy).\\[\baselineskip]
 
     \prove{%
-        $[[ cdot ; L0 ; N' ; nR' |- < ptr , default to_base ( ct ) , Owned < Uninit, ct > (  inj ptr ) > <= ret ]]$.\\[\baselineskip]}}
+        $[[ cdot ; L0 ; N' ; nR' |- < ptr , default to_base ( ct ) , pred_term1 , pred_term2 > <= ret ]]$.\\[\baselineskip]}}
 
     \begin{pfproof}
 
@@ -2116,11 +2136,61 @@ to deduce that $[[ nR' ]]$ can only be what you would have supplied anyways.
 
     \step{<2>3}{$[[ cdot ; L0 |- default to_base ( ct ) => to_base ( ct ) ]]$ by construction.}
 
-    \step{<2>4}{$[[ cdot ; L0 ; N ; nR'  |- Owned < Uninit , ct > ( inj ptr ) <= pt ]]$ by
+    \step{<2>4}{$[[ cdot ; L0 ; N ; nR'  |- pred_term1 <= pred_term1 ( default to_base ( ct ) ) ]]$ by
         \ResSynPred.}
 
-    \step{<2>5}{Prove typing with \SpineRet; \stepref{<2>4} -- \stepref{<2>1} with % chktex 8
-        \SpineRes, \SpineLog, \SpinePhi, \SpineComp{}
+    \step{<2>5}{$[[ cdot ; L0 ; N ; nR'  |- pred_term2 <= pred_term2 ( ( addr , sizeof ct ) ) ]]$ by
+        \ResSynPred.}
+
+    \step{<2>6}{Prove typing with \SpineRet; \stepref{<2>5} -- \stepref{<2>1} with % chktex 8
+        \SpineRes, \SpineRes, \SpineLog, \SpinePhi, \SpineComp{}
+        respectively; \StmtRetT{}.}
+
+    \end{pfproof}
+
+\step{<1>10a}{\case{%
+    \ActionAlloc.
+}{%
+    \pflet{%
+        $[[ ret ]] = [[ sigma yp : loc .: term /\ exists x : array byte .: ipred_term ( x ) *o pred_term ( ( yp . addr , int2 ) ) *o I  ]]$\\
+        where $[[ term ]] = [[ alignedI ( int1 , yp )  /\ allocv [ @ aid ] = ( yp . addr , int2 ) ]]$,\\
+        $[[ ipred_term ]] = [[ each ( integer x ; 0 =< x =< int2 - 1 ) { Owned < Uninit, ct > ( array_shift < byte > ( inj ptr , x ) )  } ]]$ \\
+        and $[[ pred_term ]] = [[ Alloc ( @ aid ) ]]$.}
+
+    \assume{%
+        $[[ cdot ; L0 ; N ; cdot |- emp | alloc ( int1 , int2 ) => ret ]]$\\
+        and so $[[ h ]] = [[ cdot ]]$ (by inversion, \HeapEmpty)\\
+        and $[[ heap ]] = [[ f + { ipred_term ( default array byte ) & cdot } + { pred_term ( ( addr , int2 ) ) & None } ]]$.\\}
+
+    \pflet{%
+        $[[ h' ]] = [[ { ipred_term ( default array byte ) & cdot } + { pred_term ( ( addr , int2 ) ) & None } ]]$,
+        $[[ nR' ]] = [[ _x : ipred_term ( default array byte ) , _x : pred_term ( ( addr , int2 ) ) ]]$,
+        $[[ alloct' ]] = ( [[ alloct [ @ aid ] := ( addr , int2 ) ]])$,
+        $[[ N' ]] = [[ N , allocv [ @ aid ] = ( addr , int2 )  ]]$.}}
+    This means $[[ heap ]] = [[ h' + f ]]$ (trivially).
+    Also, $[[ alloct' <= N' ]]$ from since $[[ alloct <= N ]]$ (by expanding definitions).
+    Hence $[[ alloct' ; h' <= N' ; nR' ]]$
+    (by \HeapPredOwned, \AllocTy, \StateTy).\\[\baselineskip]
+
+    \prove{%
+        $[[ cdot ; L0 ; N' ; nR' |- < ptr , default array byte , ipred_term , pred_term > <= ret ]]$.\\[\baselineskip]}}
+
+    \begin{pfproof}
+
+    \step{<2>1}{$[[ cdot |- ptr => loc ]]$ by \PureValObjPtr{} and \PureValObj.}
+
+    \step{<2>2}{$[[ smt ( N' => term ) ]]$ by construction of $[[ ptr ]]$ and $[[ N' ]]$.}
+
+    \step{<2>3}{$[[ cdot ; L0 |- default to_base ( ct ) => to_base ( ct ) ]]$ by construction.}
+
+    \step{<2>4}{$[[ cdot ; L0 ; N ; nR'  |- ipred_term <= ipred_term ( default array byte ) ]]$ by
+        \ResSynIPred.}
+
+    \step{<2>5}{$[[ cdot ; L0 ; N ; nR'  |- pred_term <= pred_term ( ( addr , int2 ) ) ]]$ by
+        \ResSynPred.}
+
+    \step{<2>6}{Prove typing with \SpineRet; \stepref{<2>5} -- \stepref{<2>1} with % chktex 8
+        \SpineRes, \SpineRes, \SpineLog, \SpinePhi, \SpineComp{}
         respectively; \StmtRetT{}.}
 
     \end{pfproof}

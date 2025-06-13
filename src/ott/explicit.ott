@@ -914,11 +914,17 @@ defns
     C ; L ; N ; cdot |- emp | create < ct >  ( pval ) => sigma yp : loc .: term /\ exists x : to_base ( ct ) .:  ret
 
 
+    C |- pval1 => integer
+    C |- pval2 => integer
+    term def= alignedI ( inj pval1 , yp ) /\ allocv [ yp . alloc_id ] = ( yp . addr , inj pval2 )
+    res def= *S x .: 0 =< x =< inj pval2 - 1 => array_shift < byte > ( yp , x ) |- Uninit - byte -> y
+    ret def= res *o Alloc ( yp . alloc_id ) ( ( yp . addr , inj pval2 ) ) *o I
+    ------------------------------------------------------------------------- :: Alloc
+    C ; L ; N ; cdot |- emp | alloc ( pval1, pval2 ) => sigma yp : loc .: term /\ exists y : array byte .:  ret
+
     % DEFER (not implemented)
     % C ; L ; N ; cdot |-> create_readonly ( vp , ct , v ) Symbol_prefix <= ??
 
-
-    % DEFER relax this rule - loading a (partially) undefined struct is fine
     % DEFER (not implemented) - memory order
     C |- pval0 => loc
     C ; L ; N ; R |- res_term => ptrt |- Init - ct -> oarg
@@ -927,7 +933,6 @@ defns
     C ; L ; N ; R |- res_term | load < ct > ( pval0 ) => sigma y : to_base ( ct ) .: y = oarg /\ ( inj pval0 |- Init - ct -> oarg ) *o I
 
 
-    % DEFER relax this rule - storing (partially) undefined struct preserves init
     C |- pval0 => loc
     C |- pval1 => to_base ( ct )
     % DEFER (not implemented) - locking boolean
@@ -945,8 +950,15 @@ defns
     ---------------------------------------------------------------------------- :: Kill_Static
     C ; L ; N ; R |-  res_term | kill < ct > ( pval ) => sigma _x : unit .: I
 
-    % DEFER (not implemented)
-    % C ; L ; N ; ?? |- kill ( dynamic , v ) => ??
+
+    C |- pval => loc
+    res def= *S x .: iguard => array_shift < byte > ( ptrt , x ) |- _init - byte -> _t
+    C ; L ; N ; R |- res_term => res * Alloc ( term ) ( oarg )
+    smt ( N => each (integer x; _t) { iguard <-> ( 0 =< x =< oarg . len - 1 ) } )
+    smt ( N =>  ptrt . addr = oarg . base /\ ptrt . alloc_id = term )
+    ---------------------------------------------------------------------------- :: Kill_Dynamic
+    C ; L ; N ; R |-  res_term | kill < dyn > ( pval ) => sigma _x : unit .: I
+
 
 defns
   expl_memop :: '' ::=

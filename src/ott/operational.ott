@@ -462,6 +462,20 @@ defns
     < alloct ; h ; emp | create < ct > ( int ) > --> < alloct [ @ aid ] := ( addr , sizeof ct ) ;  h' ; stmt : ret >
 
 
+    addr inEnv newAlloc ( h , int1 , int2 )
+    @ aid notIn dom ( alloct )
+    inj ptr def= ( @ aid , addr )
+    ipred_term def= each ( integer x ; 0 =< x =< int2 - 1 ) { Owned < Uninit , byte > ( array_shift < byte > ( inj ptr , x ) ) }
+    pred_term def= Alloc ( @ aid )
+    ret def= sigma yp : loc .: term /\ exists y : array byte .: ipred_term ( y ) *o pred_term ( ( yp . addr , int2 ) ) *o I
+    term def= alignedI ( int1 , inj ptr ) /\ allocv [ @ aid ] = ( addr , int2 )
+    alloct |- smt ( term )
+    h' def= h + { ipred_term ( default array byte ) & cdot } + { pred_term ( ( addr , int2 ) ) & None }
+    stmt def= < ptr , default array byte , ipred_term , pred_term >
+    ------------------------------------------------------------------------- :: Alloc
+    < alloct ; h ; emp | alloc ( int1 , int2 ) > --> < alloct [ @ aid ] := ( addr , int2 ) ;  h' ; stmt : ret >
+
+
     alloct | < h ; res_term > ||v < h' + { pt & None } ; Owned < Init , ct > ( ptrt ) >
     pt def= ptrt |- Init - ct -> inj pval
     alloct |- smt ( ptrt = inj ptr )
