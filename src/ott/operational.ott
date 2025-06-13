@@ -494,14 +494,26 @@ defns
     < alloct ; h ; res_term | store < ct > ( ptr , pval ) > --> < alloct ; h' + { pt' & None } ; < Unit , Owned < Init , ct > ( inj ptr ) > : ret >
 
 
-    h1 def= { pred_term1 ( _t ) & None } + { pred_term2 ( term ) & None }
+    h1 def= { pred_term1 ( _t ) & None } + { pred_term2 ( oarg ) & None }
     alloct | < h ; res_term > ||v < h' + h1 ; < pred_term1 , pred_term2 > >
-    pred_term1 def= Owned < _init , ct > ( ptrt1 )
-    pred_term2 def= Alloc ( @ aid )
-    alloct |- smt ( ptrt1 = ptrt2 = inj ptr /\ sizeof ct = term )
+    pred_term1 def= Owned < _init , ct > ( ptrt )
+    pred_term2 def= Alloc ( @ aid' )
+    term' def= ptrt . addr = oarg . base /\ sizeof ct = oarg . len
+    alloct |- smt ( ptrt = ( @ aid , addr ) /\ aid = aid' /\ term' )
     ret def= sigma _x : unit .: I
     ----------------------------------------------------------------------------------- :: Kill_Static
-    < alloct ; h ; res_term | kill < ct > ( ptr ) > --> < alloct ; h' ; < Unit > : ret >
+    < alloct ; h ; res_term | kill < ct > ( ( @ aid , addr ) ) > --> < alloct ; h' ; < Unit > : ret >
+
+
+    h1 def= { ipred_term ( _t ) & cdot } + { pred_term ( oarg ) & None }
+    alloct | < h ; res_term > ||v < h' + h1 ; < ipred_term , pred_term > >
+    ipred_term def= each ( integer x ; iguard ) { Owned < _init , byte > ( array_shift < byte > ( ptrt , x ) ) }
+    pred_term def= Alloc ( @ aid' )
+    alloct |- smt ( each (integer x; _t) { iguard <-> ( 0 =< x =< oarg . len - 1 ) } )
+    alloct |- smt ( ptrt = ( @ aid , addr ) /\ ptrt . addr = oarg . base /\ aid = aid' )
+    ret def= sigma _x : unit .: I
+    ----------------------------------------------------------------------------------- :: Kill_Dynamic
+    < alloct ; h ; res_term | kill < ct > ( ( @ aid , addr ) ) > --> < alloct ; h' ; < Unit > : ret >
 
   defn alloct | < h ; res_memop  > --> < h' ; stmt : ret > :: :: Memop :: Memop_
   {{ com allocation history $[[alloct]]$, heap $[[h]]$, resource memory operation $[[res_memop]]$ steps to heap $[[h']]$ and statement $[[stmt]]$ with type annotation $[[ret]]$ }} by

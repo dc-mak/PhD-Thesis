@@ -222,7 +222,7 @@ argue for the soundness of pattern-matching
 \ResSynPredOpsCongeal, \ResSynPredOpsImplode,
 \ResSynPredOpsBreak, \ResSynPredOpsGlue, \ResSynPredOpsInj, \ResSynPredOpsChop,
 \ResChkPhi, \ResChkIfTrue, \ResChkIfFalse, \ActionLoad,
-\ActionStore, \ActionKillStatic, \MemopRelBinop,
+\ActionStore, \ActionKillStatic, \ActionKillDynamic, \MemopRelBinop,
 \MemopPtrDiffArr, \MemopPtrDiff, \MemopIntFromPtr,
 \MemopPtrFromInt, \MemopPtrArrayShift.
 
@@ -1805,6 +1805,44 @@ arbitrary (not normalised).
 
     \end{pfproof}
 
+\step{<1>20a}{\case{\ActionKillDynamic}{}}
+
+    \begin{pfproof}
+
+    \step{<2>1}{%
+        $[[pval]]$ must be a $[[ ptr ]]$.\\
+        \pf{} By \PureValObjPtr.}
+
+    \step{<2>2}{%
+        $[[ cdot ; L0 ; N ; nR |- res_term => ipred_term ( _t ) * pred_term ( oarg ) ]]$\\
+        $[[ ipred_term def= each ( integer x ; iguard ) { Owned < _init , byte > ( array_shift < byte > ( ptrt , x ) ) } ]]$\\
+        $[[ pred_term def= Alloc ( term ) ]]$\\
+        $[[ alloct |- smt ( each ( integer x ; _t ) { iguard <-> ( 0 =< x =< oarg . len - 1 ) } ) ]]$\\
+        $[[ alloct |- smt ( ptrt = inj ptr /\ ptrt . addr = oarg . base /\ ptrt . alloc_id = term ) ]]$.\\
+        \pf{} By inversion on the typing assumption, $[[ alloct <= N ]]$ and \stepref{<2>1}.}
+
+    \step{<2>3}{%
+        $[[ exists ]] [[ h' ]], [[ nR' ]], [[ res_val ]] .\:$\\
+        \begin{pfenum}
+        \item $[[ alloct |- h' <= nR' ]]$
+        \item $[[ alloct | < h ; res_term > ||v < h' ; res_val > ]]$
+        \item $[[ cdot ; L0 ; N ; nR' |- res_val => ipred_term ( _t ) * pred_term ( oarg ) ]]$.
+        \end{pfenum}
+        \pf{} By \stepref{<2>2} and \lemmaref{subsec:res_term_progress}.}
+
+    \step{<2>4}{%
+        $[[ res_val ]] = [[ < ipred_term  , pred_term > ]]$.\\
+        \pf{} By \lemmaref{subsec:non_cond_res_det_ctx_val}.}
+
+    \step{<2>5}{%
+        $[[ h' ]] = [[ { ipred_term ( _t ) & cdot } + { pred_term ( oarg ) & None } ]]$.\\
+        \pf{} By inversion on the typing assumption in \stepref{<2>3},
+        $[[ alloct |- h' <= nR' ]]$ and \lemmaref{subsec:norm_ctx_det_heap}.}
+
+    \step{<2>6}{Step with \OpActionKillDynamic.}
+
+    \end{pfproof}
+
 \step{<1>21}{\case{\MemopRelBinop.}{}}
 
     \begin{pfproof}
@@ -2274,17 +2312,19 @@ to deduce that $[[ nR' ]]$ can only be what you would have supplied anyways.
 }{%
 
     \assume{%
-        $[[ cdot ; L0 ; N ; nR |- res_term | kill < ct > ( ptr ) => sigma _x : unit .: I ]]$
-        and $[[ alloct | < h + f ; res_term > ||v < heap + { pt & None } + { Alloc ( @ aid ) ( oarg ) & None } ; < Owned < _init , ct > ( inj ptr ) , Alloc ( @ aid ) > > ]]$.\\[\baselineskip]}
+        $[[ cdot ; L0 ; N ; nR |- res_term | kill < ct > ( ptr ) => sigma _x : unit .: I ]]$\\
+        and $[[ alloct | < h + f ; res_term > ||v < heap + { pred_term1 ( _t ) & None } + { pred_term2 ( oarg ) & None } ; < pred_term1 , pred_term2 > > ]]$\\
+        where $[[pred_term1 def= Owned < _init , ct > ( inj ptr )]]$ and $[[ pred_term2 def= Alloc ( @ aid )]]$.\\[\baselineskip]}
+
 
     $[[ exists ]] [[ h'' ]] , [[ nR'' ]]$ such that
-    $[[ heap + { pt & None } + { Alloc ( @ aid ) ( oarg ) & None } ]] = [[ h'' + f ]]$,
+    $[[ heap + { pred_term1 ( _t ) & None } + { pred_term2 ( oarg ) & None } ]] = [[ h'' + f ]]$,
     $[[ alloct |- h'' <= nR'' ]]$
-    and $[[ cdot ; L0 ; N ; nR'' |- < Owned < _init , ct > ( inj ptr ) , Alloc ( @ aid ) > => pt ]]$,
+    and $[[ cdot ; L0 ; N ; nR'' |- < pred_term1 , pred_term2 > => pt ]]$,
     by \lemmaref{subsec:res_term_red_isolated}.\\[\baselineskip]
 
-    $[[ nR'' ]] = [[ _x : pt , _x : Alloc ( @ aid ) ( oarg ) ]]$ by Lemma~\ref{subsec:non_cond_res_det_ctx_val}
-    and $[[ h'' ]] = [[ { pt & None } + { Alloc ( @ aid ) ( oarg ) & None } ]]$ by Lemma~\ref{subsec:norm_ctx_det_heap},
+    $[[ nR'' ]] = [[ _x : pred_term1 ( _t ) , _x : pred_term2 ( oarg ) ]]$ by Lemma~\ref{subsec:non_cond_res_det_ctx_val}
+    and $[[ h'' ]] = [[ { pred_term1 ( _t ) & None } + { pred_term2 ( oarg ) & None } ]]$ by Lemma~\ref{subsec:norm_ctx_det_heap},
     hence $[[ heap ]] = [[ f ]]$.\\
     \pflet{$[[ h' ]] = [[ cdot ]]$ and $[[ nR' ]] = [[ cdot ]]$.\\}
     This means $[[ heap ]] = [[ h' + f ]]$ and $[[ alloct |- h' <= nR' ]]$ (by \HeapEmpty).\\[\baselineskip]
@@ -2293,6 +2333,36 @@ to deduce that $[[ nR' ]]$ can only be what you would have supplied anyways.
         $[[ cdot ; L0 ; N ; cdot |- < Unit > <= sigma _x : unit .: I ]]$}
 
     \pf{} By \SpineRet, \PureValUnit, \SpineComp, \StmtRetT.}}
+
+\step{<1>13a}{\case{%
+    \ActionKillDynamic.
+}{%
+
+    \assume{%
+        $[[ cdot ; L0 ; N ; nR |- res_term | kill < ct > ( ptr ) => sigma _x : unit .: I ]]$\\
+        and $[[ alloct | < h + f ; res_term > ||v < heap + { ipred_term ( _t ) & cdot } + { pred_term ( oarg ) & None } ; < ipred_term , pred_term > > ]]$\\
+        where $[[ ipred_term def= each (integer x; iguard) { Owned < _init , byte > ( array_shift < byte > ( inj ptr , x ) ) } ]]$ \\
+        and $[[ pred_term def= Alloc ( @ aid )]]$.\\[\baselineskip]}
+
+
+    $[[ exists ]] [[ h'' ]] , [[ nR'' ]]$ such that
+    $[[ heap + { ipred_term ( _t ) & cdot } + { pred_term ( oarg ) & None } ]] = [[ h'' + f ]]$,
+    $[[ alloct |- h'' <= nR'' ]]$
+    and $[[ cdot ; L0 ; N ; nR'' |- < ipred_term , pred_term > => pt ]]$,
+    by \lemmaref{subsec:res_term_red_isolated}.\\[\baselineskip]
+
+    $[[ nR'' ]] = [[ _x : ipred_term ( _t ) , _x : pred_term ( oarg ) ]]$ by Lemma~\ref{subsec:non_cond_res_det_ctx_val}
+    and $[[ h'' ]] = [[ { ipred_term ( _t ) & cdot } + { pred_term ( oarg ) & None } ]]$ by Lemma~\ref{subsec:norm_ctx_det_heap},
+    hence $[[ heap ]] = [[ f ]]$.\\
+    \pflet{$[[ h' ]] = [[ cdot ]]$ and $[[ nR' ]] = [[ cdot ]]$.\\}
+    This means $[[ heap ]] = [[ h' + f ]]$ and $[[ alloct |- h' <= nR' ]]$ (by \HeapEmpty).\\[\baselineskip]
+
+
+    \prove{%
+        $[[ cdot ; L0 ; N ; cdot |- < Unit > <= sigma _x : unit .: I ]]$}
+
+    \pf{} By \SpineRet, \PureValUnit, \SpineComp, \StmtRetT.}}
+
 
 \step{<1>14}{\case{%
     \MemopRelBinop.
