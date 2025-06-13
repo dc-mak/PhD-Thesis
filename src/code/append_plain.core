@@ -2,18 +2,18 @@ IntList_append: "struct int_list* (struct int_list*, struct int_list*)"
 -- Fun map
 proc IntList_append (
     xs: loaded pointer, ys: loaded pointer): eff loaded pointer :=
-  let strong xs: pointer =
+  let strong &xs: pointer =
     create(Ivalignof("struct int_list*"), "struct int_list*") in
-  store("struct int_list*", xs, xs) ;
-  let strong ys: pointer =
+  store("struct int_list*", &xs, xs) ;
+  let strong &ys: pointer =
     create(Ivalignof("struct int_list*"), "struct int_list*") in
-  store("struct int_list*", ys, ys) ;
+  store("struct int_list*", &ys, ys) ;
   let strong a_432: loaded integer =
     bound(
       let weak (a_434: loaded integer, a_435: loaded integer) =
         unseq(
           let weak a_440: loaded pointer =
-            let weak a_439: pointer = pure(xs) in
+            let weak a_439: pointer = pure(&xs) in
             load("struct int_list*", a_439) in
           case a_440 of
             | Specified(a_441: pointer) =>
@@ -48,11 +48,11 @@ proc IntList_append (
   if a_431 (* xs == 0 *) then
     let strong a_444: loaded pointer =
       bound(
-        let weak a_443: pointer = pure(ys) in
+        let weak a_443: pointer = pure(&ys) in
         load("struct int_list*", a_443)
       ) in
-    kill("struct int_list*", xs) ;
-    kill("struct int_list*", ys) ;
+    kill("struct int_list*", &xs) ;
+    kill("struct int_list*", &ys) ;
     run ret_430(a_444) ;
     pure(Unit)
   else
@@ -70,7 +70,7 @@ proc IntList_append (
           ,
             let weak a_460: pointer =
               let strong a_455: loaded pointer =
-                let weak a_459: pointer = pure(xs) in
+                let weak a_459: pointer = pure(&xs) in
                 load("struct int_list*", a_459) in
               case a_455 of
                 | Unspecified(_: ctype) =>
@@ -80,7 +80,7 @@ proc IntList_append (
               end in
             load("struct int_list*", a_460)
           ,
-            let weak a_462: pointer = pure(ys) in
+            let weak a_462: pointer = pure(&ys) in
             load("struct int_list*", a_462)
           ) in
         if not(params_length(a_449) = 2) then
@@ -110,7 +110,7 @@ proc IntList_append (
         let weak (a_472: pointer, a_479: loaded pointer) =
           unseq(
             let strong a_473: loaded pointer =
-              let weak a_477: pointer = pure(xs) in
+              let weak a_477: pointer = pure(&xs) in
               load("struct int_list*", a_477) in
             case a_473 of
               | Unspecified(_: ctype) =>
@@ -131,18 +131,18 @@ proc IntList_append (
     pure(Unit) ;
     let strong a_481: loaded pointer =
       bound(
-        let weak a_480: pointer = pure(xs) in
+        let weak a_480: pointer = pure(&xs) in
         load("struct int_list*", a_480)
       ) in
     kill("struct int_list*", new_tail) ;
-    kill("struct int_list*", xs) ;
-    kill("struct int_list*", ys) ;
+    kill("struct int_list*", &xs) ;
+    kill("struct int_list*", &ys) ;
     run ret_430(a_481) ;
     kill("struct int_list*", new_tail) ;
     pure(Unit) ;
   pure(Unit) ;
-  kill("struct int_list*", xs) ;
-  kill("struct int_list*", ys) ;
+  kill("struct int_list*", &xs) ;
+  kill("struct int_list*", &ys) ;
   pure(Unit) ;
   save ret_430: loaded pointer (a_482: loaded pointer := undef(..)) in
     pure(a_482)

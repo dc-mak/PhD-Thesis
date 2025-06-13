@@ -171,13 +171,13 @@ part defines a particular choice to focus on.
 \subsection{Provenance not tracked via integers}
 
 For the purposes of defining the dynamic semantics of the memory object model,
-each pointer can be thought of as an \emph{pair} of an address $a$ and an
-provenance $\pi$. The address is simply what programmers might be familiar
-with as `the pointer', which, unlike the provenance, may be inspected or
-manipulated directly from the C program at runtime. From the perspective of
-separation logic verification, the provenance can be thought of as the ghost
-part of a pointer, but it does play an integral part of the model of memory I
-will outline next.
+each pointer can be thought of as either $\mathsf{NULL}$ or a \emph{pair} of an
+address $a$ and an provenance $\pi$. The address is simply what programmers
+might be familiar with as `the pointer', which, unlike the provenance, may be
+inspected or manipulated directly from the C program at runtime. From the
+perspective of separation logic verification, the provenance can be thought of
+as the ghost part of a pointer, but it does play an integral part of the model
+of memory I will outline next.
 
 Provenances are either $@\mathsf{empty}$, or allocation IDs $@i$ for integer
 $i$. Allocation IDs are allocated fresh
@@ -194,7 +194,7 @@ it is not relevant to the key concepts.
 The \kl{allocation history} merely tracks information about the allocation as a
 whole; to track values of what resides in those allocations, \kl{PNVI-ae-udi}
 also uses a memory $M$ as part of the abstract state. This is not just a map
-from addresses to bytes, but triples of a (potentially empty) provenance and a
+from addresses to bytes, but pairs of a (potentially empty) provenance and a
 concrete 8-bit byte or $\mathsf{unspec}$ value for uninitialised or padding
 bytes.\sidenote{There is an additional component, an optional \intro{pointer
     index} (an integer $j$ or $\mathsf{none}$) which stores which part of a
@@ -275,9 +275,9 @@ allocation
 
 The `within that allocation' is key because one-past pointers (frequently used
 to compare against the exclusive end of an allocation) which do not happen to
-be that start of an adjacent object would then be assigned an empty provenance
-$\mathsf{@empty}$. In turn, this would break the round-trip property required
-of casts between pointers and integers for one-past pointers.
+be that start of an adjacent object would then be assigned an $\mathsf{@empty}$
+provenance. In turn, this would break the round-trip property for one-past
+pointers.
 
 \subsection{Udi: disambiguating one-past pointers based on subsequent use}
 
@@ -357,11 +357,11 @@ This restriction, particularly the `no intervening operation', forbids too
 many desirable low-level idioms, such as pointer tagging.\sidenote{Programmers
 store information in the lower or upper bits of pointers by exploiting platform
 pointer alignment and addressable memory constraints respectively.} To
-support these idioms, \kl{VIP} also provides a primitive, called
-\cinline[breaklines]{void *copy_alloc_id(uintptr_t, void*)}, which lets a % chktex 36
-programmer cast any integer to a pointer (with the appropriate checks).
-This primitive is given both a direct semantics above the VIP abstract
-state, and a translation into \kl{PNVI-ae-udi}.
+support these idioms, \kl{VIP} provides a
+\cinline[breaklines]{void *copy_alloc_id(uintptr_t, void*)} % chktex 36
+primitive. This lets a programmer cast any integer to a pointer (with the
+appropriate checks). It is given both a direct semantics above the
+VIP abstract state, and a translation into \kl{PNVI-ae-udi}.
 
 The way that both of these are achieved is a very limited form of tracking
 provenances via integers. Integer values in VIP model are represented by a
@@ -484,10 +484,10 @@ stores the bitwise exclusive-or of the address of its previous and next
 pointers, allowing a list to be traversed in forwards and reverse direction,
 whilst saving the space for an additional pointer per node, and ``opinions
 differ as to whether that idiom matters for modern
-code''\sidecite{gustedt2021provenance}.
+code''~\sidecite{gustedt2021provenance}.
 
 Unlike provenance disambiguation, exposure is an intuitionistic fact:
-forgetting an exposure it would lead to fewer valid programs, but not
+forgetting an exposure would lead to fewer valid programs, but not
 unsoundness. But still, this means that to be useful the trade-off here is
 similar: use annotations to thread allocation exposure in pre- and
 postconditions, or (if possible) change the code to pass in a pointer with the
@@ -540,8 +540,8 @@ counter-examples for users. This presents us with four options.
         makes the user-visible memory object model more complex.\sidenote{For
             example, users opt-in with a
             \cinline[breaklines]{typedef uintptr_t rt_uintptr [[roundtrip]];}
-            so the C program treats them identically, but \kl{CN} enforces a
-            subtyping relation, so \cninline{rt_uintptr <: uintptr_t}.}\label{sn:optin-typedef-subtype}
+            so the C program treats them identically, but \kl{CN} would
+            needs casts between them.}\label{sn:optin-typedef}
     \item \textbf{Associate the provenance to \emph{a location} rather than a
         value, and track it in the resource system.} Such a resource would need
         to be duplicated, moved and destroyed in sync with the \emph{value} it
@@ -589,7 +589,7 @@ optimisation.\sidenote{\cinline{memcpy} does not expose allocations, but a
 
 In both \kl{VIP} and \kl{PNVI-ae-udi}, all these use-cases are supported by
 having the abstract bytes in the abstract memory $M$ store not just the
-byte value (or \coreinline{unspecified}) but also a provenance. Pointer bytes
+byte value (or \coreinline{Unspecified}) but also a provenance. Pointer bytes
 can be individually overwritten, but so long as one is untouched, the original
 provenance can be recovered. Unions with a pointer field can be supported
 similarly. Library \cinline{memcpy} simply copies over the abstract bytes to a
@@ -613,7 +613,7 @@ This leads to even more options.
     \item \textbf{Restrict the ability to have provenance in bytes to a new C
         type.} Require some modification to \kl{VIP} programs, but make any
         performance penalty opt-in. This makes the user-visible memory object
-        model more complex.\sidenote{See note~\ref{sn:optin-typedef-subtype}
+        model more complex.\sidenote{See note~\ref{sn:optin-typedef}
         for a potential outline.}
     \item \textbf{Associate the provenance to \emph{a location} rather than a
         value, and track it in the resource system.} Such a resource would need
@@ -794,7 +794,7 @@ them towards more informative (but verbose) named functions such as
 
 Unfortunately, adapting \kl{VIP} to handle the non-deterministic
 pointer-equality rule is not straightforward. As it is defined in the paper and
-appendix, they assume strict (address-only) pointer equality rule for both
+appendix, the authors assume strict (address-only) pointer equality rule for both
 \kl{VIP} and \kl{PNVI-ae-udi}. This means they sidestep the issue I present
 next.
 
@@ -877,14 +877,13 @@ For the former, the type system and programmers need a way to refer to the
 allocation history. It can be thought of as an implicit logical parameter
 passed into and out of every function, and so I model it with an initially
 unconstrained SMT variable. As \kl{CN} type-checks a \kl{ResCore} program, it
-will learn constraints (either from creating new allocations, or from
-postconditions of called functions, or derive them from allocation tokens in
-the resource context) on the allocation history.
+will learn constraints: either from creating new allocations, or from
+postconditions of called functions, or derive them from allocation tokens
+\cninline{Alloc}, in the resource context on the allocation history.
 
-For the latter, though \cninline{Alloc} does take a pointer as an argument,
-unlike \cninline{Block}, \cninline{Owned} and user-defined predicates, the
-lookup in the resource context looks only at the allocation ID (the non-empty
-provenance), not the address of the pointer.\sidenote{I need to update the
+For the latter, \cninline{Alloc} take an allocation ID as an argument,
+unlike \cninline{Block}, \cninline{Owned} and user-defined predicates
+which are restricted to pointers only.\sidenote{I need to update the
 typing rules to reflect this.}
 
 Unlike pointer disjointness facts based on \coreinline{Owned} and
@@ -918,30 +917,38 @@ sacrificing the ability to say anything about the layout of local or global
 variables, without the use of lemmas).
 
 \paragraph{Provenances.}%
-Should provenances be concrete? This depends on how they are used \textemdash{}
+Should provenances be concrete? Any choice must respect how they are used  \textemdash{}
 for querying whether two are equal; for querying whether two are distinct (only
 for non-deterministic pointer equality); for the non-$@\mathsf{empty}$ ones
 (allocation IDs), used as keys to get the associated base address and size from
 the allocation history.
 
 \paragraph{Empty provenance.}%
-Empty provenances are intrinsically tied to pointer equality, since the rule
-as given in \kl{PNVI-ae-udi} is not monotonic with respect to the implicit assumption
-that $@\mathsf{empty} \sqsubseteq \pi$. Still, we can entertain how one might
-proceed in each of the three situations.
-\begin{itemize}
-    \item \textbf{Drop $@\mathsf{empty}$ provenances.} This requires
-        no representation of this construct.
-    \item \textbf{Drop totality for pointer equality.}
-        A single, global unconstrained variable, with explicit constraints that
-        non-empty provenances are not equal to it, would work.
-    \item \textbf{Drop non-determinism for pointer equality.}
-        A single, global unconstrained variable would work. However, since with
-        this option, all rules are monotonic with respect to $@\mathsf{empty}$
-        provenances, i.e.\ any rule which uses an empty provenance will end up
-        failing its bounds checks and thus signalling \kl{UB}, there is no need
-        to add non-empty provenance constraints to the context.
-\end{itemize}
+If the memory object model uses the empty provenance monotonically with respect
+to undefined behaviour, then it may be represented as an unconstrained
+allocation ID.\@ Currently, there are two places where this is not the case.
+The first is non-deterministic pointer equality as mentioned previously, but
+this is easy to fix. The second is in recovering provenance from bytes: this
+is important to support, but is limited only to bytes, which can be represented
+as a distinct C type. Thus $@\mathsf{empty}$ provenances can be represented
+as unconstrained allocation IDs for pointer and roundtrip-integer types,
+and represented as an option type for bytes.
+
+% Still, we can entertain how one might
+% proceed in each of the three situations.
+% \begin{itemize}
+%     \item \textbf{Drop $@\mathsf{empty}$ provenances.} This requires
+%         no representation of this construct.
+%     \item \textbf{Drop totality for pointer equality.}
+%         A single, global unconstrained variable, with explicit constraints that
+%         non-empty provenances are not equal to it, would work.
+%     \item \textbf{Drop non-determinism for pointer equality.}
+%         A single, global unconstrained variable would work. However, since with
+%         this option, all rules are monotonic with respect to $@\mathsf{empty}$
+%         provenances, i.e.\ any rule which uses an empty provenance will end up
+%         failing its bounds checks and thus signalling \kl{UB}, there is no need
+%         to add non-empty provenance constraints to the context.
+% \end{itemize}
 
 \paragraph{Non-empty provenances (allocation IDs).}%
 As for non-$@\mathsf{empty}$ provenances (allocation IDs), it is simpler to
@@ -954,12 +961,11 @@ relevant provenances.
 With the representation of provenance and addresses fixed, the representation
 of pointers I chose was guided by that given in \kl{VIP} and \kl{PNVI-ae-udi}:
 a special constructor for the \cinline{NULL} pointer, or a pair of a
-provenance and an address. I omit support for function pointers:
+provenance and an address. I omit support for function pointers;
 they would need care to be integrated ergonomically. For example, in defining
 predicates which take pointer arguments, almost all the time a pointer will be
-intended to be either \cinline{NULL} or pointing to an object, so it would be sensible to
-have a default which opts out of the function pointer case.\sidenote{A refinement
-type system for the CN specification language?}
+intended to be either \cinline{NULL} or pointing to an object, so
+the default should opt out of the function pointer case.
 
 \paragraph{\cinline{NULL} pointer.}%
 Though I do not know why \cinline{NULL} is not represented as
@@ -996,30 +1002,15 @@ array/member offsets, since the other cases cannot apply) such checks would
 need constraints too. A distinct \coreinline{null} constructor removes the need
 for adding such constraints before every null-check.
 
-\paragraph{Uninitalised memory and padding bytes.}%
-To convert ownership of a struct into ownership of its representation bytes,
-one needs to take into account the initialisation status of the struct and its
-fields, and its padding bytes. Whilst I track the former with a structured SMT
-value $.\mathit{init}$ in the formalisation, in \kl{CN}, the distinction is
-coarser with \cninline{Block} for uninitialised ownership (write-only) and
-\cninline{Owned} for initialised (read and write).\sidenote{See
-\nameref{sec:partial-init-structs} for a discussion.} The resulting ownership
-needs to permit reading from bytes which are safe to read from (and constrain
-them appropriately), but forbid or handle carefully bytes from uninitialised
-fields or padding bytes. Ideally, it does so uniformly, so that the ownership
-can be passed to \cinline{memcpy} or similar functions in one piece.
+\paragraph{Bytes, initialisation, padding and unions}%
 
-This raises thorny questions about the semantics of reads from uninitialised
-memory and padding bytes; thorny because the \kl{ISO} standard is not clear and
-there is no consensus de facto practice. Completely banning reads from them is
-not ideal because we would like to permit byte-by-byte copying if possible. At
-the same time, the rest of the \kl{CN} presently forbids reads from
-uninitialised memory,\sidenote{Which is fair in a verification context.} and it
-would be inconsistent to subvert this design choice via accessing byte
-representations.
+The \kl{ISO} standard is unclear about the semantics of reads from
+uninitialised memory and padding bytes, and there is no consensus de facto
+practice. Completely banning reads from them is not ideal because we would like
+to permit byte-by-byte copying if possible.
 
 \kl{Cerberus} opts for a defined semantics for reads of uninitialised objects,
-involving a notion of \intro{unspecified values}\sidenote{From 4.6.2 in
+involving a notion of \intro{unspecified values}.\sidenote{From 4.6.2 in
     \textcite{memarian2022cerberus}: \textit{``\ldots an abstract unspecified
         value which is propagated by arithmetic in a strict way, with the
         exception that operations that can have undefined behaviour are
@@ -1027,40 +1018,76 @@ involving a notion of \intro{unspecified values}\sidenote{From 4.6.2 in
         no undefined behaviour \ldots applying an unspecified value as right
 operand of the division operator has undefined behaviour \ldots When the
 controlling expression of a statement evaluates to an unspecified value, the
-control-flow will non-deterministically behave''.}} which maps quite well to
-the notion of unconstrained variables in SMT solvers. However, it is too
-permissive with respect to the current \cninline{Block}/\cninline{Owned}
-scheme, so just mapping \cninline{Block} values to unconstrained
-\cninline{Owned} bytes of the same type would not work. Doing so would also,
-when converting ownership of the bytes back into structured values, lose the
-distinction between which parts were \cninline{Block}s and which
-\cninline{Owned}s.
+control-flow will non-deterministically behave''.}} These would map well to
+unconstrained variables in SMT solvers.
 
-\paragraph{Memory bytes.}%
-As I mentioned before, the issue of pointer bytes meant that I chose to have a
-new C type for manipulating the byte-level representation of C objects. Not
-only does this need to handle provenance in bytes
-(\cref{subsec:prov-int-bytes}), but also uninitialised and padding bytes as
-mentioned above. As a result, I chose to represent the \intro{memory bytes} as
-a datatype with two constructors: one for $\mathsf{unspec}$, one for a pair of
-a 8-bit vector and an optional allocation ID (for writing and recovering
-pointer provenance). The representation of \cninline{Block}s and padding bytes
-are mapped to \cninline{unspec} values, the representation of \cninline{Owned}
-values I map to their appropriate byte (depending on
-index)\sidenote{\kl{Cerberus} does not currently support switching on
+In constrast, \kl{CN} takes a more conservative stance and forbids reads from
+uninitialised memory. The justification for this is that, in a verification
+context, it pays to be safer and is easier to debug a failed proof if the error
+message directly mentions the user tried to read from uninitialised memory
+rather than figure out how an unconstrained value entered the context.
+
+% At the same time, the rest of the \kl{CN} presently forbids reads from
+% uninitialised memory, and it would be inconsistent to subvert this design
+% choice via accessing byte representations. The distinction is enforced with
+% \cninline{Block} for uninitialised memory (write-only) and \cninline{Owned} for
+% initialised (read and write).\sidenote{See \nameref{sec:partial-init-structs}
+% for a discussion.}
+
+Hence, bytes need to be represented in a way such that they (a) represent the
+`least upper-bound' for all C types and (b) for consistency, preserve the
+distinction between uninitialised and initialised memory whilst (c) allowing
+arbitrary reads and writes, including being passed to \cinline{memcpy}.
+
+The SMT representation for this (in OCaml syntax) is
+\coreinline[breaklines]{type byte = (u8 * alloc_id option) option}. The outer
+\coreinline{option} captures whether the byte is from initialised or
+uninitialised memory. The inner option captures the fact provenance may be
+recovered from bytes if all non-$@\mathsf{empty}$ provenances agree with each
+other, which is not a monotonic operation.
+
+The choice of bytes feeds two birds with one scone because it also hints at how
+to support unions ergonomically in \kl{CN}. Ownership of a union gives
+ownership of an array of bytes, and this array can be transfomred to and from
+ownership of each of its fields, and a token representing ownership of the
+padding.\sidenote{\kl{Cerberus} does not currently support switching on
 endianness, so I match its default big-endianness, which is also suitable for
-verifying \kl{pKVM} on Arm}, and an allocation ID if it is part of a pointer.
+verifying \kl{pKVM} on Arm}
+
+Consider a \cinline[breaklines]{union u { int x; uintptr_t y; int *p z; }}.
+Ownership \cninline{take u = RW<union u>(p)} would mean \cninline{u: array % chktex 36
+byte}. If one wishes to write or read a field, then the ownership would need to
+be transformed into \cninline{take z = RW<int*>(member_shift(p,z))}, and % chktex 36
+padding resource \cninline{take p = Padding<union u, z>(p)}, along with % chktex 36
+constraints relating byte array \cninline{u} to integer \cninline{z} and byte
+array \cninline{p}. Note that the padding may be effectively empty, but is
+still necessary to reconstruct the union from its members.
+
+% \paragraph{Memory bytes.}%
+% As I mentioned before, the issue of pointer bytes meant that I chose to have a
+% new C type for manipulating the byte-level representation of C objects. Not
+% only does this need to handle provenance in bytes
+% (\cref{subsec:prov-int-bytes}), but also uninitialised and padding bytes as
+% mentioned above. As a result, I chose to represent the \intro{memory bytes} as
+% a datatype with two constructors: one for $\mathsf{unspec}$, one for a pair of
+% a 8-bit vector and an optional allocation ID (for writing and recovering
+% pointer provenance). The representation of \cninline{Block}s and padding bytes
+% are mapped to \cninline{unspec} values, the representation of \cninline{Owned}
+% values I map to their appropriate byte (depending on
+% index), and an allocation ID if it is part of a pointer.
 
 \paragraph{Permissive array and member offsets}%
 In \kl{VIP} and \kl{PNVI-ae-udi}, array and member offsets are only defined on
-pointers with a provenance and permissive member shifts on a \cinline{NULL}
-pointer result in pointers with an $@\mathsf{empty}$ provenance, and the
-\cinline{offsetof} value in the address. However, when encoding these
-operations in SMT problems, such offsetting needs to be total, defined on all
-values, with the understanding that the type system should only symbolically
-evaluate offsets on a pointer it can prove has a provenance. With an empty
-provenance, the encoding is obvious, but in its absence, I fall back to the
-standard idiom of using an unconstrained variable as a default value.
+pointers with a provenance. Permissive member shifts are defined for
+\cinline{NULL} pointers; they result in a pointer with an $@\mathsf{empty}$
+provenance, and the \cinline{offsetof} value in the address. However, when
+encoding these operations in SMT problems, such offsetting needs to be total,
+defined on all values. The operation is morally partial, but is used in a total
+setting \emph{for the specification language}, and so needs a defined
+semantics. Since \kl{CN} does not support permissive member shifts (programmers
+can use \cinline{offsetof} in such cases), I chose the semantics to be
+\cninline[breaklines]{member_shift<tag>(NULL, _) == NULL} (and similarly % chktex 36
+for \cninline{array_shift}).
 
 \subsection{Summary}
 
@@ -1084,18 +1111,15 @@ standard idiom of using an unconstrained variable as a default value.
     \item \textbf{Later, support provenance in integers and bytes via new C
         types.} This makes their associated complexity and any performance
         penalties opt-in.
-    \item \textbf{$@\mathsf{empty}$ provenances eliminated.} This enables
-        soundly supporting total and non-deterministic pointer equality.
     \item \textbf{Allocation history tracked in constraints.} This makes
         bounds checks easy to state and check.
-    \item \textbf{Allocation liveness (and disjointness) tracked in
-        resources.} This leverages the existing resource context set up
-        to manage allocations correctly and check if pointers are live.
+    \item \textbf{Allocation liveness tracked in resources.} This leverages the
+        existing resource context set up to manage allocations correctly and
+        check if pointers are live.
     \item \textbf{Allocation and ID disjointness is not inferred.} Tracking
         this accurately would be complicated, and the benefit (of reducing
         annotations required for testing pointer equality) would be limited.
     \item \textbf{Use extra constructors for \cinline{NULL} and
-        \coreinline{unspec}, and variables everywhere else.} This means using
-        variables for addresses and allocation IDs and unconstrained ones as
-        default values in morally partial operations.
+        \coreinline{Unspecified} bytes, and unconstrained variables everywhere
+        else.} This means using variables for addresses and allocation IDs.
 \end{itemize}
