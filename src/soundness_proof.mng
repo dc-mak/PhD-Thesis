@@ -221,7 +221,7 @@ argue for the soundness of pattern-matching
 \PureExprAssertUndef, \PureStmtPVal, \PureStmtUB,
 \ResSynPredOpsCongeal, \ResSynPredOpsImplode,
 \ResSynPredOpsBreak, \ResSynPredOpsGlue, \ResSynPredOpsInj, \ResSynPredOpsChop,
-\ResChkPhi, \ResChkIfTrue, \ResChkIfFalse, \ActionLoad,
+\ResSynPredOpsFromBytes, \ResChkPhi, \ResChkIfTrue, \ResChkIfFalse, \ActionLoad,
 \ActionStore, \ActionKillStatic, \ActionKillDynamic, \MemopRelBinop,
 \MemopPtrDiffArr, \MemopPtrDiff, \MemopIntFromPtr,
 \MemopPtrFromInt, \MemopPtrArrayShift.
@@ -645,6 +645,7 @@ predicates.
 \step{<1>3}{\case{All remaining cases (\ResSynPredOpsIterate,
         \ResSynPredOpsCongeal, \ResSynPredOpsExplode, \ResSynPredOpsImplode,
         \ResSynPredOpsBreak, \ResSynPredOpsGlue, \ResSynPredOpsInj, \ResSynPredOpsChop,
+        \ResSynPredOpsToBytes, \ResSynPredOpsFromBytes,
         \ResSynPredOps, \ResSynFold, \ResSynSepConj, \ResChkPack, \ResChkSepConj,
         \ResChkIfTrue, \ResChkIfFalse, \ResChkSwitch).\\}{%
     \pf{} By induction.}}
@@ -667,6 +668,7 @@ This is a simple inversion lemma.
     \ResSynFold, \ResSynPredOpsIterate, \ResSynPredOpsCongeal,
     \ResSynPredOpsExplode, \ResSynPredOpsImplode, \ResSynPredOpsBreak,
     \ResSynPredOpsGlue, \ResSynPredOpsInj, \ResSynPredOpsChop,
+    \ResSynPredOpsToBytes, \ResSynPredOpsFromBytes,
     \ResSynPredOps.\\
     \pf{} $[[ res_term ]]$s in these rules are not values.}
 
@@ -989,7 +991,7 @@ predicates in pattern-matching.\\[\baselineskip]
     and $[[ ipred_term2 ]] = [[ each (integer x;  iguard2 ) { a ( array_shift<ct>(ptrt, x) , iargs ) } ]]$\\[\baselineskip]
 
     $[[ res' ]]    = [[  ipred_term ( oarg ) ]]$
-    where $[[ ipred_term ]] = [[ each (integer x;  iguard' ) { a ( array_shift<ct>(ptrt,x) , iargs ) } ]]$\\
+    where $[[ ipred_term ]] = [[ each (integer x;  iguard' ) { a ( array_shift<ct>(ptrt,x) , iargs ) } ]]$,\\
     $[[ res_val' ]] = [[ ipred_term ]]$,
     and $[[ nR'' ]] = [[ _x : ipred_term ( oarg ) ]]$,
     by Lemma~\ref{subsec:non_cond_res_det_ctx_val}.\\[\baselineskip]
@@ -1006,6 +1008,50 @@ predicates in pattern-matching.\\[\baselineskip]
     value typing using \ResSynIPred{} and \ResSynSepConj;
     heap typing using \HeapConcat{} and \HeapIPredOwned{} / \HeapIPredOther;
     reduction using \OpPredOpsChop.}}
+
+\step{<1>8a}{\case{\ResSynPredOpsToBytes}{%
+    \pf{} Like \ResSynPredOpsIterate, but with:\\
+    $[[ res_term ]]= [[ to_bytes ( res_term' ) ]]$\\
+    $[[ res ]]  = [[ ipred_term ( oarg' ) ]]$,
+    where $[[ ipred_term ]] = [[ each (integer x; 0 =< x =< sizeof ct - 1) { Owned < init , byte > ( array_shift < byte > ( ptrt , x ) ) } ]]$.\\[\baselineskip]
+
+    $[[ res' ]] = [[  pred_term ( oarg ) ]]$,
+    where $[[ pred_term ]] = [[ Owned < init , ct > ( ptrt ) ]]$,
+    $[[ res_val' ]] = [[ pred_term ]]$,
+    and $[[ nR'' ]] = [[ _x : pred_term ( oarg ) ]]$,
+    by Lemma~\ref{subsec:non_cond_res_det_ctx_val}.\\[\baselineskip]
+
+    Hence $[[ h'' ]] = [[ { pred_term ( oarg ) & None } ]]$
+    (by Lemma~\ref{subsec:norm_ctx_det_heap}),
+    so let $[[ h' ]] = [[ { ipred_term ( oarg' ) & cdot } ]]$.\\[\baselineskip]
+
+    Let $[[ res_val ]] = [[ ipred_term ]]$,
+    and $[[ nR ]] = [[ _x : ipred_term ( oarg ) ]]$, to prove:
+    value typing using \ResSynIPred{};
+    heap typing using \HeapIPredOwned{};
+    reduction using \OpPredOpsToBytes.}}
+
+\step{<1>8b}{\case{\ResSynPredOpsFromBytes}{%
+    \pf{} Like \ResSynPredOpsIterate, but with:\\
+    $[[ res_term ]]= [[ from_bytes < init , ct > ( res_term' ) ]]$\\
+    $[[ res ]]     = [[  pred_term ( oarg ) ]]$
+    where $[[ pred_term ]] = [[ Owned < init , ct > ( ptrt ) ]]$.\\[\baselineskip]
+
+    $[[ res' ]]    = [[  ipred_term ( oarg ) ]]$
+    where $[[ ipred_term ]] = [[ each (integer x; iguard) { Owned < init , byte > ( array_shift < byte > ( ptrt , x ) ) } ]]$\\
+    $[[ res_val' ]] = [[ ipred_term ]]$,
+    and $[[ nR'' ]] = [[ _x : ipred_term ( oarg ) ]]$,
+    by Lemma~\ref{subsec:non_cond_res_det_ctx_val}.\\[\baselineskip]
+
+    Hence $[[ h'' ]] = [[ { ipred_term ( oarg ) & cdot } ]]$
+    (by Lemma~\ref{subsec:norm_ctx_det_heap}),
+    so let $[[ h' ]] = [[ { pred_term ( oarg' ) & None } ]]$.\\[\baselineskip]
+
+    Let $[[ res_val ]] = [[ pred_term ]]$,
+    and $[[ nR ]] = [[ _x : pred_term1 ( oarg ) ]]$, to prove:
+    value typing using \ResSynIPred{};
+    heap typing using \HeapPredOwned{};
+    reduction using \OpPredOpsFromBytes.}}
 
 \step{<1>9}{\case{\ResSynEmp, \ResSynPred, \ResSynIPred, \ResChkPhi.}{%
     \pf{} In these cases, $[[ h ]] = [[ h' ]]$, $[[ nR ]] = [[ nR' ]]$ and $[[ res_term ]] = [[ res_val ]]$.\\

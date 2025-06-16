@@ -361,10 +361,13 @@ grammar
     | int th_l term    ::  :: nth  {{ tex [[term]]^{([[int]])} }}
 
   ct_pred :: 'Ct_pred_' ::= {{ com SMT predicates for C-types }}
-    | representable ( ct , term ) :: :: representable
-    | aligned ( ct , term )       :: :: aligned
-    | alignedI ( term1 , term2 )  :: :: alignedI
-    | abst ( term , ct , term' )  :: :: abst
+    | representable ( ct , term )        :: :: representable
+    | aligned ( ct , term )              :: :: aligned
+    | alignedI ( term1 , term2 )         :: :: alignedI
+    | abst ( term , ct , term' )         :: :: abst
+    | to_bytes < init , ct > ( term )    :: :: to_bytes
+    | valid_bytes < init , ct > ( term ) :: :: valid_bytes
+    | from_bytes < init , ct > ( term )  :: :: from_bytes
 
   cmp_op :: 'Cmp_op_' ::= {{ com SMT term relational operations }}
     | term1 <  term2            ::   :: lt        {{ tex [[term1]] < [[term2]] }}
@@ -679,14 +682,16 @@ grammar
   % (c) makes `{ _x : qpred_term' & oarg } |- qpred_term => qpred_term' & oarg' nicely consistent
   % (d) avoids the need to invent default-valued arrays in the SMT terms.
   pred_ops :: 'Pred_ops_' ::= {{ com (q)points-to operation terms }}
-    | iterate ( res_term , int )                :: :: iterate {{ com transform points-to-array into iterated points-to   }}
-    | congeal ( res_term , int )                :: :: congeal {{ com transform iterated points-to into points-to-array   }}
-    | explode ( res_term )                      :: :: explode {{ com transform points-to-struct into member points-tos   }}
-    | implode ( res_term , tag )                :: :: implode {{ com transform member points-tos into points-to-struct   }}
-    | break ( res_term , term )                 :: :: break   {{ com break a ipred into a ipred and a pred               }}
-    | glue ( res_term )                         :: :: join    {{ com glue a ipred and a pred (back) into a ipred         }}
-    | inj ( res_term , ptrt , ct , x .: iargs ) :: :: inj     {{ com transform a pred into a singleton ipred             }}
-    | chop ( res_term , iguard )                :: :: chop    {{ com chop a ipred into two ipreds along $[[iguard]]$     }}
+    | iterate ( res_term , int )                :: :: iterate    {{ com transform points-to-array into iterated points-to   }}
+    | congeal ( res_term , int )                :: :: congeal    {{ com transform iterated points-to into points-to-array   }}
+    | explode ( res_term )                      :: :: explode    {{ com transform points-to-struct into member points-tos   }}
+    | implode ( res_term , tag )                :: :: implode    {{ com transform member points-tos into points-to-struct   }}
+    | break ( res_term , term )                 :: :: break      {{ com break a ipred into a ipred and a pred               }}
+    | glue ( res_term )                         :: :: join       {{ com glue a ipred and a pred (back) into a ipred         }}
+    | inj ( res_term , ptrt , ct , x .: iargs ) :: :: inj        {{ com transform a pred into a singleton ipred             }}
+    | chop ( res_term , iguard )                :: :: chop       {{ com chop a ipred into two ipreds along $[[iguard]]$     }}
+    | to_bytes ( res_term )                     :: :: to_bytes   {{ com transform points-to into iterated byte points-to    }}
+    | from_bytes < init , ct > ( res_term )     :: :: from_bytes {{ com transform iterated byte points-to into points-to    }}
 
   % It is subtle, but quite important, that only variables can have an
   % ordered-disjunction type, and (since variables are not values) there is no

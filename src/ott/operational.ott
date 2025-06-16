@@ -387,6 +387,24 @@ defns
    alloct | < h ; chop ( res_term , iguard ) > ||v < h' + h1 + h2  ; < ipred_term1 , ipred_term2 > >
 
 
+   alloct | < h ; res_term > ||v < h' + { pred_term ( oarg ) & None } ; pred_term >
+   pred_term def= Owned < init , ct > ( ptrt )
+   ipred_term def= each (integer x; 0 =< x =< sizeof ct - 1) { Owned < init , byte > ( array_shift < byte > ( ptrt , x ) ) }
+   oarg' def= to_bytes < init , ct > ( oarg )
+   ------------------------------------------------------------------------------------------------------------------- :: ToBytes
+   alloct | < h ; to_bytes ( res_term ) > ||v < h' + { ipred_term ( oarg' ) & cdot }  ; ipred_term >
+
+
+   alloct | < h ; res_term > ||v < h' + { ipred_term ( oarg ) & cdot } ; ipred_term >
+   ipred_term def= each (integer x; iguard) { Owned < init , byte > ( array_shift < byte > ( ptrt , x ) ) }
+   alloct |- smt ( each (integer x; _t) { iguard <-> 0 =< x =< sizeof ct - 1 } )
+   alloct |- smt ( valid_bytes < init , ct > ( oarg ) )
+   pred_term def= Owned < init , ct > ( ptrt )
+   oarg' def= from_bytes < init , ct > ( oarg )
+   --------------------------------------------------------------------------------------------------------- :: FromBytes
+   alloct | < h ; to_bytes ( res_term ) > ||v < h' + { ipred_term ( oarg' ) & cdot }  ; pred_term >
+
+
   defn footprint_of res_val in h ~> h1 REM h2 :: :: Footprint :: Footprint_
   {{ com footprint of $[[ res_val ]]$ in heap $[[ h ]]$ is $[[ h1 ]]$ with $[[ h2 ]]$ remainder/frame }} by
 

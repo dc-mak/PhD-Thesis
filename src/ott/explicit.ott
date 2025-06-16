@@ -763,7 +763,18 @@ defns
     C ; L ; N ; R |- chop ( res_term , iguard ) => ops ipred1 * ipred2
 
     % Implementation does not support un-chopping (array merging requires quantifiers).
-    % split and join reserved for regions of dynamically allocated memory.
+
+    C ; L ; N ; R |- res_term => ptrt |- init - ct -> oarg
+    ipred def= ( *S x .: 0 =< x =< sizeof ct - 1 => ptrt |- init - byte -> to_bytes < init , ct > ( oarg ) )
+    --------------------------------------------------------------------------------- :: To_Bytes
+    C ; L ; N ; R |- to_bytes ( res_term ) => ops ipred
+
+
+    C ; L ; N ; R |- res_term => ( *S x .: iguard => ptrt |- init - byte -> oarg )
+    smt ( N => each ( integer x ; _t ) { iguard <-> ( 0 =< x =< sizeof ct - 1 ) } )
+    smt ( N => valid_bytes < init , ct > ( oarg ) )
+    --------------------------------------------------------------------------------- :: From_Bytes
+    C ; L ; N ; R |- from_bytes < init , ct > ( res_term ) => ops ptrt |- init - ct -> from_bytes < init , ct > ( oarg )
 
 
   defn CLNR |- res_term => out_res :: :: Res_Syn :: Res_Syn_
