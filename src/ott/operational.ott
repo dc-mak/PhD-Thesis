@@ -389,7 +389,8 @@ defns
 
    alloct | < h ; res_term > ||v < h' + { pred_term ( oarg ) & None } ; pred_term >
    pred_term def= Owned < init , ct > ( ptrt )
-   ipred_term def= each (integer x; 0 =< x =< sizeof ct - 1) { Owned < init , byte > ( array_shift < byte > ( ptrt , x ) ) }
+   pred_term' def= Owned < init , byte > ( array_shift < byte > ( ptrt , x ) )
+   ipred_term def= each (integer x; 0 =< x =< sizeof ct - 1) { pred_term' }
    oarg' def= to_bytes < init , ct > ( oarg )
    ------------------------------------------------------------------------------------------------------------------- :: ToBytes
    alloct | < h ; to_bytes ( res_term ) > ||v < h' + { ipred_term ( oarg' ) & cdot }  ; ipred_term >
@@ -398,11 +399,39 @@ defns
    alloct | < h ; res_term > ||v < h' + { ipred_term ( oarg ) & cdot } ; ipred_term >
    ipred_term def= each (integer x; iguard) { Owned < init , byte > ( array_shift < byte > ( ptrt , x ) ) }
    alloct |- smt ( each (integer x; _t) { iguard <-> 0 =< x =< sizeof ct - 1 } )
-   alloct |- smt ( valid_bytes < init , ct > ( oarg ) )
+   alloct |- smt ( valid_bytes < init > ( oarg [ 0 ldots sizeof ct - 1 ] ) )
    pred_term def= Owned < init , ct > ( ptrt )
    oarg' def= from_bytes < init , ct > ( oarg )
    --------------------------------------------------------------------------------------------------------- :: FromBytes
-   alloct | < h ; to_bytes ( res_term ) > ||v < h' + { ipred_term ( oarg' ) & cdot }  ; pred_term >
+   alloct | < h ; from_bytes < init , ct > ( res_term ) > ||v < h' + { ipred_term ( oarg' ) & cdot }  ; pred_term >
+
+
+   alloct | < h ; res_term > ||v < h' + { pred_term ( oarg ) & None } ; pred_term >
+   pred_term def= Owned < init , union tag > ( ptrt )
+   P ( tag ) = member : ct' , _member : _ct
+   term def= offsetof tag member
+   oarg1 def= oarg [ term ldots term + sizeof ct - 1 ]
+   alloct |- smt ( valid_bytes < init' > ( oarg1 ) )
+   ptrt' def= array_shift < byte > ( ptrt , term )
+   pred_term' def= Owned < init' , ct' > ( ptrt' )
+   pred_term'' def= Padding < union tag , member > ( ptrt )
+   oarg' def= from_bytes < init' , ct' > ( oarg1 )
+   h1 def= { pred_term' ( oarg' ) & None } + { pred_term'' ( oarg ) & None }
+   --------------------------------------------------------------------------------------------------------- :: Select
+   alloct | < h ; select < init' , member > ( res_term ) > ||v < h' + h1  ; < pred_term' , pred_term'' > >
+
+
+   alloct | < h ; res_term > ||v < h' + h1 ; < pred_term, pred_term' > >
+   h1 def= { pred_term ( oarg ) & None } + { pred_term' ( oarg' ) & None }
+   pred_term def= Owned < init , ct > ( ptrt )
+   pred_term' def= Padding < union tag , member > ( ptrt' )
+   P ( tag ) = member : ct , _member : _ct
+   term def= offsetof tag member
+   alloct |- smt ( ptrt = array_shift < byte > ( ptrt' , term ) )
+   oarg'' def= oarg' [ term ldots term + sizeof ct -1 ] := to_bytes < init , ct > ( oarg )
+   pred_term1 def= Owned < Init , union tag > ( ptrt' )
+   --------------------------------------------------------------------------------------------------------- :: Forget
+   alloct | < h ; forget < union tag > ( res_term ) > ||v < h' + { pred_term1 ( oarg'' ) & None }  ; pred_term1 >
 
 
   defn footprint_of res_val in h ~> h1 REM h2 :: :: Footprint :: Footprint_

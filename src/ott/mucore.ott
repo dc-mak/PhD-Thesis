@@ -75,7 +75,7 @@ metavar tag ::=  {{ com unique identifier for struct/union type }}
 
 grammar
 
-  member :: 'Member_' ::= {{ com record or C struct/union member name }}
+  member , _member {{ tex \_ }} :: 'Member_' ::= {{ com record or C struct/union member name }}
     | id        :: :: user_def {{ com user-defined member }}
     | alloc_id  :: :: alloc_id {{ tex \mathrm{id}       }}
     | addr      :: :: addr     {{ tex \mathrm{addr}      }}
@@ -91,12 +91,13 @@ grammar
 
 grammar
 
-  ct {{ tex \tau }} :: 'Ct_' ::=  {{ com partial/relevant grammar of C types }}
+  ct {{ tex \tau }} , _ct {{ tex \_ }} :: 'Ct_' ::=  {{ com partial/relevant grammar of C types }}
     | array int ct ::   :: arrayN  {{ com fixed-length array of element type $[[ct]]$ }}
     | int          ::   :: integer {{ com C (signed) integer                          }} {{ tex \cnkw{int} }}
     | byte         ::   :: byte    {{ com (CN addition) byte                          }}
     | ct *         ::   :: pointer {{ com pointer to type $[[ct]]$                    }}
     | struct tag   ::   :: struct  {{ com C struct type                               }}
+    | union tag    ::   :: union   {{ com C union type                                }}
     | tagged tag   :: M :: tagged  {{ com C struct or union                           }} {{ tex [[ tag ]]  }}
 
   int , _int {{ tex \_ }} , addr , aid {{ tex \cnnt{id} }} :: 'Int_' ::=    {{ com integer }}
@@ -361,13 +362,13 @@ grammar
     | int th_l term    ::  :: nth  {{ tex [[term]]^{([[int]])} }}
 
   ct_pred :: 'Ct_pred_' ::= {{ com SMT predicates for C-types }}
-    | representable ( ct , term )        :: :: representable
-    | aligned ( ct , term )              :: :: aligned
-    | alignedI ( term1 , term2 )         :: :: alignedI
-    | abst ( term , ct , term' )         :: :: abst
-    | to_bytes < init , ct > ( term )    :: :: to_bytes
-    | valid_bytes < init , ct > ( term ) :: :: valid_bytes
-    | from_bytes < init , ct > ( term )  :: :: from_bytes
+    | representable ( ct , term )             :: :: representable
+    | aligned ( ct , term )                   :: :: aligned
+    | alignedI ( term1 , term2 )              :: :: alignedI
+    | abst ( term , ct , term' )              :: :: abst
+    | to_bytes < init , ct > ( term )         :: :: to_bytes
+    | valid_bytes < init > ( term )           :: :: valid_bytes
+    | from_bytes < init , ct > ( term )       :: :: from_bytes
 
   cmp_op :: 'Cmp_op_' ::= {{ com SMT term relational operations }}
     | term1 <  term2            ::   :: lt        {{ tex [[term1]] < [[term2]] }}
@@ -376,11 +377,12 @@ grammar
 
 
   map_op :: 'Map_op_' ::= {{ com SMT term map operations }}
-    | [| terms |]                 :: M :: lit   {{ com array literal }} {{ tex [\!| \, [[terms]] \: |\!] }}
-    | term1 [ term2 ]             ::   :: get   {{ com array index    }}
-    | term1 [ term2 ldots term3 ] :: P :: range {{ com array range    }}
-    | const term                  ::   :: const {{ com constant array }}
-    | term1 [ term2 ] := term3    ::   :: set   {{ com array update   }}
+    | [| terms |]                          :: M :: lit       {{ com array literal }} {{ tex [\!| \, [[terms]] \: |\!] }}
+    | term1 [ term2 ]                      ::   :: get       {{ com array index        }}
+    | term1 [ term2 ldots term3 ]          :: P :: get_range {{ com array index range  }}
+    | const term                           ::   :: const     {{ com constant array     }}
+    | term1 [ term2 ] := term3             ::   :: set       {{ com array update       }}
+    | term1 [ term2 ldots term3 ] := term4 :: P :: set_range {{ com array update range }}
 
   term , _t {{ tex \_ }}, iguard , ptrt {{ tex ptr }} , iarg , oarg , alloct {{ tex alloc }} , A , M :: '' ::= {{ com SMT term grammar }}
     | x                  ::     :: sym
@@ -427,9 +429,10 @@ grammar
     | Uninit      :: :: uninit {{ com uninitialised }} {{ tex \uninitCross }}
 
   pred_name , a {{ tex { \alpha } }} :: 'Pred_name_' ::= {{ com names of predicates }}
-    | Owned < init , ct > :: :: owned {{ com sep. logic points-to indexed by C type $[[ ct ]]$ }}
-    | Alloc               :: :: alloc {{ com (memory object model) allocation token            }}
-    | id                  :: :: user  {{ com user-defined name                                 }}
+    | Owned < init , ct >     :: :: owned   {{ com sep. logic points-to indexed by C type $[[ ct ]]$ }}
+    | Padding < ct , member > :: :: padding {{ com                                                   }}
+    | Alloc                   :: :: alloc   {{ com (memory object model) allocation token            }}
+    | id                      :: :: user    {{ com user-defined name                                 }}
 
   pred_term :: 'Pred_term_' ::= {{ com predicate term/request }}
     | a ( iargs ) :: :: pred_term
@@ -692,6 +695,8 @@ grammar
     | chop ( res_term , iguard )                :: :: chop       {{ com chop a ipred into two ipreds along $[[iguard]]$     }}
     | to_bytes ( res_term )                     :: :: to_bytes   {{ com transform points-to into iterated byte points-to    }}
     | from_bytes < init , ct > ( res_term )     :: :: from_bytes {{ com transform iterated byte points-to into points-to    }}
+    | select < init , member > ( res_term )     :: :: select     {{ com transform a union points-to into member points-to   }}
+    | forget < ct > ( res_term )                :: :: forget     {{ com transform a member points-to into union points-to   }}
 
   % It is subtle, but quite important, that only variables can have an
   % ordered-disjunction type, and (since variables are not values) there is no

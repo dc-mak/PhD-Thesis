@@ -91,7 +91,7 @@ grammar
   ty_extra :: 'ty_extra_' ::= {{ com extra judgements for explicit and inference typing systems }}
     | smt ( N => qterm )                                            ::  :: smt             {{ com using an SMT-solver, constraint context $[[N]]$ implies check if $[[qterm]]$ is SMT-provable in constraint context $[[N]]$ }}
     | x : out_base_type inEnv C                                     ::  :: x_in_C          {{ com lookup: $[[x]]$ has type $[[out_base_type]]$ in context $[[C]]$                                                            }}
-    | P ( tag ) = </ out_memberi : out_cti // i />                  ::  :: tag_in_Defn     {{ com lookup: $[[tag]]$ has members $\cnnt{member}_i {:} \tau_i$ in $[[P]]$                                                      }}
+    | P ( tag ) = </ out_memberi : out_cti // , // i />             ::  :: tag_in_Defn     {{ com lookup: $[[tag]]$ has members $\cnnt{member}_i {:} \tau_i$ in $[[P]]$                                                      }}
     | P ( a ) = </ out_xi : out_base_typei // , // i /> |-> out_res ::  :: pred_in_Defn    {{ com lookup: predicate $[[a]]$ has arguments $x_i : \beta_i$, and definition $[[out_res]]$ in $[[P]]$                           }}
     | C ; L |- term => out_base_type                                ::  :: term_synth_type {{ com omitted/assumed: given contexts $[[C]]$ and $[[L]]$, $[[ term ]]$ is has type $[[out_base_type]]$                          }}
     | pred_name1 != pred_name2                                      ::  :: pred_name_neq   {{ com $[[pred_name1]]$ and $[[pred_name2]]$ are distinct                                                                         }}
@@ -772,9 +772,30 @@ defns
 
     C ; L ; N ; R |- res_term => ( *S x .: iguard => ptrt |- init - byte -> oarg )
     smt ( N => each ( integer x ; _t ) { iguard <-> ( 0 =< x =< sizeof ct - 1 ) } )
-    smt ( N => valid_bytes < init , ct > ( oarg ) )
+    smt ( N => valid_bytes < init > ( oarg [ 0 ldots sizeof ct - 1 ] ) )
     --------------------------------------------------------------------------------- :: From_Bytes
     C ; L ; N ; R |- from_bytes < init , ct > ( res_term ) => ops ptrt |- init - ct -> from_bytes < init , ct > ( oarg )
+
+
+    C ; L ; N ; R |- res_term => ptrt |- init - union tag -> oarg
+    P ( tag ) = member : ct' , _member : _ct
+    term def= offsetof tag member
+    oarg1 def= oarg [ term ldots term + sizeof ct - 1 ]
+    ptrt' def= array_shift < byte > ( ptrt , term )
+    smt ( N => valid_bytes < init' > ( oarg1 ) )
+    oarg' def= from_bytes < init' , ct' > ( oarg1 )
+    res def= ptrt' |- init' - ct' -> oarg' * Padding < union tag , member > ( ptrt ) ( oarg )
+    --------------------------------------------------------------------------------- :: Select
+    C ; L ; N ; R |- select < init' , member > ( res_term ) => ops res
+
+
+    C ; L ; N ; R |- res_term => ptrt |- init - ct -> oarg * Padding < union tag , member > ( ptrt' ) ( oarg' )
+    P ( tag ) = member : ct , _member : _ct
+    term def= offsetof tag member
+    smt ( N => ptrt = array_shift < byte > ( ptrt' , term ) )
+    oarg'' def= oarg' [ term ldots term + sizeof ct -1 ] := to_bytes < init , ct > ( oarg )
+    --------------------------------------------------------------------------------- :: Forget
+    C ; L ; N ; R |- forget < union tag > ( res_term ) => ops ptrt' |- Init - union tag -> oarg''
 
 
   defn CLNR |- res_term => out_res :: :: Res_Syn :: Res_Syn_
