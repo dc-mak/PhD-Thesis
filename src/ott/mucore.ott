@@ -124,7 +124,7 @@ grammar
     | integer                                ::   :: integer  {{ com integer                     }}
     | byte                                   ::   :: byte     {{ com memory byte                 }}
     | loc                                    ::   :: loc      {{ com pointers (record of allocation ID and integer address) }} {{ tex \mathtt{pointer} }}
-%   | alloc_id                               ::   :: alloc_id {{ com allocation IDs (integers)   }} {{ tex \mathtt{alloc\_id} }}
+    | alloc_id                               ::   :: alloc_id {{ com allocation IDs (integers)   }} {{ tex \mathtt{alloc\_id} }}
     | struct tag                             ::   :: struct   {{ com C structs                   }}
     | record </ memberi : base_typei // i /> ::   :: record   {{ com res. pred. output arguments }}
     | id_map                                 :: M :: idMap    {{ com allocs to base and length   }}
@@ -240,8 +240,7 @@ grammar
     | IvAND         :: :: ivAND       {{ com bitwise AND                    }} % : ctype -> integer -> integer -> integer
     | IvOR          :: :: ivOR        {{ com bitwise OR                     }} % : ctype -> integer -> integer -> integer
     | IvXOR         :: :: ivXOR       {{ com bitwise XOR                    }} % : ctype -> integer -> integer -> integer
-    | Specified     :: :: Specified
-    | Unspecified   :: :: Unspecified
+    | Unspecified   :: :: unspecified
     | Ivfromfloat   :: :: ivfromfloat
     | Fvfromint     :: :: fvfromInt
 
@@ -250,12 +249,15 @@ grammar
     | Cons          :: :: cons        {{ com list cons                      }} % : bTy -> [bTy] -> [bTy]
     | Tuple         :: :: tuple       {{ com tuple                          }} % : bTy1 -> ... -> bTyN -> (bTy1, ..., bTyN)
     | Array         :: :: array       {{ com C fixed-size array (non-empty) }} % : bTy -> ... -> bTy -> array bTy
+    | Unspecified   :: :: unspecified
 
   ctor_expr :: 'CtorE_' ::= {{ com data constructors (expressions, do reduce) }}
     | IvCOMPL       :: :: ivCOMPL     {{ com bitwise complement               }} % : ctype -> integer -> integer
     | IvAND         :: :: ivAND       {{ com bitwise AND                      }} % : ctype -> integer -> integer -> integer
     | IvOR          :: :: ivOR        {{ com bitwise OR                       }} % : ctype -> integer -> integer -> integer
     | IvXOR         :: :: ivXOR       {{ com bitwise XOR                      }} % : ctype -> integer -> integer -> integer
+    | Ivfromfloat   :: :: ivfromfloat
+    | Fvfromint     :: :: fvfromInt
 
   subrules
     ctor_val <:: ctor
@@ -362,27 +364,28 @@ grammar
     | int th_l term    ::  :: nth  {{ tex [[term]]^{([[int]])} }}
 
   ct_pred :: 'Ct_pred_' ::= {{ com SMT predicates for C-types }}
-    | representable ( ct , term )             :: :: representable
-    | aligned ( ct , term )                   :: :: aligned
-    | alignedI ( term1 , term2 )              :: :: alignedI
-    | abst ( term , ct , term' )              :: :: abst
-    | to_bytes < init , ct > ( term )         :: :: to_bytes
-    | valid_bytes < init > ( term )           :: :: valid_bytes
-    | from_bytes < init , ct > ( term )       :: :: from_bytes
+    | representable ( ct , term )       :: :: representable
+    | aligned ( ct , term )             :: :: aligned
+    | alignedI ( term1 , term2 )        :: :: alignedI
+    | abst ( term , ct , term' )        :: :: abst
+    | to_bytes < init , ct > ( term )   :: :: to_bytes
+    | valid_bytes < init > ( term )     :: :: valid_bytes
+    | from_bytes < init , ct > ( term ) :: :: from_bytes
 
   cmp_op :: 'Cmp_op_' ::= {{ com SMT term relational operations }}
-    | term1 <  term2            ::   :: lt        {{ tex [[term1]] < [[term2]] }}
-    | term1 =< term2            ::   :: le
-    | term1 ' rel_binop ' term2 :: M :: rel_binop {{ tex [[term1]] [[rel_binop]] [[term2]] }}
+    | term1 <  term2                   ::   :: lt        {{ tex [[term1]] < [[term2]] }}
+    | term1 =< term2                   ::   :: le
+    | memcmp ( term1 , term2 , term3 ) ::   :: memcmp
+    | term1 ' rel_binop ' term2        :: M :: rel_binop {{ tex [[term1]] [[rel_binop]] [[term2]] }}
 
 
   map_op :: 'Map_op_' ::= {{ com SMT term map operations }}
     | [| terms |]                          :: M :: lit       {{ com array literal }} {{ tex [\!| \, [[terms]] \: |\!] }}
     | term1 [ term2 ]                      ::   :: get       {{ com array index        }}
-    | term1 [ term2 ldots term3 ]          :: P :: get_range {{ com array index range  }}
+    | term1 [ term2 ldots term3 ]          ::   :: get_range {{ com array index range  }}
     | const term                           ::   :: const     {{ com constant array     }}
     | term1 [ term2 ] := term3             ::   :: set       {{ com array update       }}
-    | term1 [ term2 ldots term3 ] := term4 :: P :: set_range {{ com array update range }}
+    | term1 [ term2 ldots term3 ] := term4 ::   :: set_range {{ com array update range }}
 
   term , _t {{ tex \_ }}, iguard , ptrt {{ tex ptr }} , iarg , oarg , alloct {{ tex alloc }} , A , M :: '' ::= {{ com SMT term grammar }}
     | x                  ::     :: sym

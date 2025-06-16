@@ -1074,9 +1074,31 @@ defns
     C ; L ; N ; R |- res_term | ptrArrayShift < ct > ( pval1 , pval2 ) => sigma y : loc .: y = ptrt' /\ res *o I
 
 
-  % DEFER (not implemented)
-  % memcpy ( pval1 , pval2 , pval3 )
-  % memcmp ( pval1 , pval2 , pval3 )
+    C |- pval1 => loc
+    C |- pval2 => loc
+    C |- pval3 => integer
+    ipred1 def= each (integer x; iguard1 ) { Owned < Uninit , byte > ( array_shift < byte > ( ptrt1 , x ) ) } ( _t )
+    ipred2 def= each (integer x; iguard2 ) { Owned <   Init , byte > ( array_shift < byte > ( ptrt2 , x ) ) } ( oarg )
+    C ; L ; N ; R |- res_term => ipred1 * ipred2
+    smt ( N => each (integer x; _t) { iguard1 <-> iguard2 <-> 0 =< x =< inj pval3 - 1 } )
+    smt ( N => inj pval1 = ptrt1 /\ inj pval2 = ptrt2 /\ 0 =< inj pval3 )
+    ipred1' def= each (integer x; 0 =< x =< inj pval3 - 1) { Owned <   Init , byte > ( array_shift < byte > ( ptrt1 , x ) ) } ( oarg )
+    ----------------------------------------------------------------------------- :: Memcpy
+    C ; L ; N ; R |- res_term | memcpy ( pval1 , pval2 , pval3 ) => sigma y : loc .: y = inj pval1 /\ ipred1' * ipred2 *o I
+
+
+    C |- pval1 => loc
+    C |- pval2 => loc
+    C |- pval3 => integer
+    ipred1 def= each (integer x; iguard1 ) { Owned < Init , byte > ( array_shift < byte > ( ptrt1 , x ) ) } ( oarg1 )
+    ipred2 def= each (integer x; iguard2 ) { Owned < Init , byte > ( array_shift < byte > ( ptrt2 , x ) ) } ( oarg2 )
+    C ; L ; N ; R |- res_term => ipred1 * ipred2
+    smt ( N => each (integer x; _t) { iguard1 <-> iguard2 <-> 0 =< x =< inj pval3 - 1 } )
+    smt ( N => each (integer x; iguard1 ) { oarg1 [ x ] != inj Unspecified () } )
+    smt ( N => each (integer x; iguard2 ) { oarg2 [ x ] != inj Unspecified () } )
+    smt ( N => inj pval1 = ptrt1 /\ inj pval2 = ptrt2 /\ 0 =< inj pval3 )
+    ----------------------------------------------------------------------------- :: Memcmp
+    C ; L ; N ; R |- res_term | memcpy ( pval1 , pval2 , pval3 ) => sigma y : bool .: y = memcmp ( inj pval1 , inj pval2 , inj pval3 ) /\ ipred1 * ipred2 *o I
 
 
 defns

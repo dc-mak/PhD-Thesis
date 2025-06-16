@@ -636,6 +636,32 @@ defns
     alloct | < h ; res_term | ptrArrayShift < ct > ( ptr , int ) > --> < h ; < ptr' , pred_term > : ret >
 
 
+    alloct | < h ; res_term > ||v < h' + h1 ; < ipred_term1 , ipred_term2 > >
+    h1 def= { ipred_term1 ( _t ) & cdot } + { ipred_term2 ( oarg ) & cdot }
+    ipred_term1 def= each (integer x; iguard1 ) { Owned < Uninit , byte > ( array_shift < byte > ( ptrt1' , x ) ) }
+    ipred_term2 def= each (integer x; iguard2 ) { Owned <   Init , byte > ( array_shift < byte > ( ptrt2' , x ) ) }
+    alloct |- smt ( each (integer x; _t) { iguard1 <-> iguard2 <-> 0 =< x =< int - 1 } )
+    alloct |- smt ( ptrt1' = inj ptr1 /\ ptrt2' = inj ptr2 /\ 0 =< int )
+    ret def= sigma y : loc .: y = inj ptr1 /\ ipred_term1 ( oarg ) * ipred_term2 ( oarg ) *o I
+    h1' def= { ipred_term1 ( oarg ) & cdot } + { ipred_term2 ( oarg ) & cdot }
+    --------------------------------------------------------------------------------------------- :: Memcpy
+    alloct | < h ; res_term | memcpy ( ptr1 , ptr2 , int ) > --> < h' + h1' ; < ptr1 , < ipred_term1 , ipred_term2 > > : ret >
+
+
+    alloct | < h ; res_term > ||v < h' + h1 ; < ipred_term1 , ipred_term2 > >
+    h1 def= { ipred_term1 ( oarg1 ) & cdot } + { ipred_term2 ( oarg2 ) & cdot }
+    ipred_term1 def= each (integer x; iguard1) { Owned < Init , byte > ( array_shift < byte > ( ptrt1' , x ) ) }
+    ipred_term2 def= each (integer x; iguard2) { Owned < Init , byte > ( array_shift < byte > ( ptrt2' , x ) ) }
+    alloct |- smt ( each (integer x; _t) { iguard1 <-> iguard2 <-> 0 =< x =< int - 1 } )
+    alloct |- smt ( each (integer x; iguard1) { oarg1 [ x ] != inj Unspecified () } )
+    alloct |- smt ( each (integer x; iguard2) { oarg2 [ x ] != inj Unspecified () } )
+    alloct |- smt ( ptrt1' = inj ptr1 /\ ptrt2' = inj ptr2 /\ 0 =< int )
+    ret def= sigma y : bool .: y = memcmp ( inj ptr1 , inj ptr2 , int ) /\ ipred_term1 ( oarg1 )  * ipred_term2 ( oarg2 ) *o I
+    inj bool_value def= memcmp ( inj ptr1 , inj ptr2 , int )
+    --------------------------------------------------------------------------------------------- :: Memcmp
+    alloct | < h ; res_term | memcmp ( ptr1 , ptr2 , int ) > --> < h' + h1 ; < bool_value , < ipred_term1 , ipred_term2 > > : ret >
+
+
   defn < s ; expr > --> < s' ; stmt : ret > :: :: Expr :: Expr_
   {{ com state $[[s]]$ and expression $[[expr]]$ steps to state $[[s']]$ and statement $[[stmt]]$ annotated with return type $[[ret]]$ }} by
 
