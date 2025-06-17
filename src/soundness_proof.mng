@@ -224,8 +224,8 @@ argue for the soundness of pattern-matching
 \ResSynPredOpsFromBytes, \ResSynPredOpsSelect, \ResSynPredOpsForget,
 \ResChkPhi, \ResChkIfTrue, \ResChkIfFalse, \ActionLoad,
 \ActionStore, \ActionKillStatic, \ActionKillDynamic, \MemopRelBinop,
-\MemopPtrDiffArr, \MemopPtrDiff, \MemopIntFromPtr,
-\MemopPtrFromInt, \MemopPtrArrayShift.
+\MemopPtrDiffArr, \MemopPtrDiff, \MemopIntFromRt,
+\MemopRtFromInt, \MemopPtrArrayShift.
 
 \subsection{Typing rules which change the context}\label{subsec:ctx_change_rules}
 
@@ -263,7 +263,7 @@ Resource-mentioning rules: \ResSynEmp, \ResSynVar, \ResSynVarSimp, \ResSynPred,
 \ResSynIPred, \ResSynSepConj, \ResChkPhi, \ResChkSepConj, \SpineRet,
 \SpineRes, \ActionCreate, \MemopRelBinop,
 \MemopPtrDiffArr, \MemopPtrDiff,
-\MemopIntFromPtr, \MemopPtrFromInt, \MemopPtrArrayShift,
+\MemopIntFromRt, \MemopRtFromInt, \MemopPtrArrayShift,
 \StmtRun, \SubsChkEmpty, \SubsChkRes.
 
 \subsubsection{Rules which add constraints and restrict the resource context}
@@ -1989,11 +1989,11 @@ arbitrary (not normalised).
 }}
 
 \step{<1>23}{\case{%
-    \MemopIntFromPtr.
+    \MemopIntFromRt.
 }{%
-    \pf{} Similar to \MemopRelBinop, so step with \OpMemopIntFromPtr.}}
+    \pf{} Similar to \MemopRelBinop, so step with \OpMemopIntFromRt.}}
 
-\step{<1>24}{\case{\MemopPtrFromInt.}{}}
+\step{<1>24}{\case{\MemopRtFromInt.}{}}
 
     \begin{pfproof}
 
@@ -2027,7 +2027,7 @@ arbitrary (not normalised).
         \pf{} By inversion on the typing assumption in \stepref{<2>4},
         $[[ alloct |- h' <= nR' ]]$ and \lemmaref{subsec:norm_ctx_det_heap}.}
 
-    \step{<2>7}{Step with \OpMemopPtrFromInt.}
+    \step{<2>7}{Step with \OpMemopRtFromInt.}
 
     \end{pfproof}
 
@@ -2333,7 +2333,7 @@ to deduce that $[[ nR' ]]$ can only be what you would have supplied anyways.
 }{%
     \pflet{%
         $[[ ret ]] = [[ sigma yp : loc .: term /\ exists x : to_base ( ct ) .: pred_term1 ( x ) *o pred_term2 ( ( yp . addr , sizeof ct ) ) *o I  ]]$\\
-        where $[[ term ]] = [[ representable ( ct * , yp ) /\ alignedI ( int , yp )  /\ allocv [ @ aid ] = ( yp . addr , sizeof ct ) ]]$,\\
+        where $[[ term ]] = [[ representable ( ct * , yp ) /\ aligned ( int , yp )  /\ allocv [ @ aid ] = ( yp . addr , sizeof ct ) ]]$,\\
         $[[ pred_term1 ]] = [[ Owned < Uninit, ct > ( inj ptr ) ]]$ and $[[ pred_term2 ]] = [[ Alloc ( @ aid ) ]]$.}
 
     \assume{%
@@ -2379,7 +2379,7 @@ to deduce that $[[ nR' ]]$ can only be what you would have supplied anyways.
 }{%
     \pflet{%
         $[[ ret ]] = [[ sigma yp : loc .: term /\ exists x : array byte .: ipred_term ( x ) *o pred_term ( ( yp . addr , int2 ) ) *o I  ]]$\\
-        where $[[ term ]] = [[ alignedI ( int1 , yp )  /\ allocv [ @ aid ] = ( yp . addr , int2 ) ]]$,\\
+        where $[[ term ]] = [[ aligned ( int1 , yp )  /\ allocv [ @ aid ] = ( yp . addr , int2 ) ]]$,\\
         $[[ ipred_term ]] = [[ each ( integer x ; 0 =< x =< int2 - 1 ) { Owned < Uninit, ct > ( array_shift < byte > ( inj ptr , x ) )  } ]]$ \\
         and $[[ pred_term ]] = [[ Alloc ( @ aid ) ]]$.}
 
@@ -2582,21 +2582,21 @@ to deduce that $[[ nR' ]]$ can only be what you would have supplied anyways.
     \pf{} Similar to \MemopRelBinop, but with only one $[[ Alloc ( ptrt ) ]]$ resource.}}
 
 \step{<1>16}{\case{%
-    \MemopIntFromPtr.
+    \MemopIntFromRt.
 }{%
     \pf{} Similar to \MemopRelBinop, but with only one $[[ Alloc ( ptrt ) ]]$ resource.}}
 
 \step{<1>17}{\case{%
-    \MemopPtrFromInt.
+    \MemopRtFromInt.
 }{%
-    \pf{} Similar to \MemopIntFromPtr, with resource $[[ Owned < _init , ct > ( ptrt ) ]]$
+    \pf{} Similar to \MemopIntFromRt, with resource $[[ Owned < _init , ct > ( ptrt ) ]]$
     instead of $[[ Alloc ( ptrt ) ]]$.
 }}
 
 \step{<1>18}{\case{%
     \MemopPtrValidForDeref, \MemopPtrWellAligned.
 }{%
-    \pf{} Similar to \MemopIntFromPtr, but with no resources.
+    \pf{} Similar to \MemopIntFromRt, but with no resources.
 }}
 
 \step{<1>19}{\case{%

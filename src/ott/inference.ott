@@ -272,7 +272,7 @@ defns
 
     C ; L ; N ; nR |- emp | create < ct > ( pval ) => norm_ret
     norm_ret def= sigma yp : loc .: term /\ exists x : to_base ( ct ) .: ( yp |- Uninit - ct -> x ) *o I
-    term def= representable ( ct * , yp ) /\ alignedI ( inj pval , yp )
+    term def= representable ( ct * , yp ) /\ aligned ( inj pval , yp )
     ----------------------------------------------------------------------- :: Create
     C ; L ; N ; nR |- create < ct > ( pval ) ~> bind cdot for emp & norm_ret -| nR
 
@@ -311,78 +311,136 @@ defns
 defns
   elab_memop :: 'Elab_' ::=
 
-  % DEFER out_memop'
-  defn CLNnR |- memop ~> bind out_res_bind for out_res_term & out_norm_ret -| out_nRp :: :: Memop :: Memop_
-  {{ com given $[[CLNnR]]$ and $[[memop]]$, infer (via $[[out_res_bind]]$) $[[out_res_term]]$ and $[[out_norm_ret]]$, with $[[out_nRp]]$ leftover }} by
+  defn CLNnR |- pval1 , pval2 ~> out_res_term : out_norm_res -| out_nRp :: :: LiveBounds :: LiveBounds_
+  {{ com given $[[CLNnR]]$, infer, for pointers $[[pval1]], [[pval2]]$, proof of bounds and liveness $[[out_res_term]] {:} [[out_norm_res]]$, with $[[out_nRp]]$ leftover }} by
 
 
-    % DEFER - how to infer provenances
-
-    % C |- pval1 => loc
-    % C |- pval2 => loc
-    % C ; L ; N ; R |- res_term => res
-    % N |- inj pval1 inEnv res
-    % N |- inj pval2 inEnv res
-    % -------------------------------- :: Rel_Binop
-    % C ; L ; N ; R |- res_term | pval1 rel_binop pval2 => sigma y : bool .: y = ( inj pval1 ' rel_binop ' inj pval2 ) /\ res *o I
+  smt ( N => term = inj pval1 . alloc_id = inj pval2 . alloc_id )
+  smt ( N => oarg . base =< inj pval1 . addr =< oarg . base + oarg . len )
+  smt ( N => oarg . base =< inj pval2 . addr =< oarg . base + oarg . len )
+  ---------------------------------------------------------------------------------------- :: Alloc
+  C ; L ; N ; r : Alloc ( term ) ( oarg ) , nR |- pval1 , pval2 ~> r : Alloc ( term ) ( oarg ) -| nR 
 
 
-    % C |- pval1 => loc
-    % C |- pval2 => loc
-    % C ; L ; N ; R |- res_term => res
-    % res def= Arr < ct > ( ptrt , _b , _b ) ( _t )
-    % N |- inj pval1 inEnv res
-    % N |- inj pval2 inEnv res
-    % -------------------------------- :: PtrDiff_Arr
-    % C ; L ; N ; R |- res_term | pval1 - array n ct - pval2 => sigma y : bool .: y = ( inj pval1 - inj pval2 ) / sizeof ct /\ res *o I
+  smt ( N => ptrt . alloc_id = inj pval1 . alloc_id = inj pval2 . alloc_id )
+  term def= allocv [ inj pval1 . alloc_id ]
+  smt ( N => term . base =< inj pval1 . addr =< term . base + term . len )
+  smt ( N => term . base =< inj pval2 . addr =< term . base + term . len )
+  ---------------------------------------------------------------------------------------- :: Owned
+  C ; L ; N ; r : Owned < _init , ct > ( ptrt ) ( oarg ) , nR |- pval1 , pval2 ~> r : Owned < _init , ct > ( ptrt ) ( oarg ) -| nR 
 
 
-    % C |- pval1 => loc
-    % C |- pval2 => loc
-    % C ; L ; N ; R |- res_term => res
-    % N |- inj pval1 inEnv res
-    % N |- inj pval2 inEnv res
-    % -------------------------------- :: PtrDiff
-    % C ; L ; N ; R |- res_term | pval1 - ct - pval2 => sigma y : bool .: y = ( inj pval1 - inj pval2 ) / sizeof ct /\ res *o I
+  C ; L ; N ; nR |- pval1 , pval2  ~> res_term : norm_res -| nR'
+  --------------------------------------------------------- :: Other
+  C ; L ; N ; _x : norm_res , nR |- pval1 , pval2 ~> res_term : norm_res -| nR'
 
 
-    % C |- pval => loc
-    % C ; L ; N ; R |- res_term => res
-    % N |- inj pval inEnv res
-    % ------------------------------- :: IntFromPtr
-    % C ; L ; N ; R |- intFromPtr ( res_term | ct1 , ct2 , pval ) => sigma y : integer .: y = cast_ptr_to_int inj pval /\ res *o I
+  defn CLNnR |- memop ~> bind out_res_bind for out_res_term & out_ret -| out_nRp :: :: Memop :: Memop_
+  {{ com given $[[CLNnR]]$ and $[[memop]]$, infer (via $[[out_res_bind]]$) $[[out_res_term]]$ and $[[out_ret]]$, with $[[out_nRp]]$ leftover }} by
 
 
-    % C |- pval => integer
-    % C ; L ; N ; R |- res_term => res
-    % N |- inj pval inEnv res
-    % ----------------------------------- :: PtrFromInt
-    % C ; L ; N ; R |- ptrFromInt ( res_term | ct1 , ct2 , pval ) => sigma y : loc .: y = cast_int_to_ptr inj pval /\ res *o I
-
-    % C |- pval1 => loc
-    % C |- pval2 => integer
-    % C ; L ; N ; R |- res_term => res
-    % res def= Arr < ct > ( ptrt , _b , _b ) ( _t )
-    % N |- inj pval1 inEnv res
-    % N |- inj pval1 +ptr ( inj pval2 * sizeof ct ) inEnv res
-    % ----------------------------------------------------- :: PtrArrayShift
-    % C ; L ; N ; R |- ptrArrayShift ( res_term | pval1 ,  ct , pval2 ) => sigma y : loc .: y = inj pval1 +ptr ( inj pval2 * sizeof ct ) /\ res *o I
+  C |- pval1 => loc
+  C |- pval2 => loc
+  norm_ret def= sigma y : bool .: term1 /\ term3 *o I
+  term1 def= inj pval1 = inj pval2 -> y
+  term2 def= inj pval1 . alloc_id != inj pval2 . alloc_id /\ inj pval1 . addr = inj pval2 . addr
+  term3 def= neg term1 /\ neg term2 -> neg y
+  --------------------------------------------------------------- :: PtrEq
+  C ; L ; N ; nR |- pval1 = pval2 ~> bind cdot for emp & norm_ret -| nR
 
 
-    C ; L ; N ; nR |- _rest | memop => norm_ret
-    --------------------------------------------------------------------- :: Rest
-    C ; L ; N ; nR |- memop ~> bind cdot for res_term & norm_ret -| nR
+  C |- pval1 => loc
+  C |- pval2 => loc
+  C ; L ; N ; nR |- pval1 , pval2 ~> res_term : norm_res -| nR'
+  norm_ret def= sigma y : bool .: y = ( inj pval1 . addr ' rel_binop ' inj pval2 . addr ) /\ res *o I
+  ----------------------------------------------------------------------------- :: Rel_Binop
+  C ; L ; N ; nR |- pval1 rel_binop pval2 ~> bind cdot for res_term & norm_ret -| nR'
 
 
-    % DEFER (not implemented)
-    % memcpy ( pval1 , pval2 , pval3 )
-    % memcmp ( pval1 , pval2 , pval3 )
-    % realloc ( pval1 , pval2 , pval3 )
-    % va_start ( pval1 , pval2 )
-    % va_copy ( pval )
-    % va_arg ( pval , ct )
-    % va_end ( pval )
+  C |- pval1 => loc
+  C |- pval2 => loc
+  C ; L ; N ; nR |- pval1 , pval2 ~> res_term : norm_res -| nR'
+  norm_ret def= sigma y : integer .: y = ( inj pval1 . addr - inj pval2 .addr ) / sizeof ct /\ norm_res *o I
+  ---------------------------------------------------------------------------------------------------------- :: PtrDiff_Arr
+  C ; L ; N ; nR |- pval1 - array n ct - pval2 ~> bind cdot for res_term & norm_ret -| nR'
 
+
+  C |- pval1 => loc
+  C |- pval2 => loc
+  C ; L ; N ; nR |- pval1 , pval2 ~> res_term : norm_res -| nR'
+  norm_ret def= sigma y : integer .: y = ( inj pval1 . addr - inj pval2 . addr ) / sizeof ct /\ norm_res *o I
+  ----------------------------------------------------------------------------------------------------- :: PtrDiff
+  C ; L ; N ; nR |- pval1 - ct - pval2 ~> bind cdot for res_term & norm_ret -| nR'
+
+
+  % Doesn't require a bounds check in VIP
+  C |- pval => loc
+  C ; L ; N ; nR |- pval , pval ~> res_term : norm_res -| nR'
+  smt ( N => representable ( ct , inj pval . addr ) )
+  norm_ret def= sigma y : integer .: y = inj pval . addr /\ norm_res *o I
+  ----------------------------------------------------------------------- :: IntFromRt
+  C ; L ; N ; nR |- intFromRt < ct > ( pval ) ~> bind cdot for res_term & norm_ret -| nR'
+
+
+  C |- pval => integer
+  C ; L ; N ; nR |- pval , pval ~> res_term : norm_res -| nR'
+  norm_ret def= sigma y : loc .: exists x : alloc_id .: y = ptrt /\ norm_res *o I
+  ptrt def= if inj pval = 0 then NULL else ( @ x , inj pval )
+  ----------------------------------- :: RtFromInt
+  C ; L ; N ; nR |- rtFromInt < ct > ( pval ) ~> bind cdot for res_term & norm_ret -| nR'
+
+
+  % The implementation over-approximates the behaviour of PtrValidForDeref. It
+  % doesn't check the resource context (for the resource & the init) - which
+  % is fine because any subsequent loads will have to do so anyways.
+  % Also this is part of the Cerberus memory interface, not pointer-operations
+  % part of the C standard and so is not subject to pointer-liveness constraints.
+  C |- pval => loc
+  norm_ret def= sigma y : bool .: y = aligned ( sizeof ct , inj pval ) /\ I
+  ---------------- :: PtrValidForDeref
+  C ; L ; N ; nR |- ptrValidForDeref < ct > ( pval ) ~> bind cdot for emp & norm_ret -| nR
+
+
+  % Similar to PtrValidForDeref.
+  C |- pval => loc
+  norm_ret def= sigma y : bool .: y = aligned ( sizeof ct , inj pval ) /\ I
+  ----------------- :: PtrWellAligned
+  C ; L ; N ; nR |- ptrWellAligned < ct > ( pval ) ~> bind cdot for emp & norm_ret -| nR
+
+
+  C |- pval1 => loc
+  C |- pval2 => integer
+  C ; L ; N ; nR |- pval , pval ~> res_term : norm_res -| nR'
+  norm_ret def= sigma y : loc .: y = inj ptr /\ norm_res *o I
+  -------------------------------------------------------------------------- :: PtrArrayShift
+  C ; L ; N ; nR |- ptrArrayShift < ct > ( pval1 , pval2 ) ~> bind cdot for res_term & norm_ret -| nR'
+
+
+  C |- pval1 => loc
+  C |- pval2 => loc
+  C |- pval3 => integer
+  ipred_term1 def= each (integer x; 0 =< x =< inj pval3 - 1) { Owned < Uninit , byte > ( array_shift < byte > ( inj pval1 , x ) ) }
+  ipred_term2 def= each (integer x; 0 =< x =< inj pval3 - 1) { Owned <   Init , byte > ( array_shift < byte > ( inj pval2 , x ) ) }
+  N ; nR  |- ipred_term1 ~> bind res_bind1 for res_term1 and _t   -| nR1
+  N ; nR1 |- ipred_term2 ~> bind res_bind2 for res_term2 and oarg -| nR2
+  ret def= sigma y : loc .: y = inj pval1 /\ ipred_term1 ( oarg ) * ipred_term2 ( oarg ) *o I
+  ----------------------------------------------------------------------------- :: Memcpy
+  C ; L ; N ; nR |- memcpy ( pval1 , pval2 , pval3 ) ~> bind res_bind1, res_bind2 for < res_term1 , res_term2 > & ret -| nR2
+
+
+  C |- pval1 => loc
+  C |- pval2 => loc
+  C |- pval3 => integer
+  ipred_term1 def= each (integer x; 0 =< x =< inj pval3 - 1) { Owned < Init , byte > ( array_shift < byte > ( inj pval1 , x ) ) }
+  ipred_term2 def= each (integer x; 0 =< x =< inj pval3 - 1) { Owned < Init , byte > ( array_shift < byte > ( inj pval2 , x ) ) }
+  N ; nR  |- ipred_term1 ~> bind res_bind1 for res_term1 and oarg1 -| nR1
+  N ; nR1 |- ipred_term2 ~> bind res_bind2 for res_term2 and oarg2 -| nR2
+  smt ( N => each (integer x; 0 =< x =< inj pval3 - 1) { oarg1 [ x ] != inj Unspecified () } )
+  smt ( N => each (integer x; 0 =< x =< inj pval3 - 1) { oarg2 [ x ] != inj Unspecified () } )
+  smt ( N => 0 =< inj pval3 )
+  ret def= sigma y : bool .: y = memcmp ( inj pval1 , inj pval2 , inj pval3 ) /\ ipred_term1 ( oarg1 ) * ipred_term2 ( oarg2 ) *o I
+  ----------------------------------------------------------------------------- :: Memcmp
+  C ; L ; N ; nR |- memcmp ( pval1 , pval2 , pval3 ) ~> bind res_bind1 , res_bind2 for < res_term1 , res_term2 > & ret -| nR2
 
 defns
   elab_spine :: 'Elab_' ::=
@@ -430,9 +488,9 @@ defns
     C ; L ; N ; nR |- _rest | action ~> bind res_bind for res_term | action : norm_ret -| nR'
 
 
-    C ; L ; N ; nR |- memop ~> bind res_bind for res_term & norm_ret -| nR'
+    C ; L ; N ; nR |- memop ~> bind res_bind for res_term & ret -| nR'
     ------------------------------------------------------------------------- :: Memop
-    C ; L ; N ; nR |- _rest | memop ~> bind res_bind for res_term | memop : norm_ret -| nR'
+    C ; L ; N ; nR |- _rest | memop ~> bind res_bind for res_term | memop : ret -| nR'
 
 
     % </ C ; L ; N ; nRi |- stmti <= reti // i />

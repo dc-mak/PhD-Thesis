@@ -501,7 +501,7 @@ defns
     pred_term1 def= Owned < Uninit , ct > ( inj ptr )
     pred_term2 def= Alloc ( @ aid )
     ret def= sigma yp : loc .: term /\ exists x : to_base ( ct ) .: pred_term1 ( x ) *o pred_term2 ( ( yp . addr , sizeof ct ) ) *o I
-    term def= representable ( ct * , inj ptr ) /\ alignedI ( int , inj ptr ) /\ allocv [ @ aid ] = ( addr , sizeof ct )
+    term def= representable ( ct * , inj ptr ) /\ aligned ( int , inj ptr ) /\ allocv [ @ aid ] = ( addr , sizeof ct )
     alloct |- smt ( term )
     h' def= h + { pred_term1 ( default to_base ( ct ) ) & None } + { pred_term2 ( ( addr , sizeof ct ) ) & None }
     stmt def= < ptr , default to_base ( ct ), pred_term1 , pred_term2 >
@@ -515,7 +515,7 @@ defns
     ipred_term def= each ( integer x ; 0 =< x =< int2 - 1 ) { Owned < Uninit , byte > ( array_shift < byte > ( inj ptr , x ) ) }
     pred_term def= Alloc ( @ aid )
     ret def= sigma yp : loc .: term /\ exists y : array byte .: ipred_term ( y ) *o pred_term ( ( yp . addr , int2 ) ) *o I
-    term def= alignedI ( int1 , inj ptr ) /\ allocv [ @ aid ] = ( addr , int2 )
+    term def= aligned ( int1 , inj ptr ) /\ allocv [ @ aid ] = ( addr , int2 )
     alloct |- smt ( term )
     h' def= h + { ipred_term ( default array byte ) & cdot } + { pred_term ( ( addr , int2 ) ) & None }
     stmt def= < ptr , default array byte , ipred_term , pred_term >
@@ -601,28 +601,28 @@ defns
     pred_term def= Alloc ( ptrt )
     alloct |- smt ( @ aid = ptrt . alloc_id /\ representable ( ct2 , addr ) )
     ret def= sigma y : integer .: y = addr /\ pred_term ( _t ) *o I
-    ---------------------------------------------------------------------------------- :: IntFromPtr
-    _t | < h ; res_term | intFromPtr < ct > ( ( @ aid , addr ) ) > --> < h' + { pred_term ( _t ) & None } ; < addr , pred_term > : ret >
+    ---------------------------------------------------------------------------------- :: IntFromRt
+    _t | < h ; res_term | intFromRt < ct > ( ( @ aid , addr ) ) > --> < h' + { pred_term ( _t ) & None } ; < addr , pred_term > : ret >
 
 
     alloct | < h ; res_term > ||v < h' + { pred_term ( oarg ) & None } ; pred_term >
     pred_term def= Owned < _init , ct > ( ptrt )
     x def= alloct [ @ id ]
     alloct |- smt ( x . base =< addr =< x . base + x . len )
-    inj ptr def= ( @ ptrt . alloc_id , addr )
-    ret def= sigma y : loc .: y = ( @ ptrt . alloc_id , addr ) /\ pred_term ( oarg ) *o I
-    ---------------------------------------------------------------------------------------- :: PtrFromInt
-    alloct | < h ; res_term | ptrFromInt < ct > ( addr ) > --> < h' + { pred_term ( oarg ) & None } ; < ptr , pred_term > : ret >
+    inj ptr def= ( @ default alloc_id , addr )
+    ret def= sigma y : loc .: exists x : alloc_id .: y = ( @ x , inj pval ) /\ res *o I
+    ---------------------------------------------------------------------------------------- :: RtFromInt
+    alloct | < h ; res_term | rtFromInt < ct > ( addr ) > --> < h' + { pred_term ( oarg ) & None } ; < ptr , pred_term > : ret >
 
 
-    inj bool_value def= aligned ( ct , inj ptr )
-    ret def= sigma y : bool .: y = aligned ( ct , inj ptr ) /\ I
+    inj bool_value def=  aligned ( sizeof ct , inj ptr )
+    ret def= sigma y : bool .: y =  aligned ( sizeof ct , inj ptr ) /\ I
     -------------------------------------------------------- :: PtrValidForDeref
     _t | < h ; emp | ptrValidForDeref < ct > ( ptr ) > --> < h ; < bool_value > : ret >
 
 
-    inj bool_value def= aligned ( ct , inj ptr )
-    ret def= sigma y : bool .: y = aligned ( ct , inj ptr ) /\ I
+    inj bool_value def=  aligned ( sizeof ct , inj ptr )
+    ret def= sigma y : bool .: y =  aligned ( sizeof ct , inj ptr ) /\ I
     ------------------------------------------------------------------ :: PtrWellAligned
     _t | < h ; emp | ptrWellAligned < ct > ( ptr ) > --> < h ; < bool_value > : ret >
 

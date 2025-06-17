@@ -940,7 +940,7 @@ defns
 
 
     C |- pval => integer
-    term def= representable ( ct * , yp ) /\ alignedI ( inj pval , yp ) /\ allocv [ yp . alloc_id ] = ( yp . addr , sizeof ct )
+    term def= representable ( ct * , yp ) /\ aligned ( inj pval , yp ) /\ allocv [ yp . alloc_id ] = ( yp . addr , sizeof ct )
     ret def= ( yp |- Uninit - ct -> x ) *o Alloc ( yp . alloc_id ) ( ( yp . addr , sizeof ct ) ) *o I
     ------------------------------------------------------------------------- :: Create
     C ; L ; N ; cdot |- emp | create < ct >  ( pval ) => sigma yp : loc .: term /\ exists x : to_base ( ct ) .:  ret
@@ -948,7 +948,7 @@ defns
 
     C |- pval1 => integer
     C |- pval2 => integer
-    term def= alignedI ( inj pval1 , yp ) /\ allocv [ yp . alloc_id ] = ( yp . addr , inj pval2 )
+    term def= aligned ( inj pval1 , yp ) /\ allocv [ yp . alloc_id ] = ( yp . addr , inj pval2 )
     res def= *S x .: 0 =< x =< inj pval2 - 1 => array_shift < byte > ( yp , x ) |- Uninit - byte -> y
     ret def= res *o Alloc ( yp . alloc_id ) ( ( yp . addr , inj pval2 ) ) *o I
     ------------------------------------------------------------------------- :: Alloc
@@ -995,8 +995,53 @@ defns
 defns
   expl_memop :: '' ::=
 
+  defn CLNR |- is_live res_term & pval1 , pval2 => out_res :: :: Live :: Live_
+  {{ com pointer liveness check: given $[[CLNR]]$, $[[res_term]]$ (a) proves pointers $[[pval1]]$ and $[[pval2]]$ belong to the same live allocation,
+  and (b) synthesises type $[[out_res]]$ }} by
+
+
+    C ; L ; N ; R |- Owned < _init , ct > ( ptrt ) => res
+    smt ( N => ptrt . alloc_id = inj pval1 . alloc_id = inj pval2 . alloc_id )
+    --------------------------------------------------------------------- :: Owned
+    C ; L ; N ; R |- is_live Owned < _init , ct > ( ptrt ) & pval1 , pval2 => res
+
+
+    C ; L ; N ; R |- Alloc ( term ) => res
+    smt ( N => term = inj pval1 . alloc_id  = inj pval2 . alloc_id )
+    --------------------------------------------------------------------- :: Alloc
+    C ; L ; N ; R |- is_live Alloc ( term ) & pval1 , pval2 => res
+
+
+    % C ; L ; N ; R |- Padding < _init , union tag > ( ptrt ) => res
+    % smt ( N => ptrt . alloc_id = inj pval1 . alloc_id  = inj pval2 . alloc_id )
+    % --------------------------------------------------------------------- :: Padding
+    % C ; L ; N ; R |- is_live Alloc ( term ) & pval1 , pval2 => res
+
+
+  defn CLN |- in_bounds pval1 , pval2 :: :: Bounds :: Bounds_
+  {{ com pointer bounds check: given $[[CLN]]$, pointers $[[pval1]]$ and $[[pval2]]$ are in the bounds of the same allocation }} by
+
+
+    term def= allocv [ inj pval1 . alloc_id ]
+    smt ( N => inj pval1 . alloc_id = inj pval2 . alloc_id )
+    smt ( N => term . base =< inj pval1 . addr =< term . base + term . len )
+    smt ( N => term . base =< inj pval2 . addr =< term . base + term . len )
+    --------------------------------------------------------------------- :: Check
+    C ; L ; N |- in_bounds pval1 , pval2
+
+
   defn CLNR |- res_memop => out_ret :: :: Memop :: Memop_
   {{ com memory operation synthesises: given $[[CLNR]]$, $[[res_memop]]$ synthesises return type $[[out_ret]]$ }} by
+
+    C |- pval1 => loc
+    C |- pval2 => loc
+    ret def= sigma y : bool .: term1 /\ term3 *o I
+    term1 def= inj pval1 = inj pval2 -> y
+    term2 def= inj pval1 . alloc_id != inj pval2 . alloc_id /\ inj pval1 . addr = inj pval2 . addr
+    term3 def= neg term1 /\ neg term2 -> neg y
+    --------------------------------------------- :: PtrEq
+    C ; L ; N ; R |- emp | pval1 = pval2 => ret
+
 
     C |- pval1 => loc
     C |- pval2 => loc
@@ -1005,48 +1050,46 @@ defns
     smt ( N => inj pval1 . alloc_id = inj pval2 . alloc_id = ptrt1 . alloc_id = ptrt2 . alloc_id )
     smt ( N => ptrt1 . base =< inj pval1 . addr =< ptrt1 . base + term1 )
     smt ( N => ptrt2 . base =< inj pval2 . addr =< ptrt2 . base + term2 )
+    ret def= sigma y : bool .: y = ( inj pval1 . addr ' rel_binop ' inj pval2 . addr ) /\ res *o I
     ----------------------------------------------------------------------------- :: Rel_Binop
-    C ; L ; N ; R |- res_term | pval1 rel_binop pval2 => sigma y : bool .: y = ( inj pval1 . addr ' rel_binop ' inj pval2 . addr ) /\ res *o I
+    C ; L ; N ; R |- res_term | pval1 rel_binop pval2 => ret
 
 
-    % DEFER ask Kayvan when/how Ptrdiff can be called with an ct = array n ct'
     C |- pval1 => loc
     C |- pval2 => loc
-    res def= Alloc ( ptrt ) ( term )
-    C ; L ; N ; R |- res_term => res
-    smt ( N => ptrt . alloc_id = inj pval1 . alloc_id = inj pval2 . alloc_id ) 
-    smt ( N => ptrt . base =< ( inj pval1 . addr , inj pval2 . addr ) =< ptrt . base + term )
+    C ; L ; N ; R |- is_live res_term & pval1 , pval2 => res
+    C ; L ; N  |- in_bounds pval1 , pval2
+    ret def= sigma y : integer .: y = ( inj pval1 . addr - inj pval2 .addr ) / sizeof ct /\ res *o I
     -------------------------------- :: PtrDiff_Arr
-    C ; L ; N ; R |- res_term | pval1 - array n ct - pval2 => sigma y : integer .: y = ( x1 - x2 ) / sizeof ct /\ res *o I
+    C ; L ; N ; R |- res_term | pval1 - array n ct - pval2 => ret
 
 
     C |- pval1 => loc
     C |- pval2 => loc
-    res def= Alloc ( ptrt ) ( term )
-    C ; L ; N ; R |- res_term => res
-    smt ( N => ptrt . alloc_id = inj pval1 . alloc_id = inj pval2 . alloc_id )
-    smt ( N => ptrt . base =< ( inj pval1 . addr , inj pval2 . addr ) =< ptrt . base + term )
+    C ; L ; N ; R |- is_live res_term & pval1 , pval2 => res
+    C ; L ; N  |- in_bounds pval1 , pval2
+    ret def= sigma y : integer .: y = ( inj pval1 . addr - inj pval2 . addr ) / sizeof ct /\ res *o I
     -------------------------------- :: PtrDiff
-    C ; L ; N ; R |- res_term | pval1 - ct - pval2 => sigma y : integer .: y = ( x1 - x2 ) / sizeof ct /\ res *o I
+    C ; L ; N ; R |- res_term | pval1 - ct - pval2 => ret
 
 
     % Doesn't require a bounds check in VIP
     C |- pval => loc
-    C ; L ; N ; R |- res_term => Alloc ( ptrt ) ( _t )
-    smt ( N => inj pval . alloc_id = ptrt . alloc_id /\ representable ( ct2 , inj pval . addr ) )
-    ----------------------------------------------------------------------------------------------------- :: IntFromPtr
-    C ; L ; N ; R |- res_term | intFromPtr < ct > ( pval ) => sigma y : integer .: y = inj pval . addr /\ res *o I
+    C ; L ; N ; R |- is_live res_term & pval , pval => res
+    C ; L ; N |- in_bounds pval , pval
+    smt ( N => representable ( ct , inj pval . addr ) )
+    ret def= sigma y : integer .: y = inj pval . addr /\ res *o I
+    -------------------------------------------------------------- :: IntFromRt
+    C ; L ; N ; R |- res_term | intFromRt < ct > ( pval ) => ret
 
 
-    % This rule requires an Owned rather than an Alloc because copy_alloc_id is
-    % NOT a ghost operation, and Owned only takes computational arguments for
-    % its input - thus forcing an appropriate pointer to be in the context.
     C |- pval => integer
-    C ; L ; N ; R |- res_term => ptrt |- init - ct1 -> _t
-    x def= allocv [ ptrt . alloc_id ]
-    smt ( N => x . base =< inj pval =< x . base + x . len  )
-    ----------------------------------- :: PtrFromInt
-    C ; L ; N ; R |- res_term | ptrFromInt < ct > ( pval ) => sigma y : loc .: y = ( @ ptrt . alloc_id , inj pval ) /\ res *o I
+    C ; L ; N ; R |- is_live res_term & pval , pval => res
+    C ; L ; N |- in_bounds pval , pval
+    ret def= sigma y : loc .: exists x : alloc_id .: y = ptrt /\ res *o I
+    ptrt def= if inj pval = 0 then NULL else ( @ x , inj pval )
+    ----------------------------------- :: RtFromInt
+    C ; L ; N ; R |- res_term | rtFromInt < ct > ( pval ) => ret
 
 
     % The implementation over-approximates the behaviour of PtrValidForDeref. It
@@ -1055,23 +1098,26 @@ defns
     % Also this is part of the Cerberus memory interface, not pointer-operations
     % part of the C standard and so is not subject to pointer-liveness constraints.
     C |- pval => loc
+    ret def= sigma y : bool .: y = aligned ( sizeof ct , inj pval ) /\ I
     ---------------- :: PtrValidForDeref
-    C ; L ; N ; cdot |- emp | ptrValidForDeref < ct > ( pval ) => sigma y : bool .: y = aligned ( ct , inj pval ) /\ I
+    C ; L ; N ; cdot |- emp | ptrValidForDeref < ct > ( pval ) => ret
 
 
     % Similar to PtrValidForDeref.
     C |- pval => loc
+    ret def= sigma y : bool .: y = aligned ( sizeof ct , inj pval ) /\ I
     ----------------- :: PtrWellAligned
-    C ; L ; N ; cdot |- emp | ptrWellAligned < ct > ( pval ) => sigma y : bool .: y = aligned ( ct , inj pval ) /\ I
+    C ; L ; N ; cdot |- emp | ptrWellAligned < ct > ( pval ) => ret
 
 
     C |- pval1 => loc
     C |- pval2 => integer
-    ptrt' def= array_shift<ct>(inj pval1, inj pval2)
-    C ; L ; N ; R |- res_term => Alloc ( ptrt  ) ( term )
-    smt ( N => inj pval . alloc_id = ptrt . alloc_id  /\ ptrt . base =< ptrt' . addr =< ptrt . base + term )
-    ----------------------------------------------------------------------------- :: PtrArrayShift
-    C ; L ; N ; R |- res_term | ptrArrayShift < ct > ( pval1 , pval2 ) => sigma y : loc .: y = ptrt' /\ res *o I
+    inj ptr def= array_shift<ct>(inj pval1, inj pval2)
+    C ; L ; N ; R |- is_live res_term & pval3 , pval3 => res
+    C ; L ; N |- in_bounds pval3 , pval3
+    ret def= sigma y : loc .: y = inj ptr /\ res *o I
+    -------------------------------------------------------------------------- :: PtrArrayShift
+    C ; L ; N ; R |- res_term | ptrArrayShift < ct > ( pval1 , pval2 ) =>  ret
 
 
     C |- pval1 => loc
