@@ -2010,57 +2010,17 @@ arbitrary (not normalised).
 }}
 
 \step{<1>23}{\case{%
-    \MemopIntFromRt.
+    \MemopIntFromRt, \MemopRtFromInt.
 }{%
-    \pf{} Similar to \MemopRelBinop, so step with \OpMemopIntFromRt.}}
+    \pf{} Similar to \MemopPtrEq, but $[[pval]]$ is an $[[addr]]$ for \MemopRtFromInt.
+    Step with \OpMemopIntFromRt/\OpMemopRtFromInt{} respectively.}}
 
-\step{<1>24}{\case{\MemopRtFromInt.}{}}
-
-    \begin{pfproof}
-
-    \step{<2>1}{%
-        $[[pval]]$ must be a $[[ int ]] = [[ addr ]]$.\\
-        \pf{} By inversion on the typing assumption and \PureValObjInt.}
-
-    \step{<2>2}{%
-        $[[ cdot ; L0 ; N ; nR |- res_term => ptrt |- init - ct1 -> oarg ]]$.\\
-        \pf{} By inversion on the typing assumption.}
-
-    \step{<2>3}{%
-        $[[ alloct |- smt ( x . base =< addr =< x . base + x . len ) ]]$ for $[[ x def= alloct [ ptrt . alloc_id ] ]]$.\\
-        \pf{} By inversion on the typing assumption and $[[ alloct <= N ]]$.}
-
-    \step{<2>4}{%
-        $[[ exists ]] [[ h' ]], [[ nR' ]], [[ res_val ]] .\:$\\
-        \begin{pfenum}
-        \item $[[ alloct |- h' <= nR' ]]$
-        \item $[[ alloct | < h ; res_term > ||v < h' ; res_val > ]]$
-        \item $[[ cdot ; L0 ; N ; nR' |- res_val => ptrt |- init - ct1 -> oarg ]]$.
-        \end{pfenum}
-        \pf{} By \stepref{<2>2} and \lemmaref{subsec:res_term_progress}.}
-
-    \step{<2>5}{%
-        $[[ res_val ]] = [[ Owned < _init , ct > ( ptrt ) ]]$.\\
-        \pf{} By \lemmaref{subsec:non_cond_res_det_ctx_val}.}
-
-    \step{<2>6}{%
-        $[[ h' ]] = [[ { Owned < _init , ct > ( ptrt ) ( oarg ) & None } ]]$.\\
-        \pf{} By inversion on the typing assumption in \stepref{<2>4},
-        $[[ alloct |- h' <= nR' ]]$ and \lemmaref{subsec:norm_ctx_det_heap}.}
-
-    \step{<2>7}{Step with \OpMemopRtFromInt.}
-
-    \end{pfproof}
-
-\step{<1>25}{\case{\MemopPtrValidForDeref.}{
-    \pf{} $[[ pval ]]$ must be a $[[ ptr ]]$, so step with
-    \OpMemopPtrValidForDeref.}}
-
-\step{<1>26}{\case{%
-    \MemopPtrWellAligned.
+\step{<1>25}{\case{%
+    \MemopPtrValidForDeref, \MemopPtrWellAligned.
 }{%
-    \pf{} $[[ pval ]]$ must be a $[[ ptr ]]$, so step with
-    \OpMemopPtrWellAligned.}}
+    \pf{} Similar to \MemopPtrEq, excepct with only one $[[pval]]$.
+    Step with \OpMemopPtrValidForDeref/\OpMemopPtrWellAligned{} respectively.}}
+
 
 \step{<1>27}{\case{%
     \MemopPtrArrayShift.
@@ -2615,30 +2575,22 @@ to deduce that $[[ nR' ]]$ can only be what you would have supplied anyways.
 \step{<1>15}{\case{%
     \MemopPtrDiffArr, \MemopPtrDiff.
 }{%
-    \pf{} Similar to \MemopRelBinop, but with only one $[[ Alloc ( ptrt ) ]]$ resource.}}
+    \pf{} Similar to \MemopRelBinop, but with \PureValObjInt.}}
 
 \step{<1>16}{\case{%
-    \MemopIntFromRt.
+    \MemopIntFromRt, \MemopRtFromInt.
 }{%
-    \pf{} Similar to \MemopRelBinop, but with only one $[[ Alloc ( ptrt ) ]]$ resource.}}
-
-\step{<1>17}{\case{%
-    \MemopRtFromInt.
-}{%
-    \pf{} Similar to \MemopIntFromRt, with resource $[[ Owned < _init , ct > ( ptrt ) ]]$
-    instead of $[[ Alloc ( ptrt ) ]]$.
-}}
+    \pf{} Similar to \MemopPtrEq, but with an extra \SpineLog{} for \MemopRtFromInt.}}
 
 \step{<1>18}{\case{%
     \MemopPtrValidForDeref, \MemopPtrWellAligned.
 }{%
-    \pf{} Similar to \MemopIntFromRt, but with no resources.
-}}
+    \pf{} Similar to \MemopPtrEq.}}
 
 \step{<1>19}{\case{%
     \MemopPtrArrayShift.
 }{%
-    \pf{} Similar to \MemopRelBinop, but with only one $[[ Alloc ( ptrt ) ]]$ resource.}}
+    \pf{} Similar to \MemopRelBinop, but with \PureValObjPtr.}}
 
 \step{<1>19a}{\case{%
     \MemopMemcpy.
