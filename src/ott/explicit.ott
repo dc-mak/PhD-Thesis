@@ -995,18 +995,18 @@ defns
 defns
   expl_memop :: '' ::=
 
-  defn CLNR |- is_live res_term & pval1 , pval2 :: :: Live :: Live_
-  {{ com pointer liveness check: given $[[CLNR]]$, $[[res_term]]$ proves pointers $[[pval1]]$ and $[[pval2]]$ belong to the same live allocation }} by
+  defn CLNR |- is_live res & pval1 , pval2 :: :: Live :: Live_
+  {{ com pointer liveness check: given $[[CLNR]]$, $[[res]]$ proves pointers $[[pval1]]$ and $[[pval2]]$ belong to the same live allocation }} by
 
 
     smt ( N => ptrt . alloc_id = inj pval1 . alloc_id = inj pval2 . alloc_id )
     --------------------------------------------------------------------- :: Owned
-    C ; L ; N ; R |- is_live Owned < _init , ct > ( ptrt ) & pval1 , pval2
+    C ; L ; N ; R |- is_live Owned < _init , ct > ( ptrt ) ( _t ) & pval1 , pval2
 
 
     smt ( N => term = inj pval1 . alloc_id  = inj pval2 . alloc_id )
     --------------------------------------------------------------------- :: Alloc
-    C ; L ; N ; R |- is_live Alloc ( term ) & pval1 , pval2
+    C ; L ; N ; R |- is_live Alloc ( term ) ( _t ) & pval1 , pval2
 
 
     % C ; L ; N ; R |- Padding < _init , union tag > ( ptrt ) => res
@@ -1043,7 +1043,7 @@ defns
     C |- pval1 => loc
     C |- pval2 => loc
     C ; L ; N ; R |- res_term => res
-    C ; L ; N ; R |- is_live res_term & pval1 , pval2
+    C ; L ; N ; R |- is_live res & pval1 , pval2
     C ; L ; N |- in_bounds pval1 , pval2
     ret def= sigma y : bool .: y = ( inj pval1 . addr ' rel_binop ' inj pval2 . addr ) /\ res *o I
     ----------------------------------------------------------------------------- :: Rel_Binop
@@ -1053,7 +1053,7 @@ defns
     C |- pval1 => loc
     C |- pval2 => loc
     C ; L ; N ; R |- res_term => res
-    C ; L ; N ; R |- is_live res_term & pval1 , pval2
+    C ; L ; N ; R |- is_live res & pval1 , pval2
     C ; L ; N  |- in_bounds pval1 , pval2
     ret def= sigma y : integer .: y = ( inj pval1 . addr - inj pval2 .addr ) / sizeof ct /\ res *o I
     -------------------------------- :: PtrDiff_Arr
@@ -1063,7 +1063,7 @@ defns
     C |- pval1 => loc
     C |- pval2 => loc
     C ; L ; N ; R |- res_term => res
-    C ; L ; N ; R |- is_live res_term & pval1 , pval2
+    C ; L ; N ; R |- is_live res & pval1 , pval2
     C ; L ; N  |- in_bounds pval1 , pval2
     ret def= sigma y : integer .: y = ( inj pval1 . addr - inj pval2 . addr ) / sizeof ct /\ res *o I
     -------------------------------- :: PtrDiff
@@ -1107,7 +1107,7 @@ defns
     C |- pval2 => integer
     inj ptr def= array_shift<ct>(inj pval1, inj pval2)
     C ; L ; N ; R |- res_term => res
-    C ; L ; N ; R |- is_live res_term & ptr , ptr
+    C ; L ; N ; R |- is_live res & ptr , ptr
     C ; L ; N |- in_bounds ptr , ptr
     ret def= sigma y : loc .: y = inj ptr /\ res *o I
     -------------------------------------------------------------------------- :: PtrArrayShift

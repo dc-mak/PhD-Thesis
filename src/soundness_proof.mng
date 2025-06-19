@@ -717,6 +717,14 @@ This is as simple inversion lemma.
     then $[[ h ]] = [[ { pred' & None } ]]$ for $[[ cdot |- subs0 ( pred ) = subs0 ( pred' ) ]]$.\\
     \pf{} By inversion, the assumption must be \HeapPredOwned{}.}
 
+\step{<1>2a}{If $[[ pred ]] = [[ Alloc ( term ) ( oarg ) ]]$, $[[ nR ]] = [[ _x : pred ]]$,
+    then $[[ h ]] = [[ { pred' & None } ]]$ for $[[ cdot |- subs0 ( pred ) = subs0 ( pred' ) ]]$.\\
+    \pf{} By inversion, the assumption must be \HeapPredAlloc{}.}
+
+\step{<1>2b}{If $[[ pred ]] = [[ Padding < union tag , member > ( ptrt ) ( oarg ) ]]$, $[[ nR ]] = [[ _x : pred ]]$,
+    then $[[ h ]] = [[ { pred' & None } ]]$ for $[[ cdot |- subs0 ( pred ) = subs0 ( pred' ) ]]$.\\
+    \pf{} By inversion, the assumption must be \HeapPredPadding{}.}
+
 \step{<1>3}{If $[[ nR ]] = [[ _x : pred ]]$, then $[[ h ]] = [[ { pred' & def & h' } ]]$.\\
     for $[[ cdot |- subs0 ( pred ) = subs0 ( pred' ) ]]$.\\
     \pf{} By inversion, the assumption must be \HeapPredOther.}
@@ -1946,38 +1954,31 @@ arbitrary (not normalised).
     \begin{pfproof}
 
     \step{<2>1}{%
-        $[[pval1]]$ must be a $[[ ptr1 ]] = [[ ( @ aid1 , addr1 ) ]]$.\\
-        $[[pval2]]$ must be a $[[ ptr2 ]] = [[ ( @ aid1 , addr2 ) ]]$.\\
+        $[[pval1]]$ must be a $[[ ptr1 ]]$.\\
+        $[[pval2]]$ must be a $[[ ptr2 ]]$.\\
         \pf{} By on the typing assumption and \PureValObjPtr.}
 
-    \step{<2>2}{%
-        $[[ cdot ; L0 ; N ; nR |- res_term => Alloc ( ptrt1 ) ( term1 ) * Alloc ( ptrt2 ) ( term2 ) ]]$.\\
-        \pf{} By inversion on the typing assumption.}
-
-    \assume{%
-      $[[ret def= sigma y : bool .: term1 /\ term3 *o I]]$,\\
-      where $[[term1 def= inj pval1 = inj pval2 -> y]]$,
-      $[[term2 def= inj pval1 . alloc_id != inj pval2 . alloc_id /\ inj pval1 . addr = inj pval2 . addr]]$
-      and $[[term3 def= neg term1 /\ neg term2 -> neg y]]$.\\[\baselineskip]}
-      $[[ cdot ; L0 ; N ; nR |- emp | pval1 = pval2 => ret]]$.
+    \step{<2>2}{Step with \OpMemopPtrEq.}
+    
+    \end{pfproof}
 
 \step{<1>21}{\case{\MemopRelBinop.}{}}
 
     \begin{pfproof}
 
     \step{<2>1}{%
-        $[[pval1]]$ must be a $[[ ptr1 ]] = [[ ( @ aid1 , addr1 ) ]]$.\\
-        $[[pval2]]$ must be a $[[ ptr2 ]] = [[ ( @ aid1 , addr2 ) ]]$.\\
+        $[[pval1]]$ must be a $[[ ptr1 ]]$.\\
+        $[[pval2]]$ must be a $[[ ptr2 ]]$.\\
         \pf{} By on the typing assumption and \PureValObjPtr.}
 
     \step{<2>2}{%
-        $[[ cdot ; L0 ; N ; nR |- res_term => Alloc ( ptrt1 ) ( term1 ) * Alloc ( ptrt2 ) ( term2 ) ]]$.\\
+        $[[ cdot ; L0 ; N ; nR |- res_term => res ]]$.\\
         \pf{} By inversion on the typing assumption.}
 
     \step{<2>3}{%
-        $[[ alloct |- smt ( @ aid1 = @ aid2 = ptrt1 . alloc_id = ptrt2 . alloc_id2 ) ]]$\\
-        $[[ alloct |- smt ( ptrt1 . base =< addr1 =< ptrt1 . base + term1 ) ]]$\\
-        $[[ alloct |- smt ( ptrt2 . base =< addr2 =< ptrt2 . base + term2 ) ]]$.\\
+        $[[ res ]] = [[ pred_term ( oarg ) ]]$\\
+        $[[alloct | is_live pred_term ( oarg ) & ptr1 ,  ptr2]]$\\
+        $[[alloct | in_bounds ptr1 , ptr2]]$\\
         \pf{} By inversion on the typing assumption and $[[ alloct <= N ]]$.}
 
     \step{<2>4}{%
@@ -1985,16 +1986,16 @@ arbitrary (not normalised).
         \begin{pfenum}
         \item $[[ alloct |- h' <= nR' ]]$
         \item $[[ alloct | < h ; res_term > ||v < h' ; res_val > ]]$
-        \item $[[ cdot ; L0 ; N ; nR' |- res_val => Alloc ( ptrt1 ) ( term1 ) * Alloc ( ptrt2 ) ( term2 ) ]]$.
+        \item $[[ cdot ; L0 ; N ; nR' |- res_val => res ]]$.
         \end{pfenum}
         \pf{} By \stepref{<2>2} and \lemmaref{subsec:res_term_progress}.}
 
     \step{<2>5}{%
-        $[[ res_val ]] = [[ < Alloc ( ptrt1 ) , Alloc ( ptrt2 ) > ]]$.\\
-        \pf{} By \lemmaref{subsec:non_cond_res_det_ctx_val}.}
+        $[[ res_val ]] = [[ pred_term ]]$.\\
+        \pf{} By \lemmaref{subsec:non_cond_res_det_ctx_val} and \stepref{<2>3}.}
 
     \step{<2>6}{%
-        $[[ h' ]] = [[ { Alloc ( ptrt1 ) ( term1 ) & None } + { Alloc ( ptrt2 ) ( term ) & None } ]]$.\\
+        $[[ h' ]] = [[ { pred_term ( oarg ) & None } ]]$.\\
         \pf{} By inversion on the typing assumption in \stepref{<2>4},
         $[[ alloct |- h' <= nR' ]]$ and \lemmaref{subsec:norm_ctx_det_heap}.}
 
@@ -2571,29 +2572,45 @@ to deduce that $[[ nR' ]]$ can only be what you would have supplied anyways.
 
     \pf{} By \SpineRet, \PureValUnit, \SpineComp, \StmtRetT.}}
 
+\step{<1>13a}{\case{%
+    \MemopPtrEq.
+}{%
+
+    \assume{%
+      $[[ret def= sigma y : bool .: term1 /\ term3 *o I]]$\\
+      where $[[term1 def= inj pval1 = inj pval2 -> y]]$,\\
+      $[[term2 def= inj pval1 . alloc_id != inj pval2 . alloc_id /\ inj pval1 . addr = inj pval2 . addr]]$,\\
+      $[[term3 def= neg term1 /\ neg term2 -> neg y]]$.\\[\baselineskip]}
+
+    \prove{%
+        $[[ cdot ; L0 ; N ; nR' |- < bool_value > <= ret ]]$}
+
+    \pf{} By \SpineRet, \PureValTrue/\PureValFalse, \SpineComp, \SpinePhi{} (by construction of $[[ bool_value ]]$), \StmtRetT.}}
+
+
 \step{<1>14}{\case{%
     \MemopRelBinop.
 }{%
 
     \assume{%
-      $[[ ret def= sigma y : bool .: y = ( addr1 ' rel_binop ' addr2 ) /\ Alloc ( ptrt1 ) ( oarg1 ) * Alloc ( ptrt2 ) ( oarg2 ) *o I ]]$
-      $[[ cdot ; L0 ; N ; nR |- res_term | ( @ aid1 , addr1 ) rel_binop ( @ aid2 , addr2 ) => ret ]]$
-      and $[[ alloct | < h + f ; res_term > ||v < heap + { Alloc ( ptrt1 ) ( oarg1 ) & None } + { Alloc ( ptrt2 ) ( oarg2 ) & None } ; < Alloc ( ptrt1 ) , Alloc ( ptrt2 ) > > ]]$.\\[\baselineskip]}
+      $[[ret def= sigma y : bool .: y = inj ptr1 . addr ' rel_binop ' inj ptr2 . addr /\ pred_term ( oarg ) *o I]]$\\
+      $[[ cdot ; L0 ; N ; nR |- res_term | ptr1 rel_binop ptr2 => ret ]]$\\
+      and $[[ alloct | < h + f ; res_term > ||v < heap + { pred_term ( oarg ) & None } ; pred_term > ]]$.\\[\baselineskip]}
 
     $[[ exists ]] [[ h' ]] , [[ nR' ]]$ such that
-    $[[ heap + { Alloc ( ptrt1 ) ( oarg1 ) & None } + { Alloc ( ptrt2 ) ( oarg2 ) & None } ]] = [[ h' + f ]]$,
+    $[[ heap + { pred_term ( oarg ) & None } ]] = [[ h' + f ]]$,
     $[[ alloct |- h' <= nR' ]]$
-    and $[[ cdot ; L0 ; N ; nR' |- < Alloc ( ptrt1 ) , Alloc ( ptrt2 ) > => Alloc ( ptrt1 ) ( oarg1 ) * Alloc ( ptrt2 ) ( oarg2 ) ]]$,
+    and $[[ cdot ; L0 ; N ; nR' |- pred_term => pred_term ( oarg ) ]]$,
     by \lemmaref{subsec:res_term_red_isolated}.\\[\baselineskip]
 
-    $[[ nR' ]] = [[ _x : Alloc ( ptrt1 ) ( oarg1 ) , _x : Alloc ( ptrt2 ) ( oarg2 ) ]]$ by Lemma~\ref{subsec:non_cond_res_det_ctx_val}
-    and $[[ h' ]] = [[ { Alloc ( ptrt1 ) ( oarg1 ) & None } + { Alloc ( ptrt2 ) ( oarg2 ) & None } ]]$ by Lemma~\ref{subsec:norm_ctx_det_heap}.\\
+    $[[ nR' ]] = [[ _x : pred_term ( oarg ) ]]$ by Lemma~\ref{subsec:non_cond_res_det_ctx_val}
+    and $[[ h' ]] = [[ { pred_term ( oarg ) & None } ]]$ by Lemma~\ref{subsec:norm_ctx_det_heap}.\\
     This means $[[ heap ]] = [[ f ]]$ and $[[ alloct |- h' <= nR' ]]$ (by \HeapPredAlloc{} twice, \HeapConcat).\\[\baselineskip]
 
     \prove{%
-        $[[ cdot ; L0 ; N ; nR' |- < bool_value , < pred_term1 , pred_term2 > > <= ret ]]$}
+        $[[ cdot ; L0 ; N ; nR' |- < bool_value , pred_term > <= ret ]]$}
 
-    \pf{} By \SpineRet, \PureValUnit, \SpineComp, \SpinePhi{} (by construction of $[[ bool_value ]]$), \SpineRes, \StmtRetT.}}
+    \pf{} By \SpineRet, \PureValTrue/\PureValFalse, \SpineComp, \SpinePhi{} (by construction of $[[ bool_value ]]$), \SpineRes, \StmtRetT.}}
 
 \step{<1>15}{\case{%
     \MemopPtrDiffArr, \MemopPtrDiff.
