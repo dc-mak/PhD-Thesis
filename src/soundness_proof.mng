@@ -1941,6 +1941,26 @@ arbitrary (not normalised).
 
     \end{pfproof}
 
+\step{<1>13a}{\case{\MemopPtrEq.}{}}
+
+    \begin{pfproof}
+
+    \step{<2>1}{%
+        $[[pval1]]$ must be a $[[ ptr1 ]] = [[ ( @ aid1 , addr1 ) ]]$.\\
+        $[[pval2]]$ must be a $[[ ptr2 ]] = [[ ( @ aid1 , addr2 ) ]]$.\\
+        \pf{} By on the typing assumption and \PureValObjPtr.}
+
+    \step{<2>2}{%
+        $[[ cdot ; L0 ; N ; nR |- res_term => Alloc ( ptrt1 ) ( term1 ) * Alloc ( ptrt2 ) ( term2 ) ]]$.\\
+        \pf{} By inversion on the typing assumption.}
+
+    \assume{%
+      $[[ret def= sigma y : bool .: term1 /\ term3 *o I]]$,\\
+      where $[[term1 def= inj pval1 = inj pval2 -> y]]$,
+      $[[term2 def= inj pval1 . alloc_id != inj pval2 . alloc_id /\ inj pval1 . addr = inj pval2 . addr]]$
+      and $[[term3 def= neg term1 /\ neg term2 -> neg y]]$.\\[\baselineskip]}
+      $[[ cdot ; L0 ; N ; nR |- emp | pval1 = pval2 => ret]]$.
+
 \step{<1>21}{\case{\MemopRelBinop.}{}}
 
     \begin{pfproof}
@@ -1951,7 +1971,7 @@ arbitrary (not normalised).
         \pf{} By on the typing assumption and \PureValObjPtr.}
 
     \step{<2>2}{%
-        $[[ C ; L ; N ; R |- res_term => Alloc ( ptrt1 ) ( term1 ) * Alloc ( ptrt2 ) ( term2 ) ]]$.\\
+        $[[ cdot ; L0 ; N ; nR |- res_term => Alloc ( ptrt1 ) ( term1 ) * Alloc ( ptrt2 ) ( term2 ) ]]$.\\
         \pf{} By inversion on the typing assumption.}
 
     \step{<2>3}{%
@@ -2002,7 +2022,7 @@ arbitrary (not normalised).
         \pf{} By inversion on the typing assumption and \PureValObjInt.}
 
     \step{<2>2}{%
-        $[[ C ; L ; N ; R |- res_term => ptrt |- init - ct1 -> oarg ]]$.\\
+        $[[ cdot ; L0 ; N ; nR |- res_term => ptrt |- init - ct1 -> oarg ]]$.\\
         \pf{} By inversion on the typing assumption.}
 
     \step{<2>3}{%
@@ -2058,7 +2078,7 @@ arbitrary (not normalised).
         first two, and \PureValObjInt{} for the last.}
 
     \step{<2>2}{%
-        $[[ C ; L ; N ; R |- res_term => ipred_term1 ( _t ) * ipred_term2 ( oarg ) ]]$,\\
+        $[[ cdot ; L0 ; N ; nR |- res_term => ipred_term1 ( _t ) * ipred_term2 ( oarg ) ]]$,\\
         where $[[ipred_term1 def= each (integer x; iguard1 ) { Owned < Uninit , byte > ( array_shift < byte > ( ptrt1' , x ) ) } ]]$\\
         and   $[[ipred_term2 def= each (integer x; iguard2 ) { Owned <   Init , byte > ( array_shift < byte > ( ptrt2' , x ) ) }]]$.\\
         \pf{} By inversion on the typing assumption.}
@@ -2102,7 +2122,7 @@ arbitrary (not normalised).
         first two, and \PureValObjInt{} for the last.}
 
     \step{<2>2}{%
-        $[[ C ; L ; N ; R |- res_term => ipred_term1 ( oarg1 ) * ipred_term2 ( oarg2 ) ]]$,\\
+        $[[ cdot ; L0 ; N ; nR |- res_term => ipred_term1 ( oarg1 ) * ipred_term2 ( oarg2 ) ]]$,\\
         where $[[ ipred_term1 def= each (integer x; iguard1 ) { Owned < Init , byte > ( array_shift < byte > ( ptrt1' , x ) ) } ]]$,\\
         and $[[ ipred_term2 def= each (integer x; iguard2 ) { Owned < Init , byte > ( array_shift < byte > ( ptrt2' , x ) ) }]]$.\\
         \pf{} By inversion on the typing assumption.}
@@ -2550,7 +2570,6 @@ to deduce that $[[ nR' ]]$ can only be what you would have supplied anyways.
         $[[ cdot ; L0 ; N ; cdot |- < Unit > <= sigma _x : unit .: I ]]$}
 
     \pf{} By \SpineRet, \PureValUnit, \SpineComp, \StmtRetT.}}
-
 
 \step{<1>14}{\case{%
     \MemopRelBinop.

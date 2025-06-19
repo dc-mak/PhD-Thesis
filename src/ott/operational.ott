@@ -562,57 +562,80 @@ defns
     ----------------------------------------------------------------------------------- :: Kill_Dynamic
     < alloct ; h ; res_term | kill < ct > ( ( @ aid , addr ) ) > --> < alloct ; h' ; < Unit > : ret >
 
+  defn alloct | is_live pred & ptr1 , ptr2 :: :: Live :: Live_
+  {{ com given allocation history $[[alloct]]$, $[[pred]]$ proves $[[ptr1]]$ and $[[ptr2]]$ belong to the same live allocation }} by
+
+   alloct |- smt ( term . alloc_id = inj ptr1 . alloc_id = inj ptr2 . alloc_id  )
+   ------------------------------------------------------- :: Owned
+   alloct | is_live Owned < _init, ct > ( term ) ( _t ) & ptr1 , ptr2
+
+
+   alloct |- smt ( term = inj ptr1 . alloc_id = inj ptr2 . alloc_id  )
+   ------------------------------------------------------- :: Alloc
+   alloct | is_live Alloc ( term ) ( _t ) & ptr1 , ptr2
+
+
+  defn alloct | in_bounds ptr1 , ptr2 :: :: Bounds :: Bounds_
+  {{ com given allocation history $[[alloct]]$, $[[ptr1]]$ and $[[ptr2]]$ are in the bounds of the same allocation }} by
+
+   term def= allocv [ inj ptr1 . alloc_id ]
+   alloct |- smt ( inj ptr1 . alloc_id = inj ptr2 . alloc_id )
+   alloct |- smt ( term . base =< inj ptr1 . addr =< term . base + term . len )
+   alloct |- smt ( term . base =< inj ptr2 . addr =< term . base + term . len )
+   ------------------------------------------------------- :: Check
+   alloct | in_bounds ptr1 , ptr2
+
+
   defn alloct | < h ; res_memop  > --> < h' ; stmt : ret > :: :: Memop :: Memop_
   {{ com allocation history $[[alloct]]$, heap $[[h]]$, resource memory operation $[[res_memop]]$ steps to heap $[[h']]$ and statement $[[stmt]]$ with type annotation $[[ret]]$ }} by
 
-    alloct | < h ; res_term > ||v < h1 + h2 ;  < pred_term1 , pred_term2 > >
-    h2 def= </ { pred_termi ( termi ) & None } // i />
-    indexed </ pred_termi def= Alloc ( ptrti ) // i />
-    alloct |- smt ( @ aid1 = @ aid2 = ptrt1 . alloc_id = ptrt2 . alloc_id2 )
-    alloct |- smt ( ptrt1 . base =< addr1 =< ptrt1 . base + term1 )
-    alloct |- smt ( ptrt2 . base =< addr2 =< ptrt2 . base + term2 )
-    inj bool_value def= addr1 ' rel_binop ' addr2
-    ret def= sigma y : bool .: y = ( addr1 ' rel_binop ' addr2 ) /\ pred_term1 ( term1 ) * pred_term2 ( term2 ) *o I
-    -------------------------------------------------------------------------------------------------------------- :: Rel_Binop
-    alloct | < h ; res_term | ( @ aid1 , addr1 ) rel_binop ( @ aid2 , addr2 ) > --> < h1 + h2 ; < bool_value , < pred_term1 , pred_term2 > > : ret >
+
+    meta bool_value / y ( term1 /\ term3 )
+    ret def= sigma y : bool .: term1 /\ term3 *o I
+    term1 def= inj ptr1 = inj ptr2 -> y
+    term2 def= inj ptr1 . alloc_id != inj ptr2 . alloc_id /\ inj ptr1 . addr = inj ptr2 . addr
+    term3 def= neg term1 /\ neg term2 -> neg y
+    ------------------------------------------------------------------------------------------- :: PtrEq
+    alloct | < h ; res_term | ptr1 = ptr2 > --> < h1 + h2 ; < bool_value > : ret >
 
 
-    alloct | < h ; res_term > ||v < h1 + { pred_term ( term ) & None } ;  pred_term >
-    pred_term def= Alloc ( ptrt )
-    alloct |- smt ( @ aid1 = @ aid2 = ptrt . alloc_id )
-    alloct |- smt ( ptrt . base =< ( addr1 , addr2 ) =< ptrt . base + term )
-    int def= ( addr1 - addr2 ) / sizeof ct
-    ret def= sigma y : integer .: y = ( addr1 - addr2 ) / sizeof ct /\ res *o I
+    alloct | < h ; res_term > ||v < h1 + { pred_term ( oarg ) & None } ; pred_term >
+    alloct | is_live pred_term ( oarg ) & ptr1 ,  ptr2
+    alloct | in_bounds ptr1 , ptr2
+    inj bool_value def= inj ptr1 . addr ' rel_binop ' inj ptr2 . addr
+    ret def= sigma y : bool .: y = inj ptr1 . addr ' rel_binop ' inj ptr2 . addr /\ pred_term ( oarg ) *o I
+    ------------------------------------------------------------------------------------------------------- :: Rel_Binop
+    alloct | < h ; res_term | ptr1 rel_binop ptr2 > --> < h1 + h2 ; < bool_value , pred_term > : ret >
+
+
+    alloct | < h ; res_term > ||v < h1 + { pred_term ( oarg ) & None } ; pred_term >
+    alloct | is_live pred_term ( oarg ) & ptr1 ,  ptr2
+    alloct | in_bounds ptr1 , ptr2
+    int def= ( inj ptr1 . addr - inj ptr2 . addr ) / sizeof ct
+    ret def= sigma y : integer .: y = ( inj ptr1 . addr - inj ptr2 . addr ) / sizeof ct /\ pred_term ( oarg ) *o I
     -------------------------------------------------------------------------------------------------------------- :: PtrDiff_Arr
-    alloct | < h ; res_term | ( @ aid1 , addr1 ) - array n ct - ( @ aid2 , addr2 ) > --> < h1 + { pred_term ( term ) & None } ; < int , pred_term > : ret >
+    alloct | < h ; res_term | ptr1 - array n ct - ptr2 > --> < h1 + { pred_term ( term ) & None } ; < int , pred_term > : ret >
 
 
-    alloct | < h ; res_term > ||v < h1 + { pred_term ( term ) & None } ;  pred_term >
-    pred_term def= Alloc ( ptrt )
-    alloct |- smt ( @ aid1 = @ aid2 = ptrt . alloc_id )
-    alloct |- smt ( ptrt . base =< ( addr1 , addr2 ) =< ptrt . base + term )
-    int def= ( addr1 - addr2 ) / sizeof ct
-    ret def= sigma y : integer .: y = ( addr1 - addr2 ) / sizeof ct /\ res *o I
+    alloct | < h ; res_term > ||v < h1 + { pred_term ( oarg ) & None } ; pred_term >
+    alloct | is_live pred_term ( oarg ) & ptr1 ,  ptr2
+    alloct | in_bounds ptr1 , ptr2
+    int def= ( inj ptr1 . addr - inj ptr2 . addr ) / sizeof ct
+    ret def= sigma y : integer .: y = ( inj ptr1 . addr - inj ptr2 . addr ) / sizeof ct / sizeof ct /\ pred_term ( oarg ) *o I
     -------------------------------------------------------------------------------------------------------------- :: PtrDiff
-    alloct | < h ; res_term | ( @ aid1 , addr1 ) - ct - ( @ aid2 , addr2 ) > --> < h1 + { pred_term ( term ) & None } ; < int , pred_term > : ret >
+    alloct | < h ; res_term | ptr1 - ct - ptr2 > --> < h1 + { pred_term ( term ) & None } ; < int , pred_term > : ret >
 
 
-    alloct | < h ; res_term > ||v < h' + { pred_term ( _t ) & None } ; pred_term >
-    pred_term def= Alloc ( ptrt )
-    alloct |- smt ( @ aid = ptrt . alloc_id /\ representable ( ct2 , addr ) )
-    ret def= sigma y : integer .: y = addr /\ pred_term ( _t ) *o I
-    ---------------------------------------------------------------------------------- :: IntFromRt
-    _t | < h ; res_term | intFromRt < ct > ( ( @ aid , addr ) ) > --> < h' + { pred_term ( _t ) & None } ; < addr , pred_term > : ret >
+    addr def= if inj ptr = NULL then 0 else inj ptr . addr
+    ret def= sigma y : integer .: y = addr /\ I
+    ----------------------------------------------------------------------- :: IntFromRt
+    _t | < h ; emp | intFromRt < ct > ( ptr ) > --> < h ; < addr > : ret >
 
 
-    alloct | < h ; res_term > ||v < h' + { pred_term ( oarg ) & None } ; pred_term >
-    pred_term def= Owned < _init , ct > ( ptrt )
-    x def= alloct [ @ id ]
-    alloct |- smt ( x . base =< addr =< x . base + x . len )
     inj ptr def= ( @ default alloc_id , addr )
-    ret def= sigma y : loc .: exists x : alloc_id .: y = ( @ x , inj pval ) /\ res *o I
-    ---------------------------------------------------------------------------------------- :: RtFromInt
-    alloct | < h ; res_term | rtFromInt < ct > ( addr ) > --> < h' + { pred_term ( oarg ) & None } ; < ptr , pred_term > : ret >
+    ret def= sigma y : loc .: exists x : alloc_id .: y = ( @ x , addr ) /\ I
+    ----------------------------------------------------------------------------------- :: RtFromInt
+    _t | < h ; emp | rtFromInt < ct > ( addr ) > --> < h ; < ptr , default alloc_id > : ret >
 
 
     inj bool_value def=  aligned ( sizeof ct , inj ptr )
@@ -627,10 +650,10 @@ defns
     _t | < h ; emp | ptrWellAligned < ct > ( ptr ) > --> < h ; < bool_value > : ret >
 
 
-    alloct | < h ; res_term > ||v < h' + { pred_term ( term ) & None } ; pred_term >
-    pred_term def= Alloc ( ptrt )
+    alloct | < h ; res_term > ||v < h1 + { pred_term ( oarg ) & None } ; pred_term >
     inj ptr' def= array_shift < ct > ( inj ptr , int )
-    alloct |- smt ( inj ptr' . alloc_id = ptrt . alloc_id /\ inj ptr' . addr =< ptrt . base + term )
+    alloct | is_live pred_term ( oarg ) & ptr' ,  ptr'
+    alloct | in_bounds ptr' , ptr'
     ret def= sigma y : loc .: y = inj ptr' /\ pred_term ( term ) *o I
     --------------------------------------------------------------------------------------------- :: PtrArrayShift
     alloct | < h ; res_term | ptrArrayShift < ct > ( ptr , int ) > --> < h ; < ptr' , pred_term > : ret >

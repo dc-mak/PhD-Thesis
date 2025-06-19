@@ -995,21 +995,18 @@ defns
 defns
   expl_memop :: '' ::=
 
-  defn CLNR |- is_live res_term & pval1 , pval2 => out_res :: :: Live :: Live_
-  {{ com pointer liveness check: given $[[CLNR]]$, $[[res_term]]$ (a) proves pointers $[[pval1]]$ and $[[pval2]]$ belong to the same live allocation,
-  and (b) synthesises type $[[out_res]]$ }} by
+  defn CLNR |- is_live res_term & pval1 , pval2 :: :: Live :: Live_
+  {{ com pointer liveness check: given $[[CLNR]]$, $[[res_term]]$ proves pointers $[[pval1]]$ and $[[pval2]]$ belong to the same live allocation }} by
 
 
-    C ; L ; N ; R |- Owned < _init , ct > ( ptrt ) => res
     smt ( N => ptrt . alloc_id = inj pval1 . alloc_id = inj pval2 . alloc_id )
     --------------------------------------------------------------------- :: Owned
-    C ; L ; N ; R |- is_live Owned < _init , ct > ( ptrt ) & pval1 , pval2 => res
+    C ; L ; N ; R |- is_live Owned < _init , ct > ( ptrt ) & pval1 , pval2
 
 
-    C ; L ; N ; R |- Alloc ( term ) => res
     smt ( N => term = inj pval1 . alloc_id  = inj pval2 . alloc_id )
     --------------------------------------------------------------------- :: Alloc
-    C ; L ; N ; R |- is_live Alloc ( term ) & pval1 , pval2 => res
+    C ; L ; N ; R |- is_live Alloc ( term ) & pval1 , pval2
 
 
     % C ; L ; N ; R |- Padding < _init , union tag > ( ptrt ) => res
@@ -1046,10 +1043,8 @@ defns
     C |- pval1 => loc
     C |- pval2 => loc
     C ; L ; N ; R |- res_term => res
-    res def= Alloc ( ptrt1 ) ( term1 ) * Alloc ( ptrt2 ) ( term2 )
-    smt ( N => inj pval1 . alloc_id = inj pval2 . alloc_id = ptrt1 . alloc_id = ptrt2 . alloc_id )
-    smt ( N => ptrt1 . base =< inj pval1 . addr =< ptrt1 . base + term1 )
-    smt ( N => ptrt2 . base =< inj pval2 . addr =< ptrt2 . base + term2 )
+    C ; L ; N ; R |- is_live res_term & pval1 , pval2
+    C ; L ; N |- in_bounds pval1 , pval2
     ret def= sigma y : bool .: y = ( inj pval1 . addr ' rel_binop ' inj pval2 . addr ) /\ res *o I
     ----------------------------------------------------------------------------- :: Rel_Binop
     C ; L ; N ; R |- res_term | pval1 rel_binop pval2 => ret
@@ -1057,7 +1052,8 @@ defns
 
     C |- pval1 => loc
     C |- pval2 => loc
-    C ; L ; N ; R |- is_live res_term & pval1 , pval2 => res
+    C ; L ; N ; R |- res_term => res
+    C ; L ; N ; R |- is_live res_term & pval1 , pval2
     C ; L ; N  |- in_bounds pval1 , pval2
     ret def= sigma y : integer .: y = ( inj pval1 . addr - inj pval2 .addr ) / sizeof ct /\ res *o I
     -------------------------------- :: PtrDiff_Arr
@@ -1066,30 +1062,27 @@ defns
 
     C |- pval1 => loc
     C |- pval2 => loc
-    C ; L ; N ; R |- is_live res_term & pval1 , pval2 => res
+    C ; L ; N ; R |- res_term => res
+    C ; L ; N ; R |- is_live res_term & pval1 , pval2
     C ; L ; N  |- in_bounds pval1 , pval2
     ret def= sigma y : integer .: y = ( inj pval1 . addr - inj pval2 . addr ) / sizeof ct /\ res *o I
     -------------------------------- :: PtrDiff
     C ; L ; N ; R |- res_term | pval1 - ct - pval2 => ret
 
 
-    % Doesn't require a bounds check in VIP
     C |- pval => loc
-    C ; L ; N ; R |- is_live res_term & pval , pval => res
-    C ; L ; N |- in_bounds pval , pval
     smt ( N => representable ( ct , inj pval . addr ) )
-    ret def= sigma y : integer .: y = inj pval . addr /\ res *o I
+    term def= if inj pval = NULL then 0 else inj pval . addr
+    ret def= sigma y : integer .: y = term /\ res *o I
     -------------------------------------------------------------- :: IntFromRt
-    C ; L ; N ; R |- res_term | intFromRt < ct > ( pval ) => ret
+    C ; L ; N ; R |- emp | intFromRt < ct > ( pval ) => ret
 
 
     C |- pval => integer
-    C ; L ; N ; R |- is_live res_term & pval , pval => res
-    C ; L ; N |- in_bounds pval , pval
     ret def= sigma y : loc .: exists x : alloc_id .: y = ptrt /\ res *o I
     ptrt def= if inj pval = 0 then NULL else ( @ x , inj pval )
     ----------------------------------- :: RtFromInt
-    C ; L ; N ; R |- res_term | rtFromInt < ct > ( pval ) => ret
+    C ; L ; N ; R |- emp | rtFromInt < ct > ( pval ) => ret
 
 
     % The implementation over-approximates the behaviour of PtrValidForDeref. It
@@ -1113,8 +1106,9 @@ defns
     C |- pval1 => loc
     C |- pval2 => integer
     inj ptr def= array_shift<ct>(inj pval1, inj pval2)
-    C ; L ; N ; R |- is_live res_term & pval3 , pval3 => res
-    C ; L ; N |- in_bounds pval3 , pval3
+    C ; L ; N ; R |- res_term => res
+    C ; L ; N ; R |- is_live res_term & ptr , ptr
+    C ; L ; N |- in_bounds ptr , ptr
     ret def= sigma y : loc .: y = inj ptr /\ res *o I
     -------------------------------------------------------------------------- :: PtrArrayShift
     C ; L ; N ; R |- res_term | ptrArrayShift < ct > ( pval1 , pval2 ) =>  ret
