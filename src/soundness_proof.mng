@@ -223,9 +223,8 @@ argue for the soundness of pattern-matching
 \ResSynPredOpsBreak, \ResSynPredOpsGlue, \ResSynPredOpsInj, \ResSynPredOpsChop,
 \ResSynPredOpsFromBytes, \ResSynPredOpsSelect, \ResSynPredOpsForget,
 \ResChkPhi, \ResChkIfTrue, \ResChkIfFalse, \ActionLoad,
-\ActionStore, \ActionKillStatic, \ActionKillDynamic, \MemopRelBinop,
-\MemopPtrDiffArr, \MemopPtrDiff, \MemopIntFromRt,
-\MemopRtFromInt, \MemopPtrArrayShift.
+\ActionStore, \ActionKillStatic, \ActionKillDynamic, \LiveOwned,
+\LiveAlloc, \BoundsCheck, \MemopIntFromRt, \MemopMemcpy, \MemopMemcmp.
 
 \subsection{Typing rules which change the context}\label{subsec:ctx_change_rules}
 
@@ -256,14 +255,14 @@ No-resource / ``pure'' rules: \IGCmpEq, \IGCmpLt, \IGCmpGt, \IGCmpNone,
 \PureValStruct, \PureExprPVal, \PureExprCtorIvXOR, \PureExprArrayShift,
 \PureExprMemberShift, \PureExprNot, \PureExprArithBinop, \PureExprRelBinop,
 \PureExprBoolBinop, \PureExprCall, \PureExprAssertUndef, \PureExprBoolToInteger,
-\PureExprWrapI, \PureStmtUB, \PureStmtPVal, \MemopPtrValidForDeref,
+\PureExprWrapI, \PureStmtUB, \PureStmtPVal, \MemopPtrEq, \MemopIntFromRt,
+\MemopRtFromInt, \MemopRtFromPtr, \MemopPtrFromRt, \MemopPtrValidForDeref,
 \MemopPtrWellAligned, \ExprPure, \StmtPure.\\[\baselineskip]
 
 Resource-mentioning rules: \ResSynEmp, \ResSynVar, \ResSynVarSimp, \ResSynPred,
 \ResSynIPred, \ResSynSepConj, \ResChkPhi, \ResChkSepConj, \SpineRet,
-\SpineRes, \ActionCreate, \MemopRelBinop,
-\MemopPtrDiffArr, \MemopPtrDiff,
-\MemopIntFromRt, \MemopRtFromInt, \MemopPtrArrayShift,
+\SpineRes, \ActionCreate, \MemopRelBinop, \MemopPtrDiffArr, \MemopPtrDiff,
+\MemopCopyAllocId, \MemopPtrArrayShift, \MemopMemcpy, \MemopMemcmp,
 \StmtRun, \SubsChkEmpty, \SubsChkRes.
 
 \subsubsection{Rules which add constraints and restrict the resource context}
@@ -2006,14 +2005,26 @@ arbitrary (not normalised).
 \step{<1>22}{\case{%
     \MemopPtrDiff, \MemopPtrDiffArr.
 }{%
-    \pf{} Similar to \MemopRelBinop, so step with \OpMemopPtrDiff/\OpMemopPtrDiffArr{} respectively.
-}}
+    \pf{} Similar to \MemopRelBinop, so step with
+    \OpMemopPtrDiff/\OpMemopPtrDiffArr{} respectively.}}
 
 \step{<1>23}{\case{%
     \MemopIntFromRt, \MemopRtFromInt.
 }{%
     \pf{} Similar to \MemopPtrEq, but $[[pval]]$ is an $[[addr]]$ for \MemopRtFromInt.
     Step with \OpMemopIntFromRt/\OpMemopRtFromInt{} respectively.}}
+
+\step{<1>23}{\case{%
+    \MemopRtFromPtr, \MemopPtrFromRt.
+}{%
+    \pf{} Similar to \MemopPtrEq, but $[[pval]]$ is a $[[ptr]]$.
+    Step with \OpMemopRtFromPtr/\OpMemopPtrFromRt{} respectively.}}
+
+\step{<1>22}{\case{%
+    \MemopCopyAllocId.
+}{%
+    \pf{} Similar to \MemopRelBinop, but where $[[pval1]]$ is $[[addr]]$.
+    So step with \OpMemopCopyAllocId.}}
 
 \step{<1>25}{\case{%
     \MemopPtrValidForDeref, \MemopPtrWellAligned.
@@ -2578,9 +2589,14 @@ to deduce that $[[ nR' ]]$ can only be what you would have supplied anyways.
     \pf{} Similar to \MemopRelBinop, but with \PureValObjInt.}}
 
 \step{<1>16}{\case{%
-    \MemopIntFromRt, \MemopRtFromInt.
+    \MemopIntFromRt, \MemopRtFromInt, \MemopRtFromPtr, \MemopPtrFromRt.
 }{%
     \pf{} Similar to \MemopPtrEq, but with an extra \SpineLog{} for \MemopRtFromInt.}}
+
+\step{<1>17}{\case{%
+    \MemopCopyAllocId.
+}{%
+    \pf{} Similar to \MemopRelBinop, but with \PureValObjPtr.}}
 
 \step{<1>18}{\case{%
     \MemopPtrValidForDeref, \MemopPtrWellAligned.

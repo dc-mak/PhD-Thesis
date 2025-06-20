@@ -636,7 +636,26 @@ defns
     inj ptr def= ( @ default alloc_id , addr )
     ret def= sigma y : loc .: exists x : alloc_id .: y = ( @ x , addr ) /\ I
     ----------------------------------------------------------------------------------- :: RtFromInt
-    _t | < h ; emp | rtFromInt < ct > ( addr ) > --> < h ; < ptr , default alloc_id > : ret >
+    _t | < h ; emp | rtFromInt ( addr ) > --> < h ; < ptr , default alloc_id > : ret >
+
+
+    ret def= sigma y : loc .: y = inj ptr /\ I
+    -------------------------------------------------------------- :: RtFromPtr
+    _t | < h ; emp | rtFromInt ( ptr ) > --> < h ; < ptr > : ret >
+
+
+    ret def= sigma y : loc .: y = inj ptr /\ I
+    -------------------------------------------------------------- :: PtrFromRt
+    _t | < h ; emp | ptrFromRt < ct > ( ptr ) > --> < h ; < ptr > : ret >
+
+
+    alloct | < h ; res_term > ||v < h1 + { pred_term ( oarg ) & None } ; pred_term >
+    inj ptr' def= ( @ inj ptr . alloc_id , addr )
+    alloct | is_live pred_term ( oarg ) & ptr' ,  ptr'
+    alloct | in_bounds ptr' , ptr'
+    ret def= sigma y : integer .: y = inj ptr' /\ pred_term ( oarg ) *o I
+    -------------------------------------------------------------------------------------------------------------- :: CopyAllocId
+    alloct | < h ; res_term | copy_alloc_id ( addr , ptr ) > --> < h1 + { pred_term ( term ) & None } ; < ptr' , pred_term > : ret >
 
 
     inj bool_value def=  aligned ( sizeof ct , inj ptr )
