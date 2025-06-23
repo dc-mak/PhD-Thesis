@@ -6,65 +6,120 @@
 \margintoc{}
 
 I already mentioned some of the typing rules related to memory actions and
-pointer operations in \nameref{sec:kernel-mem-action-ops}, but I can now
-recapitulate them with more detail, drawing special attention to parts about
-liveness and bounds checks I omitted or skimmed past before. For convenience, I have
-reproduced \cref{fig:typing-mem-action} in \cref{fig:cnvip-mem-action}.
+pointer operations in \nameref{sec:kernel-mem-action-ops}, but elided some of
+the details related to the memory object model. I will now explain those
+details via four key features: dynamic memory allocation and deallocation,
+converting to and from byte representations (including support for unions),
+copying and comparing arrays of bytes, and lastly allocation liveness and
+bounds-checks.
 
-Specifically, I will discuss the updated typing rules for memory actions and
-pointer operations, and how I proved those typing rules sound with respect to
-an updated model of \kl{ResCore} heaps. Lastly, I will explain how I proved the
-\kl{ResCore} semantics as a sound abstraction above \kl{PNVI-ae-udi}.
+Along the way, I will also explain how I proved those rules sounds with respect
+to an updated model of \kl{ResCore} heaps. I do not prove that these rules are
+a sound abstraction above \kl{VIP}, though I will gesture towards why I believe
+this to be the case (\nameref{sec:linking}).
 
-\section{Memory actions}
+\section{\cinline{malloc} and \cinline{free}}
 
 \begin{figure*}[tp]
     \small
     \raggedright{}
     \onlyUseRules{\cndefnAction{}}{%
-        \cndruleActionXXCreate{},
-        \cndruleActionXXKillXXStatic{}
+        \cndruleActionXXAlloc{},
+        \cndruleActionXXKillXXDynamic{}
     }
-    \onlyUseRules{\cndefnMemop{}}{%
-        \cndruleMemopXXRelXXBinop{}
-    }
-    \caption{\kl{Kernel CN} typing rules for memory actions, and a select rule
-        for typing a memory operation.}\label{fig:cnvip-mem-action}
+    \caption{\kl{Kernel CN} typing rules for dynamic memory allocation and
+        deallocation.}\label{fig:cnvip-mem-action}
 \end{figure*}
 
-In \ActionCreate{}, creating an allocation produces new
-constraints on its base address and size. These are tracked via constraints on a
-logical variable $[[allocv]]$, a map from \kl{allocation ID}s to
-pairs of a base address and size. This can be interpreted as an implicit
-logical argument and return value for each function call.\sidenote{Need to
-check the typing rules to ensure enforce this idea consistently.} Creating an
-allocation also produces an \cninline{Alloc} token, to track the fact the
-allocation is live, as well as the usual ownership/points-to resource.
+In \ActionAlloc{}, the memory action $[[alloc (pval1, pval2)]]$, for
+dynamically allocating memory, takes two operands. The first, $[[pval1]]$, is
+the alignment for the address of the newly created pointer. The second,
+$[[pval2]]$, is the size of the allocation. The action itself consumes no
+resources from the context, and so needs an empty context with an $[[emp]]$
+resource term. Its return type expresses that it returns a pointer $[[yp]]$,
+which is constrained by $[[term]]$, whose first part of $[[term]]$,
+$[[aligned ( inj pval1, yp ) ]]$, says the pointer is aligned to $[[pval1]]$,
+and whose second part, $[[allocv [ yp . alloc_id ] = ( yp . addr , inj pval2 ) ]]$,
+says the allocation history maps the pointer's allocaton ID to the base
+address $[[ yp . addr ]]$ and length $[[ pval2 ]]$. The return type for this
+rule also expresses that it returns a logical array of bytes,
+$[[y]]$. This array is the output of an iterated points-to of bytes
+starting from the base pointer $[[yp]]$.%to $[[array_shift < byte > ( yp , inj pval2 - 1 )]]$.
+The points-to is indexed by the new C type $[[byte]]$, and is uninitialised
+$[[ Uninit ]]$, to prevent reading from the uninitialised memory in C.
+Alongside the iterated points-to, the return type also mentions
+$[[Alloc (yp.id) ( ( yp . addr,  inj pval2 ) )]]$. Though this looks similar to
+the constraint (and records the same bounds information), this is a token
+which is proof of \emph{liveness} of the allocation, and also permission
+to deallocate the newly created allocation.
 
-TODO\@. Having a memory model also allows me to introduce support for dynamic
-memory management. Whereas the above rule is only defined for typed objects
-such as locals or globals, a region is essentially just an array of memory
-bytes. For simplicity, I model every allocation as succeeding, so that the
-pointer returned is never \cinline{NULL}. Hence the typing rule is similar,
-but instead of ownership of a single object at a given C type, the ownership
-is an iterated one over an array of memory bytes.
+In \ActionKillDynamic{}, all the resources are consumed rather than produced.
+As such, the memory action takes in a resource term and the base pointer of the
+allocation to deallocate: $[[ res_term | kill < dyn > ( pval ) ]]$. The length
+of the allocation is obtained from the type of the resource term, which must
+be a pair of an iterated points-to of bytes, and an allocation token. The length
+of the allocation $[[ oarg . len ]]$, obtained from the allocation token's
+output argument, allows the rule to check the ownership of the entire allocation
+has been returned without gaps. The base address of the allocation token
+$[[ oarg . base ]]$, allows the rule to check that the address of the supplied
+pointer $[[ inj pval . addr ]]$ is in fact, the correct base address. The
+allocation ID $[[ term ]]$, allows the rule to check that the allocation ID of
+the base pointer of the iterated points-to $[[ ptrt . alloc_id ]]$ and of
+$[[ pval ]]$ all agree. The action just returns a unit value.
 
-Conversely, in \ActionKillStatic{}, destroying an allocation
-requires both ownership of it (remember ownership represents read/write
-permissions, but not allocation and freeing permissions), and the
-\cninline{Alloc} token, plus proof that the given pointer is the same as the
-owned pointer, and has the same base address as indicated by the allocation
-token. For static kills (a block variable going out of scope), the rule also
-checks that the size of the C type is also the size of the allocation.
-TODO\@. Destroying a region is similar, except with an iterated ownership
-of memory bytes.
+\section{Converting to and from bytes}
 
-Fortunately, the rules for loads and stores do not change at all. Ownership of
-a location is enough to deduce that the allocation is live, and I assume
-ownership is guaranteed to be in bounds for any allocation.\sidenote{Ownership
-of out-of-bounds resources is equivalent to $\mathsf{false}$.}
+Note that the rules for loads and stores are unchanged. In particular,
+permission to read or write a location is enough to deduce its enclosing
+allocation is live.\sidenote{Ownership of out-of-bounds resources is equivalent
+to $\mathsf{false}$.}
 
-\section{Pointer operations}
+So how would one load or store other structured C types from dynamically
+allocated memory?
+
+\begin{figure*}[tp]
+    \small
+    \raggedright{}
+    \onlyUseRules{\cndefnPredOps{}}{%
+        \cndrulePredOpsXXToXXBytes{},
+        \cndrulePredOpsXXFromXXBytes{}
+    }
+    \caption{\kl{Kernel CN} typing rules for converting iterated ownership
+        of bytes to and from ownership of other C types.}\label{fig:cnvip-to-from-bytes}
+\end{figure*}
+
+\section{Unions and padding}
+
+\section{\cinline{memcpy} and \cinline{memcmp}}
+
+The typing rules for \cinline{memcpy} require iterated ownership of two
+contiguous arrays of \kl{memory bytes} of length $n$; it returns ownership of
+both, with the constraint that the value of the destination (first) is equal to
+that of the source (second). The iterations must be contiguous and of the same
+length to express the equality constraint on the values correctly.
+
+The typing rules for \cinline{memcmp} require iterated ownership of two
+contiguous arrays of \kl{memory bytes} of length $n$; like \cinline{memcpy}, it
+returns ownership of both, unlike \cinline{memcpy} its resulting value is not
+straightforward to specify, because the concise or obvious specification would
+use quantifiers. I refer to a recursively defined logical function which
+constrains the result to be (a) unconstrained if it reads any
+\coreinline{unspec} values, (b) 0 if all bytes (excluding provenances) are equal
+and (c) the difference between the first two unequal bytes otherwise. The presence
+of \coreinline{unspec} values makes it difficult to give a simpler specification
+to the result such as \cninline[breaklines]{src == dest && result == 0i3 || src
+!= dest && result != 0i32}, because we do not wish to imply % chktex 26
+\cninline{unspec == unspec}.\sidenote{The simpler specification could be
+achieved with a notion of \emph{comparable bytes}, converting to which would
+require ownership of only initialised and non-padding bytes.}
+
+Both of these typing rules require a way to get ownership of memory bytes, for
+which, \kl{CN-VIP} adds new annotations.\sidenote{TODO add these typing rules}
+In the formal presentation, these are represented by operations on predicates
+which consume ownership of an object, and produce ownership of memory bytes, or
+vice versa.
+
+\section{Pointer liveness and bounds-checks}
 
 There are large discrepancies between the rules for pointer offsets presented
 in \sidetextcite{lepigre2022vip} and \sidetextcite{memarian2022cerberus}, and
@@ -138,35 +193,6 @@ two into a new pointer.\cinline{TODO add this rule too}
 The new C types need to be handled with care to implement the subtyping
 required for a smoother experience.\sidenote{TODO figure out the subtyping
 for base types and resources\ldots}
-
-\section{\cinline{memcpy} and \cinline{memcmp}}
-
-The typing rules for \cinline{memcpy} require iterated ownership of two
-contiguous arrays of \kl{memory bytes} of length $n$; it returns ownership of
-both, with the constraint that the value of the destination (first) is equal to
-that of the source (second). The iterations must be contiguous and of the same
-length to express the equality constraint on the values correctly.
-
-The typing rules for \cinline{memcmp} require iterated ownership of two
-contiguous arrays of \kl{memory bytes} of length $n$; like \cinline{memcpy}, it
-returns ownership of both, unlike \cinline{memcpy} its resulting value is not
-straightforward to specify, because the concise or obvious specification would
-use quantifiers. I refer to a recursively defined logical function which
-constrains the result to be (a) unconstrained if it reads any
-\coreinline{unspec} values, (b) 0 if all bytes (excluding provenances) are equal
-and (c) the difference between the first two unequal bytes otherwise. The presence
-of \coreinline{unspec} values makes it difficult to give a simpler specification
-to the result such as \cninline[breaklines]{src == dest && result == 0i3 || src
-!= dest && result != 0i32}, because we do not wish to imply % chktex 26
-\cninline{unspec == unspec}.\sidenote{The simpler specification could be
-achieved with a notion of \emph{comparable bytes}, converting to which would
-require ownership of only initialised and non-padding bytes.}
-
-Both of these typing rules require a way to get ownership of memory bytes, for
-which, \kl{CN-VIP} adds new annotations.\sidenote{TODO add these typing rules}
-In the formal presentation, these are represented by operations on predicates
-which consume ownership of an object, and produce ownership of memory bytes, or
-vice versa.
 
 \section{Soundness}\label{sec:cn-vip-soundness}
 
@@ -352,7 +378,7 @@ and the statement too
 ($[[ cdot ; L0 ; N' ; nR' |- stmt' <= ret ]]$).
 \end{theorem}
 
-\section{Linking \kl{ResCore} to \kl{PNVI-ae-udi}}\label{sec:linking}
+\subsection{Linking \kl{CN-VIP} to \kl{VIP}}\label{sec:linking}
 
 \chapter{Implementation of CN-VIP}
 

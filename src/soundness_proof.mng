@@ -219,9 +219,9 @@ argue for the soundness of pattern-matching
 \ResSimpRecIfTrue, \ResSimpRecIfFalse, \RetEqPhi, \PatResMatchIfTrue,
 \PatResMatchIfFalse, \PureExprArrayShift, \PureExprMemberShift,
 \PureExprAssertUndef, \PureStmtPVal, \PureStmtUB,
-\ResSynPredOpsCongeal, \ResSynPredOpsImplode,
-\ResSynPredOpsBreak, \ResSynPredOpsGlue, \ResSynPredOpsInj, \ResSynPredOpsChop,
-\ResSynPredOpsFromBytes, \ResSynPredOpsSelect, \ResSynPredOpsForget,
+\PredOpsCongeal, \PredOpsImplode,
+\PredOpsBreak, \PredOpsGlue, \PredOpsInj, \PredOpsChop,
+\PredOpsFromBytes, \PredOpsSelect, \PredOpsForget,
 \ResChkPhi, \ResChkIfTrue, \ResChkIfFalse, \ActionLoad,
 \ActionStore, \ActionKillStatic, \ActionKillDynamic, \LiveOwned,
 \LiveAlloc, \BoundsCheck, \MemopIntFromRt, \MemopMemcpy, \MemopMemcmp.
@@ -642,11 +642,11 @@ predicates.
 \step{<1>2}{\case{\ResSynVar, \ResSynVarSimp}{%
     \pf{} Impossible cases ($[[ res_term ]]$s are not closed).}}
 
-\step{<1>3}{\case{All remaining cases (\ResSynPredOpsIterate,
-        \ResSynPredOpsCongeal, \ResSynPredOpsExplode, \ResSynPredOpsImplode,
-        \ResSynPredOpsBreak, \ResSynPredOpsGlue, \ResSynPredOpsInj, \ResSynPredOpsChop,
-        \ResSynPredOpsToBytes, \ResSynPredOpsFromBytes, \ResSynPredOpsSelect,
-        \ResSynPredOpsForget,
+\step{<1>3}{\case{All remaining cases (\PredOpsIterate,
+        \PredOpsCongeal, \PredOpsExplode, \PredOpsImplode,
+        \PredOpsBreak, \PredOpsGlue, \PredOpsInj, \PredOpsChop,
+        \PredOpsToBytes, \PredOpsFromBytes, \PredOpsSelect,
+        \PredOpsForget,
         \ResSynPredOps, \ResSynFold, \ResSynSepConj, \ResChkPack, \ResChkSepConj,
         \ResChkIfTrue, \ResChkIfFalse, \ResChkSwitch).\\}{%
     \pf{} By induction.}}
@@ -666,11 +666,11 @@ This is a simple inversion lemma.
     \end{pfenum}\leavevmode\\}
 
 \step{<1>1}{The typing assumption cannot be any of: \ResSynVar, \ResSynVarSimp,
-    \ResSynFold, \ResSynPredOpsIterate, \ResSynPredOpsCongeal,
-    \ResSynPredOpsExplode, \ResSynPredOpsImplode, \ResSynPredOpsBreak,
-    \ResSynPredOpsGlue, \ResSynPredOpsInj, \ResSynPredOpsChop,
-    \ResSynPredOpsSelect, \ResSynPredOpsForget,
-    \ResSynPredOpsToBytes, \ResSynPredOpsFromBytes,
+    \ResSynFold, \PredOpsIterate, \PredOpsCongeal,
+    \PredOpsExplode, \PredOpsImplode, \PredOpsBreak,
+    \PredOpsGlue, \PredOpsInj, \PredOpsChop,
+    \PredOpsSelect, \PredOpsForget,
+    \PredOpsToBytes, \PredOpsFromBytes,
     \ResSynPredOps.\\
     \pf{} $[[ res_term ]]$s in these rules are not values.}
 
@@ -819,7 +819,7 @@ You need the existential, so that you can provide it as a witness when proving
 heap typing for folded predicates, which you need to use in proving unfolding
 predicates in pattern-matching.\\[\baselineskip]
 
-\step{<1>1}{\case{\ResSynPredOpsIterate}{%
+\step{<1>1}{\case{\PredOpsIterate}{%
     \pflet{%
         $[[ res_term ]]  = [[ iterate ( res_term' , n ) ]]$\\
         $[[ ipred_term ]] = [[ each (integer x;  0 =< x =< n - 1) { Owned < init , ct > ( array_shift < ct > ( ptrt , x ) ) } ]]$\\
@@ -856,8 +856,8 @@ predicates in pattern-matching.\\[\baselineskip]
 
     \end{pfproof}
 
-\step{<1>2}{\case{\ResSynPredOpsCongeal}{%
-    \pf{} Like \ResSynPredOpsIterate, but with:\\
+\step{<1>2}{\case{\PredOpsCongeal}{%
+    \pf{} Like \PredOpsIterate, but with:\\
     $[[ res_term ]]= [[ congeal ( res_term' , n ) ]]$\\
     $[[ res ]]     = [[ pred_term ( oarg ) ]]$
     where $[[ pred_term ]] = [[ Owned < init , array n ct > ( ptrt ) ]]$\\[\baselineskip]
@@ -876,8 +876,8 @@ predicates in pattern-matching.\\[\baselineskip]
     heap typing using \HeapPredOwned;
     reduction using \OpPredOpsCongeal.}}
 
-\step{<1>3}{\case{\ResSynPredOpsExplode}{%
-    \pf{} Like \ResSynPredOpsIterate, but with:\\
+\step{<1>3}{\case{\PredOpsExplode}{%
+    \pf{} Like \PredOpsIterate, but with:\\
     $[[ res_term ]]= [[ explode ( res_term' ) ]]$\\
     $[[ res ]]     = [[ *S ( </ pred_termi ( oargi ) // i /> ) ]]$
     where $[[ pred_termi ]] = [[ Owned < init , cti > ( member_shift < struct tag > ( ptrt ,  memberi ) ) ]]$\\[\baselineskip]
@@ -895,8 +895,8 @@ predicates in pattern-matching.\\[\baselineskip]
     heap typing using \HeapConcat{} and \HeapPredOwned;
     reduction using \OpPredOpsExplode.}}
 
-\step{<1>4}{\case{\ResSynPredOpsImplode}{%
-    \pf{} Like \ResSynPredOpsIterate, but with:\\
+\step{<1>4}{\case{\PredOpsImplode}{%
+    \pf{} Like \PredOpsIterate, but with:\\
     $[[ res_term ]] = [[ implode ( res_term' , tag ) ]]$\\
     $[[ res ]] = [[ pred_term ( oarg ) ]]$
     where $[[ pred_term ]] = [[ Owned < init , struct tag > ( ptrt ) ]]$\\[\baselineskip]
@@ -914,8 +914,8 @@ predicates in pattern-matching.\\[\baselineskip]
     heap typing using \HeapPredOwned;
     reduction using \OpPredOpsImplode.}}
 
-\step{<1>5}{\case{\ResSynPredOpsBreak}{%
-    \pf{} Like \ResSynPredOpsIterate, but with:\\
+\step{<1>5}{\case{\PredOpsBreak}{%
+    \pf{} Like \PredOpsIterate, but with:\\
     $[[ res_term ]]= [[ break ( res_term' , term ) ]]$\\
     $[[ res ]] = [[ ipred_term ( oarg ) * pred_term ( oarg [ term ] ) ]]$
     where $[[ ipred_term ]] = [[ each (integer x;  iguard /\ ( x != term ) ) { a ( array_shift < ct > ( ptrt , x ) , iargs ) } ]]$
@@ -942,8 +942,8 @@ predicates in pattern-matching.\\[\baselineskip]
     \HeapPredOwned{} / \HeapPredOther{} (with witness $[[ _x : pred_term ( oarg [ term ] ) ]]$);
     reduction using \OpPredOpsBreak.}}
 
-\step{<1>6}{\case{\ResSynPredOpsGlue}{%
-    \pf{} Like \ResSynPredOpsIterate, but with:\\
+\step{<1>6}{\case{\PredOpsGlue}{%
+    \pf{} Like \PredOpsIterate, but with:\\
     $[[ res_term ]]= [[ glue ( res_term' ) ]]$\\
     $[[ res ]] = [[  ipred_term ( oarg1 [ term ] := oarg2 ) ]]$
     where $[[ ipred_term ]] = [[ each (integer x;  iguard \/ x = term ) { a ( array_shift <ct> (ptrt1, x) , iargs1 ) } ]]$\\[\baselineskip] % chktex 4
@@ -968,8 +968,8 @@ predicates in pattern-matching.\\[\baselineskip]
     heap typing using \HeapIPredOwned{} / \HeapIPredOther;
     reduction using \OpPredOpsGlue.}}
 
-\step{<1>7}{\case{\ResSynPredOpsInj}{%
-    \pf{} Like \ResSynPredOpsIterate, but with:\\
+\step{<1>7}{\case{\PredOpsInj}{%
+    \pf{} Like \PredOpsIterate, but with:\\
     $[[ res_term ]]= [[ inj ( res_term' , ptrt1 , ct , x .: iargs1 ) ]]$\\
     $[[ res ]]     = [[ ipred_term ( const oarg ) ]]$
     where $[[ ipred_term ]] = [[each (integer x;  x = term ) { a ( array_shift<ct> (ptrt1, x) , iargs1 ) } ]]$\\[\baselineskip]
@@ -993,8 +993,8 @@ predicates in pattern-matching.\\[\baselineskip]
     to prove typing using \HeapIPredOwned{} / \HeapIPredOther,
     and reduction using \OpPredOpsInj.}}
 
-\step{<1>8}{\case{\ResSynPredOpsChop}{%
-    \pf{} Like \ResSynPredOpsIterate, but with:\\
+\step{<1>8}{\case{\PredOpsChop}{%
+    \pf{} Like \PredOpsIterate, but with:\\
     $[[ res_term ]]= [[ chop ( res_term' , iguard ) ]]$\\
     $[[ res ]]     = [[  ipred_term1 ( oarg ) * ipred_term2 ( oarg ) ]]$
     where $[[ ipred_term1 ]] = [[ each (integer x;  iguard ) { a ( array_shift<ct>(ptrt, x) , iargs ) } ]]$
@@ -1019,8 +1019,8 @@ predicates in pattern-matching.\\[\baselineskip]
     heap typing using \HeapConcat{} and \HeapIPredOwned{} / \HeapIPredOther;
     reduction using \OpPredOpsChop.}}
 
-\step{<1>8a}{\case{\ResSynPredOpsToBytes}{%
-    \pf{} Like \ResSynPredOpsIterate, but with:\\
+\step{<1>8a}{\case{\PredOpsToBytes}{%
+    \pf{} Like \PredOpsIterate, but with:\\
     $[[ res_term ]]= [[ to_bytes ( res_term' ) ]]$\\
     $[[ res ]]  = [[ ipred_term ( oarg' ) ]]$,
     where $[[ ipred_term ]] = [[ each (integer x; 0 =< x =< sizeof ct - 1) { Owned < init , byte > ( array_shift < byte > ( ptrt , x ) ) } ]]$.\\[\baselineskip]
@@ -1041,8 +1041,8 @@ predicates in pattern-matching.\\[\baselineskip]
     heap typing using \HeapIPredOwned{};
     reduction using \OpPredOpsToBytes.}}
 
-\step{<1>8b}{\case{\ResSynPredOpsFromBytes}{%
-    \pf{} Like \ResSynPredOpsIterate, but with:\\
+\step{<1>8b}{\case{\PredOpsFromBytes}{%
+    \pf{} Like \PredOpsIterate, but with:\\
     $[[ res_term ]]= [[ from_bytes < init , ct > ( res_term' ) ]]$\\
     $[[ res ]]     = [[  pred_term ( oarg ) ]]$
     where $[[ pred_term ]] = [[ Owned < init , ct > ( ptrt ) ]]$.\\[\baselineskip]
@@ -1063,8 +1063,8 @@ predicates in pattern-matching.\\[\baselineskip]
     heap typing using \HeapPredOwned{};
     reduction using \OpPredOpsFromBytes.}}
 
-\step{<1>8c}{\case{\ResSynPredOpsSelect}{%
-    \pf{} Like \ResSynPredOpsIterate, but with:\\
+\step{<1>8c}{\case{\PredOpsSelect}{%
+    \pf{} Like \PredOpsIterate, but with:\\
     $[[ res_term ]]= [[ select < init1 , member > ( res_term' ) ]]$\\
     $[[ res ]] = [[ pred_term1 ( oarg1 ) * pred_term2 ( oarg' )  ]]$,
     where $[[ pred_term1 ]] = [[ Owned < init1 , ct1 > ( ptrt1 ) ]]$,
@@ -1089,8 +1089,8 @@ predicates in pattern-matching.\\[\baselineskip]
     heap typing using \HeapPredOwned{} and \HeapPredPadding{} followed by \HeapConcat{};
     reduction using \OpPredOpsSelect.}}
 
-\step{<1>8d}{\case{\ResSynPredOpsForget}{%
-    \pf{} Like \ResSynPredOpsIterate, but with:\\
+\step{<1>8d}{\case{\PredOpsForget}{%
+    \pf{} Like \PredOpsIterate, but with:\\
     $[[ res_term ]]= [[ forget < union tag > ( res_term' ) ]]$\\
     $[[ res ]]     = [[  pred_term ( oarg ) ]]$
     where $[[ pred_term ]] = [[ Owned < init , union tag > ( ptrt ) ]]$.\\[\baselineskip]
@@ -1148,7 +1148,7 @@ predicates in pattern-matching.\\[\baselineskip]
     \end{pfproof}
 
 \step{<1>12}{\case{\ResChkPack}{%
-    \pf{} Like \ResSynPredOpsIterate, but with:\\
+    \pf{} Like \PredOpsIterate, but with:\\
     $[[ res_term ]] = [[ pack ( oarg , res_term' ) ]]$,
     $[[ res ]]      = [[ exists y : base_type .: res'' ]]$,
     $[[ res' ]]     = [[ oarg / y ( res'' ) ]]$\\
@@ -1156,7 +1156,7 @@ predicates in pattern-matching.\\[\baselineskip]
     Value and heap typing hold by induction; prove reduction using \OpResTPack.}}
 
 \step{<1>13}{\case{\ResSynFold}{%
-    \pf{} Like \ResSynPredOpsIterate, but with:\\
+    \pf{} Like \PredOpsIterate, but with:\\
     $[[ P ( a ) = </ xi : _bti // i /> , y : _bt  |-> res'' ]]$\\
     $[[ res_term ]]= [[ fold res_term' : a ( </ iargi // i /> ) ( oarg ) ]]$\\
     $[[ res ]]     = [[ a ( </ iargi // i /> ) ( oarg ) ]]$\\
