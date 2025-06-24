@@ -75,7 +75,20 @@ allocation is live.\sidenote{Ownership of out-of-bounds resources is equivalent
 to $\mathsf{false}$.}
 
 So how would one load or store other structured C types from dynamically
-allocated memory?
+allocated memory? Through new predicate operations to convert between ownership
+at another structured C type, and ownership of its representation as an array
+of bytes (\cref{fig:cnvip-to-from-bytes}). Converting \emph{to} the byte
+representation consumes a points-to at any C type, and produces iterated
+points-to at an array of bytes. Converting \emph{from} the byte representation
+requires that all non-padding bytes are not-\coreinline{Unspecified}; this
+prevents reading uninitialised memory and is checked by premise 3, but is
+otherwise as one would expect.
+
+There are no memory operations to capture casting between bytes as values and
+other C types directly (for example \cinline{char}), only these predicate
+operations to transform the resource context. If these are necessary, then the
+cast from bytes would need to also forbid casting the \coreinline{Unspecified}
+value.
 
 \begin{figure*}[tp]
     \small
@@ -89,6 +102,52 @@ allocated memory?
 \end{figure*}
 
 \section{Unions and padding}
+
+\begin{figure*}[tp]
+    \small
+    \raggedright{}
+    \cnusedrule{\cndrulePredOpsXXSelect{}}\\
+    \cnusedrule{\cndrulePredOpsXXForget{}}\\
+    \caption{\kl{Kernel CN} typing rules for selecting a member
+        from a union C type, and for forgetting that the union
+        was used at that type.}\label{fig:cnvip-unions}
+\end{figure*}
+
+If one has ownership of a pointer to a union, what should the type of the
+pointee be, in the specification langauge? A type-theoretic answer would be to
+model it as an algebraic datatype but the expressiveness of C unions means this
+confuses more than it clarifies. C unions support writing to one member and
+reading from another member at a different C type and size. How would using
+algebraic datatypes support this idiom? How is information written to padding
+bytes of a member preserved when switching between the use of union at two
+different fields? When a union member is used consistently, would the
+programmer need to repeatedly prove the absence of other cases, and unwrap data
+for each load?
+
+Another option we considered is to require that ownership of union must state
+which member it is being used at. This approach side steps the aforementioned
+confusion introduced by algebraic datatypes in specifications, but comes with a
+steep price: a loss of a straightforward, compositional reading of ownership of
+a struct containing a union. This is a non-starter since such an idiom is
+frequently used to encode tagged unions.
+
+To my pleasant surprise, approaching the problem from a memory object model
+lens, in particular considering it as an extension of the adding support for
+bytes and the ability to convert between them and other C types, yields an
+elegant solution and expressive solution, upon which the user can encode
+complex usage patterns for unions.
+
+The solution is tripartite. First, represent ownership of a union as ownership
+of an array of bytes. Second, require a transformation of the resource context
+to permit reads and writes to a particular member. Third, record that the
+member came from a union in a new token in the resource context. In this
+manner, an array of bytes acts as a least upper bound of any possible set of
+members which preserves all the necessary information, including padding bytes
+and provenance information for pointers.
+
+Starting with a points-to to a union, we can select a particular member. This
+checks that the bytes are valid for that member (that is, not
+\coreinline{Unspecified} if a read permission is desired). If this is the case.
 
 \section{\cinline{memcpy} and \cinline{memcmp}}
 
