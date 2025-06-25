@@ -145,11 +145,31 @@ manner, an array of bytes acts as a least upper bound of any possible set of
 members which preserves all the necessary information, including padding bytes
 and provenance information for pointers.
 
-Starting with a points-to to a union, we can select a particular member. This
-checks that the bytes are valid for that member (that is, not
-\coreinline{Unspecified} if a read permission is desired). If this is the case.
+\cref{fig:cnvip-unions}, shows how to transform a union points-to to and from
+points-to for a member. Starting with a points-to to a union, we can select a
+particular member. This checks that the bytes are valid for that member (that
+is, not \coreinline{Unspecified} if a read permission is desired). If this is
+the case, the union points-to is transformed into a points-to for the member,
+and crucially, a token representing that the points-to came from a union. It
+can also, equivalently be thought of as a predicate representing ownership of
+the (potentially empty) padding bytes around the given member of a union, hence
+the name $[[ Padding < union tag, member > ]]$. The inverse transformation
+checks that the pointers of the points-to and padding resources belong to the
+same allocation at the correct offsets, and then updates the byte array with
+the byte representation of the pointee.
 
 \section{\cinline{memcpy} and \cinline{memcmp}}
+
+\begin{figure*}[tp]
+    \small
+    \raggedright{}
+    \onlyUseRules{\cndefnMemop{}}{%
+        \cndruleMemopXXMemcpy{},
+        \cndruleMemopXXMemcmp{}
+    }
+    \caption{\kl{Kernel CN} \cinline{memcpy} and
+        \cinline{memcmp}.}\label{fig:cnvip-memcpy-memcmp}
+\end{figure*}
 
 The typing rules for \cinline{memcpy} require iterated ownership of two
 contiguous arrays of \kl{memory bytes} of length $n$; it returns ownership of
@@ -159,66 +179,118 @@ length to express the equality constraint on the values correctly.
 
 The typing rules for \cinline{memcmp} require iterated ownership of two
 contiguous arrays of \kl{memory bytes} of length $n$; like \cinline{memcpy}, it
-returns ownership of both, unlike \cinline{memcpy} its resulting value is not
+returns ownership of both, unlike \cinline{memcpy}, none of the bytes being
+compared must be \coreinline{Unspecified}, and the returned value is not
 straightforward to specify, because the concise or obvious specification would
-use quantifiers. I refer to a recursively defined logical function which
-constrains the result to be (a) unconstrained if it reads any
-\coreinline{unspec} values, (b) 0 if all bytes (excluding provenances) are equal
-and (c) the difference between the first two unequal bytes otherwise. The presence
-of \coreinline{unspec} values makes it difficult to give a simpler specification
-to the result such as \cninline[breaklines]{src == dest && result == 0i3 || src
-!= dest && result != 0i32}, because we do not wish to imply % chktex 26
-\cninline{unspec == unspec}.\sidenote{The simpler specification could be
-achieved with a notion of \emph{comparable bytes}, converting to which would
-require ownership of only initialised and non-padding bytes.}
-
-Both of these typing rules require a way to get ownership of memory bytes, for
-which, \kl{CN-VIP} adds new annotations.\sidenote{TODO add these typing rules}
-In the formal presentation, these are represented by operations on predicates
-which consume ownership of an object, and produce ownership of memory bytes, or
-vice versa.
+use quantifiers. Instead, I refer to a recursively defined logical function
+which constrains the result to be 0 if all bytes (excluding provenances) are
+equal and the difference between the first two unequal bytes (excluding
+provenances) otherwise.
 
 \section{Pointer liveness and bounds-checks}
 
-There are large discrepancies between the rules for pointer offsets presented
-in \sidetextcite{lepigre2022vip} and \sidetextcite{memarian2022cerberus}, and
-the \kl{Cerberus source code}, which I have detailed in a table in
-\cref{fig:offset-confusion}. I am awaiting clarification on the correct way to
-proceed.
+There are discrepancies between the PNVI-* rules for pointer offsets presented in
+\sidetextcite{lepigre2022vip} and \sidetextcite{memarian2022cerberus}, and the
+\kl{Cerberus source code}, which I have detailed in a table in
+\cref{fig:offset-confusion}.
+
+For \citeauthor{lepigre2022vip}, the omission of pure/permissive rules for is
+likely because they are not memory operations per se since they would be called
+from the pure fragment of Core, even though they are defined by the memory
+object model (because they are dependent on the representation of pointers). I
+suspect the lack of a liveness check for ISO array shifting is likely an error,
+since the other sources require it.
+
+For \citeauthor{memarian2022cerberus}, I suspect having a special case on
+\cinline{NULL} but not for 0-offset is likely an error, given the behaviour
+of the code.
+
+For the \kl{Cerberus} code, the pure/permissive member shift has a comment
+saying that member shifting a \cinline{NULL} pointer may be UB per the ISO
+standard, but is the assumed behaviour of some GCC torture tests. The result is
+\cinline{NULL} if the offset $n$ is zero, and is a pointer $(@\mathsf{empty},
+n)$ if the offset $n$ is non-zero. This behaviour is not controlled by any
+switch. My conjecture is that member shifting on \cinline{NULL} is merely
+allowed to be able to define \cinline{offsetof} as a macro.
+
+The effectful version of member shifting, is actually only used by its CHERI
+switch, and is not relevant to capturing the ISO rule.
+
+Instead, the \kl{Cerberus} frontend enforces the checks required by the ISO
+rule by using the elaboration: every member shift is either (1) an lvalue or
+(2) if strict pointer arithmetic is enabled, guarded by a call to the memory
+operation \coreinline{PtrValidForDeref}. This ensures the initial pointer is
+strictly in bounds of a live allocation for a given C type; any subsequent
+shifts at that C type are thus guaranteed to remain in bounds.
+
+Similarly, the effectful, ISO version of array shifting is controlled by the
+same switch; the elaboration only uses the memory operation strict pointer
+arithmetic is enabled, and uses the pure Core expression otherwise.
+
+For the purposes of formalisation, I chose the following behaviour for
+CN-VIP.\@ As I will discuss in~\nameref{chap:impl-cnvip}, I need to adjust the
+approach to work-around limitations of the \kl{CN} implementation.
+
+\begin{itemize}
+    \item Pure/permissive member shifts require the pointer to have a
+        provenance, but do not special-case for the \cinline{NULL} pointer.
+        If my conjecture is correct, then any cases which require this
+        may be replaced directly with offsetof as a builtin construct
+        already supported by \kl{Cerberus} and \kl{CN}.
+    \item ISO member shifts are not handled directly, because they
+        do not show up as such in the elaboration. Instead, the rules
+        for \coreinline{PtrValidForDeref} essentially allow the Core program to
+        reflect the presence or absence of a live and sufficiently large
+        allocation in the resource context into the returned value.
+        TODO update the typing rules and proofs for this!
+    \item Pure/permissive array shifts require the pointer to have a
+        provenance.
+    \item ISO array shifts require the resulting pointers to be in bounds of a
+        live allocation.
+\end{itemize}
 
 \begin{figure*}[tpb]
   \begin{tabular}{ccccc}
   \toprule
-   & \citeauthor{lepigre2022vip} incl.\ appendix & \citeauthor{memarian2022cerberus} & Cerberus code \\
+   & \citeauthor{lepigre2022vip} incl.\ appendix & \citeauthor{memarian2022cerberus} & Cerberus code & CN-VIP \\% & VIP code \\
   \midrule
   Member (P)
     & {\ballotX✗}
     & case \cinline{NULL}
     & case \cinline{NULL}, 0-offset
+    & has provenance
+    % & has provenance
   \\
   Member (ISO)
     & bounds, case 0-offset
     & bounds, liveness
     & case \cinline{NULL}, 0-offset
+    & {\ballotX✗}
+    % & has provenance
   \\
   Array (P)
     & {\ballotX✗}
-    & \textendash{}
-    & \textendash{}
+    & has provenance
+    & has provenance
+    & has provenance
+    % & has provenance
   \\
   Array (ISO)
     & bounds
     & bounds, liveness
     & bounds, liveness
+    & bounds, liveness
+    % & bounds, liveness
   \\
   \bottomrule
   \end{tabular}
   \caption{Rules for computing pointer offsets (member and array, with
       pure/permissive (P) and ISO variants) in PNVI-ae-udi, across three
       different sources. `{\ballotX✗}' means the rule is omitted. `case'
-      means the rule has a special case for that value. `\textendash{}' means
-      there are no checks. `bounds' means a bounds check on the resulting
-      pointer. `liveness' means a liveness check on the allocation.}\label{fig:offset-confusion}
+      means the rule has a special case for that value. `has provenance' means
+      the pointer must be neither \cinline{NULL} nor a function pointer.
+      `bounds' means a bounds check on the resulting pointer. `liveness' means
+      a liveness check on the allocation.}\label{fig:offset-confusion}
 \end{figure*}
 
 Pointer operations such as taking the difference between two pointers or
@@ -330,6 +402,9 @@ add/fix this}
 \begin{figure*}
     \small%
     \raggedright%
+    \onlyUseRules{\cndefnMemop{}}{%
+        \cndruleMemopXXRelXXBinop{}
+    }
     \onlyUseRules{\cndefnOpXXMemop{}}{%
         \cndruleOpXXMemopXXRelXXBinop{}
     }
@@ -439,7 +514,7 @@ and the statement too
 
 \subsection{Linking \kl{CN-VIP} to \kl{VIP}}\label{sec:linking}
 
-\chapter{Implementation of CN-VIP}
+\chapter{Implementation of CN-VIP}\label{chap:impl-cnvip}
 
 \margintoc{}
 
