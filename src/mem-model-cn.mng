@@ -294,37 +294,77 @@ approach to work-around limitations of the \kl{CN} implementation.
 
 \section{Pointer liveness and bounds checks}
 
-Pointer operations such as taking the difference between two pointers or
-relational comparison between two pointers, require both pointers to be in
-bounds of the same live allocation. Hence the rule in\sidenote{TODO fix the
-binop rule, which is a bit wrong in many ways} \cref{fig:cnvip-mem-action}
-asks the solver to prove (a) the \kl{allocation ID}s are equal, (b) that the
-pointer are within bounds of the allocation and (c) to check there exists a
-live allocation with that ID\@. The evidence of a live allocation can be
-either ownership with the same \kl{allocation ID}, or an \cninline{Alloc} token,
-and the rule is agnostic as to which, just that this evidence is returned
-in the type so as to not consume/destroy it.
+Proof that a pointer is live takes one of two forms: either an allocation
+token, or a points-to, whose allocation ID matches that of the pointer. Once
+that is established, a pointer needs to be checked to ensure it is within
+bounds; unlike liveness, this fact only uses the SMT solver, and not the
+resource context. Both of these ideas are formalised in the judgements and
+rules shown in~\cref{fig:cnvip-liveness-bounds}, as is their use in the VIP
+primitive \cinline[breaklines]{copy_alloc_id}. It checks that the result is in
+the bounds of the live allocation indicated by its argument. The judgements are
+also used in~\cref{fig:mem-model-dyn-ptr-relop}, where the rule for relational
+operators on pointers (excluding in/equality, handled separately) checks
+whether each argument is in bounds of the same live allocation.
 
-A rule that is present in the code, but missing in other formats for
-\kl{PNVI-ae-udi} is that for casting pointers to dead allocations to integers,
-which is permitted so long as the address can fit within the target integer
-type. Since \kl{VIP} does not track exposure, the live and the dead
-pointer cases collapse into the same case. On top of this, as I mentioned in
-\cref{subsec:prov-int-bytes}, I chose to support the limited provenance in
-integers required via a new C type, to make any additional complexity and
-performance cost as opt-in, and to avoid changing all the base types for
-integers of various sizes (bit vectors) to a datatype with two constructors.
-Because of these two simplifications, the cast is therefore just an identity,
-on the SMT term and its base type.\sidenote{TODO add this rule} The rules for
-casting an integer to a pointer is \kl{UB} if it is not in the \cinline{NULL}
-or round-trip case, and is an identity in the latter.\sidenote{TODO add
-this rule} And the rule for \cinline{copy_alloc_id} performs a bounds check on
-the integer using the \kl{allocation ID} supplied by the pointer, and combines the
-two into a new pointer.\cinline{TODO add this rule too}
+\begin{figure*}[tp]
+    \small
+    \raggedright{}
+    \cndefnLive{}
+    \cndefnBounds{}
+    \onlyUseRules{\cndefnMemop{}}{%
+        \cndruleMemopXXCopyAllocId{}
+    }
+    \caption{\kl{Kernel CN} liveness and bounds
+        checks.}\label{fig:cnvip-liveness-bounds}
+\end{figure*}
 
-The new C types need to be handled with care to implement the subtyping
-required for a smoother experience.\sidenote{TODO figure out the subtyping
-for base types and resources\ldots}
+\section{Supporting roundtrip casts}
+
+As explained in \nameref{subsec:prov-int-bytes}, whereas \kl{VIP} and
+\kl{PNVI-ae-udi} support casts between pointers and integers directly,
+\kl{CN-VIP} requires such casts to proceed via a new, intermediate C type for
+supporting roundtrip casts. To be clear, from the point of view of the user,
+the new intermediate C type is just a \cinline{typedef} for an integer such as
+\cinline{uintptr_t}, so any code that uses it will continue to compile and run
+with standard C toolchains. However, when used within \kl{CN}, the new C type
+enables supporting roundtrip casts at the cost of a few more casts; for now
+these must be inserted manually by the programmer, but it is possible to tweak
+the \kl{Cerberus} elaboration to insert some of them automatically.
+
+Remember, the idea is that the new C type will allow \kl{CN} to track the
+representation of integers more precisely than in \kl{VIP} which uses a
+datatype with two cases, to sidestep any potential performance issues.
+
+% A rule that is present in the code, but missing in other formats for
+% \kl{PNVI-ae-udi} is that for casting pointers to dead allocations to integers,
+% which is permitted so long as the address can fit within the target integer
+% type. Since \kl{VIP} does not track exposure, the live and the dead
+% pointer cases collapse into the same case. On top of this, as I mentioned in
+% \cref{subsec:prov-int-bytes}, I chose to support the limited provenance in
+% integers required via a new C type, to make any additional complexity and
+% performance cost as opt-in, and to avoid changing all the base types for
+% integers of various sizes (bit vectors) to a datatype with two constructors.
+% Because of these two simplifications, the cast is therefore just an identity,
+% on the SMT term and its base type.\sidenote{TODO add this rule} The rules for
+% casting an integer to a pointer is \kl{UB} if it is not in the \cinline{NULL}
+% or round-trip case, and is an identity in the latter.\sidenote{TODO add
+% this rule} And the rule for \cinline{copy_alloc_id} performs a bounds check on
+% the integer using the \kl{allocation ID} supplied by the pointer, and combines the
+% two into a new pointer.\cinline{TODO add this rule too}
+%
+% NOTE: the PNVI-* code for casting pointers to integers allows dead allocation
+% pointers and empty provenances, but the rules don't seem to mention it. This
+% omission is compounded by VIP's rules, which (overly-restrictively) require
+% the cast pointer to be alive. CN-VIP typing rules _do not_ require this, since
+% the C standard does not forbid it. I'm also reasonably confident the VIP rules
+% can be updated to handle this extra expressiveness too - none of the definitions
+% and lemmas used in the proof seem to rely on the allocation being alive (aside
+% from when required by the incorrect PNVI-ae-udi rule against which soundness is
+% proved).
+% 
+% The new C types need to be handled with care to implement the subtyping
+% required for a smoother experience.\sidenote{TODO figure out the subtyping
+% for base types and resources\ldots}
 
 \section{Soundness}\label{sec:cn-vip-soundness}
 
