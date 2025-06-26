@@ -411,18 +411,20 @@ defns
   C ; L ; N ; nR |- copy_alloc_id ( pval1 , pval2 ) ~> bind cdot for res_term & norm_ret -| nR'
 
 
-  % The implementation over-approximates the behaviour of PtrValidForDeref. It
-  % doesn't check the resource context (for the resource & the init) - which
-  % is fine because any subsequent loads will have to do so anyways.
-  % Also this is part of the Cerberus memory interface, not pointer-operations
-  % part of the C standard and so is not subject to pointer-liveness constraints.
+  % See comment in explicit.ott typing rule!
   C |- pval => loc
-  norm_ret def= sigma y : bool .: y = aligned ( sizeof ct , inj pval ) /\ I
+  C ; L ; N ; nR |- pval , pval ~> res_term : norm_res -| nR'
+  norm_ret def= sigma y : bool .: y = aligned ( sizeof ct , inj pval ) /\ norm_res *o I
   ---------------- :: PtrValidForDeref
+  C ; L ; N ; nR |- ptrValidForDeref < ct > ( pval ) ~> bind cdot for res_term & norm_ret -| nR
+
+
+  C |- pval => loc
+  norm_ret def= sigma y : bool .: I
+  ---------------- :: PtrMaybeDeref
   C ; L ; N ; nR |- ptrValidForDeref < ct > ( pval ) ~> bind cdot for emp & norm_ret -| nR
 
 
-  % Similar to PtrValidForDeref.
   C |- pval => loc
   norm_ret def= sigma y : bool .: y = aligned ( sizeof ct , inj pval ) /\ I
   ----------------- :: PtrWellAligned

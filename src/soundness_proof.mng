@@ -256,7 +256,7 @@ No-resource / ``pure'' rules: \IGCmpEq, \IGCmpLt, \IGCmpGt, \IGCmpNone,
 \PureExprMemberShift, \PureExprNot, \PureExprArithBinop, \PureExprRelBinop,
 \PureExprBoolBinop, \PureExprCall, \PureExprAssertUndef, \PureExprBoolToInteger,
 \PureExprWrapI, \PureStmtUB, \PureStmtPVal, \MemopPtrEq, \MemopIntFromRt,
-\MemopRtFromInt, \MemopRtFromPtr, \MemopPtrFromRt, \MemopPtrValidForDeref,
+\MemopRtFromInt, \MemopRtFromPtr, \MemopPtrFromRt, \MemopPtrMaybeDeref,
 \MemopPtrWellAligned, \ExprPure, \StmtPure.\\[\baselineskip]
 
 Resource-mentioning rules: \ResSynEmp, \ResSynVar, \ResSynVarSimp, \ResSynPred,
@@ -2026,11 +2026,17 @@ arbitrary (not normalised).
     \pf{} Similar to \MemopRelBinop, but where $[[pval1]]$ is $[[addr]]$.
     So step with \OpMemopCopyAllocId.}}
 
+\step{<1>23}{\case{%
+    \MemopPtrValidForDeref.
+}{%
+    \pf{} Similar to \MemopRelBinop, but with only one $[[pval]]$ which is a
+    $[[ptr]]$. So step with \OpMemopPtrValidForDeref.}}
+
 \step{<1>25}{\case{%
-    \MemopPtrValidForDeref, \MemopPtrWellAligned.
+    \MemopPtrMaybeDeref, \MemopPtrWellAligned.
 }{%
     \pf{} Similar to \MemopPtrEq, excepct with only one $[[pval]]$.
-    Step with \OpMemopPtrValidForDeref/\OpMemopPtrWellAligned{} respectively.}}
+    Step with \OpMemopPtrMaybeDeref/\OpMemopPtrWellAligned{} respectively.}}
 
 
 \step{<1>27}{\case{%
@@ -2209,8 +2215,8 @@ $[[ C |- pval => to_base ( ct ) ]]$.
 
 \pfsketch{ Induction over the typing judgements. Only \ActionStore{}
     constrains $[[ oarg ]]$ of $[[ Owned < _init , ct > ]]$ resources, and its
-    premises ensure it has type $[[ to_base ( ct ) ]]$; \ActionLoad{} and
-    \MemopPtrValidForDeref{} simply propagate the value.}
+    premises ensure it has type $[[ to_base ( ct ) ]]$; \ActionLoad{}
+    simply propagates the value.}
 
 \subsection{Type Preservation Statement and Proof}
 
@@ -2598,8 +2604,13 @@ to deduce that $[[ nR' ]]$ can only be what you would have supplied anyways.
 }{%
     \pf{} Similar to \MemopRelBinop, but with \PureValObjPtr.}}
 
+\step{<1>17a}{\case{%
+    \MemopPtrValidForDeref.
+}{%
+    \pf{} Similar to \MemopRelBinop.}}
+
 \step{<1>18}{\case{%
-    \MemopPtrValidForDeref, \MemopPtrWellAligned.
+    \MemopPtrMaybeDeref, \MemopPtrWellAligned.
 }{%
     \pf{} Similar to \MemopPtrEq.}}
 

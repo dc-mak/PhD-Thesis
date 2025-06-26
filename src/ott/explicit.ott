@@ -1108,18 +1108,31 @@ defns
     C ; L ; N ; R |- res_term | copy_alloc_id ( pval1 , pval2 ) => ret
 
 
-    % The implementation over-approximates the behaviour of PtrValidForDeref. It
-    % doesn't check the resource context (for the resource & the init) - which
-    % is fine because any subsequent loads will have to do so anyways.
-    % Also this is part of the Cerberus memory interface, not pointer-operations
-    % part of the C standard and so is not subject to pointer-liveness constraints.
+    % PtrValidForDeref is used in two places.
+    % 1. The elaboration of *E, for which it is guaranteed to be followed by a
+    %    load (as an rvalue) or a store (as an lvalue).
+    % 2. Before computing a member shift, when strict_pointer_arith switch
+    %    is enabled for Cerberus.
+    % In the first case, the lookup in the context is redundant and ideally
+    % it should be marked as such by the elaboration so the implementation
+    % treats it equivalently to a PtrWellAligned.
+    % In the second, it is only present if the switch is enabled, and so should
+    % be checked as below with a resource lookup.
     C |- pval => loc
-    ret def= sigma y : bool .: y = aligned ( sizeof ct , inj pval ) /\ I
+    C ; L ; N ; R |- res_term => res
+    C ; L ; N |- is_live res & pval , pval
+    C ; L ; N |- in_bounds pval , pval
+    ret def= sigma y : bool .: y = aligned ( sizeof ct , inj pval ) /\ res *o I
     ---------------- :: PtrValidForDeref
+    C ; L ; N ; R |- res_term | ptrValidForDeref < ct > ( pval ) => ret
+
+
+    C |- pval => loc
+    ret def= sigma y : bool .: I
+    ---------------- :: PtrMaybeDeref
     C ; L ; N ; cdot |- emp | ptrValidForDeref < ct > ( pval ) => ret
 
 
-    % Similar to PtrValidForDeref.
     C |- pval => loc
     ret def= sigma y : bool .: y = aligned ( sizeof ct , inj pval ) /\ I
     ----------------- :: PtrWellAligned

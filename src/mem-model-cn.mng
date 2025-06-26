@@ -187,9 +187,9 @@ which constrains the result to be 0 if all bytes (excluding provenances) are
 equal and the difference between the first two unequal bytes (excluding
 provenances) otherwise.
 
-\section{Pointer liveness and bounds-checks}
+\section{Checking pointer shifts}
 
-There are discrepancies between the PNVI-* rules for pointer offsets presented in
+There are discrepancies between the PNVI-* rules for pointer shifts presented in
 \sidetextcite{lepigre2022vip} and \sidetextcite{memarian2022cerberus}, and the
 \kl{Cerberus source code}, which I have detailed in a table in
 \cref{fig:offset-confusion}.
@@ -235,14 +235,13 @@ approach to work-around limitations of the \kl{CN} implementation.
     \item Pure/permissive member shifts require the pointer to have a
         provenance, but do not special-case for the \cinline{NULL} pointer.
         If my conjecture is correct, then any cases which require this
-        may be replaced directly with offsetof as a builtin construct
-        already supported by \kl{Cerberus} and \kl{CN}.
+        may be replaced directly with \cinline{offsetof} as a builtin construct
+        (one which is already supported by \kl{Cerberus} and \kl{CN}).
     \item ISO member shifts are not handled directly, because they
         do not show up as such in the elaboration. Instead, the rules
-        for \coreinline{PtrValidForDeref} essentially allow the Core program to
+        for \coreinline[breaklines]{PtrValidForDeref} allow the Core program to
         reflect the presence or absence of a live and sufficiently large
         allocation in the resource context into the returned value.
-        TODO update the typing rules and proofs for this!
     \item Pure/permissive array shifts require the pointer to have a
         provenance.
     \item ISO array shifts require the resulting pointers to be in bounds of a
@@ -284,7 +283,7 @@ approach to work-around limitations of the \kl{CN} implementation.
   \\
   \bottomrule
   \end{tabular}
-  \caption{Rules for computing pointer offsets (member and array, with
+  \caption{Rules for computing pointer shifts (member and array, with
       pure/permissive (P) and ISO variants) in PNVI-ae-udi, across three
       different sources. `{\ballotX✗}' means the rule is omitted. `case'
       means the rule has a special case for that value. `has provenance' means
@@ -292,6 +291,8 @@ approach to work-around limitations of the \kl{CN} implementation.
       `bounds' means a bounds check on the resulting pointer. `liveness' means
       a liveness check on the allocation.}\label{fig:offset-confusion}
 \end{figure*}
+
+\section{Pointer liveness and bounds checks}
 
 Pointer operations such as taking the difference between two pointers or
 relational comparison between two pointers, require both pointers to be in
