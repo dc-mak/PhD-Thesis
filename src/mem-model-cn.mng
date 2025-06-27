@@ -239,9 +239,10 @@ approach to work-around limitations of the \kl{CN} implementation.
         (one which is already supported by \kl{Cerberus} and \kl{CN}).
     \item ISO member shifts are not handled directly, because they
         do not show up as such in the elaboration. Instead, the rules
-        for \coreinline[breaklines]{PtrValidForDeref} allow the Core program to
-        reflect the presence or absence of a live and sufficiently large
-        allocation in the resource context into the returned value.
+        for \MemopPtrValidForDeref{} and \MemopPtrMaybeDeref{} allow the
+        \kl{ResCore} program to reflect the presence or absence of a live and
+        sufficiently large allocation in the resource context into the returned
+        value.
     \item Pure/permissive array shifts require the pointer to have a
         provenance.
     \item ISO array shifts require the resulting pointers to be in bounds of a
@@ -333,38 +334,43 @@ the \kl{Cerberus} elaboration to insert some of them automatically.
 
 Remember, the idea is that the new C type will allow \kl{CN} to track the
 representation of integers more precisely than in \kl{VIP} which uses a
-datatype with two cases, to sidestep any potential performance issues.
+datatype with two cases, to sidestep any potential performance issues and make
+additional complexity in specifications opt-in.
 
-% A rule that is present in the code, but missing in other formats for
-% \kl{PNVI-ae-udi} is that for casting pointers to dead allocations to integers,
-% which is permitted so long as the address can fit within the target integer
-% type. Since \kl{VIP} does not track exposure, the live and the dead
-% pointer cases collapse into the same case. On top of this, as I mentioned in
-% \cref{subsec:prov-int-bytes}, I chose to support the limited provenance in
-% integers required via a new C type, to make any additional complexity and
-% performance cost as opt-in, and to avoid changing all the base types for
-% integers of various sizes (bit vectors) to a datatype with two constructors.
-% Because of these two simplifications, the cast is therefore just an identity,
-% on the SMT term and its base type.\sidenote{TODO add this rule} The rules for
-% casting an integer to a pointer is \kl{UB} if it is not in the \cinline{NULL}
-% or round-trip case, and is an identity in the latter.\sidenote{TODO add
-% this rule} And the rule for \cinline{copy_alloc_id} performs a bounds check on
-% the integer using the \kl{allocation ID} supplied by the pointer, and combines the
-% two into a new pointer.\cinline{TODO add this rule too}
-%
-% NOTE: the PNVI-* code for casting pointers to integers allows dead allocation
-% pointers and empty provenances, but the rules don't seem to mention it. This
-% omission is compounded by VIP's rules, which (overly-restrictively) require
-% the cast pointer to be alive. CN-VIP typing rules _do not_ require this, since
-% the C standard does not forbid it. I'm also reasonably confident the VIP rules
-% can be updated to handle this extra expressiveness too - none of the definitions
-% and lemmas used in the proof seem to rely on the allocation being alive (aside
-% from when required by the incorrect PNVI-ae-udi rule against which soundness is
-% proved).
-% 
-% The new C types need to be handled with care to implement the subtyping
-% required for a smoother experience.\sidenote{TODO figure out the subtyping
-% for base types and resources\ldots}
+Note that, in line with the C standard, the the PNVI-* code for casting
+pointers to integers allows for casting pointers belonging to dead allocations,
+or pointers with $@\mathsf{empty}$ provenances, whereas the formalised rules in
+\citeauthor{memarian2022cerberus} erroneously do not mention this case. This
+omission is then compounded by the \citeauthor{lepigre2022vip} rules, which,
+overly-restrictively, require the cast pointer to be alive. Upon examining the
+proof of soundness of \kl{VIP} above \kl{PNVI-ae-udi} for this case, I
+concluded that the restriction can be relaxed to the intended meaning. As such,
+the \kl{CN-VIP} typing rules \kl{do not} require the cast pointer to belong to
+a live allocation, and thus do not require any resource term proofs of it
+(\cref{fig:cnvip-roundtrip}).
+
+\begin{figure*}[tp]
+    \small
+    \raggedright{}
+    \cndefnLive{}
+    \cndefnBounds{}
+    \onlyUseRules{\cndefnMemop{}}{%
+        \cndruleMemopXXIntFromRt{},
+        \cndruleMemopXXRtFromInt{},
+        \cndruleMemopXXRtFromPtr{},
+        \cndruleMemopXXPtrFromRt{}
+    }
+    \caption{\kl{Kernel CN} casts between pointer, roundtrip and integer
+        types.}\label{fig:cnvip-roundtrip}
+\end{figure*}
+
+At the \kl{Kernel CN} level, the basetype for the new, roundtrip C type is just
+$[[loc]]$. This means the cast between pointers and roundtrip at the
+specification level is just the identity. However, it is still necessary as a
+distinct memory operation \MemopRtFromPtr{} because it corresponds to a pointer
+value being cast to a $\mathit{Loc}\,(@i, a)$, integer value in \kl{VIP}, and
+similarly the memory operation \MemopIntFromRt{} corresponds to the transition
+to the $\mathit{Int}\,(a)$ integer value in \kl{VIP}.
 
 \section{Soundness}\label{sec:cn-vip-soundness}
 
