@@ -1072,29 +1072,39 @@ defns
 
     C |- pval => loc
     smt ( N => representable ( ct , inj pval . addr ) )
-    term def= if inj pval = NULL then 0 else inj pval . addr
-    ret def= sigma y : integer .: y = term /\ res *o I
+    ret def= sigma y : integer .: y = inj pval . addr /\ res *o I
     -------------------------------------------------------------- :: IntFromRt
     C ; L ; N ; cdot |- emp | intFromRt < ct > ( pval ) => ret
 
 
     C |- pval => integer
-    ret def= sigma y : loc .: exists x : alloc_id .: y = ptrt /\ res *o I
-    ptrt def= if inj pval = 0 then NULL else ( @ x , inj pval )
+    ret def= sigma y : loc .: exists x : alloc_id .: y = ( @ x , inj pval ) /\ res *o I
     ----------------------------------- :: RtFromInt
     C ; L ; N ; cdot |- emp | rtFromInt ( pval ) => ret
 
 
     C |- pval => loc
-    ret def= sigma y : integer .: y = inj pval /\ I
+    ret def= sigma y : integer .: exists x : alloc_id .: y = term /\ I
+    term def= if inj pval = NULL then ( @ x , 0 ) else inj pval
     ------------------------------------------------ :: RtFromPtr
     C ; L ; N ; cdot |- emp | rtFromPtr ( pval ) => ret
 
 
     C |- pval => loc
-    ret def= sigma y : loc .: y = inj pval /\ I
+    C ; L ; N ; R |- res_term => res
+    C ; L ; N |- is_live res & pval , pval
+    C ; L ; N  |- in_bounds pval , pval
+    ret def= sigma y : loc .: y = inj pval /\ res *o I
+    term def= if inj pval . addr = 0 then NULL else inj pval
     ----------------------------------- :: PtrFromRt
-    C ; L ; N ; cdot |- emp | ptrFromRt < ct > ( pval ) => ret
+    C ; L ; N ; cdot |- res_term | ptrFromRt < ct > ( pval ) => ret
+
+
+    % C |- pval => loc
+    % ret def= sigma y : integer .: exists x : alloc_id .: y = term /\ I
+    % term def= if inj pval . addr = 0 then NULL else ( @ x , inj pval . addr )
+    % ----------------------------------- :: EmptyFromRt
+    % C ; L ; N ; cdot |- emp | ptrFromRt < ct > ( pval ) => ret
 
 
     C |- pval1 => integer

@@ -374,20 +374,26 @@ to the $\mathit{Int}\,(a)$ integer value in \kl{VIP}.
 
 \section{Soundness}\label{sec:cn-vip-soundness}
 
-There are few steps involved to updating the formalisation to use a \kl{VIP}
-based memory object model from its current concrete one.
+There are few steps involved in extending the formalisation presented in
+\nameref{chap:kernel-soundness} from using a concrete memory object model to
+\kl{CN-VIP}.
+
 \begin{enumerate}
     \item Extend the configuration of the dynamic semantics to be a step
         relation between abstract \emph{states} and expressions, rather than
         just \emph{heaps} and expressions.
     \item Extend the heap typing rules to incorporate the newly added
-        allocation history.
+        allocation history, $[[ Alloc ]]$ and $[[Padding < ct , member >]]$
+        tokens.
     \item Update the proof of soundness for resource term reduction and pattern
         matching, with the new rules.
-    \item Interpret and prove sound ResCore abstract state and transitions into
-        the same for \kl{PNVI-ae-udi}, perhaps via an intermediate concrete
-        memory model.
 \end{enumerate}
+
+I do not interpret and prove sound \kl{ResCore} abstract state and transitions
+above \kl{VIP} (with non-deterministic pointer equality, and more permissive
+pointer to integer casts), though I will explain informally why I believe this
+to be the case. Instead, I implement and empirically validate the design by
+adapting and running the \kl{VIP} test suite (\nameref{sec:cnvip-eval}).
 
 \subsection{Extending the dynamic semantics}
 
@@ -409,13 +415,13 @@ information, to check the constraint as a closed term (\cref{fig:mem-model-dyn-s
         changing allocation history.}\label{fig:mem-model-dyn-smt}
 \end{marginfigure}
 
-Only the \coreinline{create} memory action extends the allocation history, and
-so it and every grammar node containing it also includes the allocation history
-as part of its configuration, rather than threaded through the
-side.\sidenote{TODO fix premise 7 of the create dynamic rules.} Note that
-because I split the intuitionistic part of the allocation history from the
-linear part, it does not get updated to record a dead allocation in the
-rule for \coreinline{kill} (\cref{fig:mem-model-dyn-create-kill}).
+Only the \coreinline{create} and \coreinline{alloc} memory actions extend the
+allocation history, and so it and every grammar node containing it also
+includes the allocation history as part of its configuration, rather than
+threaded through the side. Note that because I split the intuitionistic part of
+the allocation history from the linear part, it does not get updated to record
+a dead allocation in the rule for \coreinline{kill}
+(\cref{fig:mem-model-dyn-create-kill}).
 
 \begin{figure*}
     \small%
@@ -437,14 +443,14 @@ With the exception of threading through the allocation history, the rules for
 loads and stores are unchanged. The rules for converting ownership of objects
 into iterated ownership of memory bytes and vice versa are predicate
 operations, much like the ones for manipulating structs and fixed-length
-arrays.\sidenote{TODO add them} The rules for \coreinline{memcpy} and
-\coreinline{memcmp} are also as expected.\sidenote{TODO add them}
+arrays. The rules for \coreinline{memcpy} and \coreinline{memcmp} are also as
+expected.
 
-Pointer operations do not extend the allocation history, but do require the
-heap to check whether the supplied pointers belong to live allocations. They
-are agnostic of whether it is ownership or an \cninline{Alloc} token is
-provided as evidence (\cref{fig:mem-model-dyn-ptr-relop}).\sidenote{TODO
-add/fix this}
+Pointer operations, including casts and \cinline[breaklines]{copy_alloc_id}, do
+not extend the allocation history, but do require the heap to check whether the
+supplied or resulting pointers belong to live allocations. They are agnostic of
+whether it is ownership or an \cninline{Alloc} token is provided as evidence
+(\cref{fig:mem-model-dyn-ptr-relop}).
 
 \begin{figure*}
     \small%
@@ -459,12 +465,6 @@ add/fix this}
         the SMT solver and supplied pointers, and a liveness check based on
         evidence from the supplied resource term and the heap.}\label{fig:mem-model-dyn-ptr-relop}
 \end{figure*}
-
-Lastly, there are the rules about pointer to integer casts, integer to pointer
-casts and the \cinline{copy_alloc_id} primitive. The latter two check that that
-resulting pointer is in the bounds of a live allocation; they are also agnostic
-as to whether it is ownership or an \cninline{Alloc} token which is provided as
-evidence.\sidenote{TODO this too\ldots}
 
 \subsection{State typing}
 
@@ -504,17 +504,17 @@ Recall that I defined resource term reduction and pattern matching in the
 dynamic semantics in a big-step style (\cref{sec:heap-types}). Whilst this
 intertwines the proofs for progress and type preservation, its advantage of
 modularity pays off now. The new constructs such as non-deterministic pointer
-equality, \coreinline{allocate_region}, \coreinline{kill_dynamic},
-\cinline{memcpy}, \cinline{memcmp}\cinline{copy_alloc_id}, and the conversions
-to and from memory bytes, are just additional cases in the proof, the rest are
-merely updates. The updates are small because the additional
-constraints on the allocation history are easy to link across the static and
-dynamic semantics by the definition of allocation history typing. The bounds
-and liveness checks are similarly easy to link across the static and dynamic
-semantics by the definition of heap typing. The updated theorem statements are
-as below: the main differences are the use of the updated abstract state typing
-judgements, and the use of the $[[L0]] = [[allocv : _bt ]]$ environment, instead
-of the empty one, for logical variables. Updated proofs are in the appendix.
+equality, \coreinline{alloc}, dynamic \coreinline{kill}, \cinline{memcpy},
+\cinline{memcmp}\cinline{copy_alloc_id}, and the conversions to and from memory
+bytes, are just additional cases in the proof, the rest are merely updates. The
+updates are small because the additional constraints on the allocation history
+are easy to link across the static and dynamic semantics by the definition of
+allocation history typing. The bounds and liveness checks are similarly easy to
+link across the static and dynamic semantics by the definition of heap typing.
+The updated theorem statements are as below: the main differences are the use
+of the updated abstract state typing judgements, and the use of the $[[L0]] =
+[[allocv : _bt ]]$ environment, instead of the empty one, for logical
+variables. Updated proofs are in the appendix.
 
 \begin{theorem}[CN-VIP:\ progress and type preservation for resource terms]
 For all resource terms ($[[ res_term ]]$) closed which type check or synthesise
@@ -560,6 +560,35 @@ and the statement too
 \end{theorem}
 
 \subsection{Linking \kl{CN-VIP} to \kl{VIP}}\label{sec:linking}
+
+\kl{CN-VIP} departs from \kl{VIP} in two ways: the introduction of a types for
+bytes and for roundtrip types.
+
+Bytes are intended only for transforming C types to and from their
+representation, critical for supporting dynamic memory allocation and unions.
+Crucially, the transformation is solely at the resource level and is forbidden
+(by a modified \kl{Cerberus} elaboration), directly in the C source: bytes are
+abstract values from the perspective of a C programmer. Pointers to C types can
+be converted to and from pointers to bytes, but as values, bytes are new,
+neither pointer nor integer. Thus the soundess of the various integer and
+pointer memory operations are unaffected by their introdction.
+
+Load and stores do deal with values, converting to and from their
+representation as memory bytes. The introduction of bytes in \kl{CN-VIP} may
+raise concerns about increasing expressivity beyond what is possible \kl{VIP},
+because bytes capture more information. In actuality, the load of a
+\coreinline{unspec} byte value will be simulated by the same at type
+\cinline{char}, the load of a value $(@\mathsf{empty}, a)$ will be simulated by
+a load of a $\mathit{Int}\,(a)$, and the load of a $(@i, a)$ will be simulated
+by a load of a $\mathit{Loc}\,(@i, a)$ value (and similarly for stores).
+
+Roundtrip values are also new values, neither pointers nor integers, and
+abstract from the perspective of the C programmer. Thus the soundness of
+various integer and pointer memory operations (excluding casts) are unaffected
+by their introduction. Casting a pointer to a roundtrip type in \kl{CN-VIP}, is
+simulated by casting a pointer into the $\mathit{Loc}\,(\pi, a)$ constructor in
+\kl{VIP}, and casting a roundtrip type to an integer type in \kl{CN-VIP} is
+simulated by adding $\mathit{Int}\,(0)$ to it in \kl{VIP}.
 
 \chapter{Implementation of CN-VIP}\label{chap:impl-cnvip}
 
@@ -970,7 +999,9 @@ convenient way to inline the body of the procedure, so the next best
 option is to give it a type like every other function and built-in
 procedure.
 
-\section{Insufficiency of not tracking provenance in bytes or integers}
+\section{Evaluation}\label{sec:cnvip-eval}
+
+% \section{Insufficiency of not tracking provenance in bytes or integers}
 
 The lack of provenance in bytes presents a major limitation to expressiveness
 of the memory object model. Consider the below call to the
@@ -992,12 +1023,12 @@ happens, the lack of provenances in bytes affects 18 out of 44 tests, and a
 lack of provenance in integers affects another 2.
 
 
-\section{Memory bytes and their use in \coreinline{memcpy}, \coreinline{malloc}
-and \coreinline{free}}\label{sec:mem-bytes-use}
-
-\section{Comparable bytes in \coreinline{memcmp}}
-
-\section{Integer with/out provenance union type for round-trip casts}
+% \section{Memory bytes and their use in \coreinline{memcpy}, \coreinline{malloc}
+% and \coreinline{free}}\label{sec:mem-bytes-use}
+%
+% \section{Comparable bytes in \coreinline{memcmp}}
+%
+% \section{Integer with/out provenance union type for round-trip casts}
 
 \chapter{Epilogue on CN-VIP}
 
