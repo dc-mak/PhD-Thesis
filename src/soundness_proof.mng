@@ -224,7 +224,7 @@ argue for the soundness of pattern-matching
 \PredOpsFromBytes, \PredOpsSelect, \PredOpsForget,
 \ResChkPhi, \ResChkIfTrue, \ResChkIfFalse, \ActionLoad,
 \ActionStore, \ActionKillStatic, \ActionKillDynamic, \LiveOwned,
-\LiveAlloc, \BoundsCheck, \MemopIntFromRt, \MemopMemcpy, \MemopMemcmp.
+\LiveAlloc, \BoundsCheck, \MemopIntFromRt, \MemopLiveFromRt, \MemopMemcpy, \MemopMemcmp.
 
 \subsection{Typing rules which change the context}\label{subsec:ctx_change_rules}
 
@@ -256,7 +256,7 @@ No-resource / ``pure'' rules: \IGCmpEq, \IGCmpLt, \IGCmpGt, \IGCmpNone,
 \PureExprMemberShift, \PureExprNot, \PureExprArithBinop, \PureExprRelBinop,
 \PureExprBoolBinop, \PureExprCall, \PureExprAssertUndef, \PureExprBoolToInteger,
 \PureExprWrapI, \PureStmtUB, \PureStmtPVal, \MemopPtrEq, \MemopIntFromRt,
-\MemopRtFromInt, \MemopRtFromPtr, \MemopLiveFromRt, \MemopPtrUnsureForDeref,
+\MemopRtFromInt, \MemopRtFromPtr, \MemopUnsureFromRt, \MemopPtrUnsureForDeref,
 \MemopPtrWellAligned, \ExprPure, \StmtPure.\\[\baselineskip]
 
 Resource-mentioning rules: \ResSynEmp, \ResSynVar, \ResSynVarSimp, \ResSynPred,
@@ -646,9 +646,9 @@ predicates.
         \PredOpsCongeal, \PredOpsExplode, \PredOpsImplode,
         \PredOpsBreak, \PredOpsGlue, \PredOpsInj, \PredOpsChop,
         \PredOpsToBytes, \PredOpsFromBytes, \PredOpsSelect,
-        \PredOpsForget,
-        \ResSynPredOps, \ResSynFold, \ResSynSepConj, \ResChkPack, \ResChkSepConj,
-        \ResChkIfTrue, \ResChkIfFalse, \ResChkSwitch).\\}{%
+        \PredOpsForget, \ResSynPredOps, \ResSynFold, \ResSynSepConj,
+        \ResChkPack, \ResChkSepConj, \ResChkIfTrue, \ResChkIfFalse,
+        \ResChkSwitch).\\}{%
     \pf{} By induction.}}
 
 \end{pfproof}
@@ -2026,6 +2026,16 @@ arbitrary (not normalised).
     \pf{} Similar to \MemopRelBinop, but just one $[[pval]]$ which is a $[[ptr]]$.
     Step with \OpMemopLiveFromRt{} respectively.}}
 
+\step{<1>28a}{\case{%
+    \MemopUnsureFromRt.
+}{%
+    \pf{} Similar to \MemopRelBinop, but just one $[[pval]]$ which is a $[[ptr]]$.\\
+    If the $[[ inj ptr . addr != 0 ]]$ and the heap contains $[[ pred_term ( oarg) ]]$
+    which proves the pointer is in bounds of a live allocation, step with
+    \OpMemopAlsoLiveFromRt.\\
+    If the address is 0, or the pointer is not in bounds
+    of a live allocation, step with \OpMemopNullEmptyFromRt.}}
+
 \step{<1>29}{\case{%
     \MemopCopyAllocId.
 }{%
@@ -2038,8 +2048,18 @@ arbitrary (not normalised).
     \pf{} Similar to \MemopRelBinop, but with only one $[[pval]]$ which is a
     $[[ptr]]$. So step with \OpMemopPtrValidForDeref.}}
 
+\step{<1>30a}{\case{%
+    \MemopPtrUnsureForDeref.
+}{%
+    \pf{} Similar to \MemopRelBinop, but with only one $[[pval]]$ which is a
+    $[[ptr]]$.\\
+    If the heap contains $[[ pred_term ( oarg ) ]]$ which proves the pointer is
+    in bounds of a live allocation, step with
+    \OpMemopPtrAlsoValidForDeref.\\
+    If not, step with \OpMemopPtrInvalidForDeref.}}
+
 \step{<1>31}{\case{%
-    \MemopPtrUnsureForDeref, \MemopPtrWellAligned.
+    \MemopPtrWellAligned.
 }{%
     \pf{} Similar to \MemopPtrEq, excepct with only one $[[pval]]$.
     Step with \OpMemopPtrAlsoValidForDeref/\OpMemopPtrWellAligned{} respectively.}}
@@ -2610,6 +2630,13 @@ to deduce that $[[ nR' ]]$ can only be what you would have supplied anyways.
 }{%
     \pf{} Similar to \MemopRelBinop, but with \PureValObjPtr{} first.}}
 
+\step{<1>20a}{\case{%
+    \MemopUnsureFromRt.
+}{%
+    \pf{} Similar to \MemopRelBinop, but with \PureValObjPtr{} first, and an
+    extra \SpineLog{} for the allocation ID, for both \OpMemopAlsoLiveFromRt{}
+    and \OpMemopNullEmptyFromRt.}}
+
 \step{<1>21}{\case{%
     \MemopCopyAllocId.
 }{%
@@ -2620,8 +2647,14 @@ to deduce that $[[ nR' ]]$ can only be what you would have supplied anyways.
 }{%
     \pf{} Similar to \MemopRelBinop.}}
 
+\step{<1>22a}{\case{%
+    \MemopPtrUnsureForDeref.
+}{%
+    \pf{} Similar to \MemopPtrEq{} for both \OpMemopPtrAlsoValidForDeref{}, and
+    \OpMemopPtrInvalidForDeref.}}
+
 \step{<1>23}{\case{%
-    \MemopPtrUnsureForDeref, \MemopPtrWellAligned.
+    \MemopPtrWellAligned.
 }{%
     \pf{} Similar to \MemopPtrEq.}}
 

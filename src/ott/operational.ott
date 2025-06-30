@@ -655,21 +655,23 @@ defns
     alloct | < h ; res_term | ptrFromRt < ct > ( ptr ) > --> < h ; < ptr , pred_term > : ret >
 
 
-    % The memory model must give the same answer for the same heaps, regardless
-    % of provability (resource terms)
+    % The memory model must give the same (erased) answer for the same heaps,
+    % regardless of provability (resource terms)
     alloct |- smt ( inj ptr . addr != 0 )
     h def= h1 + { pred_term ( oarg ) & None }
     alloct | is_live pred_term ( oarg ) & ptr ,  ptr
     alloct | in_bounds ptr , ptr
-    ret def= sigma y : integer .: exists x : alloc_id .: y = inj ptr /\ I
+    ret def= sigma y : integer .: exists x : alloc_id .: y = term /\ I
+    term def= if inj ptr . addr = 0 then NULL else ( @ x  , inj ptr . addr )
     -------------------------------------------------------------- :: AlsoLiveFromRt
     alloct | < h ; emp | ptrFromRt < ct > ( ptr ) > --> < h ; < ptr , inj ptr . alloc_id > : ret >
 
 
-    ret def= sigma y : integer .: exists x : alloc_id .: y =  /\ I
-    inj ptr' def= if inj ptr . addr = 0 then NULL else ( @ x  , inj ptr . addr )
+    ret def= sigma y : integer .: exists x : alloc_id .: y = term /\ I
+    term def= if inj ptr . addr = 0 then NULL else ( @ x  , inj ptr . addr )
+    inj ptr' def= if inj ptr . addr = 0 then NULL else ( @ default alloc_id  , inj ptr . addr )
     -------------------------------------------------------------- :: NullEmptyFromRt
-    alloct | < h ; emp | ptrFromRt < ct > ( ptr ) > --> < h ; < ptr , @ default alloc_id > : ret >
+    alloct | < h ; emp | ptrFromRt < ct > ( ptr ) > --> < h ; < ptr' , @ default alloc_id > : ret >
 
 
     alloct | < h ; res_term > ||v < h1 + { pred_term ( oarg ) & None } ; pred_term >
@@ -690,15 +692,15 @@ defns
     alloct | < h ; res_term | ptrValidForDeref < ct > ( ptr ) > --> < h ; < bool_value , pred_term > : ret >
 
 
-    % The memory model must give the same answer for the same heaps, regardless
-    % of provability (resource terms)
+    % The memory model must give the same (erased) answer for the same heaps,
+    % regardless of provability (resource terms)
     h def= h1 + { pred_term ( oarg ) & None }
     alloct | is_live pred_term ( oarg ) & ptr ,  ptr
     alloct | in_bounds ptr , ptr
     inj bool_value def= aligned ( sizeof ct , inj ptr )
     ret def= sigma y : bool .: I
     -------------------------------------------------------- :: PtrAlsoValidForDeref
-    alloct | < h ; res_term | ptrValidForDeref < ct > ( ptr ) > --> < h ; < bool_value > : ret >
+    alloct | < h ; emp | ptrValidForDeref < ct > ( ptr ) > --> < h ; < bool_value > : ret >
 
 
     ret def= sigma y : bool .: I

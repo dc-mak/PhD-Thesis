@@ -576,19 +576,20 @@ pointer memory operations are unaffected by their introdction.
 Load and stores do deal with values, converting to and from their
 representation as memory bytes. The introduction of bytes in \kl{CN-VIP} may
 raise concerns about increasing expressivity beyond what is possible \kl{VIP},
-because bytes capture more information. In actuality, the load of a
-\coreinline{unspec} byte value will be simulated by the same at type
-\cinline{char}, the load of $(@\mathsf{empty}, a)$ will be simulated by
-a load of $\mathit{Int}\,(a)$, and the load of $(@i, a)$ will be simulated
-by a load of $\mathit{Loc}\,(@i, a)$ value (and similarly for stores).
+because bytes capture more information. In actuality, \kl{CN-VIP} bytes are
+$\sim$ related to \kl{VIP} \cinline{char} as follows: $\mathsf{unspec} \sim
+\mathsf{unspec}$, $(@\mathsf{empty}, a) \sim \mathit{Int}\,(a)$, and $(@i, a)
+\sim \mathit{Loc}\,(@i, a)$.
 
 Roundtrip values are also new values, neither pointers nor integers, and
 abstract from the perspective of the C programmer. Thus the soundness of
 various integer and pointer memory operations (excluding casts) are unaffected
-by their introduction. Casting a pointer to a roundtrip type in \kl{CN-VIP}, is
-simulated by casting a pointer into the $\mathit{Loc}\,(\pi, a)$ constructor in
-\kl{VIP}, and casting a roundtrip type to an integer type in \kl{CN-VIP} is
-simulated by adding $\mathit{Int}\,(0)$ to it in \kl{VIP}.
+by their introduction. The new \kl{CN-VIP} casts involving roundtrip types, are
+simulated by casting to specific constructors in \kl{VIP}. For pointers,
+$\mathsf{NULL} \sim \mathsf{NULL}$, and $(\pi, a) \sim (\pi, a)$. For roundtrip
+types, $(\pi, 0) \sim \mathit{Int}\,(0)$ and $(\pi, a) \sim \mathit{Loc}\,(\pi, a)$
+for $a \neq 0$. For integer types, $0 \sim \mathit{Int}\,(0)$ and $a \sim
+\mathit{Int}\,(a)$ for $a \neq 0$.
 
 \chapter{Implementation of CN-VIP}\label{chap:impl-cnvip}
 
