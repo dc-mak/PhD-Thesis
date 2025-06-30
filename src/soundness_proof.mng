@@ -197,7 +197,7 @@ substitution: if $[[ term ~ term' ]]$ and $[[ x ~ y ]]$ in $[[ term1 ~ term1' ]]
 then $[[ term / x ( term1 ) ~ term' / y ( term1' ) ]]$.\\
 
 \noindent
-\textbf{Note: $[[ ~ ]]$ is \emph{only} used in the \emph{proof} of soundness,
+\textbf{Note: $[[ ~ ]]$ is \emph{only} used in the \emph{pfproof} of soundness,
 and \emph{not} in the \emph{explicit CN type system}.} There is no unification
 required in the type system, but the notion of related terms is required to
 argue for the soundness of pattern-matching
@@ -219,12 +219,12 @@ argue for the soundness of pattern-matching
 \ResSimpRecIfTrue, \ResSimpRecIfFalse, \RetEqPhi, \PatResMatchIfTrue,
 \PatResMatchIfFalse, \PureExprArrayShift, \PureExprMemberShift,
 \PureExprAssertUndef, \PureStmtPVal, \PureStmtUB,
-\ResSynPredOpsCongeal, \ResSynPredOpsImplode,
-\ResSynPredOpsBreak, \ResSynPredOpsGlue, \ResSynPredOpsInj, \ResSynPredOpsChop,
+\PredOpsCongeal, \PredOpsImplode,
+\PredOpsBreak, \PredOpsGlue, \PredOpsInj, \PredOpsChop,
+\PredOpsFromBytes, \PredOpsSelect, \PredOpsForget,
 \ResChkPhi, \ResChkIfTrue, \ResChkIfFalse, \ActionLoad,
-\ActionStore, \ActionKillStatic, \MemopRelBinop,
-\MemopPtrDiffArr, \MemopPtrDiff, \MemopIntFromPtr,
-\MemopPtrFromInt, \MemopPtrArrayShift.
+\ActionStore, \ActionKillStatic, \ActionKillDynamic, \LiveOwned,
+\LiveAlloc, \BoundsCheck, \MemopIntFromRt, \MemopLiveFromRt, \MemopMemcpy, \MemopMemcmp.
 
 \subsection{Typing rules which change the context}\label{subsec:ctx_change_rules}
 
@@ -255,14 +255,14 @@ No-resource / ``pure'' rules: \IGCmpEq, \IGCmpLt, \IGCmpGt, \IGCmpNone,
 \PureValStruct, \PureExprPVal, \PureExprCtorIvXOR, \PureExprArrayShift,
 \PureExprMemberShift, \PureExprNot, \PureExprArithBinop, \PureExprRelBinop,
 \PureExprBoolBinop, \PureExprCall, \PureExprAssertUndef, \PureExprBoolToInteger,
-\PureExprWrapI, \PureStmtUB, \PureStmtPVal, \MemopPtrValidForDeref,
+\PureExprWrapI, \PureStmtUB, \PureStmtPVal, \MemopPtrEq, \MemopIntFromRt,
+\MemopRtFromInt, \MemopRtFromPtr, \MemopUnsureFromRt, \MemopPtrUnsureForDeref,
 \MemopPtrWellAligned, \ExprPure, \StmtPure.\\[\baselineskip]
 
 Resource-mentioning rules: \ResSynEmp, \ResSynVar, \ResSynVarSimp, \ResSynPred,
 \ResSynIPred, \ResSynSepConj, \ResChkPhi, \ResChkSepConj, \SpineRet,
-\SpineRes, \ActionCreate, \MemopRelBinop,
-\MemopPtrDiffArr, \MemopPtrDiff,
-\MemopIntFromPtr, \MemopPtrFromInt, \MemopPtrArrayShift,
+\SpineRes, \ActionCreate, \MemopRelBinop, \MemopPtrDiffArr, \MemopPtrDiff,
+\MemopCopyAllocId, \MemopPtrArrayShift, \MemopMemcpy, \MemopMemcmp,
 \StmtRun, \SubsChkEmpty, \SubsChkRes.
 
 \subsubsection{Rules which add constraints and restrict the resource context}
@@ -642,11 +642,13 @@ predicates.
 \step{<1>2}{\case{\ResSynVar, \ResSynVarSimp}{%
     \pf{} Impossible cases ($[[ res_term ]]$s are not closed).}}
 
-\step{<1>3}{\case{All remaining cases (\ResSynPredOpsIterate,
-        \ResSynPredOpsCongeal, \ResSynPredOpsExplode, \ResSynPredOpsImplode,
-        \ResSynPredOpsBreak, \ResSynPredOpsGlue, \ResSynPredOpsInj, \ResSynPredOpsChop,
-        \ResSynPredOps, \ResSynFold, \ResSynSepConj, \ResChkPack, \ResChkSepConj,
-        \ResChkIfTrue, \ResChkIfFalse, \ResChkSwitch).\\}{%
+\step{<1>3}{\case{All remaining cases (\PredOpsIterate,
+        \PredOpsCongeal, \PredOpsExplode, \PredOpsImplode,
+        \PredOpsBreak, \PredOpsGlue, \PredOpsInj, \PredOpsChop,
+        \PredOpsToBytes, \PredOpsFromBytes, \PredOpsSelect,
+        \PredOpsForget, \ResSynPredOps, \ResSynFold, \ResSynSepConj,
+        \ResChkPack, \ResChkSepConj, \ResChkIfTrue, \ResChkIfFalse,
+        \ResChkSwitch).\\}{%
     \pf{} By induction.}}
 
 \end{pfproof}
@@ -664,9 +666,11 @@ This is a simple inversion lemma.
     \end{pfenum}\leavevmode\\}
 
 \step{<1>1}{The typing assumption cannot be any of: \ResSynVar, \ResSynVarSimp,
-    \ResSynFold, \ResSynPredOpsIterate, \ResSynPredOpsCongeal,
-    \ResSynPredOpsExplode, \ResSynPredOpsImplode, \ResSynPredOpsBreak,
-    \ResSynPredOpsGlue, \ResSynPredOpsInj, \ResSynPredOpsChop,
+    \ResSynFold, \PredOpsIterate, \PredOpsCongeal,
+    \PredOpsExplode, \PredOpsImplode, \PredOpsBreak,
+    \PredOpsGlue, \PredOpsInj, \PredOpsChop,
+    \PredOpsSelect, \PredOpsForget,
+    \PredOpsToBytes, \PredOpsFromBytes,
     \ResSynPredOps.\\
     \pf{} $[[ res_term ]]$s in these rules are not values.}
 
@@ -712,19 +716,27 @@ This is as simple inversion lemma.
     then $[[ h ]] = [[ { pred' & None } ]]$ for $[[ cdot |- subs0 ( pred ) = subs0 ( pred' ) ]]$.\\
     \pf{} By inversion, the assumption must be \HeapPredOwned{}.}
 
-\step{<1>3}{If $[[ nR ]] = [[ _x : pred ]]$, then $[[ h ]] = [[ { pred' & def & h' } ]]$.\\
+\step{<1>3}{If $[[ pred ]] = [[ Alloc ( term ) ( oarg ) ]]$, $[[ nR ]] = [[ _x : pred ]]$,
+    then $[[ h ]] = [[ { pred' & None } ]]$ for $[[ cdot |- subs0 ( pred ) = subs0 ( pred' ) ]]$.\\
+    \pf{} By inversion, the assumption must be \HeapPredAlloc{}.}
+
+\step{<1>4}{If $[[ pred ]] = [[ Padding < union tag , member > ( ptrt ) ( oarg ) ]]$, $[[ nR ]] = [[ _x : pred ]]$,
+    then $[[ h ]] = [[ { pred' & None } ]]$ for $[[ cdot |- subs0 ( pred ) = subs0 ( pred' ) ]]$.\\
+    \pf{} By inversion, the assumption must be \HeapPredPadding{}.}
+
+\step{<1>5}{If $[[ nR ]] = [[ _x : pred ]]$, then $[[ h ]] = [[ { pred' & def & h' } ]]$.\\
     for $[[ cdot |- subs0 ( pred ) = subs0 ( pred' ) ]]$.\\
     \pf{} By inversion, the assumption must be \HeapPredOther.}
 
-\step{<1>4}{If $[[ ipred ]] = [[ *S x .: iguard => ptrt |- _init - ct -> oarg ]]$, $[[ nR ]] = [[ _x : ipred ]]$,
+\step{<1>6}{If $[[ ipred ]] = [[ *S x .: iguard => ptrt |- _init - ct -> oarg ]]$, $[[ nR ]] = [[ _x : ipred ]]$,
     then $[[ h ]] = [[ { ipred' & cdot } ]]$ for $[[ cdot |- subs0 ( ipred ) = subs0 ( ipred' ) ]]$.\\
     \pf{} By inversion, the assumption must be \HeapIPredOwned.}
 
-\step{<1>5}{If $[[ nR ]] = [[ _x : ipred ]]$, then $[[ h ]] = [[ { ipred' & arr_heap } ]]$
+\step{<1>7}{If $[[ nR ]] = [[ _x : ipred ]]$, then $[[ h ]] = [[ { ipred' & arr_heap } ]]$
     for $[[ cdot |- subs0 ( ipred ) = subs0 ( ipred' ) ]]$.\\
     \pf{} By inversion, the assumption must be \HeapIPredOther.}
 
-\step{<1>6}{If $[[ nR ]] = [[ nR1 , nR2 ]]$, then $[[ h ]] = [[ h1 + h2 ]]$,
+\step{<1>8}{If $[[ nR ]] = [[ nR1 , nR2 ]]$, then $[[ h ]] = [[ h1 + h2 ]]$,
     where $[[ alloct |- h1 <= nR1 ]]$ and $[[ alloct |- h2 <= nR2 ]]$.\\
     \pf{} By inversion, the assumption must be \HeapConcat.}
 
@@ -807,7 +819,7 @@ You need the existential, so that you can provide it as a witness when proving
 heap typing for folded predicates, which you need to use in proving unfolding
 predicates in pattern-matching.\\[\baselineskip]
 
-\step{<1>1}{\case{\ResSynPredOpsIterate}{%
+\step{<1>1}{\case{\PredOpsIterate}{%
     \pflet{%
         $[[ res_term ]]  = [[ iterate ( res_term' , n ) ]]$\\
         $[[ ipred_term ]] = [[ each (integer x;  0 =< x =< n - 1) { Owned < init , ct > ( array_shift < ct > ( ptrt , x ) ) } ]]$\\
@@ -844,8 +856,8 @@ predicates in pattern-matching.\\[\baselineskip]
 
     \end{pfproof}
 
-\step{<1>2}{\case{\ResSynPredOpsCongeal}{%
-    \pf{} Like \ResSynPredOpsIterate, but with:\\
+\step{<1>2}{\case{\PredOpsCongeal}{%
+    \pf{} Like \PredOpsIterate, but with:\\
     $[[ res_term ]]= [[ congeal ( res_term' , n ) ]]$\\
     $[[ res ]]     = [[ pred_term ( oarg ) ]]$
     where $[[ pred_term ]] = [[ Owned < init , array n ct > ( ptrt ) ]]$\\[\baselineskip]
@@ -864,8 +876,8 @@ predicates in pattern-matching.\\[\baselineskip]
     heap typing using \HeapPredOwned;
     reduction using \OpPredOpsCongeal.}}
 
-\step{<1>3}{\case{\ResSynPredOpsExplode}{%
-    \pf{} Like \ResSynPredOpsIterate, but with:\\
+\step{<1>3}{\case{\PredOpsExplode}{%
+    \pf{} Like \PredOpsIterate, but with:\\
     $[[ res_term ]]= [[ explode ( res_term' ) ]]$\\
     $[[ res ]]     = [[ *S ( </ pred_termi ( oargi ) // i /> ) ]]$
     where $[[ pred_termi ]] = [[ Owned < init , cti > ( member_shift < struct tag > ( ptrt ,  memberi ) ) ]]$\\[\baselineskip]
@@ -883,8 +895,8 @@ predicates in pattern-matching.\\[\baselineskip]
     heap typing using \HeapConcat{} and \HeapPredOwned;
     reduction using \OpPredOpsExplode.}}
 
-\step{<1>4}{\case{\ResSynPredOpsImplode}{%
-    \pf{} Like \ResSynPredOpsIterate, but with:\\
+\step{<1>4}{\case{\PredOpsImplode}{%
+    \pf{} Like \PredOpsIterate, but with:\\
     $[[ res_term ]] = [[ implode ( res_term' , tag ) ]]$\\
     $[[ res ]] = [[ pred_term ( oarg ) ]]$
     where $[[ pred_term ]] = [[ Owned < init , struct tag > ( ptrt ) ]]$\\[\baselineskip]
@@ -902,8 +914,8 @@ predicates in pattern-matching.\\[\baselineskip]
     heap typing using \HeapPredOwned;
     reduction using \OpPredOpsImplode.}}
 
-\step{<1>5}{\case{\ResSynPredOpsBreak}{%
-    \pf{} Like \ResSynPredOpsIterate, but with:\\
+\step{<1>5}{\case{\PredOpsBreak}{%
+    \pf{} Like \PredOpsIterate, but with:\\
     $[[ res_term ]]= [[ break ( res_term' , term ) ]]$\\
     $[[ res ]] = [[ ipred_term ( oarg ) * pred_term ( oarg [ term ] ) ]]$
     where $[[ ipred_term ]] = [[ each (integer x;  iguard /\ ( x != term ) ) { a ( array_shift < ct > ( ptrt , x ) , iargs ) } ]]$
@@ -930,8 +942,8 @@ predicates in pattern-matching.\\[\baselineskip]
     \HeapPredOwned{} / \HeapPredOther{} (with witness $[[ _x : pred_term ( oarg [ term ] ) ]]$);
     reduction using \OpPredOpsBreak.}}
 
-\step{<1>6}{\case{\ResSynPredOpsGlue}{%
-    \pf{} Like \ResSynPredOpsIterate, but with:\\
+\step{<1>6}{\case{\PredOpsGlue}{%
+    \pf{} Like \PredOpsIterate, but with:\\
     $[[ res_term ]]= [[ glue ( res_term' ) ]]$\\
     $[[ res ]] = [[  ipred_term ( oarg1 [ term ] := oarg2 ) ]]$
     where $[[ ipred_term ]] = [[ each (integer x;  iguard \/ x = term ) { a ( array_shift <ct> (ptrt1, x) , iargs1 ) } ]]$\\[\baselineskip] % chktex 4
@@ -956,8 +968,8 @@ predicates in pattern-matching.\\[\baselineskip]
     heap typing using \HeapIPredOwned{} / \HeapIPredOther;
     reduction using \OpPredOpsGlue.}}
 
-\step{<1>7}{\case{\ResSynPredOpsInj}{%
-    \pf{} Like \ResSynPredOpsIterate, but with:\\
+\step{<1>7}{\case{\PredOpsInj}{%
+    \pf{} Like \PredOpsIterate, but with:\\
     $[[ res_term ]]= [[ inj ( res_term' , ptrt1 , ct , x .: iargs1 ) ]]$\\
     $[[ res ]]     = [[ ipred_term ( const oarg ) ]]$
     where $[[ ipred_term ]] = [[each (integer x;  x = term ) { a ( array_shift<ct> (ptrt1, x) , iargs1 ) } ]]$\\[\baselineskip]
@@ -981,15 +993,15 @@ predicates in pattern-matching.\\[\baselineskip]
     to prove typing using \HeapIPredOwned{} / \HeapIPredOther,
     and reduction using \OpPredOpsInj.}}
 
-\step{<1>8}{\case{\ResSynPredOpsChop}{%
-    \pf{} Like \ResSynPredOpsIterate, but with:\\
+\step{<1>8}{\case{\PredOpsChop}{%
+    \pf{} Like \PredOpsIterate, but with:\\
     $[[ res_term ]]= [[ chop ( res_term' , iguard ) ]]$\\
     $[[ res ]]     = [[  ipred_term1 ( oarg ) * ipred_term2 ( oarg ) ]]$
     where $[[ ipred_term1 ]] = [[ each (integer x;  iguard ) { a ( array_shift<ct>(ptrt, x) , iargs ) } ]]$
     and $[[ ipred_term2 ]] = [[ each (integer x;  iguard2 ) { a ( array_shift<ct>(ptrt, x) , iargs ) } ]]$\\[\baselineskip]
 
     $[[ res' ]]    = [[  ipred_term ( oarg ) ]]$
-    where $[[ ipred_term ]] = [[ each (integer x;  iguard' ) { a ( array_shift<ct>(ptrt,x) , iargs ) } ]]$\\
+    where $[[ ipred_term ]] = [[ each (integer x;  iguard' ) { a ( array_shift<ct>(ptrt,x) , iargs ) } ]]$,\\
     $[[ res_val' ]] = [[ ipred_term ]]$,
     and $[[ nR'' ]] = [[ _x : ipred_term ( oarg ) ]]$,
     by Lemma~\ref{subsec:non_cond_res_det_ctx_val}.\\[\baselineskip]
@@ -1007,15 +1019,108 @@ predicates in pattern-matching.\\[\baselineskip]
     heap typing using \HeapConcat{} and \HeapIPredOwned{} / \HeapIPredOther;
     reduction using \OpPredOpsChop.}}
 
-\step{<1>9}{\case{\ResSynEmp, \ResSynPred, \ResSynIPred, \ResChkPhi.}{%
+\step{<1>9}{\case{\PredOpsToBytes}{%
+    \pf{} Like \PredOpsIterate, but with:\\
+    $[[ res_term ]]= [[ to_bytes ( res_term' ) ]]$\\
+    $[[ res ]]  = [[ ipred_term ( oarg' ) ]]$,
+    where $[[ ipred_term ]] = [[ each (integer x; 0 =< x =< sizeof ct - 1) { Owned < init , byte > ( array_shift < byte > ( ptrt , x ) ) } ]]$.\\[\baselineskip]
+
+    $[[ res' ]] = [[  pred_term ( oarg ) ]]$,
+    where $[[ pred_term ]] = [[ Owned < init , ct > ( ptrt ) ]]$,
+    $[[ res_val' ]] = [[ pred_term ]]$,
+    and $[[ nR'' ]] = [[ _x : pred_term ( oarg ) ]]$,
+    by Lemma~\ref{subsec:non_cond_res_det_ctx_val}.\\[\baselineskip]
+
+    Hence $[[ h'' ]] = [[ { pred_term ( oarg ) & None } ]]$
+    (by Lemma~\ref{subsec:norm_ctx_det_heap}),
+    so let $[[ h' ]] = [[ { ipred_term ( oarg' ) & cdot } ]]$.\\[\baselineskip]
+
+    Let $[[ res_val ]] = [[ ipred_term ]]$,
+    and $[[ nR ]] = [[ _x : ipred_term ( oarg ) ]]$, to prove:
+    value typing using \ResSynIPred{};
+    heap typing using \HeapIPredOwned{};
+    reduction using \OpPredOpsToBytes.}}
+
+\step{<1>10}{\case{\PredOpsFromBytes}{%
+    \pf{} Like \PredOpsIterate, but with:\\
+    $[[ res_term ]]= [[ from_bytes < init , ct > ( res_term' ) ]]$\\
+    $[[ res ]]     = [[  pred_term ( oarg ) ]]$
+    where $[[ pred_term ]] = [[ Owned < init , ct > ( ptrt ) ]]$.\\[\baselineskip]
+
+    $[[ res' ]]    = [[  ipred_term ( oarg ) ]]$
+    where $[[ ipred_term ]] = [[ each (integer x; iguard) { Owned < init , byte > ( array_shift < byte > ( ptrt , x ) ) } ]]$\\
+    $[[ res_val' ]] = [[ ipred_term ]]$,
+    and $[[ nR'' ]] = [[ _x : ipred_term ( oarg ) ]]$,
+    by Lemma~\ref{subsec:non_cond_res_det_ctx_val}.\\[\baselineskip]
+
+    Hence $[[ h'' ]] = [[ { ipred_term ( oarg ) & cdot } ]]$
+    (by Lemma~\ref{subsec:norm_ctx_det_heap}),
+    so let $[[ h' ]] = [[ { pred_term ( oarg' ) & None } ]]$.\\[\baselineskip]
+
+    Let $[[ res_val ]] = [[ pred_term ]]$,
+    and $[[ nR ]] = [[ _x : pred_term1 ( oarg ) ]]$, to prove:
+    value typing using \ResSynIPred{};
+    heap typing using \HeapPredOwned{};
+    reduction using \OpPredOpsFromBytes.}}
+
+\step{<1>11}{\case{\PredOpsSelect}{%
+    \pf{} Like \PredOpsIterate, but with:\\
+    $[[ res_term ]]= [[ select < init1 , member > ( res_term' ) ]]$\\
+    $[[ res ]] = [[ pred_term1 ( oarg1 ) * pred_term2 ( oarg' )  ]]$,
+    where $[[ pred_term1 ]] = [[ Owned < init1 , ct1 > ( ptrt1 ) ]]$,
+    % $[[ oarg1 ]] = [[ oarg' [ term ldots term + sizeof ct - 1 ] ]]$,
+    % $[[ term ]] = [[ offsetof tag member ]]$,
+    % $[[ P ( tag ) = member : ct1 , _member : _ct ]]$,
+    $[[ pred_term2 ]] = [[ Padding < union tag , member > ( ptrt' ) ]]$.\\[\baselineskip]
+
+    $[[ res' ]] = [[  pred_term' ( oarg' ) ]]$
+    where $[[ pred_term' ]] = [[ Owned < init , union tag > ( ptrt' ) ]]$,
+    $[[ res_val' ]] = [[ pred_term' ]]$,
+    and $[[ nR'' ]] = [[ _x : pred_term' ( oarg' ) ]]$,
+    by Lemma~\ref{subsec:non_cond_res_det_ctx_val}.\\[\baselineskip]
+
+    Hence $[[ h'' ]] = [[ { pred_term' ( oarg' ) & None } ]]$
+    (by Lemma~\ref{subsec:norm_ctx_det_heap}),
+    so let $[[ h' ]] = [[ { pred_term1 ( oarg1 ) & None } + { pred_term2 ( oarg' ) & None } ]]$.\\[\baselineskip]
+
+    Let $[[ res_val ]] = [[ < pred_term1 , pred_term2 > ]]$,
+    and $[[ nR ]] = [[ _x : pred_term1 ( oarg1 ) , _x : pred_term2 ( oarg' ) ]]$, to prove:
+    value typing using \ResSynPred{} and \ResSynPredOps{} twice followed by \ResSynSepConj{};
+    heap typing using \HeapPredOwned{} and \HeapPredPadding{} followed by \HeapConcat{};
+    reduction using \OpPredOpsSelect.}}
+
+\step{<1>12}{\case{\PredOpsForget}{%
+    \pf{} Like \PredOpsIterate, but with:\\
+    $[[ res_term ]]= [[ forget < union tag > ( res_term' ) ]]$\\
+    $[[ res ]]     = [[  pred_term ( oarg ) ]]$
+    where $[[ pred_term ]] = [[ Owned < init , union tag > ( ptrt ) ]]$.\\[\baselineskip]
+
+    $[[ res' ]] = [[ pred_term1 ( oarg1 ) * pred_term2 ( oarg2 ) ]]$,
+    where $[[ pred_term1 ]] = [[ Owned < init1 , ct1 > ( ptrt1 ) ]]$ and
+    $[[ pred_term2 ]] = [[ Padding < union tag , member > ( ptrt ) ]]$,\\
+    $[[ res_val' ]] = [[ < pred_term1 , pred_term2 >  ]]$,
+    and $[[ nR'' ]] = [[ _x : pred_term1 ( oarg1 ) , _x : pred_term2 ( oarg2 ) ]]$,
+    by Lemma~\ref{subsec:non_cond_res_det_ctx_val}.\\[\baselineskip]
+
+    Hence $[[ h'' ]] = [[ { pred_term1 ( oarg1 ) & None } + { pred_term2 ( oarg2 ) & None } ]]$
+    (by Lemma~\ref{subsec:norm_ctx_det_heap}),
+    so let $[[ h' ]] = [[ { pred_term ( oarg ) & None } ]]$.\\[\baselineskip]
+
+    Let $[[ res_val ]] = [[ pred_term ]]$,
+    and $[[ nR ]] = [[ _x : pred_term1 ( oarg ) ]]$, to prove:
+    value typing using \ResSynPred{};
+    heap typing using \HeapPredOwned{};
+    reduction using \OpPredOpsForget.}}
+
+\step{<1>13}{\case{\ResSynEmp, \ResSynPred, \ResSynIPred, \ResChkPhi.}{%
     \pf{} In these cases, $[[ h ]] = [[ h' ]]$, $[[ nR ]] = [[ nR' ]]$ and $[[ res_term ]] = [[ res_val ]]$.\\
     Typing holds by assumption; prove reduction using \OpResTVal{}.}}
 
-\step{<1>10}{\case{\ResSynPredOps}{%
+\step{<1>14}{\case{\ResSynPredOps}{%
     \pf{} Both typing and reduction (using \OpResTPredOps{}) hold by
     induction.}}
 
-\step{<1>11}{\case{\ResSynSepConj, \ResChkSepConj.}{%
+\step{<1>15}{\case{\ResSynSepConj, \ResChkSepConj.}{%
     $[[ res ]] = [[ res1 * res2 ]]$,\\
     $[[ res_term ]] = [[ < res_term1 , res_term2 > ]]$,\\
     $[[ h ]] = [[ h1 + h2 ]]$, so $[[ nR ]] = [[ nR1 , nR2 ]]$,\\
@@ -1042,16 +1147,16 @@ predicates in pattern-matching.\\[\baselineskip]
 
     \end{pfproof}
 
-\step{<1>12}{\case{\ResChkPack}{%
-    \pf{} Like \ResSynPredOpsIterate, but with:\\
+\step{<1>16}{\case{\ResChkPack}{%
+    \pf{} Like \PredOpsIterate, but with:\\
     $[[ res_term ]] = [[ pack ( oarg , res_term' ) ]]$,
     $[[ res ]]      = [[ exists y : base_type .: res'' ]]$,
     $[[ res' ]]     = [[ oarg / y ( res'' ) ]]$\\
     $[[ res_val ]]  = [[ pack ( oarg , res_val' ) ]]$.
     Value and heap typing hold by induction; prove reduction using \OpResTPack.}}
 
-\step{<1>13}{\case{\ResSynFold}{%
-    \pf{} Like \ResSynPredOpsIterate, but with:\\
+\step{<1>17}{\case{\ResSynFold}{%
+    \pf{} Like \PredOpsIterate, but with:\\
     $[[ P ( a ) = </ xi : _bti // i /> , y : _bt  |-> res'' ]]$\\
     $[[ res_term ]]= [[ fold res_term' : a ( </ iargi // i /> ) ( oarg ) ]]$\\
     $[[ res ]]     = [[ a ( </ iargi // i /> ) ( oarg ) ]]$\\
@@ -1072,12 +1177,12 @@ predicates in pattern-matching.\\[\baselineskip]
     Since $[[ footprint_of res_val' in h1 + f ~> h1 REM f ]]$ by
     \lemmaref{subsec:wt_res_val_det_footprint}, prove reduction using \OpResTFold.}}
 
-\step{<1>14}{\case{\ResChkIfTrue, \ResChkIfFalse}{%
+\step{<1>18}{\case{\ResChkIfTrue, \ResChkIfFalse}{%
     \pf{} By induction with $[[ res' ]]$ as $[[ res1 ]]$ or $[[ res2]]$ respectively.
     This is exhaustive because only variables can synthesise under-determined conditional
     resources and those are excluded by assumption of $[[ res_term ]]$ being closed.}}
 
-\step{<1>15}{\case{\ResChkSwitch}{%
+\step{<1>19}{\case{\ResChkSwitch}{%
     \pf{} By induction on the synthesising judgement.}}
 
 \end{pfproof}
@@ -1654,7 +1759,7 @@ arbitrary (not normalised).
 
 \step{<1>16}{\case{\ExprPure.}{%
 }{%
-    \pf{} By indunction.}}
+    \pf{} By induction.}}
 
 \step{<1>17}{\case{\ActionCreate.}{}}
 
@@ -1662,7 +1767,7 @@ arbitrary (not normalised).
 
     \step{<2>1}{%
         $[[ pval ]]$ must be a $[[ int ]]$.\\
-        \pf{} By \PureValObjPtr.}
+        \pf{} By \PureValObjInt.}
 
     \step{<2>2}{%
         $[[ h ]]$ must be $[[ cdot ]]$ (empty).\\
@@ -1676,7 +1781,27 @@ arbitrary (not normalised).
 
     \end{pfproof}
 
-\step{<1>18}{\case{\ActionLoad.}{}}
+\step{<1>18}{\case{\ActionAlloc.}{}}
+
+    \begin{pfproof}
+
+    \step{<2>1}{%
+        $[[ pval1 ]]$ and $[[ pval2 ]]$ must both be $[[ int ]]$.\\
+        \pf{} By \PureValObjInt.}
+
+    \step{<2>2}{%
+        $[[ h ]]$ must be $[[ cdot ]]$ (empty).\\
+        \pf{} By \HeapEmpty.}
+
+    \step{<2>3}{%
+        Step with \OpActionAlloc.\\
+        \pf{} Since we assume all allocations succeed, $[[ addr ]]$ is
+        constructible.  $[[ alloc_id ]]$ is simply a fresh allocation ID, and so
+        $[[ ptr ]]$ can be constructed to satisfy the requirements.}
+
+    \end{pfproof}
+
+\step{<1>19}{\case{\ActionLoad.}{}}
 
     \begin{pfproof}
 
@@ -1712,7 +1837,7 @@ arbitrary (not normalised).
     \end{pfproof}
 
 
-\step{<1>19}{\case{\ActionStore.}{%
+\step{<1>20}{\case{\ActionStore.}{%
 }}
 
     \begin{pfproof}
@@ -1749,7 +1874,7 @@ arbitrary (not normalised).
 
     \end{pfproof}
 
-\step{<1>20}{\case{\ActionKillStatic}{}}
+\step{<1>21}{\case{\ActionKillStatic}{}}
 
     \begin{pfproof}
 
@@ -1785,23 +1910,74 @@ arbitrary (not normalised).
 
     \end{pfproof}
 
-\step{<1>21}{\case{\MemopRelBinop.}{}}
+\step{<1>22}{\case{\ActionKillDynamic}{}}
 
     \begin{pfproof}
 
     \step{<2>1}{%
-        $[[pval1]]$ must be a $[[ ptr1 ]] = [[ ( @ aid1 , addr1 ) ]]$.\\
-        $[[pval2]]$ must be a $[[ ptr2 ]] = [[ ( @ aid1 , addr2 ) ]]$.\\
+        $[[pval]]$ must be a $[[ ptr ]]$.\\
+        \pf{} By \PureValObjPtr.}
+
+    \step{<2>2}{%
+        $[[ cdot ; L0 ; N ; nR |- res_term => ipred_term ( _t ) * pred_term ( oarg ) ]]$\\
+        $[[ ipred_term def= each ( integer x ; iguard ) { Owned < _init , byte > ( array_shift < byte > ( ptrt , x ) ) } ]]$\\
+        $[[ pred_term def= Alloc ( term ) ]]$\\
+        $[[ alloct |- smt ( each ( integer x ; _t ) { iguard <-> ( 0 =< x =< oarg . len - 1 ) } ) ]]$\\
+        $[[ alloct |- smt ( ptrt = inj ptr /\ ptrt . addr = oarg . base /\ ptrt . alloc_id = term ) ]]$.\\
+        \pf{} By inversion on the typing assumption, $[[ alloct <= N ]]$ and \stepref{<2>1}.}
+
+    \step{<2>3}{%
+        $[[ exists ]] [[ h' ]], [[ nR' ]], [[ res_val ]] .\:$\\
+        \begin{pfenum}
+        \item $[[ alloct |- h' <= nR' ]]$
+        \item $[[ alloct | < h ; res_term > ||v < h' ; res_val > ]]$
+        \item $[[ cdot ; L0 ; N ; nR' |- res_val => ipred_term ( _t ) * pred_term ( oarg ) ]]$.
+        \end{pfenum}
+        \pf{} By \stepref{<2>2} and \lemmaref{subsec:res_term_progress}.}
+
+    \step{<2>4}{%
+        $[[ res_val ]] = [[ < ipred_term  , pred_term > ]]$.\\
+        \pf{} By \lemmaref{subsec:non_cond_res_det_ctx_val}.}
+
+    \step{<2>5}{%
+        $[[ h' ]] = [[ { ipred_term ( _t ) & cdot } + { pred_term ( oarg ) & None } ]]$.\\
+        \pf{} By inversion on the typing assumption in \stepref{<2>3},
+        $[[ alloct |- h' <= nR' ]]$ and \lemmaref{subsec:norm_ctx_det_heap}.}
+
+    \step{<2>6}{Step with \OpActionKillDynamic.}
+
+    \end{pfproof}
+
+\step{<1>23}{\case{\MemopPtrEq.}{}}
+
+    \begin{pfproof}
+
+    \step{<2>1}{%
+        $[[pval1]]$ must be a $[[ ptr1 ]]$.\\
+        $[[pval2]]$ must be a $[[ ptr2 ]]$.\\
+        \pf{} By on the typing assumption and \PureValObjPtr.}
+
+    \step{<2>2}{Step with \OpMemopPtrEq.}
+    
+    \end{pfproof}
+
+\step{<1>24}{\case{\MemopRelBinop.}{}}
+
+    \begin{pfproof}
+
+    \step{<2>1}{%
+        $[[pval1]]$ must be a $[[ ptr1 ]]$.\\
+        $[[pval2]]$ must be a $[[ ptr2 ]]$.\\
         \pf{} By on the typing assumption and \PureValObjPtr.}
 
     \step{<2>2}{%
-        $[[ C ; L ; N ; R |- res_term => Alloc ( ptrt1 ) ( term1 ) * Alloc ( ptrt2 ) ( term2 ) ]]$.\\
+        $[[ cdot ; L0 ; N ; nR |- res_term => res ]]$.\\
         \pf{} By inversion on the typing assumption.}
 
     \step{<2>3}{%
-        $[[ alloct |- smt ( @ aid1 = @ aid2 = ptrt1 . alloc_id = ptrt2 . alloc_id2 ) ]]$\\
-        $[[ alloct |- smt ( ptrt1 . base =< addr1 =< ptrt1 . base + term1 ) ]]$\\
-        $[[ alloct |- smt ( ptrt2 . base =< addr2 =< ptrt2 . base + term2 ) ]]$.\\
+        $[[ res ]] = [[ pred_term ( oarg ) ]]$\\
+        $[[alloct | is_live pred_term ( oarg ) & ptr1 ,  ptr2]]$\\
+        $[[alloct | in_bounds ptr1 , ptr2]]$\\
         \pf{} By inversion on the typing assumption and $[[ alloct <= N ]]$.}
 
     \step{<2>4}{%
@@ -1809,48 +1985,111 @@ arbitrary (not normalised).
         \begin{pfenum}
         \item $[[ alloct |- h' <= nR' ]]$
         \item $[[ alloct | < h ; res_term > ||v < h' ; res_val > ]]$
-        \item $[[ cdot ; L0 ; N ; nR' |- res_val => Alloc ( ptrt1 ) ( term1 ) * Alloc ( ptrt2 ) ( term2 ) ]]$.
+        \item $[[ cdot ; L0 ; N ; nR' |- res_val => res ]]$.
         \end{pfenum}
         \pf{} By \stepref{<2>2} and \lemmaref{subsec:res_term_progress}.}
 
     \step{<2>5}{%
-        $[[ res_val ]] = [[ < Alloc ( ptrt1 ) , Alloc ( ptrt2 ) > ]]$.\\
-        \pf{} By \lemmaref{subsec:non_cond_res_det_ctx_val}.}
+        $[[ res_val ]] = [[ pred_term ]]$.\\
+        \pf{} By \lemmaref{subsec:non_cond_res_det_ctx_val} and \stepref{<2>3}.}
 
     \step{<2>6}{%
-        $[[ h' ]] = [[ { Alloc ( ptrt1 ) ( term1 ) & None } + { Alloc ( ptrt2 ) ( term ) & None } ]]$.\\
-        \pf{} By inversion on the typing assumption in \stepref{<2>3},
+        $[[ h' ]] = [[ { pred_term ( oarg ) & None } ]]$.\\
+        \pf{} By inversion on the typing assumption in \stepref{<2>4},
         $[[ alloct |- h' <= nR' ]]$ and \lemmaref{subsec:norm_ctx_det_heap}.}
 
     \step{<2>7}{Step with \OpMemopRelBinop.}
 
     \end{pfproof}
 
-\step{<1>22}{\case{%
+\step{<1>25}{\case{%
     \MemopPtrDiff, \MemopPtrDiffArr.
 }{%
-    \pf{} Similar to \MemopRelBinop, so step with \OpMemopPtrDiff/\OpMemopPtrDiffArr{} respectively.
-}}
+    \pf{} Similar to \MemopRelBinop, so step with
+    \OpMemopPtrDiff/\OpMemopPtrDiffArr{} respectively.}}
 
-\step{<1>23}{\case{%
-    \MemopIntFromPtr.
+\step{<1>26}{\case{%
+    \MemopIntFromRt, \MemopRtFromInt.
 }{%
-    \pf{} Similar to \MemopRelBinop, so step with \OpMemopIntFromPtr.}}
+    \pf{} Similar to \MemopPtrEq, but $[[pval]]$ is an $[[addr]]$ for \MemopRtFromInt.
+    Step with \OpMemopIntFromRt/\OpMemopRtFromInt{} respectively.}}
 
-\step{<1>24}{\case{\MemopPtrFromInt.}{}}
+\step{<1>27}{\case{%
+    \MemopRtFromPtr.
+}{%
+    \pf{} Similar to \MemopPtrEq, but $[[pval]]$ is a $[[ptr]]$.
+    Step with \OpMemopRtFromPtr{} respectively.}}
+
+\step{<1>28}{\case{%
+    \MemopLiveFromRt.
+}{%
+    \pf{} Similar to \MemopRelBinop, but just one $[[pval]]$ which is a $[[ptr]]$.
+    Step with \OpMemopLiveFromRt{} respectively.}}
+
+\step{<1>28a}{\case{%
+    \MemopUnsureFromRt.
+}{%
+    \pf{} Similar to \MemopRelBinop, but just one $[[pval]]$ which is a $[[ptr]]$.\\
+    If the $[[ inj ptr . addr != 0 ]]$ and the heap contains $[[ pred_term ( oarg) ]]$
+    which proves the pointer is in bounds of a live allocation, step with
+    \OpMemopAlsoLiveFromRt.\\
+    If the address is 0, or the pointer is not in bounds
+    of a live allocation, step with \OpMemopNullEmptyFromRt.}}
+
+\step{<1>29}{\case{%
+    \MemopCopyAllocId.
+}{%
+    \pf{} Similar to \MemopRelBinop, but where $[[pval1]]$ is $[[addr]]$.
+    So step with \OpMemopCopyAllocId.}}
+
+\step{<1>30}{\case{%
+    \MemopPtrValidForDeref.
+}{%
+    \pf{} Similar to \MemopRelBinop, but with only one $[[pval]]$ which is a
+    $[[ptr]]$. So step with \OpMemopPtrValidForDeref.}}
+
+\step{<1>30a}{\case{%
+    \MemopPtrUnsureForDeref.
+}{%
+    \pf{} Similar to \MemopRelBinop, but with only one $[[pval]]$ which is a
+    $[[ptr]]$.\\
+    If the heap contains $[[ pred_term ( oarg ) ]]$ which proves the pointer is
+    in bounds of a live allocation, step with
+    \OpMemopPtrAlsoValidForDeref.\\
+    If not, step with \OpMemopPtrInvalidForDeref.}}
+
+\step{<1>31}{\case{%
+    \MemopPtrWellAligned.
+}{%
+    \pf{} Similar to \MemopPtrEq, excepct with only one $[[pval]]$.
+    Step with \OpMemopPtrAlsoValidForDeref/\OpMemopPtrWellAligned{} respectively.}}
+
+
+\step{<1>32}{\case{%
+    \MemopPtrArrayShift.
+}{%
+    \pf{} Similar to \MemopRelBinop, so step with \OpMemopPtrArrayShift.}}
+
+\step{<1>33}{\case{\MemopMemcpy.}{}}
 
     \begin{pfproof}
 
     \step{<2>1}{%
-        $[[pval]]$ must be a $[[ int ]] = [[ addr ]]$.\\
-        \pf{} By inversion on the typing assumption and \PureValObjInt.}
+        $[[pval1]]$ must be a $[[ ptr1 ]]$.\\
+        $[[pval2]]$ must be a $[[ ptr2 ]]$.\\
+        $[[pval3]]$ must be an $[[ int ]]$.\\
+        \pf{} By inversion on the typing assumption \PureValObjPtr{} for the
+        first two, and \PureValObjInt{} for the last.}
 
     \step{<2>2}{%
-        $[[ C ; L ; N ; R |- res_term => ptrt |- init - ct1 -> oarg ]]$.\\
+        $[[ cdot ; L0 ; N ; nR |- res_term => ipred_term1 ( _t ) * ipred_term2 ( oarg ) ]]$,\\
+        where $[[ipred_term1 def= each (integer x; iguard1 ) { Owned < Uninit , byte > ( array_shift < byte > ( ptrt1' , x ) ) } ]]$\\
+        and   $[[ipred_term2 def= each (integer x; iguard2 ) { Owned <   Init , byte > ( array_shift < byte > ( ptrt2' , x ) ) }]]$.\\
         \pf{} By inversion on the typing assumption.}
 
     \step{<2>3}{%
-        $[[ alloct |- smt ( x . base =< addr =< x . base + x . len ) ]]$ for $[[ x def= alloct [ ptrt . alloc_id ] ]]$.\\
+        $[[alloct |- smt ( each (integer x; _t) { iguard1 <-> iguard2 <-> 0 =< x =< int - 1 } )]]$\\
+        and $[[alloct |- smt ( ptrt1' = inj ptr1 /\ ptrt2' = inj ptr2 /\ 0 =< int )]]$.\\
         \pf{} By inversion on the typing assumption and $[[ alloct <= N ]]$.}
 
     \step{<2>4}{%
@@ -1858,39 +2097,70 @@ arbitrary (not normalised).
         \begin{pfenum}
         \item $[[ alloct |- h' <= nR' ]]$
         \item $[[ alloct | < h ; res_term > ||v < h' ; res_val > ]]$
-        \item $[[ cdot ; L0 ; N ; nR' |- res_val => ptrt |- init - ct1 -> oarg ]]$.
+        \item $[[ cdot ; L0 ; N ; nR' |- res_val => ipred_term1 ( _t ) * ipred_term2 ( oarg ) ]]$.
         \end{pfenum}
         \pf{} By \stepref{<2>2} and \lemmaref{subsec:res_term_progress}.}
 
     \step{<2>5}{%
-        $[[ res_val ]] = [[ Owned < _init , ct > ( ptrt ) ]]$.\\
+        $[[ res_val ]] = [[ < ipred_term1 , ipred_term2 > ]]$.\\
         \pf{} By \lemmaref{subsec:non_cond_res_det_ctx_val}.}
 
     \step{<2>6}{%
-        $[[ h' ]] = [[ { Owned < _init , ct > ( ptrt ) ( oarg ) & None } ]]$.\\
-        \pf{} By inversion on the typing assumption in \stepref{<2>3},
+        $[[ h' ]] = [[ { ipred_term1 ( _t ) & cdot } + { ipred_term2 ( oarg ) & cdot } ]]$.\\
+        \pf{} By inversion on the typing assumption in \stepref{<2>4},
         $[[ alloct |- h' <= nR' ]]$ and \lemmaref{subsec:norm_ctx_det_heap}.}
 
-    \step{<2>7}{Step with \OpMemopPtrFromInt.}
+    \step{<2>7}{Step with \OpMemopMemcpy.}
 
     \end{pfproof}
 
-\step{<1>25}{\case{\MemopPtrValidForDeref.}{
-    \pf{} $[[ pval ]]$ must be a $[[ ptr ]]$, so step with
-    \OpMemopPtrValidForDeref.}}
+\step{<1>34}{\case{\MemopMemcmp.}{}}
 
-\step{<1>26}{\case{%
-    \MemopPtrWellAligned.
-}{%
-    \pf{} $[[ pval ]]$ must be a $[[ ptr ]]$, so step with
-    \OpMemopPtrWellAligned.}}
+    \begin{pfproof}
 
-\step{<1>27}{\case{%
-    \MemopPtrArrayShift.
-}{%
-    \pf{} Similar to \MemopRelBinop, so step with \OpMemopPtrArrayShift.}}
+    \step{<2>1}{%
+        $[[pval1]]$ must be a $[[ ptr1 ]]$.\\
+        $[[pval2]]$ must be a $[[ ptr2 ]]$.\\
+        $[[pval3]]$ must be an $[[ int ]]$.\\
+        \pf{} By inversion on the typing assumption \PureValObjPtr{} for the
+        first two, and \PureValObjInt{} for the last.}
 
-\step{<1>28}{\case{\ExprCCall.}{}}
+    \step{<2>2}{%
+        $[[ cdot ; L0 ; N ; nR |- res_term => ipred_term1 ( oarg1 ) * ipred_term2 ( oarg2 ) ]]$,\\
+        where $[[ ipred_term1 def= each (integer x; iguard1 ) { Owned < Init , byte > ( array_shift < byte > ( ptrt1' , x ) ) } ]]$,\\
+        and $[[ ipred_term2 def= each (integer x; iguard2 ) { Owned < Init , byte > ( array_shift < byte > ( ptrt2' , x ) ) }]]$.\\
+        \pf{} By inversion on the typing assumption.}
+
+    \step{<2>3}{%
+        $[[ alloct |- smt ( each (integer x; _t) { iguard1 <-> iguard2 <-> 0 =< x =< int - 1 } ) ]]$\\
+        and $[[ alloct |- smt ( each (integer x; iguard1 ) { oarg1 [ x ] != inj Unspecified () } ) ]]$\\
+        and $[[ alloct |- smt ( each (integer x; iguard2 ) { oarg2 [ x ] != inj Unspecified () } ) ]]$\\
+        and $[[ alloct |- smt ( ptrt1' = inj ptr1 /\ ptrt2' = inj ptr2 /\ 0 =< int ) ]]$.\\
+        \pf{} By inversion on the typing assumption and $[[ alloct <= N ]]$.}
+
+    \step{<2>4}{%
+        $[[ exists ]] [[ h' ]], [[ nR' ]], [[ res_val ]] .\:$\\
+        \begin{pfenum}
+        \item $[[ alloct |- h' <= nR' ]]$
+        \item $[[ alloct | < h ; res_term > ||v < h' ; res_val > ]]$
+        \item $[[ cdot ; L0 ; N ; nR' |- res_val => ipred_term1 ( oarg1 ) * ipred_term2 ( oarg2 ) ]]$.
+        \end{pfenum}
+        \pf{} By \stepref{<2>2} and \lemmaref{subsec:res_term_progress}.}
+
+    \step{<2>5}{%
+        $[[ res_val ]] = [[ < ipred_term1 , ipred_term2 > ]]$.\\
+        \pf{} By \lemmaref{subsec:non_cond_res_det_ctx_val}.}
+
+    \step{<2>6}{%
+        $[[ h' ]] = [[ { ipred_term1 ( oarg1 ) & cdot } + { ipred_term2 ( oarg ) & cdot } ]]$.\\
+        \pf{} By inversion on the typing assumption in \stepref{<2>4},
+        $[[ alloct |- h' <= nR' ]]$ and \lemmaref{subsec:norm_ctx_det_heap}.}
+
+    \step{<2>7}{Step with \OpMemopMemcmp.}
+
+    \end{pfproof}
+
+\step{<1>35}{\case{\ExprCCall.}{}}
 
     \begin{pfproof}
 
@@ -1907,28 +2177,28 @@ arbitrary (not normalised).
 
     \end{pfproof}
 
-\step{<1>29}{\case{\ExprProc, \StmtRun.}{%
+\step{<1>36}{\case{\ExprProc, \StmtRun.}{%
     \pf{} Similar to \ExprCCall, but step with \OpExprProc{} / \OpStmtRun.}}
 
-\step{<1>30}{\case{\ExprMemop.}{%
+\step{<1>37}{\case{\ExprMemop.}{%
     \pf{} By induction, if $[[memop]]$ is unreachable, then the whole expression
     is so. $[[memop]]$s are not values. Only stepping cases applies, so
     step with \OpExprMemop.}}
 
-\step{<1>31}{\case{\ExprAction.}{%
+\step{<1>38}{\case{\ExprAction.}{%
     \pf{} By induction, if $[[action]]$ is unreachable, then the whole
     expression is so. $[[action]]$s are not values. Only stepping case applies, so
     step with \OpExprAction{}.}}
 
-\step{<1>32}{\case{\StmtPure.}{%
+\step{<1>39}{\case{\StmtPure.}{%
     \pf{} By induction.}}
 
-\step{<1>33}{\case{\StmtExpr.}{%
+\step{<1>40}{\case{\StmtExpr.}{%
     \pf{} By induction, since $[[expr]]$ is not value, if it is unreachable,
     the whole expression is so. If $[[expr]]$ takes a step, the whole
     expression steps with \OpStmtExpr.}}
 
-\step{<1>34}{\case{\StmtLet.}{%
+\step{<1>41}{\case{\StmtLet.}{%
     \pf{} By induction, if $[[stmt]]$ is unreachable, so is the whole
     expression.\\[\baselineskip]
 
@@ -1940,12 +2210,12 @@ arbitrary (not normalised).
     If $[[stmt]]$ takes a step, the whole expression steps with
     \OpStmtLet.}}
 
-\step{<1>35}{\case{\StmtCase.}{%
+\step{<1>42}{\case{\StmtCase.}{%
     \pf{} By assumption that all patterns are exhaustive, and
     \lemmaref{subsec:wt_values_pat_match}, there is at least one pattern against
     which $[[pval]]$ will match, so \OpStmtCase.}}
 
-\step{<1>36}{\case{\StmtIf.}{%
+\step{<1>43}{\case{\StmtIf.}{%
     \pf{} $[[pval]]$ must be a $[[bool_value]]$ and so
     \OpStmtIfTrue/\OpStmtIfFalse.}}
 
@@ -1971,8 +2241,8 @@ $[[ C |- pval => to_base ( ct ) ]]$.
 
 \pfsketch{ Induction over the typing judgements. Only \ActionStore{}
     constrains $[[ oarg ]]$ of $[[ Owned < _init , ct > ]]$ resources, and its
-    premises ensure it has type $[[ to_base ( ct ) ]]$; \ActionLoad{} and
-    \MemopPtrValidForDeref{} simply propagate the value.}
+    premises ensure it has type $[[ to_base ( ct ) ]]$; \ActionLoad{}
+    simply propagates the value.}
 
 \subsection{Type Preservation Statement and Proof}
 
@@ -2086,18 +2356,18 @@ to deduce that $[[ nR' ]]$ can only be what you would have supplied anyways.
     \ActionCreate.
 }{%
     \pflet{%
-        $[[ ret ]] = [[ sigma yp : loc .: term /\ exists x : to_base ( ct ) .: ( yp |- Uninit - ct -> x ) *o I  ]]$\\
-        where $[[ term ]] = [[ representable ( ct * , yp ) /\ alignedI ( int , yp )  /\ allocv [ @ aid ] = ( addr , sizeof ct ) ]]$.\\
-        $[[ pt ]] = [[ Owned < Uninit, ct > ( inj ptr ) ( default to_base ( ct ) ) ]]$.\\[\baselineskip]}
+        $[[ ret ]] = [[ sigma yp : loc .: term /\ exists x : to_base ( ct ) .: pred_term1 ( x ) *o pred_term2 ( ( yp . addr , sizeof ct ) ) *o I  ]]$\\
+        where $[[ term ]] = [[ representable ( ct * , yp ) /\ aligned ( int , yp )  /\ allocv [ @ aid ] = ( yp . addr , sizeof ct ) ]]$,\\
+        $[[ pred_term1 ]] = [[ Owned < Uninit, ct > ( inj ptr ) ]]$ and $[[ pred_term2 ]] = [[ Alloc ( @ aid ) ]]$.}
 
     \assume{%
-        $[[ cdot ; L0 ; N ; cdot |- emp | create < ct > ( int ) => ret ]]$
-        and so $[[ h ]] = [[ cdot ]]$ (by inversion, \HeapEmpty)
-        and $[[ heap ]] = [[ f + { pt & None } + { Alloc ( @ aid ) ( ( addr , sizeof ct) ) & None } ]]$.\\}
+        $[[ cdot ; L0 ; N ; cdot |- emp | create < ct > ( int ) => ret ]]$ \\
+        and so $[[ h ]] = [[ cdot ]]$ (by inversion, \HeapEmpty) \\
+        and $[[ heap ]] = [[ f + { pred_term1 ( default to_base ( ct ) ) & None } + { pred_term2 ( ( addr , sizeof ct) ) & None } ]]$.\\}
 
     \pflet{%
-        $[[ h' ]] = [[ { pt & None } + { Alloc ( @ aid ) ( ( addr , sizeof ct) ) & None } ]]$,
-        $[[ nR' ]] = [[ _x : pt , _x : Alloc ( @ aid ) ( ( addr , sizeof ct) ) ]]$,
+        $[[ h' ]] = [[ { pred_term1 ( default to_base ( ct ) ) & None } + { pred_term2 ( ( addr , sizeof ct ) ) & None } ]]$,
+        $[[ nR' ]] = [[ _x : pred_term1 ( default to_base ( ct ) ) , _x : pred_term2 ( ( addr , sizeof ct) ) ]]$,
         $[[ alloct' ]] = ( [[ alloct [ @ aid ] := ( addr , sizeof ct ) ]])$,
         $[[ N' ]] = [[ N , allocv [ @ aid ] = ( addr , sizeof ct )  ]]$.}}
     This means $[[ heap ]] = [[ h' + f ]]$ (trivially).
@@ -2106,7 +2376,7 @@ to deduce that $[[ nR' ]]$ can only be what you would have supplied anyways.
     (by \HeapPredOwned, \AllocTy, \StateTy).\\[\baselineskip]
 
     \prove{%
-        $[[ cdot ; L0 ; N' ; nR' |- < ptr , default to_base ( ct ) , Owned < Uninit, ct > (  inj ptr ) > <= ret ]]$.\\[\baselineskip]}}
+        $[[ cdot ; L0 ; N' ; nR' |- < ptr , default to_base ( ct ) , pred_term1 , pred_term2 > <= ret ]]$.\\[\baselineskip]}}
 
     \begin{pfproof}
 
@@ -2116,16 +2386,66 @@ to deduce that $[[ nR' ]]$ can only be what you would have supplied anyways.
 
     \step{<2>3}{$[[ cdot ; L0 |- default to_base ( ct ) => to_base ( ct ) ]]$ by construction.}
 
-    \step{<2>4}{$[[ cdot ; L0 ; N ; nR'  |- Owned < Uninit , ct > ( inj ptr ) <= pt ]]$ by
+    \step{<2>4}{$[[ cdot ; L0 ; N ; nR'  |- pred_term1 <= pred_term1 ( default to_base ( ct ) ) ]]$ by
         \ResSynPred.}
 
-    \step{<2>5}{Prove typing with \SpineRet; \stepref{<2>4} -- \stepref{<2>1} with % chktex 8
-        \SpineRes, \SpineLog, \SpinePhi, \SpineComp{}
+    \step{<2>5}{$[[ cdot ; L0 ; N ; nR'  |- pred_term2 <= pred_term2 ( ( addr , sizeof ct ) ) ]]$ by
+        \ResSynPred.}
+
+    \step{<2>6}{Prove typing with \SpineRet; \stepref{<2>5} -- \stepref{<2>1} with % chktex 8
+        \SpineRes, \SpineRes, \SpineLog, \SpinePhi, \SpineComp{}
         respectively; \StmtRetT{}.}
 
     \end{pfproof}
 
 \step{<1>11}{\case{%
+    \ActionAlloc.
+}{%
+    \pflet{%
+        $[[ ret ]] = [[ sigma yp : loc .: term /\ exists x : array byte .: ipred_term ( x ) *o pred_term ( ( yp . addr , int2 ) ) *o I  ]]$\\
+        where $[[ term ]] = [[ aligned ( int1 , yp )  /\ allocv [ @ aid ] = ( yp . addr , int2 ) ]]$,\\
+        $[[ ipred_term ]] = [[ each ( integer x ; 0 =< x =< int2 - 1 ) { Owned < Uninit, ct > ( array_shift < byte > ( inj ptr , x ) )  } ]]$ \\
+        and $[[ pred_term ]] = [[ Alloc ( @ aid ) ]]$.}
+
+    \assume{%
+        $[[ cdot ; L0 ; N ; cdot |- emp | alloc ( int1 , int2 ) => ret ]]$\\
+        and so $[[ h ]] = [[ cdot ]]$ (by inversion, \HeapEmpty)\\
+        and $[[ heap ]] = [[ f + { ipred_term ( default array byte ) & cdot } + { pred_term ( ( addr , int2 ) ) & None } ]]$.\\}
+
+    \pflet{%
+        $[[ h' ]] = [[ { ipred_term ( default array byte ) & cdot } + { pred_term ( ( addr , int2 ) ) & None } ]]$,
+        $[[ nR' ]] = [[ _x : ipred_term ( default array byte ) , _x : pred_term ( ( addr , int2 ) ) ]]$,
+        $[[ alloct' ]] = ( [[ alloct [ @ aid ] := ( addr , int2 ) ]])$,
+        $[[ N' ]] = [[ N , allocv [ @ aid ] = ( addr , int2 )  ]]$.}}
+    This means $[[ heap ]] = [[ h' + f ]]$ (trivially).
+    Also, $[[ alloct' <= N' ]]$ from since $[[ alloct <= N ]]$ (by expanding definitions).
+    Hence $[[ alloct' ; h' <= N' ; nR' ]]$
+    (by \HeapPredOwned, \AllocTy, \StateTy).\\[\baselineskip]
+
+    \prove{%
+        $[[ cdot ; L0 ; N' ; nR' |- < ptr , default array byte , ipred_term , pred_term > <= ret ]]$.\\[\baselineskip]}}
+
+    \begin{pfproof}
+
+    \step{<2>1}{$[[ cdot |- ptr => loc ]]$ by \PureValObjPtr{} and \PureValObj.}
+
+    \step{<2>2}{$[[ smt ( N' => term ) ]]$ by construction of $[[ ptr ]]$ and $[[ N' ]]$.}
+
+    \step{<2>3}{$[[ cdot ; L0 |- default to_base ( ct ) => to_base ( ct ) ]]$ by construction.}
+
+    \step{<2>4}{$[[ cdot ; L0 ; N ; nR'  |- ipred_term <= ipred_term ( default array byte ) ]]$ by
+        \ResSynIPred.}
+
+    \step{<2>5}{$[[ cdot ; L0 ; N ; nR'  |- pred_term <= pred_term ( ( addr , int2 ) ) ]]$ by
+        \ResSynPred.}
+
+    \step{<2>6}{Prove typing with \SpineRet; \stepref{<2>5} -- \stepref{<2>1} with % chktex 8
+        \SpineRes, \SpineRes, \SpineLog, \SpinePhi, \SpineComp{}
+        respectively; \StmtRetT{}.}
+
+    \end{pfproof}
+
+\step{<1>12}{\case{%
     \ActionLoad.
 }{%
     \pflet{%
@@ -2160,12 +2480,12 @@ to deduce that $[[ nR' ]]$ can only be what you would have supplied anyways.
 
     \end{pfproof}
 
-\step{<1>12}{\case{%
+\step{<1>13}{\case{%
     \ActionStore.
 }{%
     \pflet{%
         $[[ ret ]] = [[ sigma _x : unit .: ( inj ptr |- Init - ct -> inj pval ) *o I ]]$.\\
-        $[[ pt ]] = [[ Owned < _init , ct > ( inj ptr ) ( _t )]]$,
+        $[[ pt ]] = [[ Owned < _init , ct > ( inj ptr ) ( _t )]]$,\\
         $[[ pt' ]] = [[ Owned < Init , ct > ( inj ptr ) ( inj pval ) ]]$.\\[\baselineskip]}
 
     \assume{%
@@ -2174,7 +2494,7 @@ to deduce that $[[ nR' ]]$ can only be what you would have supplied anyways.
 
     $[[ exists ]] [[ h'' ]] , [[ nR'' ]]$ such that
     $[[ heap' + { pt & None } ]] = [[ h'' + f ]]$,
-    $[[ alloct |- h' <= nR' ]]$
+    $[[ alloct |- h'' <= nR'' ]]$
     and $[[ cdot ; L0 ; N ; nR'' |- Owned < _init , ct > ( inj ptr ) => pt ]]$,
     by \lemmaref{subsec:res_term_red_isolated}.\\[\baselineskip]
 
@@ -2199,22 +2519,24 @@ to deduce that $[[ nR' ]]$ can only be what you would have supplied anyways.
 
     \end{pfproof}
 
-\step{<1>13}{\case{%
+\step{<1>14}{\case{%
     \ActionKillStatic.
 }{%
 
     \assume{%
-        $[[ cdot ; L0 ; N ; nR |- res_term | kill < ct > ( ptr ) => sigma _x : unit .: I ]]$
-        and $[[ alloct | < h + f ; res_term > ||v < heap + { pt & None } + { Alloc ( @ aid ) ( oarg ) & None } ; < Owned < _init , ct > ( inj ptr ) , Alloc ( @ aid ) > > ]]$.\\[\baselineskip]}
+        $[[ cdot ; L0 ; N ; nR |- res_term | kill < ct > ( ptr ) => sigma _x : unit .: I ]]$\\
+        and $[[ alloct | < h + f ; res_term > ||v < heap + { pred_term1 ( _t ) & None } + { pred_term2 ( oarg ) & None } ; < pred_term1 , pred_term2 > > ]]$\\
+        where $[[pred_term1 def= Owned < _init , ct > ( inj ptr )]]$ and $[[ pred_term2 def= Alloc ( @ aid )]]$.\\[\baselineskip]}
+
 
     $[[ exists ]] [[ h'' ]] , [[ nR'' ]]$ such that
-    $[[ heap + { pt & None } + { Alloc ( @ aid ) ( oarg ) & None } ]] = [[ h'' + f ]]$,
+    $[[ heap + { pred_term1 ( _t ) & None } + { pred_term2 ( oarg ) & None } ]] = [[ h'' + f ]]$,
     $[[ alloct |- h'' <= nR'' ]]$
-    and $[[ cdot ; L0 ; N ; nR'' |- < Owned < _init , ct > ( inj ptr ) , Alloc ( @ aid ) > => pt ]]$,
+    and $[[ cdot ; L0 ; N ; nR'' |- < pred_term1 , pred_term2 > => pt ]]$,
     by \lemmaref{subsec:res_term_red_isolated}.\\[\baselineskip]
 
-    $[[ nR'' ]] = [[ _x : pt , _x : Alloc ( @ aid ) ( oarg ) ]]$ by Lemma~\ref{subsec:non_cond_res_det_ctx_val}
-    and $[[ h'' ]] = [[ { pt & None } + { Alloc ( @ aid ) ( oarg ) & None } ]]$ by Lemma~\ref{subsec:norm_ctx_det_heap},
+    $[[ nR'' ]] = [[ _x : pred_term1 ( _t ) , _x : pred_term2 ( oarg ) ]]$ by Lemma~\ref{subsec:non_cond_res_det_ctx_val}
+    and $[[ h'' ]] = [[ { pred_term1 ( _t ) & None } + { pred_term2 ( oarg ) & None } ]]$ by Lemma~\ref{subsec:norm_ctx_det_heap},
     hence $[[ heap ]] = [[ f ]]$.\\
     \pflet{$[[ h' ]] = [[ cdot ]]$ and $[[ nR' ]] = [[ cdot ]]$.\\}
     This means $[[ heap ]] = [[ h' + f ]]$ and $[[ alloct |- h' <= nR' ]]$ (by \HeapEmpty).\\[\baselineskip]
@@ -2224,59 +2546,204 @@ to deduce that $[[ nR' ]]$ can only be what you would have supplied anyways.
 
     \pf{} By \SpineRet, \PureValUnit, \SpineComp, \StmtRetT.}}
 
-\step{<1>14}{\case{%
+\step{<1>15}{\case{%
+    \ActionKillDynamic.
+}{%
+
+    \assume{%
+        $[[ cdot ; L0 ; N ; nR |- res_term | kill < ct > ( ptr ) => sigma _x : unit .: I ]]$\\
+        and $[[ alloct | < h + f ; res_term > ||v < heap + { ipred_term ( _t ) & cdot } + { pred_term ( oarg ) & None } ; < ipred_term , pred_term > > ]]$\\
+        where $[[ ipred_term def= each (integer x; iguard) { Owned < _init , byte > ( array_shift < byte > ( inj ptr , x ) ) } ]]$ \\
+        and $[[ pred_term def= Alloc ( @ aid )]]$.\\[\baselineskip]}
+
+
+    $[[ exists ]] [[ h'' ]] , [[ nR'' ]]$ such that
+    $[[ heap + { ipred_term ( _t ) & cdot } + { pred_term ( oarg ) & None } ]] = [[ h'' + f ]]$,
+    $[[ alloct |- h'' <= nR'' ]]$
+    and $[[ cdot ; L0 ; N ; nR'' |- < ipred_term , pred_term > => pt ]]$,
+    by \lemmaref{subsec:res_term_red_isolated}.\\[\baselineskip]
+
+    $[[ nR'' ]] = [[ _x : ipred_term ( _t ) , _x : pred_term ( oarg ) ]]$ by Lemma~\ref{subsec:non_cond_res_det_ctx_val}
+    and $[[ h'' ]] = [[ { ipred_term ( _t ) & cdot } + { pred_term ( oarg ) & None } ]]$ by Lemma~\ref{subsec:norm_ctx_det_heap},
+    hence $[[ heap ]] = [[ f ]]$.\\
+    \pflet{$[[ h' ]] = [[ cdot ]]$ and $[[ nR' ]] = [[ cdot ]]$.\\}
+    This means $[[ heap ]] = [[ h' + f ]]$ and $[[ alloct |- h' <= nR' ]]$ (by \HeapEmpty).\\[\baselineskip]
+
+
+    \prove{%
+        $[[ cdot ; L0 ; N ; cdot |- < Unit > <= sigma _x : unit .: I ]]$}
+
+    \pf{} By \SpineRet, \PureValUnit, \SpineComp, \StmtRetT.}}
+
+\step{<1>16}{\case{%
+    \MemopPtrEq.
+}{%
+
+    \assume{%
+      $[[ret def= sigma y : bool .: term1 /\ term3 *o I]]$\\
+      where $[[term1 def= inj pval1 = inj pval2 -> y]]$,\\
+      $[[term2 def= inj pval1 . alloc_id != inj pval2 . alloc_id /\ inj pval1 . addr = inj pval2 . addr]]$,\\
+      $[[term3 def= neg term1 /\ neg term2 -> neg y]]$.\\[\baselineskip]}
+
+    \prove{%
+        $[[ cdot ; L0 ; N ; nR' |- < bool_value > <= ret ]]$}
+
+    \pf{} By \SpineRet, \PureValTrue/\PureValFalse, \SpineComp, \SpinePhi{} (by construction of $[[ bool_value ]]$), \StmtRetT.}}
+
+
+\step{<1>17}{\case{%
     \MemopRelBinop.
 }{%
 
     \assume{%
-      $[[ ret def= sigma y : bool .: y = ( addr1 ' rel_binop ' addr2 ) /\ Alloc ( ptrt1 ) ( oarg1 ) * Alloc ( ptrt2 ) ( oarg2 ) *o I ]]$
-      $[[ cdot ; L0 ; N ; nR |- res_term | ( @ aid1 , addr1 ) rel_binop ( @ aid2 , addr2 ) => ret ]]$
-      and $[[ alloct | < h + f ; res_term > ||v < heap + { Alloc ( ptrt1 ) ( oarg1 ) & None } + { Alloc ( ptrt2 ) ( oarg2 ) & None } ; < Alloc ( ptrt1 ) , Alloc ( ptrt2 ) > > ]]$.\\[\baselineskip]}
+      $[[ret def= sigma y : bool .: y = inj ptr1 . addr ' rel_binop ' inj ptr2 . addr /\ pred_term ( oarg ) *o I]]$\\
+      $[[ cdot ; L0 ; N ; nR |- res_term | ptr1 rel_binop ptr2 => ret ]]$\\
+      and $[[ alloct | < h + f ; res_term > ||v < heap + { pred_term ( oarg ) & None } ; pred_term > ]]$.\\[\baselineskip]}
 
     $[[ exists ]] [[ h' ]] , [[ nR' ]]$ such that
-    $[[ heap + { Alloc ( ptrt1 ) ( oarg1 ) & None } + { Alloc ( ptrt2 ) ( oarg2 ) & None } ]] = [[ h' + f ]]$,
+    $[[ heap + { pred_term ( oarg ) & None } ]] = [[ h' + f ]]$,
     $[[ alloct |- h' <= nR' ]]$
-    and $[[ cdot ; L0 ; N ; nR' |- < Alloc ( ptrt1 ) , Alloc ( ptrt2 ) > => Alloc ( ptrt1 ) ( oarg1 ) * Alloc ( ptrt2 ) ( oarg2 ) ]]$,
+    and $[[ cdot ; L0 ; N ; nR' |- pred_term => pred_term ( oarg ) ]]$,
     by \lemmaref{subsec:res_term_red_isolated}.\\[\baselineskip]
 
-    $[[ nR' ]] = [[ _x : Alloc ( ptrt1 ) ( oarg1 ) , _x : Alloc ( ptrt2 ) ( oarg2 ) ]]$ by Lemma~\ref{subsec:non_cond_res_det_ctx_val}
-    and $[[ h' ]] = [[ { Alloc ( ptrt1 ) ( oarg1 ) & None } + { Alloc ( ptrt2 ) ( oarg2 ) & None } ]]$ by Lemma~\ref{subsec:norm_ctx_det_heap}.\\
-    This means $[[ heap ]] = [[ f ]]$ and $[[ alloct |- h' <= nR' ]]$ (by \HeapPredOther, \HeapConcat).\\[\baselineskip]
+    $[[ nR' ]] = [[ _x : pred_term ( oarg ) ]]$ by Lemma~\ref{subsec:non_cond_res_det_ctx_val}
+    and $[[ h' ]] = [[ { pred_term ( oarg ) & None } ]]$ by Lemma~\ref{subsec:norm_ctx_det_heap}.\\
+    This means $[[ heap ]] = [[ f ]]$ and $[[ alloct |- h' <= nR' ]]$ (by \HeapPredAlloc{} twice, \HeapConcat).\\[\baselineskip]
 
     \prove{%
-        $[[ cdot ; L0 ; N ; nR' |- < bool_value , < pred_term1 , pred_term2 > > <= ret ]]$}
+        $[[ cdot ; L0 ; N ; nR' |- < bool_value , pred_term > <= ret ]]$}
 
-    \pf{} By \SpineRet, \PureValUnit, \SpineComp, \SpinePhi{} (by construction of $[[ bool_value ]]$), \SpineRes, \StmtRetT.}}
-
-\step{<1>15}{\case{%
-    \MemopPtrDiffArr, \MemopPtrDiff.
-}{%
-    \pf{} Similar to \MemopRelBinop, but with only one $[[ Alloc ( ptrt ) ]]$ resource.}}
-
-\step{<1>16}{\case{%
-    \MemopIntFromPtr.
-}{%
-    \pf{} Similar to \MemopRelBinop, but with only one $[[ Alloc ( ptrt ) ]]$ resource.}}
-
-\step{<1>17}{\case{%
-    \MemopPtrFromInt.
-}{%
-    \pf{} Similar to \MemopIntFromPtr, with resource $[[ Owned < _init , ct > ( ptrt ) ]]$
-    instead of $[[ Alloc ( ptrt ) ]]$.
-}}
+    \pf{} By \SpineRet, \PureValTrue/\PureValFalse, \SpineComp, \SpinePhi{} (by construction of $[[ bool_value ]]$), \SpineRes, \StmtRetT.}}
 
 \step{<1>18}{\case{%
-    \MemopPtrValidForDeref, \MemopPtrWellAligned.
+    \MemopPtrDiffArr, \MemopPtrDiff.
 }{%
-    \pf{} Similar to \MemopIntFromPtr, but with no resources.
-}}
+    \pf{} Similar to \MemopRelBinop, but with \PureValObjInt.}}
 
 \step{<1>19}{\case{%
-    \MemopPtrArrayShift.
+    \MemopIntFromRt, \MemopRtFromInt, \MemopRtFromPtr.
 }{%
-    \pf{} Similar to \MemopRelBinop, but with only one $[[ Alloc ( ptrt ) ]]$ resource.}}
+    \pf{} Similar to \MemopPtrEq, but with an extra \SpineLog{} for \MemopRtFromInt{} and \MemopRtFromPtr.}}
 
 \step{<1>20}{\case{%
+    \MemopLiveFromRt.
+}{%
+    \pf{} Similar to \MemopRelBinop, but with \PureValObjPtr{} first.}}
+
+\step{<1>20a}{\case{%
+    \MemopUnsureFromRt.
+}{%
+    \pf{} Similar to \MemopRelBinop, but with \PureValObjPtr{} first, and an
+    extra \SpineLog{} for the allocation ID, for both \OpMemopAlsoLiveFromRt{}
+    and \OpMemopNullEmptyFromRt.}}
+
+\step{<1>21}{\case{%
+    \MemopCopyAllocId.
+}{%
+    \pf{} Similar to \MemopRelBinop, but with \PureValObjPtr.}}
+
+\step{<1>22}{\case{%
+    \MemopPtrValidForDeref.
+}{%
+    \pf{} Similar to \MemopRelBinop.}}
+
+\step{<1>22a}{\case{%
+    \MemopPtrUnsureForDeref.
+}{%
+    \pf{} Similar to \MemopPtrEq{} for both \OpMemopPtrAlsoValidForDeref{}, and
+    \OpMemopPtrInvalidForDeref.}}
+
+\step{<1>23}{\case{%
+    \MemopPtrWellAligned.
+}{%
+    \pf{} Similar to \MemopPtrEq.}}
+
+\step{<1>24}{\case{%
+    \MemopPtrArrayShift.
+}{%
+    \pf{} Similar to \MemopRelBinop, but with \PureValObjPtr.}}
+
+\step{<1>25}{\case{%
+    \MemopMemcpy.
+}{%
+
+    \assume{%
+      $[[ ret def= sigma y : loc .: y = inj ptr1 /\ ipred_term1 ( oarg ) * ipred_term2 ( oarg ) *o I ]]$\\
+      $[[ cdot ; L0 ; N ; nR |- res_term | memcpy ( ptr1 , ptr2 , int ) => ret ]]$\\
+      $[[ alloct | < h + f ; res_term > ||v < heap' + h1 ; < ipred_term1 , ipred_term2 > > ]]$\\
+      where $[[ h1 def= { ipred_term1 ( _t ) & cdot } + { ipred_term2 ( oarg ) & cdot } ]]$.\\[\baselineskip]}
+
+    $[[ exists ]] [[ h'' ]] , [[ nR'' ]]$ such that
+    $[[ heap' + h1 ]] = [[ h'' + f ]]$,
+    $[[ alloct |- h'' <= nR'' ]]$
+    and $[[ cdot ; L0 ; N ; nR'' |- < ipred_term1 , ipred_term2 > => ipred_term1 ( _t ) * ipred_term2 ( oarg ) ]]$,
+    by \lemmaref{subsec:res_term_red_isolated}.\\[\baselineskip]
+
+    $[[ nR'' ]] = [[ _x : ipred_term1 ( _t ) , _x : ipred_term2 ( oarg ) ]]$ by Lemma~\ref{subsec:non_cond_res_det_ctx_val}
+    and $[[ h'' ]] = [[ h1 ]]$ by Lemma~\ref{subsec:norm_ctx_det_heap}.
+    This means $[[ heap' ]] = [[ f ]]$.\\
+
+    \pflet{%
+        $[[ nR' ]] = [[ _x : ipred_term1 ( oarg ) , _x : ipred_term2 ( oarg ) ]]$,\\
+        $[[ h' ]] = [[ { ipred_term1 ( oarg ) & cdot } + { ipred_term2 ( oarg ) & cdot } ]]$.\\
+        This means $[[ heap ]] = [[ h' + f ]]$ and $[[ alloct |- h' <= nR' ]]$ (by \HeapIPredOwned{} twice, \HeapConcat).\\[\baselineskip]}
+
+    \prove{%
+        $[[ cdot ; L0 ; N ; nR' |- < ptr1 , < ipred_term1 , ipred_term2 > > <= ret ]]$}}}
+
+    \begin{pfproof}
+
+    \step{<2>1}{$[[ cdot |- ptr1 => loc ]]$ by \PureValObjPtr{} and \PureValObj.}
+
+    \step{<2>2}{$[[ smt ( N => inj ptr1 = inj ptr1 ) ]]$ trivally.}
+
+    \step{<2>3}{$[[ cdot ; L0 ; N ; nR'  |- < ipred_term1 , ipred_term2 > <= ipred_term1 ( oarg ) * ipred_term2 ( oarg ) ]]$ by
+        \ResSynIPred{} and \ResChkSwitch{} twice, then \ResChkSepConj.}
+
+    \step{<2>4}{Prove typing with \SpineRet; \stepref{<2>4} -- \stepref{<2>1} with % chktex 8
+        \SpineRes, \SpinePhi, \SpineComp{} respectively; \StmtRetT{}.}
+
+    \end{pfproof}
+
+
+\step{<1>26}{\case{%
+    \MemopMemcmp.
+}{%
+
+    \assume{%
+      $[[ ret def= sigma y : integer .: y = memcmp ( inj ptr1 , inj ptr2 , int ) /\ ipred_term1 ( oarg1 )  *o ipred_term2 ( oarg2 ) *o I ]]$\\
+      $[[ cdot ; L0 ; N ; nR |- res_term | memcmp ( ptr1 , ptr2 , int ) => ret ]]$\\
+      $[[ alloct | < h ; res_term > ||v < heap' + h1 ; < ipred_term1 , ipred_term2 > > ]]$\\
+      where $[[ h1 def= { ipred_term1 ( oarg1 ) & cdot } + { ipred_term2 ( oarg2 ) & cdot } ]]$.\\[\baselineskip]}
+
+    $[[ exists ]] [[ h' ]] , [[ nR' ]]$ such that
+    $[[ heap' + h1 ]] = [[ h' + f ]]$,
+    $[[ alloct |- h' <= nR' ]]$
+    and $[[ cdot ; L0 ; N ; nR' |- < ipred_term1 , ipred_term2 > => ipred_term1 ( oarg1 ) * ipred_term2 ( oarg2 ) ]]$,
+    by \lemmaref{subsec:res_term_red_isolated}.\\[\baselineskip]
+
+    $[[ nR' ]] = [[ _x : ipred_term1 ( oarg1 ) , _x : ipred_term2 ( oarg2 ) ]]$ by Lemma~\ref{subsec:non_cond_res_det_ctx_val}
+    and $[[ h' ]] = [[ h1 ]]$ by Lemma~\ref{subsec:norm_ctx_det_heap}.\\
+    This means $[[ heap' ]] = [[ f ]]$ and $[[ alloct |- h' <= nR' ]]$ (by \HeapIPredOwned, \HeapConcat).\\[\baselineskip]
+
+    \prove{%
+        $[[ cdot ; L0 ; N ; nR' |- < bool_value , < ipred_term1 , ipred_term2 > > <= ret ]]$}}}
+
+    \begin{pfproof}
+
+    \step{<2>1}{$[[ cdot |- int => integer ]]$ by \PureValObjInt.}
+
+    \step{<2>2}{$[[ smt ( N => inj ptr1 = inj ptr1 ) ]]$ trivally.}
+
+    \step{<2>3}{$[[ cdot ; L0 ; N ; nR'  |- < ipred_term1 , ipred_term2 > <= ipred_term1 ( oarg1 ) * ipred_term2 ( oarg2 ) ]]$ by
+        \ResSynIPred{} and \ResChkSwitch{} twice, then \ResChkSepConj.}
+
+    \step{<2>4}{Prove typing with \SpineRet; \stepref{<2>4} -- \stepref{<2>1} with % chktex 8
+        \SpineRes, \SpinePhi, \SpineComp{} respectively; \StmtRetT{}.}
+
+    \end{pfproof}
+
+\step{<1>27}{\case{%
     \ExprCCall.
 }{%
     \assume{%
@@ -2292,22 +2759,22 @@ to deduce that $[[ nR' ]]$ can only be what you would have supplied anyways.
 
     \pf{} By \lemmaref{subsec:wt_spine_sub} and $[[ alloct <= N ]]$.}}
 
-\step{<1>21}{\case{%
+\step{<1>28}{\case{%
     \ExprProc.
 }{%
     \pf{}  Similar to \ExprCCall.}}
 
-\step{<1>22}{\case{%
+\step{<1>29}{\case{%
     \ExprMemop, \ExprAction, \ExprPure, \StmtPure.
 }{%
     \pf{} By induction.}}
 
-\step{<1>23}{\case{%
+\step{<1>30}{\case{%
     \StmtExpr.
 }{%
 \pf{} See \StmtLet{} for a more general case and proof.}}
 
-\step{<1>24}{\case{%
+\step{<1>31}{\case{%
     \StmtLet.
 }{%
     \assume{%
@@ -2336,7 +2803,7 @@ to deduce that $[[ nR' ]]$ can only be what you would have supplied anyways.
     By \lemmaref{subsec:sub}, and $[[ subs ( N ) ]] = [[ N ]]$
     because it is well-formed w.r.t $[[ cdot ]] ; [[ L0 ]]$.}}
 
-\step{<1>25}{\case{%
+\step{<1>32}{\case{%
     \StmtLet.
 }{%
     \assume{%
@@ -2349,7 +2816,7 @@ to deduce that $[[ nR' ]]$ can only be what you would have supplied anyways.
     Proceed by induction, instantiating the frame from the inductive hypothesis
     with $[[ h2 + f ]]$.\\}}
 
-\step{<1>26}{\case{%
+\step{<1>33}{\case{%
     \StmtCase.
 }{%
     \assume{%
@@ -2370,12 +2837,12 @@ to deduce that $[[ nR' ]]$ can only be what you would have supplied anyways.
     $[[ cdot ; L0 ; N' ; nR |- subsj ( stmtj ) <= subsj ( ret ) ]]$
     by \lemmaref{subsec:sub}.}} % chktex 9
 
-\step{<1>27}{\case{%
+\step{<1>34}{\case{%
     \StmtIf.
 }{
     See \StmtCase{} for more general case and proof.}}
 
-\step{<1>28}{\case{%
+\step{<1>35}{\case{%
     \StmtRun.
 }{%
     \pf{} Similar to \ExprCCall.}}

@@ -387,6 +387,53 @@ defns
    alloct | < h ; chop ( res_term , iguard ) > ||v < h' + h1 + h2  ; < ipred_term1 , ipred_term2 > >
 
 
+   alloct | < h ; res_term > ||v < h' + { pred_term ( oarg ) & None } ; pred_term >
+   pred_term def= Owned < init , ct > ( ptrt )
+   pred_term' def= Owned < init , byte > ( array_shift < byte > ( ptrt , x ) )
+   ipred_term def= each (integer x; 0 =< x =< sizeof ct - 1) { pred_term' }
+   oarg' def= to_bytes < init , ct > ( oarg )
+   ------------------------------------------------------------------------------------------------------------------- :: ToBytes
+   alloct | < h ; to_bytes ( res_term ) > ||v < h' + { ipred_term ( oarg' ) & cdot }  ; ipred_term >
+
+
+   alloct | < h ; res_term > ||v < h' + { ipred_term ( oarg ) & cdot } ; ipred_term >
+   ipred_term def= each (integer x; iguard) { Owned < init , byte > ( array_shift < byte > ( ptrt , x ) ) }
+   alloct |- smt ( each (integer x; _t) { iguard <-> 0 =< x =< sizeof ct - 1 } )
+   alloct |- smt ( valid_bytes < init > ( oarg [ 0 ldots sizeof ct - 1 ] ) )
+   pred_term def= Owned < init , ct > ( ptrt )
+   oarg' def= from_bytes < init , ct > ( oarg )
+   --------------------------------------------------------------------------------------------------------- :: FromBytes
+   alloct | < h ; from_bytes < init , ct > ( res_term ) > ||v < h' + { ipred_term ( oarg' ) & cdot }  ; pred_term >
+
+
+   alloct | < h ; res_term > ||v < h' + { pred_term ( oarg ) & None } ; pred_term >
+   pred_term def= Owned < init , union tag > ( ptrt )
+   P ( tag ) = member : ct' , _member : _ct
+   term def= offsetof tag member
+   oarg1 def= oarg [ term ldots term + sizeof ct - 1 ]
+   alloct |- smt ( valid_bytes < init' > ( oarg1 ) )
+   ptrt' def= array_shift < byte > ( ptrt , term )
+   pred_term' def= Owned < init' , ct' > ( ptrt' )
+   pred_term'' def= Padding < union tag , member > ( ptrt )
+   oarg' def= from_bytes < init' , ct' > ( oarg1 )
+   h1 def= { pred_term' ( oarg' ) & None } + { pred_term'' ( oarg ) & None }
+   --------------------------------------------------------------------------------------------------------- :: Select
+   alloct | < h ; select < init' , member > ( res_term ) > ||v < h' + h1  ; < pred_term' , pred_term'' > >
+
+
+   alloct | < h ; res_term > ||v < h' + h1 ; < pred_term, pred_term' > >
+   h1 def= { pred_term ( oarg ) & None } + { pred_term' ( oarg' ) & None }
+   pred_term def= Owned < init , ct > ( ptrt )
+   pred_term' def= Padding < union tag , member > ( ptrt' )
+   P ( tag ) = member : ct , _member : _ct
+   term def= offsetof tag member
+   alloct |- smt ( ptrt = array_shift < byte > ( ptrt' , term ) )
+   oarg'' def= oarg' [ term ldots term + sizeof ct -1 ] := to_bytes < init , ct > ( oarg )
+   pred_term1 def= Owned < Init , union tag > ( ptrt' )
+   --------------------------------------------------------------------------------------------------------- :: Forget
+   alloct | < h ; forget < union tag > ( res_term ) > ||v < h' + { pred_term1 ( oarg'' ) & None }  ; pred_term1 >
+
+
   defn footprint_of res_val in h ~> h1 REM h2 :: :: Footprint :: Footprint_
   {{ com footprint of $[[ res_val ]]$ in heap $[[ h ]]$ is $[[ h1 ]]$ with $[[ h2 ]]$ remainder/frame }} by
 
@@ -454,12 +501,26 @@ defns
     pred_term1 def= Owned < Uninit , ct > ( inj ptr )
     pred_term2 def= Alloc ( @ aid )
     ret def= sigma yp : loc .: term /\ exists x : to_base ( ct ) .: pred_term1 ( x ) *o pred_term2 ( ( yp . addr , sizeof ct ) ) *o I
-    term def= representable ( ct * , inj ptr ) /\ alignedI ( int , inj ptr ) /\ allocv [ @ aid ] = ( addr , sizeof ct )
+    term def= representable ( ct * , inj ptr ) /\ aligned ( int , inj ptr ) /\ allocv [ @ aid ] = ( addr , sizeof ct )
     alloct |- smt ( term )
     h' def= h + { pred_term1 ( default to_base ( ct ) ) & None } + { pred_term2 ( ( addr , sizeof ct ) ) & None }
     stmt def= < ptr , default to_base ( ct ), pred_term1 , pred_term2 >
     ------------------------------------------------------------------------- :: Create
     < alloct ; h ; emp | create < ct > ( int ) > --> < alloct [ @ aid ] := ( addr , sizeof ct ) ;  h' ; stmt : ret >
+
+
+    addr inEnv newAlloc ( h , int1 , int2 )
+    @ aid notIn dom ( alloct )
+    inj ptr def= ( @ aid , addr )
+    ipred_term def= each ( integer x ; 0 =< x =< int2 - 1 ) { Owned < Uninit , byte > ( array_shift < byte > ( inj ptr , x ) ) }
+    pred_term def= Alloc ( @ aid )
+    ret def= sigma yp : loc .: term /\ exists y : array byte .: ipred_term ( y ) *o pred_term ( ( yp . addr , int2 ) ) *o I
+    term def= aligned ( int1 , inj ptr ) /\ allocv [ @ aid ] = ( addr , int2 )
+    alloct |- smt ( term )
+    h' def= h + { ipred_term ( default array byte ) & cdot } + { pred_term ( ( addr , int2 ) ) & None }
+    stmt def= < ptr , default array byte , ipred_term , pred_term >
+    ------------------------------------------------------------------------- :: Alloc
+    < alloct ; h ; emp | alloc ( int1 , int2 ) > --> < alloct [ @ aid ] := ( addr , int2 ) ;  h' ; stmt : ret >
 
 
     alloct | < h ; res_term > ||v < h' + { pt & None } ; Owned < Init , ct > ( ptrt ) >
@@ -480,87 +541,212 @@ defns
     < alloct ; h ; res_term | store < ct > ( ptr , pval ) > --> < alloct ; h' + { pt' & None } ; < Unit , Owned < Init , ct > ( inj ptr ) > : ret >
 
 
-    h1 def= { pred_term1 ( _t ) & None } + { pred_term2 ( term ) & None }
+    h1 def= { pred_term1 ( _t ) & None } + { pred_term2 ( oarg ) & None }
     alloct | < h ; res_term > ||v < h' + h1 ; < pred_term1 , pred_term2 > >
-    pred_term1 def= Owned < _init , ct > ( ptrt1 )
-    pred_term2 def= Alloc ( @ aid )
-    alloct |- smt ( ptrt1 = ptrt2 = inj ptr /\ sizeof ct = term )
+    pred_term1 def= Owned < _init , ct > ( ptrt )
+    pred_term2 def= Alloc ( @ aid' )
+    term' def= ptrt . addr = oarg . base /\ sizeof ct = oarg . len
+    alloct |- smt ( ptrt = ( @ aid , addr ) /\ aid = aid' /\ term' )
     ret def= sigma _x : unit .: I
     ----------------------------------------------------------------------------------- :: Kill_Static
-    < alloct ; h ; res_term | kill < ct > ( ptr ) > --> < alloct ; h' ; < Unit > : ret >
+    < alloct ; h ; res_term | kill < ct > ( ( @ aid , addr ) ) > --> < alloct ; h' ; < Unit > : ret >
+
+
+    h1 def= { ipred_term ( _t ) & cdot } + { pred_term ( oarg ) & None }
+    alloct | < h ; res_term > ||v < h' + h1 ; < ipred_term , pred_term > >
+    ipred_term def= each ( integer x ; iguard ) { Owned < _init , byte > ( array_shift < byte > ( ptrt , x ) ) }
+    pred_term def= Alloc ( @ aid' )
+    alloct |- smt ( each (integer x; _t) { iguard <-> ( 0 =< x =< oarg . len - 1 ) } )
+    alloct |- smt ( ptrt = ( @ aid , addr ) /\ ptrt . addr = oarg . base /\ aid = aid' )
+    ret def= sigma _x : unit .: I
+    ----------------------------------------------------------------------------------- :: Kill_Dynamic
+    < alloct ; h ; res_term | kill < ct > ( ( @ aid , addr ) ) > --> < alloct ; h' ; < Unit > : ret >
+
+  defn alloct | is_live pred & ptr1 , ptr2 :: :: Live :: Live_
+  {{ com given allocation history $[[alloct]]$, $[[pred]]$ proves $[[ptr1]]$ and $[[ptr2]]$ belong to the same live allocation }} by
+
+   alloct |- smt ( term . alloc_id = inj ptr1 . alloc_id = inj ptr2 . alloc_id  )
+   ------------------------------------------------------- :: Owned
+   alloct | is_live Owned < _init, ct > ( term ) ( _t ) & ptr1 , ptr2
+
+
+   alloct |- smt ( term = inj ptr1 . alloc_id = inj ptr2 . alloc_id  )
+   ------------------------------------------------------- :: Alloc
+   alloct | is_live Alloc ( term ) ( _t ) & ptr1 , ptr2
+
+
+  defn alloct | in_bounds ptr1 , ptr2 :: :: Bounds :: Bounds_
+  {{ com given allocation history $[[alloct]]$, $[[ptr1]]$ and $[[ptr2]]$ are in the bounds of the same allocation }} by
+
+   term def= allocv [ inj ptr1 . alloc_id ]
+   alloct |- smt ( inj ptr1 . alloc_id = inj ptr2 . alloc_id )
+   alloct |- smt ( term . base =< inj ptr1 . addr =< term . base + term . len )
+   alloct |- smt ( term . base =< inj ptr2 . addr =< term . base + term . len )
+   ------------------------------------------------------- :: Check
+   alloct | in_bounds ptr1 , ptr2
+
 
   defn alloct | < h ; res_memop  > --> < h' ; stmt : ret > :: :: Memop :: Memop_
   {{ com allocation history $[[alloct]]$, heap $[[h]]$, resource memory operation $[[res_memop]]$ steps to heap $[[h']]$ and statement $[[stmt]]$ with type annotation $[[ret]]$ }} by
 
-    alloct | < h ; res_term > ||v < h1 + h2 ;  < pred_term1 , pred_term2 > >
-    h2 def= </ { pred_termi ( termi ) & None } // i />
-    indexed </ pred_termi def= Alloc ( ptrti ) // i />
-    alloct |- smt ( @ aid1 = @ aid2 = ptrt1 . alloc_id = ptrt2 . alloc_id2 )
-    alloct |- smt ( ptrt1 . base =< addr1 =< ptrt1 . base + term1 )
-    alloct |- smt ( ptrt2 . base =< addr2 =< ptrt2 . base + term2 )
-    inj bool_value def= addr1 ' rel_binop ' addr2
-    ret def= sigma y : bool .: y = ( addr1 ' rel_binop ' addr2 ) /\ pred_term1 ( term1 ) * pred_term2 ( term2 ) *o I
-    -------------------------------------------------------------------------------------------------------------- :: Rel_Binop
-    alloct | < h ; res_term | ( @ aid1 , addr1 ) rel_binop ( @ aid2 , addr2 ) > --> < h1 + h2 ; < bool_value , < pred_term1 , pred_term2 > > : ret >
+
+    meta bool_value / y ( term1 /\ term3 )
+    ret def= sigma y : bool .: term1 /\ term3 *o I
+    term1 def= inj ptr1 = inj ptr2 -> y
+    term2 def= inj ptr1 . alloc_id != inj ptr2 . alloc_id /\ inj ptr1 . addr = inj ptr2 . addr
+    term3 def= neg term1 /\ neg term2 -> neg y
+    ------------------------------------------------------------------------------------------- :: PtrEq
+    alloct | < h ; emp | ptr1 = ptr2 > --> < h ; < bool_value > : ret >
 
 
-    alloct | < h ; res_term > ||v < h1 + { pred_term ( term ) & None } ;  pred_term >
-    pred_term def= Alloc ( ptrt )
-    alloct |- smt ( @ aid1 = @ aid2 = ptrt . alloc_id )
-    alloct |- smt ( ptrt . base =< ( addr1 , addr2 ) =< ptrt . base + term )
-    int def= ( addr1 - addr2 ) / sizeof ct
-    ret def= sigma y : integer .: y = ( addr1 - addr2 ) / sizeof ct /\ res *o I
+    alloct | < h ; res_term > ||v < h1 + { pred_term ( oarg ) & None } ; pred_term >
+    alloct | is_live pred_term ( oarg ) & ptr1 ,  ptr2
+    alloct | in_bounds ptr1 , ptr2
+    inj bool_value def= inj ptr1 . addr ' rel_binop ' inj ptr2 . addr
+    ret def= sigma y : bool .: y = inj ptr1 . addr ' rel_binop ' inj ptr2 . addr /\ pred_term ( oarg ) *o I
+    ------------------------------------------------------------------------------------------------------- :: Rel_Binop
+    alloct | < h ; res_term | ptr1 rel_binop ptr2 > --> < h1 + h2 ; < bool_value , pred_term > : ret >
+
+
+    alloct | < h ; res_term > ||v < h1 + { pred_term ( oarg ) & None } ; pred_term >
+    alloct | is_live pred_term ( oarg ) & ptr1 ,  ptr2
+    alloct | in_bounds ptr1 , ptr2
+    int def= ( inj ptr1 . addr - inj ptr2 . addr ) / sizeof ct
+    ret def= sigma y : integer .: y = ( inj ptr1 . addr - inj ptr2 . addr ) / sizeof ct /\ pred_term ( oarg ) *o I
     -------------------------------------------------------------------------------------------------------------- :: PtrDiff_Arr
-    alloct | < h ; res_term | ( @ aid1 , addr1 ) - array n ct - ( @ aid2 , addr2 ) > --> < h1 + { pred_term ( term ) & None } ; < int , pred_term > : ret >
+    alloct | < h ; res_term | ptr1 - array n ct - ptr2 > --> < h1 + { pred_term ( term ) & None } ; < int , pred_term > : ret >
 
 
-    alloct | < h ; res_term > ||v < h1 + { pred_term ( term ) & None } ;  pred_term >
-    pred_term def= Alloc ( ptrt )
-    alloct |- smt ( @ aid1 = @ aid2 = ptrt . alloc_id )
-    alloct |- smt ( ptrt . base =< ( addr1 , addr2 ) =< ptrt . base + term )
-    int def= ( addr1 - addr2 ) / sizeof ct
-    ret def= sigma y : integer .: y = ( addr1 - addr2 ) / sizeof ct /\ res *o I
+    alloct | < h ; res_term > ||v < h1 + { pred_term ( oarg ) & None } ; pred_term >
+    alloct | is_live pred_term ( oarg ) & ptr1 ,  ptr2
+    alloct | in_bounds ptr1 , ptr2
+    int def= ( inj ptr1 . addr - inj ptr2 . addr ) / sizeof ct
+    ret def= sigma y : integer .: y = ( inj ptr1 . addr - inj ptr2 . addr ) / sizeof ct / sizeof ct /\ pred_term ( oarg ) *o I
     -------------------------------------------------------------------------------------------------------------- :: PtrDiff
-    alloct | < h ; res_term | ( @ aid1 , addr1 ) - ct - ( @ aid2 , addr2 ) > --> < h1 + { pred_term ( term ) & None } ; < int , pred_term > : ret >
+    alloct | < h ; res_term | ptr1 - ct - ptr2 > --> < h1 + { pred_term ( term ) & None } ; < int , pred_term > : ret >
 
 
-    alloct | < h ; res_term > ||v < h' + { pred_term ( _t ) & None } ; pred_term >
-    pred_term def= Alloc ( ptrt )
-    alloct |- smt ( @ aid = ptrt . alloc_id /\ representable ( ct2 , addr ) )
-    ret def= sigma y : integer .: y = addr /\ pred_term ( _t ) *o I
-    ---------------------------------------------------------------------------------- :: IntFromPtr
-    _t | < h ; res_term | intFromPtr < ct > ( ( @ aid , addr ) ) > --> < h' + { pred_term ( _t ) & None } ; < addr , pred_term > : ret >
+    alloct |- smt ( representable ( ct , addr ) )
+    ret def= sigma y : integer .: y = addr /\ I
+    ----------------------------------------------------------------------- :: IntFromRt
+    alloct | < h ; emp | intFromRt < ct > ( ( @ _int , addr ) ) > --> < h ; < addr > : ret >
 
 
-    alloct | < h ; res_term > ||v < h' + { pred_term ( oarg ) & None } ; pred_term >
-    pred_term def= Owned < _init , ct > ( ptrt )
-    x def= alloct [ @ id ]
-    alloct |- smt ( x . base =< addr =< x . base + x . len )
-    inj ptr def= ( @ ptrt . alloc_id , addr )
-    ret def= sigma y : loc .: y = ( @ ptrt . alloc_id , addr ) /\ pred_term ( oarg ) *o I
-    ---------------------------------------------------------------------------------------- :: PtrFromInt
-    alloct | < h ; res_term | ptrFromInt < ct > ( addr ) > --> < h' + { pred_term ( oarg ) & None } ; < ptr , pred_term > : ret >
+    inj ptr def= ( @ default alloc_id , addr )
+    ret def= sigma y : loc .: exists x : alloc_id .: y = ( @ x , addr ) /\ I
+    ----------------------------------------------------------------------------------- :: RtFromInt
+    _t | < h ; emp | rtFromInt ( addr ) > --> < h ; < ptr , @ default alloc_id > : ret >
+
+ 
+    ret def= sigma y : loc .: exists x : alloc_id .: y = inj ptr' /\ term' /\ I
+    inj ptr' def= if inj ptr = NULL then ( @ x , 0 ) else inj ptr
+    term' def= inj ptr = NULL \/ x = inj ptr . alloc_id
+    inj aid def= if inj ptr = NULL then default alloc_id else inj ptr . alloc_id
+    -------------------------------------------------------------- :: RtFromPtr
+    _t | < h ; emp | rtFromInt ( ptr ) > --> < h ; < ptr' , @ aid > : ret >
 
 
-    inj bool_value def= aligned ( ct , inj ptr )
-    ret def= sigma y : bool .: y = aligned ( ct , inj ptr ) /\ I
+    alloct |- smt ( inj ptr . addr != 0 )
+    alloct | < h ; res_term > ||v < h1 + { pred_term ( oarg ) & None } ; pred_term >
+    alloct | is_live pred_term ( oarg ) & ptr ,  ptr
+    alloct | in_bounds ptr , ptr
+    ret def= sigma y : loc .: y = inj ptr /\ res *o I
+    -------------------------------------------------------------- :: LiveFromRt
+    alloct | < h ; res_term | ptrFromRt < ct > ( ptr ) > --> < h ; < ptr , pred_term > : ret >
+
+
+    % The memory model must give the same (erased) answer for the same heaps,
+    % regardless of provability (resource terms)
+    alloct |- smt ( inj ptr . addr != 0 )
+    h def= h1 + { pred_term ( oarg ) & None }
+    alloct | is_live pred_term ( oarg ) & ptr ,  ptr
+    alloct | in_bounds ptr , ptr
+    ret def= sigma y : integer .: exists x : alloc_id .: y = term /\ I
+    term def= if inj ptr . addr = 0 then NULL else ( @ x  , inj ptr . addr )
+    -------------------------------------------------------------- :: AlsoLiveFromRt
+    alloct | < h ; emp | ptrFromRt < ct > ( ptr ) > --> < h ; < ptr , inj ptr . alloc_id > : ret >
+
+
+    ret def= sigma y : integer .: exists x : alloc_id .: y = term /\ I
+    term def= if inj ptr . addr = 0 then NULL else ( @ x  , inj ptr . addr )
+    inj ptr' def= if inj ptr . addr = 0 then NULL else ( @ default alloc_id  , inj ptr . addr )
+    -------------------------------------------------------------- :: NullEmptyFromRt
+    alloct | < h ; emp | ptrFromRt < ct > ( ptr ) > --> < h ; < ptr' , @ default alloc_id > : ret >
+
+
+    alloct | < h ; res_term > ||v < h1 + { pred_term ( oarg ) & None } ; pred_term >
+    inj ptr' def= ( @ inj ptr . alloc_id , addr )
+    alloct | is_live pred_term ( oarg ) & ptr' ,  ptr'
+    alloct | in_bounds ptr' , ptr'
+    ret def= sigma y : integer .: y = inj ptr' /\ pred_term ( oarg ) *o I
+    ---------------------------------------------------------------------------------- :: CopyAllocId
+    alloct | < h ; res_term | copy_alloc_id ( addr , ptr ) > --> < h1 + { pred_term ( term ) & None } ; < ptr' , pred_term > : ret >
+
+
+    alloct | < h ; res_term > ||v < h1 + { pred_term ( oarg ) & None } ; pred_term >
+    alloct | is_live pred_term ( oarg ) & ptr ,  ptr
+    alloct | in_bounds ptr , ptr
+    inj bool_value def=  aligned ( sizeof ct , inj ptr )
+    ret def= sigma y : bool .: y =  aligned ( sizeof ct , inj ptr ) /\ pred_term ( oarg ) *o I
     -------------------------------------------------------- :: PtrValidForDeref
-    _t | < h ; emp | ptrValidForDeref < ct > ( ptr ) > --> < h ; < bool_value > : ret >
+    alloct | < h ; res_term | ptrValidForDeref < ct > ( ptr ) > --> < h ; < bool_value , pred_term > : ret >
 
 
-    inj bool_value def= aligned ( ct , inj ptr )
-    ret def= sigma y : bool .: y = aligned ( ct , inj ptr ) /\ I
+    % The memory model must give the same (erased) answer for the same heaps,
+    % regardless of provability (resource terms)
+    h def= h1 + { pred_term ( oarg ) & None }
+    alloct | is_live pred_term ( oarg ) & ptr ,  ptr
+    alloct | in_bounds ptr , ptr
+    inj bool_value def= aligned ( sizeof ct , inj ptr )
+    ret def= sigma y : bool .: I
+    -------------------------------------------------------- :: PtrAlsoValidForDeref
+    alloct | < h ; emp | ptrValidForDeref < ct > ( ptr ) > --> < h ; < bool_value > : ret >
+
+
+    ret def= sigma y : bool .: I
+    -------------------------------------------------------- :: PtrInvalidForDeref
+    _t | < h ; emp | ptrValidForDeref < ct > ( ptr ) > --> < h ; < false > : ret >
+
+
+    inj bool_value def=  aligned ( sizeof ct , inj ptr )
+    ret def= sigma y : bool .: y =  aligned ( sizeof ct , inj ptr ) /\ I
     ------------------------------------------------------------------ :: PtrWellAligned
     _t | < h ; emp | ptrWellAligned < ct > ( ptr ) > --> < h ; < bool_value > : ret >
 
 
-    alloct | < h ; res_term > ||v < h' + { pred_term ( term ) & None } ; pred_term >
-    pred_term def= Alloc ( ptrt )
+    alloct | < h ; res_term > ||v < h1 + { pred_term ( oarg ) & None } ; pred_term >
     inj ptr' def= array_shift < ct > ( inj ptr , int )
-    alloct |- smt ( inj ptr' . alloc_id = ptrt . alloc_id /\ inj ptr' . addr =< ptrt . base + term )
+    alloct | is_live pred_term ( oarg ) & ptr' ,  ptr'
+    alloct | in_bounds ptr' , ptr'
     ret def= sigma y : loc .: y = inj ptr' /\ pred_term ( term ) *o I
     --------------------------------------------------------------------------------------------- :: PtrArrayShift
     alloct | < h ; res_term | ptrArrayShift < ct > ( ptr , int ) > --> < h ; < ptr' , pred_term > : ret >
+
+
+    alloct | < h ; res_term > ||v < h' + h1 ; < ipred_term1 , ipred_term2 > >
+    h1 def= { ipred_term1 ( _t ) & cdot } + { ipred_term2 ( oarg ) & cdot }
+    ipred_term1 def= each (integer x; iguard1 ) { Owned < Uninit , byte > ( array_shift < byte > ( ptrt1' , x ) ) }
+    ipred_term2 def= each (integer x; iguard2 ) { Owned <   Init , byte > ( array_shift < byte > ( ptrt2' , x ) ) }
+    alloct |- smt ( each (integer x; _t) { iguard1 <-> iguard2 <-> 0 =< x =< int - 1 } )
+    alloct |- smt ( ptrt1' = inj ptr1 /\ ptrt2' = inj ptr2 /\ 0 =< int )
+    ret def= sigma y : loc .: y = inj ptr1 /\ ipred_term1 ( oarg ) * ipred_term2 ( oarg ) *o I
+    h1' def= { ipred_term1 ( oarg ) & cdot } + { ipred_term2 ( oarg ) & cdot }
+    --------------------------------------------------------------------------------------------- :: Memcpy
+    alloct | < h ; res_term | memcpy ( ptr1 , ptr2 , int ) > --> < h' + h1' ; < ptr1 , < ipred_term1 , ipred_term2 > > : ret >
+
+
+    alloct | < h ; res_term > ||v < h' + h1 ; < ipred_term1 , ipred_term2 > >
+    h1 def= { ipred_term1 ( oarg1 ) & cdot } + { ipred_term2 ( oarg2 ) & cdot }
+    ipred_term1 def= each (integer x; iguard1) { Owned < Init , byte > ( array_shift < byte > ( ptrt1' , x ) ) }
+    ipred_term2 def= each (integer x; iguard2) { Owned < Init , byte > ( array_shift < byte > ( ptrt2' , x ) ) }
+    alloct |- smt ( each (integer x; _t) { iguard1 <-> iguard2 <-> 0 =< x =< int - 1 } )
+    alloct |- smt ( each (integer x; iguard1) { oarg1 [ x ] != inj Unspecified () } )
+    alloct |- smt ( each (integer x; iguard2) { oarg2 [ x ] != inj Unspecified () } )
+    alloct |- smt ( ptrt1' = inj ptr1 /\ ptrt2' = inj ptr2 /\ 0 =< int )
+    ret def= sigma y : integer .: y = memcmp ( inj ptr1 , inj ptr2 , int ) /\ ipred_term1 ( oarg1 )  * ipred_term2 ( oarg2 ) *o I
+    inj int def= memcmp ( inj ptr1 , inj ptr2 , int )
+    --------------------------------------------------------------------------------------------- :: Memcmp
+    alloct | < h ; res_term | memcmp ( ptr1 , ptr2 , int ) > --> < h' + h1 ; < int , < ipred_term1 , ipred_term2 > > : ret >
 
 
   defn < s ; expr > --> < s' ; stmt : ret > :: :: Expr :: Expr_

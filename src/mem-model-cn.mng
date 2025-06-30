@@ -6,140 +6,170 @@
 \margintoc{}
 
 I already mentioned some of the typing rules related to memory actions and
-pointer operations in \nameref{sec:kernel-mem-action-ops}, but I can now
-recapitulate them with more detail, drawing special attention to parts about
-liveness and bounds checks I omitted or skimmed past before. For convenience, I have
-reproduced \cref{fig:typing-mem-action} in \cref{fig:cnvip-mem-action}.
+pointer operations in \nameref{sec:kernel-mem-action-ops}, but elided some of
+the details related to the memory object model. I will now explain those
+details via four key features: dynamic memory allocation and deallocation,
+converting to and from byte representations (including support for unions),
+copying and comparing arrays of bytes, and lastly allocation liveness and
+bounds-checks.
 
-Specifically, I will discuss the updated typing rules for memory actions and
-pointer operations, and how I proved those typing rules sound with respect to
-an updated model of \kl{ResCore} heaps. Lastly, I will explain how I proved the
-\kl{ResCore} semantics as a sound abstraction above \kl{PNVI-ae-udi}.
+Along the way, I will also explain how I proved those rules sounds with respect
+to an updated model of \kl{ResCore} heaps. I do not prove that these rules are
+a sound abstraction above \kl{VIP}, though I will gesture towards why I believe
+this to be the case (\nameref{sec:linking}).
 
-\section{Memory actions}
+\section{\cinline{malloc} and \cinline{free}}
 
 \begin{figure*}[tp]
     \small
     \raggedright{}
     \onlyUseRules{\cndefnAction{}}{%
-        \cndruleActionXXCreate{},
-        \cndruleActionXXKillXXStatic{}
+        \cndruleActionXXAlloc{},
+        \cndruleActionXXKillXXDynamic{}
     }
-    \onlyUseRules{\cndefnMemop{}}{%
-        \cndruleMemopXXRelXXBinop{}
-    }
-    \caption{\kl{Kernel CN} typing rules for memory actions, and a select rule
-        for typing a memory operation.}\label{fig:cnvip-mem-action}
+    \caption{\kl{Kernel CN} typing rules for dynamic memory allocation and
+        deallocation.}\label{fig:cnvip-mem-action}
 \end{figure*}
 
-In \ActionCreate{}, creating an allocation produces new
-constraints on its base address and size. These are tracked via constraints on a
-logical variable $[[allocv]]$, a map from \kl{allocation ID}s to
-pairs of a base address and size. This can be interpreted as an implicit
-logical argument and return value for each function call.\sidenote{Need to
-check the typing rules to ensure enforce this idea consistently.} Creating an
-allocation also produces an \cninline{Alloc} token, to track the fact the
-allocation is live, as well as the usual ownership/points-to resource.
+In \ActionAlloc{}, the memory action $[[alloc (pval1, pval2)]]$, for
+dynamically allocating memory, takes two operands. The first, $[[pval1]]$, is
+the alignment for the address of the newly created pointer. The second,
+$[[pval2]]$, is the size of the allocation. The action itself consumes no
+resources from the context, and so needs an empty context with an $[[emp]]$
+resource term. Its return type expresses that it returns a pointer $[[yp]]$,
+which is constrained by $[[term]]$, whose first part of $[[term]]$,
+$[[aligned ( inj pval1, yp ) ]]$, says the pointer is aligned to $[[pval1]]$,
+and whose second part, $[[allocv [ yp . alloc_id ] = ( yp . addr , inj pval2 ) ]]$,
+says the allocation history maps the pointer's allocaton ID to the base
+address $[[ yp . addr ]]$ and length $[[ pval2 ]]$. The return type for this
+rule also expresses that it returns a logical array of bytes,
+$[[y]]$. This array is the output of an iterated points-to of bytes
+starting from the base pointer $[[yp]]$.%to $[[array_shift < byte > ( yp , inj pval2 - 1 )]]$.
+The points-to is indexed by the new C type $[[byte]]$, and is uninitialised
+$[[ Uninit ]]$, to prevent reading from the uninitialised memory in C.
+Alongside the iterated points-to, the return type also mentions
+$[[Alloc (yp.id) ( ( yp . addr,  inj pval2 ) )]]$. Though this looks similar to
+the constraint (and records the same bounds information), this is a token
+which is proof of \emph{liveness} of the allocation, and also permission
+to deallocate the newly created allocation.
 
-TODO\@. Having a memory model also allows me to introduce support for dynamic
-memory management. Whereas the above rule is only defined for typed objects
-such as locals or globals, a region is essentially just an array of memory
-bytes. For simplicity, I model every allocation as succeeding, so that the
-pointer returned is never \cinline{NULL}. Hence the typing rule is similar,
-but instead of ownership of a single object at a given C type, the ownership
-is an iterated one over an array of memory bytes.
+In \ActionKillDynamic{}, all the resources are consumed rather than produced.
+As such, the memory action takes in a resource term and the base pointer of the
+allocation to deallocate: $[[ res_term | kill < dyn > ( pval ) ]]$. The length
+of the allocation is obtained from the type of the resource term, which must
+be a pair of an iterated points-to of bytes, and an allocation token. The length
+of the allocation $[[ oarg . len ]]$, obtained from the allocation token's
+output argument, allows the rule to check the ownership of the entire allocation
+has been returned without gaps. The base address of the allocation token
+$[[ oarg . base ]]$, allows the rule to check that the address of the supplied
+pointer $[[ inj pval . addr ]]$ is in fact, the correct base address. The
+allocation ID $[[ term ]]$, allows the rule to check that the allocation ID of
+the base pointer of the iterated points-to $[[ ptrt . alloc_id ]]$ and of
+$[[ pval ]]$ all agree. The action just returns a unit value.
 
-Conversely, in \textsc{Exp\_Is\_Action\_Kill\_Static}, destroying an allocation
-requires both ownership of it (remember ownership represents read/write
-permissions, but not allocation and freeing permissions), and the
-\cninline{Alloc} token, plus proof that the given pointer is the same as the
-owned pointer, and has the same base address as indicated by the allocation
-token. For static kills (a block variable going out of scope), the rule also
-checks that the size of the C type is also the size of the allocation.
-TODO\@. Destroying a region is similar, except with an iterated ownership
-of memory bytes.
+\section{Converting to and from bytes}
 
-Fortunately, the rules for loads and stores do not change at all. Ownership of
-a location is enough to deduce that the allocation is live, and I assume
-ownership is guaranteed to be in bounds for any allocation.\sidenote{Ownership
-of out-of-bounds resources is equivalent to $\mathsf{false}$.}
+Note that the rules for loads and stores are unchanged. In particular,
+permission to read or write a location is enough to deduce its enclosing
+allocation is live.\sidenote{Ownership of out-of-bounds resources is equivalent
+to $\mathsf{false}$.}
 
-\section{Pointer operations}
+So how would one load or store other structured C types from dynamically
+allocated memory? Through new predicate operations to convert between ownership
+at another structured C type, and ownership of its representation as an array
+of bytes (\cref{fig:cnvip-to-from-bytes}). Converting \emph{to} the byte
+representation consumes a points-to at any C type, and produces iterated
+points-to at an array of bytes. Converting \emph{from} the byte representation
+requires that all non-padding bytes are not-\coreinline{Unspecified}; this
+prevents reading uninitialised memory and is checked by premise 3, but is
+otherwise as one would expect.
 
-There are large discrepancies between the rules for pointer offsets presented
-in \sidetextcite{lepigre2022vip} and \sidetextcite{memarian2022cerberus}, and
-the \kl{Cerberus source code}, which I have detailed in a table in
-\cref{fig:offset-confusion}. I am awaiting clarification on the correct way to
-proceed.
+There are no memory operations to capture casting between bytes as values and
+other C types directly (for example \cinline{char}), only these predicate
+operations to transform the resource context. If these are necessary, then the
+cast from bytes would need to also forbid casting the \coreinline{Unspecified}
+value.
 
-\begin{figure*}[tpb]
-  \begin{tabular}{ccccc}
-  \toprule
-   & \citeauthor{lepigre2022vip} incl.\ appendix & \citeauthor{memarian2022cerberus} & Cerberus code \\
-  \midrule
-  Member (P)
-    & {\ballotX✗}
-    & case \cinline{NULL}
-    & case \cinline{NULL}, 0-offset
-  \\
-  Member (ISO)
-    & bounds, case 0-offset
-    & bounds, liveness
-    & case \cinline{NULL}, 0-offset
-  \\
-  Array (P)
-    & {\ballotX✗}
-    & \textendash{}
-    & \textendash{}
-  \\
-  Array (ISO)
-    & bounds
-    & bounds, liveness
-    & bounds, liveness
-  \\
-  \bottomrule
-  \end{tabular}
-  \caption{Rules for computing pointer offsets (member and array, with
-      pure/permissive (P) and ISO variants) in PNVI-ae-udi, across three
-      different sources. `{\ballotX✗}' means the rule is omitted. `case'
-      means the rule has a special case for that value. `\textendash{}' means
-      there are no checks. `bounds' means a bounds check on the resulting
-      pointer. `liveness' means a liveness check on the allocation.}\label{fig:offset-confusion}
+\begin{figure*}[tp]
+    \small
+    \raggedright{}
+    \onlyUseRules{\cndefnPredOps{}}{%
+        \cndrulePredOpsXXToXXBytes{},
+        \cndrulePredOpsXXFromXXBytes{}
+    }
+    \caption{\kl{Kernel CN} typing rules for converting iterated ownership
+        of bytes to and from ownership of other C types.}\label{fig:cnvip-to-from-bytes}
 \end{figure*}
 
-Pointer operations such as taking the difference between two pointers or
-relational comparison between two pointers, require both pointers to be in
-bounds of the same live allocation. Hence the rule in\sidenote{TODO fix the
-binop rule, which is a bit wrong in many ways} \cref{fig:cnvip-mem-action}
-asks the solver to prove (a) the \kl{allocation ID}s are equal, (b) that the
-pointer are within bounds of the allocation and (c) to check there exists a
-live allocation with that ID\@. The evidence of a live allocation can be
-either ownership with the same \kl{allocation ID}, or an \cninline{Alloc} token,
-and the rule is agnostic as to which, just that this evidence is returned
-in the type so as to not consume/destroy it.
+\section{Unions and padding}
 
-A rule that is present in the code, but missing in other formats for
-\kl{PNVI-ae-udi} is that for casting pointers to dead allocations to integers,
-which is permitted so long as the address can fit within the target integer
-type. Since \kl{VIP} does not track exposure, the live and the dead
-pointer cases collapse into the same case. On top of this, as I mentioned in
-\cref{subsec:prov-int-bytes}, I chose to support the limited provenance in
-integers required via a new C type, to make any additional complexity and
-performance cost as opt-in, and to avoid changing all the base types for
-integers of various sizes (bit vectors) to a datatype with two constructors.
-Because of these two simplifications, the cast is therefore just an identity,
-on the SMT term and its base type.\sidenote{TODO add this rule} The rules for
-casting an integer to a pointer is \kl{UB} if it is not in the \cinline{NULL}
-or round-trip case, and is an identity in the latter.\sidenote{TODO add
-this rule} And the rule for \cinline{copy_alloc_id} performs a bounds check on
-the integer using the \kl{allocation ID} supplied by the pointer, and combines the
-two into a new pointer.\cinline{TODO add this rule too}
+\begin{figure*}[tp]
+    \small
+    \raggedright{}
+    \cnusedrule{\cndrulePredOpsXXSelect{}}\\
+    \cnusedrule{\cndrulePredOpsXXForget{}}\\
+    \caption{\kl{Kernel CN} typing rules for selecting a member
+        from a union C type, and for forgetting that the union
+        was used at that type.}\label{fig:cnvip-unions}
+\end{figure*}
 
-The new C types need to be handled with care to implement the subtyping
-required for a smoother experience.\sidenote{TODO figure out the subtyping
-for base types and resources\ldots}
+If one has ownership of a pointer to a union, what should the type of the
+pointee be, in the specification langauge? A type-theoretic answer would be to
+model it as an algebraic datatype but the expressiveness of C unions means this
+confuses more than it clarifies. C unions support writing to one member and
+reading from another member at a different C type and size. How would using
+algebraic datatypes support this idiom? How is information written to padding
+bytes of a member preserved when switching between the use of union at two
+different fields? When a union member is used consistently, would the
+programmer need to repeatedly prove the absence of other cases, and unwrap data
+for each load?
+
+Another option we considered is to require that ownership of union must state
+which member it is being used at. This approach side steps the aforementioned
+confusion introduced by algebraic datatypes in specifications, but comes with a
+steep price: a loss of a straightforward, compositional reading of ownership of
+a struct containing a union. This is a non-starter since such an idiom is
+frequently used to encode tagged unions.
+
+To my pleasant surprise, approaching the problem from a memory object model
+lens, in particular considering it as an extension of the adding support for
+bytes and the ability to convert between them and other C types, yields an
+elegant solution and expressive solution, upon which the user can encode
+complex usage patterns for unions.
+
+The solution is tripartite. First, represent ownership of a union as ownership
+of an array of bytes. Second, require a transformation of the resource context
+to permit reads and writes to a particular member. Third, record that the
+member came from a union in a new token in the resource context. In this
+manner, an array of bytes acts as a least upper bound of any possible set of
+members which preserves all the necessary information, including padding bytes
+and provenance information for pointers.
+
+\cref{fig:cnvip-unions}, shows how to transform a union points-to to and from
+points-to for a member. Starting with a points-to to a union, we can select a
+particular member. This checks that the bytes are valid for that member (that
+is, not \coreinline{Unspecified} if a read permission is desired). If this is
+the case, the union points-to is transformed into a points-to for the member,
+and crucially, a token representing that the points-to came from a union. It
+can also, equivalently be thought of as a predicate representing ownership of
+the (potentially empty) padding bytes around the given member of a union, hence
+the name $[[ Padding < union tag, member > ]]$. The inverse transformation
+checks that the pointers of the points-to and padding resources belong to the
+same allocation at the correct offsets, and then updates the byte array with
+the byte representation of the pointee.
 
 \section{\cinline{memcpy} and \cinline{memcmp}}
+
+\begin{figure*}[tp]
+    \small
+    \raggedright{}
+    \onlyUseRules{\cndefnMemop{}}{%
+        \cndruleMemopXXMemcpy{},
+        \cndruleMemopXXMemcmp{}
+    }
+    \caption{\kl{Kernel CN} \cinline{memcpy} and
+        \cinline{memcmp}.}\label{fig:cnvip-memcpy-memcmp}
+\end{figure*}
 
 The typing rules for \cinline{memcpy} require iterated ownership of two
 contiguous arrays of \kl{memory bytes} of length $n$; it returns ownership of
@@ -149,41 +179,221 @@ length to express the equality constraint on the values correctly.
 
 The typing rules for \cinline{memcmp} require iterated ownership of two
 contiguous arrays of \kl{memory bytes} of length $n$; like \cinline{memcpy}, it
-returns ownership of both, unlike \cinline{memcpy} its resulting value is not
+returns ownership of both, unlike \cinline{memcpy}, none of the bytes being
+compared must be \coreinline{Unspecified}, and the returned value is not
 straightforward to specify, because the concise or obvious specification would
-use quantifiers. I refer to a recursively defined logical function which
-constrains the result to be (a) unconstrained if it reads any
-\coreinline{unspec} values, (b) 0 if all bytes (excluding provenances) are equal
-and (c) the difference between the first two unequal bytes otherwise. The presence
-of \coreinline{unspec} values makes it difficult to give a simpler specification
-to the result such as \cninline[breaklines]{src == dest && result == 0i3 || src
-!= dest && result != 0i32}, because we do not wish to imply % chktex 26
-\cninline{unspec == unspec}.\sidenote{The simpler specification could be
-achieved with a notion of \emph{comparable bytes}, converting to which would
-require ownership of only initialised and non-padding bytes.}
+use quantifiers. Instead, I refer to a recursively defined logical function
+which constrains the result to be 0 if all bytes (excluding provenances) are
+equal and the difference between the first two unequal bytes (excluding
+provenances) otherwise.
 
-Both of these typing rules require a way to get ownership of memory bytes, for
-which, \kl{CN-VIP} adds new annotations.\sidenote{TODO add these typing rules}
-In the formal presentation, these are represented by operations on predicates
-which consume ownership of an object, and produce ownership of memory bytes, or
-vice versa.
+\section{Checking pointer shifts}
+
+There are discrepancies between the PNVI-* rules for pointer shifts presented in
+\sidetextcite{lepigre2022vip} and \sidetextcite{memarian2022cerberus}, and the
+\kl{Cerberus source code}, which I have detailed in a table in
+\cref{fig:offset-confusion}.
+
+For \citeauthor{lepigre2022vip}, the omission of pure/permissive rules for is
+likely because they are not memory operations per se since they would be called
+from the pure fragment of Core, even though they are defined by the memory
+object model (because they are dependent on the representation of pointers). I
+suspect the lack of a liveness check for ISO array shifting is likely an error,
+since the other sources require it.
+
+For \citeauthor{memarian2022cerberus}, I suspect having a special case on
+\cinline{NULL} but not for 0-offset is likely an error, given the behaviour
+of the code.
+
+For the \kl{Cerberus} code, the pure/permissive member shift has a comment
+saying that member shifting a \cinline{NULL} pointer may be UB per the ISO
+standard, but is the assumed behaviour of some GCC torture tests. The result is
+\cinline{NULL} if the offset $n$ is zero, and is a pointer $(@\mathsf{empty},
+n)$ if the offset $n$ is non-zero. This behaviour is not controlled by any
+switch. My conjecture is that member shifting on \cinline{NULL} is merely
+allowed to be able to define \cinline{offsetof} as a macro.
+
+The effectful version of member shifting, is actually only used by its CHERI
+switch, and is not relevant to capturing the ISO rule.
+
+Instead, the \kl{Cerberus} frontend enforces the checks required by the ISO
+rule by using the elaboration: every member shift is either (1) an lvalue or
+(2) if strict pointer arithmetic is enabled, guarded by a call to the memory
+operation \coreinline{PtrValidForDeref}. This ensures the initial pointer is
+strictly in bounds of a live allocation for a given C type; any subsequent
+shifts at that C type are thus guaranteed to remain in bounds.
+
+Similarly, the effectful, ISO version of array shifting is controlled by the
+same switch; the elaboration only uses the memory operation strict pointer
+arithmetic is enabled, and uses the pure Core expression otherwise.
+
+For the purposes of formalisation, I chose the following behaviour for
+CN-VIP.\@ As I will discuss in~\nameref{chap:impl-cnvip}, I need to adjust the
+approach to work-around limitations of the \kl{CN} implementation.
+
+\begin{itemize}
+    \item Pure/permissive member shifts require the pointer to have a
+        provenance, but do not special-case for the \cinline{NULL} pointer.
+        If my conjecture is correct, then any cases which require this
+        may be replaced directly with \cinline{offsetof} as a builtin construct
+        (one which is already supported by \kl{Cerberus} and \kl{CN}).
+    \item ISO member shifts are not handled directly, because they
+        do not show up as such in the elaboration. Instead, the rules
+        for \MemopPtrValidForDeref{} and \MemopPtrUnsureForDeref{} allow the
+        \kl{ResCore} program to reflect the presence or absence of a live and
+        sufficiently large allocation in the resource context into the returned
+        value.
+    \item Pure/permissive array shifts require the pointer to have a
+        provenance.
+    \item ISO array shifts require the resulting pointers to be in bounds of a
+        live allocation.
+\end{itemize}
+
+\begin{figure*}[tpb]
+  \begin{tabular}{ccccc}
+  \toprule
+   & \citeauthor{lepigre2022vip} incl.\ appendix & \citeauthor{memarian2022cerberus} & Cerberus code & CN-VIP \\% & VIP code \\
+  \midrule
+  Member (P)
+    & {\ballotX✗}
+    & case \cinline{NULL}
+    & case \cinline{NULL}, 0-offset
+    & has provenance
+    % & has provenance
+  \\
+  Member (ISO)
+    & bounds, case 0-offset
+    & bounds, liveness
+    & case \cinline{NULL}, 0-offset
+    & {\ballotX✗}
+    % & has provenance
+  \\
+  Array (P)
+    & {\ballotX✗}
+    & has provenance
+    & has provenance
+    & has provenance
+    % & has provenance
+  \\
+  Array (ISO)
+    & bounds
+    & bounds, liveness
+    & bounds, liveness
+    & bounds, liveness
+    % & bounds, liveness
+  \\
+  \bottomrule
+  \end{tabular}
+  \caption{Rules for computing pointer shifts (member and array, with
+      pure/permissive (P) and ISO variants) in PNVI-ae-udi, across three
+      different sources. `{\ballotX✗}' means the rule is omitted. `case'
+      means the rule has a special case for that value. `has provenance' means
+      the pointer must be neither \cinline{NULL} nor a function pointer.
+      `bounds' means a bounds check on the resulting pointer. `liveness' means
+      a liveness check on the allocation.}\label{fig:offset-confusion}
+\end{figure*}
+
+\section{Pointer liveness and bounds checks}
+
+Proof that a pointer is live takes one of two forms: either an allocation
+token, or a points-to, whose allocation ID matches that of the pointer. Once
+that is established, a pointer needs to be checked to ensure it is within
+bounds; unlike liveness, this fact only uses the SMT solver, and not the
+resource context. Both of these ideas are formalised in the judgements and
+rules shown in~\cref{fig:cnvip-liveness-bounds}, as is their use in the VIP
+primitive \cinline[breaklines]{copy_alloc_id}. It checks that the result is in
+the bounds of the live allocation indicated by its argument. The judgements are
+also used in~\cref{fig:mem-model-dyn-ptr-relop}, where the rule for relational
+operators on pointers (excluding in/equality, handled separately) checks
+whether each argument is in bounds of the same live allocation.
+
+\begin{figure*}[tp]
+    \small
+    \raggedright{}
+    \cndefnLive{}
+    \cndefnBounds{}
+    \onlyUseRules{\cndefnMemop{}}{%
+        \cndruleMemopXXCopyAllocId{}
+    }
+    \caption{\kl{Kernel CN} liveness and bounds
+        checks.}\label{fig:cnvip-liveness-bounds}
+\end{figure*}
+
+\section{Supporting roundtrip casts}
+
+As explained in \nameref{subsec:prov-int-bytes}, whereas \kl{VIP} and
+\kl{PNVI-ae-udi} support casts between pointers and integers directly,
+\kl{CN-VIP} requires such casts to proceed via a new, intermediate C type for
+supporting roundtrip casts. To be clear, from the point of view of the user,
+the new intermediate C type is just a \cinline{typedef} for an integer such as
+\cinline{uintptr_t}, so any code that uses it will continue to compile and run
+with standard C toolchains. However, when used within \kl{CN}, the new C type
+enables supporting roundtrip casts at the cost of a few more casts; for now
+these must be inserted manually by the programmer, but it is possible to tweak
+the \kl{Cerberus} elaboration to insert some of them automatically.
+
+Remember, the idea is that the new C type will allow \kl{CN} to track the
+representation of integers more precisely than in \kl{VIP} which uses a
+datatype with two cases, to sidestep any potential performance issues and make
+additional complexity in specifications opt-in.
+
+Note that, in line with the C standard, the the PNVI-* code for casting
+pointers to integers allows for casting pointers belonging to dead allocations,
+or pointers with $@\mathsf{empty}$ provenances, whereas the formalised rules in
+\citeauthor{memarian2022cerberus} erroneously do not mention this case. This
+omission is then compounded by the \citeauthor{lepigre2022vip} rules, which,
+overly-restrictively, require the cast pointer to be alive. Upon examining the
+proof of soundness of \kl{VIP} above \kl{PNVI-ae-udi} for this case, I
+concluded that the restriction can be relaxed to the intended meaning. As such,
+the \kl{CN-VIP} typing rules \kl{do not} require the cast pointer to belong to
+a live allocation, and thus do not require any resource term proofs of it
+(\cref{fig:cnvip-roundtrip}).
+
+\begin{figure*}[tp]
+    \small
+    \raggedright{}
+    \cndefnLive{}
+    \cndefnBounds{}
+    \onlyUseRules{\cndefnMemop{}}{%
+        \cndruleMemopXXIntFromRt{},
+        \cndruleMemopXXRtFromInt{},
+        \cndruleMemopXXRtFromPtr{},
+        \cndruleMemopXXPtrFromRt{}
+    }
+    \caption{\kl{Kernel CN} casts between pointer, roundtrip and integer
+        types.}\label{fig:cnvip-roundtrip}
+\end{figure*}
+
+At the \kl{Kernel CN} level, the basetype for the new, roundtrip C type is just
+$[[loc]]$. This means the cast between pointers and roundtrip at the
+specification level is just the identity. However, it is still necessary as a
+distinct memory operation \MemopRtFromPtr{} because it corresponds to a pointer
+value being cast to a $\mathit{Loc}\,(@i, a)$, integer value in \kl{VIP}, and
+similarly the memory operation \MemopIntFromRt{} corresponds to the transition
+to the $\mathit{Int}\,(a)$ integer value in \kl{VIP}.
 
 \section{Soundness}\label{sec:cn-vip-soundness}
 
-There are few steps involved to updating the formalisation to use a \kl{VIP}
-based memory object model from its current concrete one.
+There are few steps involved in extending the formalisation presented in
+\nameref{chap:kernel-soundness} from using a concrete memory object model to
+\kl{CN-VIP}.
+
 \begin{enumerate}
     \item Extend the configuration of the dynamic semantics to be a step
         relation between abstract \emph{states} and expressions, rather than
         just \emph{heaps} and expressions.
     \item Extend the heap typing rules to incorporate the newly added
-        allocation history.
+        allocation history, $[[ Alloc ]]$ and $[[Padding < ct , member >]]$
+        tokens.
     \item Update the proof of soundness for resource term reduction and pattern
         matching, with the new rules.
-    \item Interpret and prove sound ResCore abstract state and transitions into
-        the same for \kl{PNVI-ae-udi}, perhaps via an intermediate concrete
-        memory model.
 \end{enumerate}
+
+I do not interpret and prove sound \kl{ResCore} abstract state and transitions
+above \kl{VIP} (with non-deterministic pointer equality, and more permissive
+pointer to integer casts), though I will explain informally why I believe this
+to be the case. Instead, I implement and empirically validate the design by
+adapting and running the \kl{VIP} test suite (\nameref{sec:cnvip-eval}).
 
 \subsection{Extending the dynamic semantics}
 
@@ -205,13 +415,13 @@ information, to check the constraint as a closed term (\cref{fig:mem-model-dyn-s
         changing allocation history.}\label{fig:mem-model-dyn-smt}
 \end{marginfigure}
 
-Only the \coreinline{create} memory action extends the allocation history, and
-so it and every grammar node containing it also includes the allocation history
-as part of its configuration, rather than threaded through the
-side.\sidenote{TODO fix premise 7 of the create dynamic rules.} Note that
-because I split the intuitionistic part of the allocation history from the
-linear part, it does not get updated to record a dead allocation in the
-rule for \coreinline{kill} (\cref{fig:mem-model-dyn-create-kill}).
+Only the \coreinline{create} and \coreinline{alloc} memory actions extend the
+allocation history, and so it and every grammar node containing it also
+includes the allocation history as part of its configuration, rather than
+threaded through the side. Note that because I split the intuitionistic part of
+the allocation history from the linear part, it does not get updated to record
+a dead allocation in the rule for \coreinline{kill}
+(\cref{fig:mem-model-dyn-create-kill}).
 
 \begin{figure*}
     \small%
@@ -233,18 +443,21 @@ With the exception of threading through the allocation history, the rules for
 loads and stores are unchanged. The rules for converting ownership of objects
 into iterated ownership of memory bytes and vice versa are predicate
 operations, much like the ones for manipulating structs and fixed-length
-arrays.\sidenote{TODO add them} The rules for \coreinline{memcpy} and
-\coreinline{memcmp} are also as expected.\sidenote{TODO add them}
+arrays. The rules for \coreinline{memcpy} and \coreinline{memcmp} are also as
+expected.
 
-Pointer operations do not extend the allocation history, but do require the
-heap to check whether the supplied pointers belong to live allocations. They
-are agnostic of whether it is ownership or an \cninline{Alloc} token is
-provided as evidence (\cref{fig:mem-model-dyn-ptr-relop}).\sidenote{TODO
-add/fix this}
+Pointer operations, including casts and \cinline[breaklines]{copy_alloc_id}, do
+not extend the allocation history, but do require the heap to check whether the
+supplied or resulting pointers belong to live allocations. They are agnostic of
+whether it is ownership or an \cninline{Alloc} token is provided as evidence
+(\cref{fig:mem-model-dyn-ptr-relop}).
 
 \begin{figure*}
     \small%
     \raggedright%
+    \onlyUseRules{\cndefnMemop{}}{%
+        \cndruleMemopXXRelXXBinop{}
+    }
     \onlyUseRules{\cndefnOpXXMemop{}}{%
         \cndruleOpXXMemopXXRelXXBinop{}
     }
@@ -252,12 +465,6 @@ add/fix this}
         the SMT solver and supplied pointers, and a liveness check based on
         evidence from the supplied resource term and the heap.}\label{fig:mem-model-dyn-ptr-relop}
 \end{figure*}
-
-Lastly, there are the rules about pointer to integer casts, integer to pointer
-casts and the \cinline{copy_alloc_id} primitive. The latter two check that that
-resulting pointer is in the bounds of a live allocation; they are also agnostic
-as to whether it is ownership or an \cninline{Alloc} token which is provided as
-evidence.\sidenote{TODO this too\ldots}
 
 \subsection{State typing}
 
@@ -297,17 +504,17 @@ Recall that I defined resource term reduction and pattern matching in the
 dynamic semantics in a big-step style (\cref{sec:heap-types}). Whilst this
 intertwines the proofs for progress and type preservation, its advantage of
 modularity pays off now. The new constructs such as non-deterministic pointer
-equality, \coreinline{allocate_region}, \coreinline{kill_dynamic},
-\cinline{memcpy}, \cinline{memcmp}\cinline{copy_alloc_id}, and the conversions
-to and from memory bytes, are just additional cases in the proof, the rest are
-merely updates. The updates are small because the additional
-constraints on the allocation history are easy to link across the static and
-dynamic semantics by the definition of allocation history typing. The bounds
-and liveness checks are similarly easy to link across the static and dynamic
-semantics by the definition of heap typing. The updated theorem statements are
-as below: the main differences are the use of the updated abstract state typing
-judgements, and the use of the $[[L0]] = [[allocv : _bt ]]$ environment, instead
-of the empty one, for logical variables. Updated proofs are in the appendix.
+equality, \coreinline{alloc}, dynamic \coreinline{kill}, \cinline{memcpy},
+\cinline{memcmp}\cinline{copy_alloc_id}, and the conversions to and from memory
+bytes, are just additional cases in the proof, the rest are merely updates. The
+updates are small because the additional constraints on the allocation history
+are easy to link across the static and dynamic semantics by the definition of
+allocation history typing. The bounds and liveness checks are similarly easy to
+link across the static and dynamic semantics by the definition of heap typing.
+The updated theorem statements are as below: the main differences are the use
+of the updated abstract state typing judgements, and the use of the $[[L0]] =
+[[allocv : _bt ]]$ environment, instead of the empty one, for logical
+variables. Updated proofs are in the appendix.
 
 \begin{theorem}[CN-VIP:\ progress and type preservation for resource terms]
 For all resource terms ($[[ res_term ]]$) closed which type check or synthesise
@@ -352,9 +559,39 @@ and the statement too
 ($[[ cdot ; L0 ; N' ; nR' |- stmt' <= ret ]]$).
 \end{theorem}
 
-\section{Linking \kl{ResCore} to \kl{PNVI-ae-udi}}\label{sec:linking}
+\subsection{Linking \kl{CN-VIP} to \kl{VIP}}\label{sec:linking}
 
-\chapter{Implementation of CN-VIP}
+\kl{CN-VIP} departs from \kl{VIP} in two ways: the introduction of a types for
+bytes and for roundtrip types.
+
+Bytes are intended only for transforming C types to and from their
+representation, critical for supporting dynamic memory allocation and unions.
+Crucially, the transformation is solely at the resource level and is forbidden
+(by a modified \kl{Cerberus} elaboration), directly in the C source: bytes are
+abstract values from the perspective of a C programmer. Pointers to C types can
+be converted to and from pointers to bytes, but as values, bytes are new,
+neither pointer nor integer. Thus the soundess of the various integer and
+pointer memory operations are unaffected by their introdction.
+
+Load and stores do deal with values, converting to and from their
+representation as memory bytes. The introduction of bytes in \kl{CN-VIP} may
+raise concerns about increasing expressivity beyond what is possible \kl{VIP},
+because bytes capture more information. In actuality, \kl{CN-VIP} bytes are
+$\sim$ related to \kl{VIP} \cinline{char} as follows: $\mathsf{unspec} \sim
+\mathsf{unspec}$, $(@\mathsf{empty}, a) \sim \mathit{Int}\,(a)$, and $(@i, a)
+\sim \mathit{Loc}\,(@i, a)$.
+
+Roundtrip values are also new values, neither pointers nor integers, and
+abstract from the perspective of the C programmer. Thus the soundness of
+various integer and pointer memory operations (excluding casts) are unaffected
+by their introduction. The new \kl{CN-VIP} casts involving roundtrip types, are
+simulated by casting to specific constructors in \kl{VIP}. For pointers,
+$\mathsf{NULL} \sim \mathsf{NULL}$, and $(\pi, a) \sim (\pi, a)$. For roundtrip
+types, $(\pi, 0) \sim \mathit{Int}\,(0)$ and $(\pi, a) \sim \mathit{Loc}\,(\pi, a)$
+for $a \neq 0$. For integer types, $0 \sim \mathit{Int}\,(0)$ and $a \sim
+\mathit{Int}\,(a)$ for $a \neq 0$.
+
+\chapter{Implementation of CN-VIP}\label{chap:impl-cnvip}
 
 \margintoc{}
 
@@ -757,13 +994,15 @@ copied resources in a polymorphic way), there are practical limitations.
 The issue stems from the fact that calls to \cinline{memcpy} are
 replaced with calls to a proxy \kl{Core} procedure during \kl{Cerberus}'
 elaboration. The proxy procedure wraps up a call to the memory interface
-operation for coreinline{memcpy}. During type checking, \kl{CN} only
+operation for \coreinline{memcpy}. During type checking, \kl{CN} only
 sees the call to the proxy, and not the memory operation. There is no
 convenient way to inline the body of the procedure, so the next best
 option is to give it a type like every other function and built-in
 procedure.
 
-\section{Insufficiency of not tracking provenance in bytes or integers}
+\section{Evaluation}\label{sec:cnvip-eval}
+
+% \section{Insufficiency of not tracking provenance in bytes or integers}
 
 The lack of provenance in bytes presents a major limitation to expressiveness
 of the memory object model. Consider the below call to the
@@ -785,12 +1024,12 @@ happens, the lack of provenances in bytes affects 18 out of 44 tests, and a
 lack of provenance in integers affects another 2.
 
 
-\section{Memory bytes and their use in \coreinline{memcpy}, \coreinline{malloc}
-and \coreinline{free}}\label{sec:mem-bytes-use}
-
-\section{Comparable bytes in \coreinline{memcmp}}
-
-\section{Integer with/out provenance union type for round-trip casts}
+% \section{Memory bytes and their use in \coreinline{memcpy}, \coreinline{malloc}
+% and \coreinline{free}}\label{sec:mem-bytes-use}
+%
+% \section{Comparable bytes in \coreinline{memcmp}}
+%
+% \section{Integer with/out provenance union type for round-trip casts}
 
 \chapter{Epilogue on CN-VIP}
 
@@ -1104,7 +1343,7 @@ postconditions are equal. The interpretations are defined to be exactly as in
 Whilst this resolution to the problems raised by supporting lemmas soundly is
 pleasing, it does raise an uncomfortable question: if \kl{CN} \emph{users}
 should be prevented from introducing unsoundness via lemmas, should \kl{CN}
-\emph{implementers} also be treated similarly?
+\emph{implementers} be treated similarly?
 
 As before, putting all of \kl{Core} and its dynamic semantics inside Rocq is
 out of the question. Besides, that is not where most critical bugs are likely
@@ -1171,7 +1410,7 @@ events given.
 
 Once all the operations are encapsulated, we could replace the implementation
 with one defined in and extracted from Rocq. It would be an implementation of a
-data-structure call a resource context, with each operation on it corresponding
+resource context data-structure, with each operation on it corresponding
 to an event. The implementation of those events in terms of how they
 syntactically manipulate linear separation logic types/assertions would be
 proved correct with respect to a mechanised definition of the \kl{CN-VIP}
