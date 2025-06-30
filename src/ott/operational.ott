@@ -646,26 +646,38 @@ defns
     _t | < h ; emp | rtFromInt ( ptr ) > --> < h ; < ptr' , @ aid > : ret >
 
 
+    alloct |- smt ( inj ptr . addr != 0 )
     alloct | < h ; res_term > ||v < h1 + { pred_term ( oarg ) & None } ; pred_term >
-    alloct | is_live pred_term ( oarg ) & ptr1 ,  ptr2
-    alloct | in_bounds ptr1 , ptr2
-    ret def= sigma y : loc .: y = inj ptr' /\ res *o I
-    inj ptr' def= if inj ptr . addr = 0 then NULL else inj ptr
-    -------------------------------------------------------------- :: PtrFromRt
-    alloct | < h ; res_term | ptrFromRt < ct > ( ptr ) > --> < h ; < ptr' > : ret >
+    alloct | is_live pred_term ( oarg ) & ptr ,  ptr
+    alloct | in_bounds ptr , ptr
+    ret def= sigma y : loc .: y = inj ptr /\ res *o I
+    -------------------------------------------------------------- :: LiveFromRt
+    alloct | < h ; res_term | ptrFromRt < ct > ( ptr ) > --> < h ; < ptr , pred_term > : ret >
 
 
-    % ret def= sigma y : integer .: exists x : alloc_id .: y = inj ptr' /\ I
-    % inj ptr' def= if inj ptr . addr = 0 then NULL else ( @ x , inj pval . addr )
-    % -------------------------------------------------------------- :: EmptyFromRt
-    % _t | < h ; emp | ptrFromRt < ct > ( ptr ) > --> < h ; < ptr' , @ default alloc_id > : ret >
+    % The memory model must give the same answer for the same heaps, regardless
+    % of provability (resource terms)
+    alloct |- smt ( inj ptr . addr != 0 )
+    h def= h1 + { pred_term ( oarg ) & None }
+    alloct | is_live pred_term ( oarg ) & ptr ,  ptr
+    alloct | in_bounds ptr , ptr
+    ret def= sigma y : integer .: exists x : alloc_id .: y = inj ptr /\ I
+    -------------------------------------------------------------- :: AlsoLiveFromRt
+    alloct | < h ; emp | ptrFromRt < ct > ( ptr ) > --> < h ; < ptr , inj ptr . alloc_id > : ret >
+
+
+    ret def= sigma y : integer .: exists x : alloc_id .: y =  /\ I
+    inj ptr' def= if inj ptr . addr = 0 then NULL else ( @ x  , inj ptr . addr )
+    -------------------------------------------------------------- :: NullEmptyFromRt
+    alloct | < h ; emp | ptrFromRt < ct > ( ptr ) > --> < h ; < ptr , @ default alloc_id > : ret >
+
 
     alloct | < h ; res_term > ||v < h1 + { pred_term ( oarg ) & None } ; pred_term >
     inj ptr' def= ( @ inj ptr . alloc_id , addr )
     alloct | is_live pred_term ( oarg ) & ptr' ,  ptr'
     alloct | in_bounds ptr' , ptr'
     ret def= sigma y : integer .: y = inj ptr' /\ pred_term ( oarg ) *o I
-    -------------------------------------------------------------------------------------------------------------- :: CopyAllocId
+    ---------------------------------------------------------------------------------- :: CopyAllocId
     alloct | < h ; res_term | copy_alloc_id ( addr , ptr ) > --> < h1 + { pred_term ( term ) & None } ; < ptr' , pred_term > : ret >
 
 
@@ -675,12 +687,23 @@ defns
     inj bool_value def=  aligned ( sizeof ct , inj ptr )
     ret def= sigma y : bool .: y =  aligned ( sizeof ct , inj ptr ) /\ pred_term ( oarg ) *o I
     -------------------------------------------------------- :: PtrValidForDeref
+    alloct | < h ; res_term | ptrValidForDeref < ct > ( ptr ) > --> < h ; < bool_value , pred_term > : ret >
+
+
+    % The memory model must give the same answer for the same heaps, regardless
+    % of provability (resource terms)
+    h def= h1 + { pred_term ( oarg ) & None }
+    alloct | is_live pred_term ( oarg ) & ptr ,  ptr
+    alloct | in_bounds ptr , ptr
+    inj bool_value def= aligned ( sizeof ct , inj ptr )
+    ret def= sigma y : bool .: I
+    -------------------------------------------------------- :: PtrAlsoValidForDeref
     alloct | < h ; res_term | ptrValidForDeref < ct > ( ptr ) > --> < h ; < bool_value > : ret >
 
 
     ret def= sigma y : bool .: I
-    -------------------------------------------------------- :: PtrMaybeDeref
-    _t | < h ; emp | ptrValidForDeref < ct > ( ptr ) > --> < h ; < bool_value > : ret >
+    -------------------------------------------------------- :: PtrInvalidForDeref
+    _t | < h ; emp | ptrValidForDeref < ct > ( ptr ) > --> < h ; < false > : ret >
 
 
     inj bool_value def=  aligned ( sizeof ct , inj ptr )

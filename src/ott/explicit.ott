@@ -1092,20 +1092,20 @@ defns
 
 
     C |- pval => loc
+    smt ( N => inj pval . addr != 0 )
     C ; L ; N ; R |- res_term => res
     C ; L ; N |- is_live res & pval , pval
     C ; L ; N |- in_bounds pval , pval
-    ret def= sigma y : loc .: y = term /\ res *o I
-    term def= if inj pval . addr = 0 then NULL else inj pval
-    ----------------------------------- :: PtrFromRt
+    ret def= sigma y : loc .: y = inj pval /\ res *o I
+    ----------------------------------- :: LiveFromRt
     C ; L ; N ; R |- res_term | ptrFromRt < ct > ( pval ) => ret
 
 
-    % C |- pval => loc
-    % ret def= sigma y : integer .: exists x : alloc_id .: y = term /\ I
-    % term def= if inj pval . addr = 0 then NULL else ( @ x , inj pval . addr )
-    % ----------------------------------- :: EmptyFromRt
-    % C ; L ; N ; cdot |- emp | ptrFromRt < ct > ( pval ) => ret
+    C |- pval => loc
+    ret def= sigma y : integer .: exists x : alloc_id .: y = term /\ I
+    term def= if inj pval . addr = 0 then NULL else ( @ x , inj pval . addr )
+    ----------------------------------- :: UnsureFromRt
+    C ; L ; N ; cdot |- emp | ptrFromRt < ct > ( pval ) => ret
 
 
     C |- pval1 => integer
@@ -1140,7 +1140,7 @@ defns
 
     C |- pval => loc
     ret def= sigma y : bool .: I
-    ---------------- :: PtrMaybeDeref
+    ---------------- :: PtrUnsureForDeref
     C ; L ; N ; cdot |- emp | ptrValidForDeref < ct > ( pval ) => ret
 
 

@@ -197,7 +197,7 @@ substitution: if $[[ term ~ term' ]]$ and $[[ x ~ y ]]$ in $[[ term1 ~ term1' ]]
 then $[[ term / x ( term1 ) ~ term' / y ( term1' ) ]]$.\\
 
 \noindent
-\textbf{Note: $[[ ~ ]]$ is \emph{only} used in the \emph{proof} of soundness,
+\textbf{Note: $[[ ~ ]]$ is \emph{only} used in the \emph{pfproof} of soundness,
 and \emph{not} in the \emph{explicit CN type system}.} There is no unification
 required in the type system, but the notion of related terms is required to
 argue for the soundness of pattern-matching
@@ -256,7 +256,7 @@ No-resource / ``pure'' rules: \IGCmpEq, \IGCmpLt, \IGCmpGt, \IGCmpNone,
 \PureExprMemberShift, \PureExprNot, \PureExprArithBinop, \PureExprRelBinop,
 \PureExprBoolBinop, \PureExprCall, \PureExprAssertUndef, \PureExprBoolToInteger,
 \PureExprWrapI, \PureStmtUB, \PureStmtPVal, \MemopPtrEq, \MemopIntFromRt,
-\MemopRtFromInt, \MemopRtFromPtr, \MemopPtrFromRt, \MemopPtrMaybeDeref,
+\MemopRtFromInt, \MemopRtFromPtr, \MemopLiveFromRt, \MemopPtrUnsureForDeref,
 \MemopPtrWellAligned, \ExprPure, \StmtPure.\\[\baselineskip]
 
 Resource-mentioning rules: \ResSynEmp, \ResSynVar, \ResSynVarSimp, \ResSynPred,
@@ -716,27 +716,27 @@ This is as simple inversion lemma.
     then $[[ h ]] = [[ { pred' & None } ]]$ for $[[ cdot |- subs0 ( pred ) = subs0 ( pred' ) ]]$.\\
     \pf{} By inversion, the assumption must be \HeapPredOwned{}.}
 
-\step{<1>2a}{If $[[ pred ]] = [[ Alloc ( term ) ( oarg ) ]]$, $[[ nR ]] = [[ _x : pred ]]$,
+\step{<1>3}{If $[[ pred ]] = [[ Alloc ( term ) ( oarg ) ]]$, $[[ nR ]] = [[ _x : pred ]]$,
     then $[[ h ]] = [[ { pred' & None } ]]$ for $[[ cdot |- subs0 ( pred ) = subs0 ( pred' ) ]]$.\\
     \pf{} By inversion, the assumption must be \HeapPredAlloc{}.}
 
-\step{<1>2b}{If $[[ pred ]] = [[ Padding < union tag , member > ( ptrt ) ( oarg ) ]]$, $[[ nR ]] = [[ _x : pred ]]$,
+\step{<1>4}{If $[[ pred ]] = [[ Padding < union tag , member > ( ptrt ) ( oarg ) ]]$, $[[ nR ]] = [[ _x : pred ]]$,
     then $[[ h ]] = [[ { pred' & None } ]]$ for $[[ cdot |- subs0 ( pred ) = subs0 ( pred' ) ]]$.\\
     \pf{} By inversion, the assumption must be \HeapPredPadding{}.}
 
-\step{<1>3}{If $[[ nR ]] = [[ _x : pred ]]$, then $[[ h ]] = [[ { pred' & def & h' } ]]$.\\
+\step{<1>5}{If $[[ nR ]] = [[ _x : pred ]]$, then $[[ h ]] = [[ { pred' & def & h' } ]]$.\\
     for $[[ cdot |- subs0 ( pred ) = subs0 ( pred' ) ]]$.\\
     \pf{} By inversion, the assumption must be \HeapPredOther.}
 
-\step{<1>4}{If $[[ ipred ]] = [[ *S x .: iguard => ptrt |- _init - ct -> oarg ]]$, $[[ nR ]] = [[ _x : ipred ]]$,
+\step{<1>6}{If $[[ ipred ]] = [[ *S x .: iguard => ptrt |- _init - ct -> oarg ]]$, $[[ nR ]] = [[ _x : ipred ]]$,
     then $[[ h ]] = [[ { ipred' & cdot } ]]$ for $[[ cdot |- subs0 ( ipred ) = subs0 ( ipred' ) ]]$.\\
     \pf{} By inversion, the assumption must be \HeapIPredOwned.}
 
-\step{<1>5}{If $[[ nR ]] = [[ _x : ipred ]]$, then $[[ h ]] = [[ { ipred' & arr_heap } ]]$
+\step{<1>7}{If $[[ nR ]] = [[ _x : ipred ]]$, then $[[ h ]] = [[ { ipred' & arr_heap } ]]$
     for $[[ cdot |- subs0 ( ipred ) = subs0 ( ipred' ) ]]$.\\
     \pf{} By inversion, the assumption must be \HeapIPredOther.}
 
-\step{<1>6}{If $[[ nR ]] = [[ nR1 , nR2 ]]$, then $[[ h ]] = [[ h1 + h2 ]]$,
+\step{<1>8}{If $[[ nR ]] = [[ nR1 , nR2 ]]$, then $[[ h ]] = [[ h1 + h2 ]]$,
     where $[[ alloct |- h1 <= nR1 ]]$ and $[[ alloct |- h2 <= nR2 ]]$.\\
     \pf{} By inversion, the assumption must be \HeapConcat.}
 
@@ -1019,7 +1019,7 @@ predicates in pattern-matching.\\[\baselineskip]
     heap typing using \HeapConcat{} and \HeapIPredOwned{} / \HeapIPredOther;
     reduction using \OpPredOpsChop.}}
 
-\step{<1>8a}{\case{\PredOpsToBytes}{%
+\step{<1>9}{\case{\PredOpsToBytes}{%
     \pf{} Like \PredOpsIterate, but with:\\
     $[[ res_term ]]= [[ to_bytes ( res_term' ) ]]$\\
     $[[ res ]]  = [[ ipred_term ( oarg' ) ]]$,
@@ -1041,7 +1041,7 @@ predicates in pattern-matching.\\[\baselineskip]
     heap typing using \HeapIPredOwned{};
     reduction using \OpPredOpsToBytes.}}
 
-\step{<1>8b}{\case{\PredOpsFromBytes}{%
+\step{<1>10}{\case{\PredOpsFromBytes}{%
     \pf{} Like \PredOpsIterate, but with:\\
     $[[ res_term ]]= [[ from_bytes < init , ct > ( res_term' ) ]]$\\
     $[[ res ]]     = [[  pred_term ( oarg ) ]]$
@@ -1063,7 +1063,7 @@ predicates in pattern-matching.\\[\baselineskip]
     heap typing using \HeapPredOwned{};
     reduction using \OpPredOpsFromBytes.}}
 
-\step{<1>8c}{\case{\PredOpsSelect}{%
+\step{<1>11}{\case{\PredOpsSelect}{%
     \pf{} Like \PredOpsIterate, but with:\\
     $[[ res_term ]]= [[ select < init1 , member > ( res_term' ) ]]$\\
     $[[ res ]] = [[ pred_term1 ( oarg1 ) * pred_term2 ( oarg' )  ]]$,
@@ -1089,7 +1089,7 @@ predicates in pattern-matching.\\[\baselineskip]
     heap typing using \HeapPredOwned{} and \HeapPredPadding{} followed by \HeapConcat{};
     reduction using \OpPredOpsSelect.}}
 
-\step{<1>8d}{\case{\PredOpsForget}{%
+\step{<1>12}{\case{\PredOpsForget}{%
     \pf{} Like \PredOpsIterate, but with:\\
     $[[ res_term ]]= [[ forget < union tag > ( res_term' ) ]]$\\
     $[[ res ]]     = [[  pred_term ( oarg ) ]]$
@@ -1112,15 +1112,15 @@ predicates in pattern-matching.\\[\baselineskip]
     heap typing using \HeapPredOwned{};
     reduction using \OpPredOpsForget.}}
 
-\step{<1>9}{\case{\ResSynEmp, \ResSynPred, \ResSynIPred, \ResChkPhi.}{%
+\step{<1>13}{\case{\ResSynEmp, \ResSynPred, \ResSynIPred, \ResChkPhi.}{%
     \pf{} In these cases, $[[ h ]] = [[ h' ]]$, $[[ nR ]] = [[ nR' ]]$ and $[[ res_term ]] = [[ res_val ]]$.\\
     Typing holds by assumption; prove reduction using \OpResTVal{}.}}
 
-\step{<1>10}{\case{\ResSynPredOps}{%
+\step{<1>14}{\case{\ResSynPredOps}{%
     \pf{} Both typing and reduction (using \OpResTPredOps{}) hold by
     induction.}}
 
-\step{<1>11}{\case{\ResSynSepConj, \ResChkSepConj.}{%
+\step{<1>15}{\case{\ResSynSepConj, \ResChkSepConj.}{%
     $[[ res ]] = [[ res1 * res2 ]]$,\\
     $[[ res_term ]] = [[ < res_term1 , res_term2 > ]]$,\\
     $[[ h ]] = [[ h1 + h2 ]]$, so $[[ nR ]] = [[ nR1 , nR2 ]]$,\\
@@ -1147,7 +1147,7 @@ predicates in pattern-matching.\\[\baselineskip]
 
     \end{pfproof}
 
-\step{<1>12}{\case{\ResChkPack}{%
+\step{<1>16}{\case{\ResChkPack}{%
     \pf{} Like \PredOpsIterate, but with:\\
     $[[ res_term ]] = [[ pack ( oarg , res_term' ) ]]$,
     $[[ res ]]      = [[ exists y : base_type .: res'' ]]$,
@@ -1155,7 +1155,7 @@ predicates in pattern-matching.\\[\baselineskip]
     $[[ res_val ]]  = [[ pack ( oarg , res_val' ) ]]$.
     Value and heap typing hold by induction; prove reduction using \OpResTPack.}}
 
-\step{<1>13}{\case{\ResSynFold}{%
+\step{<1>17}{\case{\ResSynFold}{%
     \pf{} Like \PredOpsIterate, but with:\\
     $[[ P ( a ) = </ xi : _bti // i /> , y : _bt  |-> res'' ]]$\\
     $[[ res_term ]]= [[ fold res_term' : a ( </ iargi // i /> ) ( oarg ) ]]$\\
@@ -1177,12 +1177,12 @@ predicates in pattern-matching.\\[\baselineskip]
     Since $[[ footprint_of res_val' in h1 + f ~> h1 REM f ]]$ by
     \lemmaref{subsec:wt_res_val_det_footprint}, prove reduction using \OpResTFold.}}
 
-\step{<1>14}{\case{\ResChkIfTrue, \ResChkIfFalse}{%
+\step{<1>18}{\case{\ResChkIfTrue, \ResChkIfFalse}{%
     \pf{} By induction with $[[ res' ]]$ as $[[ res1 ]]$ or $[[ res2]]$ respectively.
     This is exhaustive because only variables can synthesise under-determined conditional
     resources and those are excluded by assumption of $[[ res_term ]]$ being closed.}}
 
-\step{<1>15}{\case{\ResChkSwitch}{%
+\step{<1>19}{\case{\ResChkSwitch}{%
     \pf{} By induction on the synthesising judgement.}}
 
 \end{pfproof}
@@ -1781,7 +1781,7 @@ arbitrary (not normalised).
 
     \end{pfproof}
 
-\step{<1>17a}{\case{\ActionAlloc.}{}}
+\step{<1>18}{\case{\ActionAlloc.}{}}
 
     \begin{pfproof}
 
@@ -1801,7 +1801,7 @@ arbitrary (not normalised).
 
     \end{pfproof}
 
-\step{<1>18}{\case{\ActionLoad.}{}}
+\step{<1>19}{\case{\ActionLoad.}{}}
 
     \begin{pfproof}
 
@@ -1837,7 +1837,7 @@ arbitrary (not normalised).
     \end{pfproof}
 
 
-\step{<1>19}{\case{\ActionStore.}{%
+\step{<1>20}{\case{\ActionStore.}{%
 }}
 
     \begin{pfproof}
@@ -1874,7 +1874,7 @@ arbitrary (not normalised).
 
     \end{pfproof}
 
-\step{<1>20}{\case{\ActionKillStatic}{}}
+\step{<1>21}{\case{\ActionKillStatic}{}}
 
     \begin{pfproof}
 
@@ -1910,7 +1910,7 @@ arbitrary (not normalised).
 
     \end{pfproof}
 
-\step{<1>20a}{\case{\ActionKillDynamic}{}}
+\step{<1>22}{\case{\ActionKillDynamic}{}}
 
     \begin{pfproof}
 
@@ -1948,7 +1948,7 @@ arbitrary (not normalised).
 
     \end{pfproof}
 
-\step{<1>13a}{\case{\MemopPtrEq.}{}}
+\step{<1>23}{\case{\MemopPtrEq.}{}}
 
     \begin{pfproof}
 
@@ -1961,7 +1961,7 @@ arbitrary (not normalised).
     
     \end{pfproof}
 
-\step{<1>21}{\case{\MemopRelBinop.}{}}
+\step{<1>24}{\case{\MemopRelBinop.}{}}
 
     \begin{pfproof}
 
@@ -2002,49 +2002,55 @@ arbitrary (not normalised).
 
     \end{pfproof}
 
-\step{<1>22}{\case{%
+\step{<1>25}{\case{%
     \MemopPtrDiff, \MemopPtrDiffArr.
 }{%
     \pf{} Similar to \MemopRelBinop, so step with
     \OpMemopPtrDiff/\OpMemopPtrDiffArr{} respectively.}}
 
-\step{<1>23}{\case{%
+\step{<1>26}{\case{%
     \MemopIntFromRt, \MemopRtFromInt.
 }{%
     \pf{} Similar to \MemopPtrEq, but $[[pval]]$ is an $[[addr]]$ for \MemopRtFromInt.
     Step with \OpMemopIntFromRt/\OpMemopRtFromInt{} respectively.}}
 
-\step{<1>23}{\case{%
-    \MemopRtFromPtr, \MemopPtrFromRt.
+\step{<1>27}{\case{%
+    \MemopRtFromPtr.
 }{%
     \pf{} Similar to \MemopPtrEq, but $[[pval]]$ is a $[[ptr]]$.
-    Step with \OpMemopRtFromPtr/\OpMemopPtrFromRt{} respectively.}}
+    Step with \OpMemopRtFromPtr{} respectively.}}
 
-\step{<1>22}{\case{%
+\step{<1>28}{\case{%
+    \MemopLiveFromRt.
+}{%
+    \pf{} Similar to \MemopRelBinop, but just one $[[pval]]$ which is a $[[ptr]]$.
+    Step with \OpMemopLiveFromRt{} respectively.}}
+
+\step{<1>29}{\case{%
     \MemopCopyAllocId.
 }{%
     \pf{} Similar to \MemopRelBinop, but where $[[pval1]]$ is $[[addr]]$.
     So step with \OpMemopCopyAllocId.}}
 
-\step{<1>23}{\case{%
+\step{<1>30}{\case{%
     \MemopPtrValidForDeref.
 }{%
     \pf{} Similar to \MemopRelBinop, but with only one $[[pval]]$ which is a
     $[[ptr]]$. So step with \OpMemopPtrValidForDeref.}}
 
-\step{<1>25}{\case{%
-    \MemopPtrMaybeDeref, \MemopPtrWellAligned.
+\step{<1>31}{\case{%
+    \MemopPtrUnsureForDeref, \MemopPtrWellAligned.
 }{%
     \pf{} Similar to \MemopPtrEq, excepct with only one $[[pval]]$.
-    Step with \OpMemopPtrMaybeDeref/\OpMemopPtrWellAligned{} respectively.}}
+    Step with \OpMemopPtrAlsoValidForDeref/\OpMemopPtrWellAligned{} respectively.}}
 
 
-\step{<1>27}{\case{%
+\step{<1>32}{\case{%
     \MemopPtrArrayShift.
 }{%
     \pf{} Similar to \MemopRelBinop, so step with \OpMemopPtrArrayShift.}}
 
-\step{<1>27a}{\case{\MemopMemcpy.}{}}
+\step{<1>33}{\case{\MemopMemcpy.}{}}
 
     \begin{pfproof}
 
@@ -2088,7 +2094,7 @@ arbitrary (not normalised).
 
     \end{pfproof}
 
-\step{<1>27b}{\case{\MemopMemcmp.}{}}
+\step{<1>34}{\case{\MemopMemcmp.}{}}
 
     \begin{pfproof}
 
@@ -2134,7 +2140,7 @@ arbitrary (not normalised).
 
     \end{pfproof}
 
-\step{<1>28}{\case{\ExprCCall.}{}}
+\step{<1>35}{\case{\ExprCCall.}{}}
 
     \begin{pfproof}
 
@@ -2151,28 +2157,28 @@ arbitrary (not normalised).
 
     \end{pfproof}
 
-\step{<1>29}{\case{\ExprProc, \StmtRun.}{%
+\step{<1>36}{\case{\ExprProc, \StmtRun.}{%
     \pf{} Similar to \ExprCCall, but step with \OpExprProc{} / \OpStmtRun.}}
 
-\step{<1>30}{\case{\ExprMemop.}{%
+\step{<1>37}{\case{\ExprMemop.}{%
     \pf{} By induction, if $[[memop]]$ is unreachable, then the whole expression
     is so. $[[memop]]$s are not values. Only stepping cases applies, so
     step with \OpExprMemop.}}
 
-\step{<1>31}{\case{\ExprAction.}{%
+\step{<1>38}{\case{\ExprAction.}{%
     \pf{} By induction, if $[[action]]$ is unreachable, then the whole
     expression is so. $[[action]]$s are not values. Only stepping case applies, so
     step with \OpExprAction{}.}}
 
-\step{<1>32}{\case{\StmtPure.}{%
+\step{<1>39}{\case{\StmtPure.}{%
     \pf{} By induction.}}
 
-\step{<1>33}{\case{\StmtExpr.}{%
+\step{<1>40}{\case{\StmtExpr.}{%
     \pf{} By induction, since $[[expr]]$ is not value, if it is unreachable,
     the whole expression is so. If $[[expr]]$ takes a step, the whole
     expression steps with \OpStmtExpr.}}
 
-\step{<1>34}{\case{\StmtLet.}{%
+\step{<1>41}{\case{\StmtLet.}{%
     \pf{} By induction, if $[[stmt]]$ is unreachable, so is the whole
     expression.\\[\baselineskip]
 
@@ -2184,12 +2190,12 @@ arbitrary (not normalised).
     If $[[stmt]]$ takes a step, the whole expression steps with
     \OpStmtLet.}}
 
-\step{<1>35}{\case{\StmtCase.}{%
+\step{<1>42}{\case{\StmtCase.}{%
     \pf{} By assumption that all patterns are exhaustive, and
     \lemmaref{subsec:wt_values_pat_match}, there is at least one pattern against
     which $[[pval]]$ will match, so \OpStmtCase.}}
 
-\step{<1>36}{\case{\StmtIf.}{%
+\step{<1>43}{\case{\StmtIf.}{%
     \pf{} $[[pval]]$ must be a $[[bool_value]]$ and so
     \OpStmtIfTrue/\OpStmtIfFalse.}}
 
@@ -2372,7 +2378,7 @@ to deduce that $[[ nR' ]]$ can only be what you would have supplied anyways.
 
     \end{pfproof}
 
-\step{<1>10a}{\case{%
+\step{<1>11}{\case{%
     \ActionAlloc.
 }{%
     \pflet{%
@@ -2419,7 +2425,7 @@ to deduce that $[[ nR' ]]$ can only be what you would have supplied anyways.
 
     \end{pfproof}
 
-\step{<1>11}{\case{%
+\step{<1>12}{\case{%
     \ActionLoad.
 }{%
     \pflet{%
@@ -2454,7 +2460,7 @@ to deduce that $[[ nR' ]]$ can only be what you would have supplied anyways.
 
     \end{pfproof}
 
-\step{<1>12}{\case{%
+\step{<1>13}{\case{%
     \ActionStore.
 }{%
     \pflet{%
@@ -2493,7 +2499,7 @@ to deduce that $[[ nR' ]]$ can only be what you would have supplied anyways.
 
     \end{pfproof}
 
-\step{<1>13}{\case{%
+\step{<1>14}{\case{%
     \ActionKillStatic.
 }{%
 
@@ -2520,7 +2526,7 @@ to deduce that $[[ nR' ]]$ can only be what you would have supplied anyways.
 
     \pf{} By \SpineRet, \PureValUnit, \SpineComp, \StmtRetT.}}
 
-\step{<1>13a}{\case{%
+\step{<1>15}{\case{%
     \ActionKillDynamic.
 }{%
 
@@ -2549,7 +2555,7 @@ to deduce that $[[ nR' ]]$ can only be what you would have supplied anyways.
 
     \pf{} By \SpineRet, \PureValUnit, \SpineComp, \StmtRetT.}}
 
-\step{<1>13a}{\case{%
+\step{<1>16}{\case{%
     \MemopPtrEq.
 }{%
 
@@ -2565,7 +2571,7 @@ to deduce that $[[ nR' ]]$ can only be what you would have supplied anyways.
     \pf{} By \SpineRet, \PureValTrue/\PureValFalse, \SpineComp, \SpinePhi{} (by construction of $[[ bool_value ]]$), \StmtRetT.}}
 
 
-\step{<1>14}{\case{%
+\step{<1>17}{\case{%
     \MemopRelBinop.
 }{%
 
@@ -2589,37 +2595,42 @@ to deduce that $[[ nR' ]]$ can only be what you would have supplied anyways.
 
     \pf{} By \SpineRet, \PureValTrue/\PureValFalse, \SpineComp, \SpinePhi{} (by construction of $[[ bool_value ]]$), \SpineRes, \StmtRetT.}}
 
-\step{<1>15}{\case{%
+\step{<1>18}{\case{%
     \MemopPtrDiffArr, \MemopPtrDiff.
 }{%
     \pf{} Similar to \MemopRelBinop, but with \PureValObjInt.}}
 
-\step{<1>16}{\case{%
-    \MemopIntFromRt, \MemopRtFromInt, \MemopRtFromPtr, \MemopPtrFromRt.
+\step{<1>19}{\case{%
+    \MemopIntFromRt, \MemopRtFromInt, \MemopRtFromPtr.
 }{%
-    \pf{} Similar to \MemopPtrEq, but with an extra \SpineLog{} for \MemopRtFromInt.}}
+    \pf{} Similar to \MemopPtrEq, but with an extra \SpineLog{} for \MemopRtFromInt{} and \MemopRtFromPtr.}}
 
-\step{<1>17}{\case{%
+\step{<1>20}{\case{%
+    \MemopLiveFromRt.
+}{%
+    \pf{} Similar to \MemopRelBinop, but with \PureValObjPtr{} first.}}
+
+\step{<1>21}{\case{%
     \MemopCopyAllocId.
 }{%
     \pf{} Similar to \MemopRelBinop, but with \PureValObjPtr.}}
 
-\step{<1>17a}{\case{%
+\step{<1>22}{\case{%
     \MemopPtrValidForDeref.
 }{%
     \pf{} Similar to \MemopRelBinop.}}
 
-\step{<1>18}{\case{%
-    \MemopPtrMaybeDeref, \MemopPtrWellAligned.
+\step{<1>23}{\case{%
+    \MemopPtrUnsureForDeref, \MemopPtrWellAligned.
 }{%
     \pf{} Similar to \MemopPtrEq.}}
 
-\step{<1>19}{\case{%
+\step{<1>24}{\case{%
     \MemopPtrArrayShift.
 }{%
     \pf{} Similar to \MemopRelBinop, but with \PureValObjPtr.}}
 
-\step{<1>19a}{\case{%
+\step{<1>25}{\case{%
     \MemopMemcpy.
 }{%
 
@@ -2653,16 +2664,16 @@ to deduce that $[[ nR' ]]$ can only be what you would have supplied anyways.
 
     \step{<2>2}{$[[ smt ( N => inj ptr1 = inj ptr1 ) ]]$ trivally.}
 
-    \step{<2>4}{$[[ cdot ; L0 ; N ; nR'  |- < ipred_term1 , ipred_term2 > <= ipred_term1 ( oarg ) * ipred_term2 ( oarg ) ]]$ by
+    \step{<2>3}{$[[ cdot ; L0 ; N ; nR'  |- < ipred_term1 , ipred_term2 > <= ipred_term1 ( oarg ) * ipred_term2 ( oarg ) ]]$ by
         \ResSynIPred{} and \ResChkSwitch{} twice, then \ResChkSepConj.}
 
-    \step{<2>6}{Prove typing with \SpineRet; \stepref{<2>4} -- \stepref{<2>1} with % chktex 8
+    \step{<2>4}{Prove typing with \SpineRet; \stepref{<2>4} -- \stepref{<2>1} with % chktex 8
         \SpineRes, \SpinePhi, \SpineComp{} respectively; \StmtRetT{}.}
 
     \end{pfproof}
 
 
-\step{<1>19b}{\case{%
+\step{<1>26}{\case{%
     \MemopMemcmp.
 }{%
 
@@ -2691,15 +2702,15 @@ to deduce that $[[ nR' ]]$ can only be what you would have supplied anyways.
 
     \step{<2>2}{$[[ smt ( N => inj ptr1 = inj ptr1 ) ]]$ trivally.}
 
-    \step{<2>4}{$[[ cdot ; L0 ; N ; nR'  |- < ipred_term1 , ipred_term2 > <= ipred_term1 ( oarg1 ) * ipred_term2 ( oarg2 ) ]]$ by
+    \step{<2>3}{$[[ cdot ; L0 ; N ; nR'  |- < ipred_term1 , ipred_term2 > <= ipred_term1 ( oarg1 ) * ipred_term2 ( oarg2 ) ]]$ by
         \ResSynIPred{} and \ResChkSwitch{} twice, then \ResChkSepConj.}
 
-    \step{<2>6}{Prove typing with \SpineRet; \stepref{<2>4} -- \stepref{<2>1} with % chktex 8
+    \step{<2>4}{Prove typing with \SpineRet; \stepref{<2>4} -- \stepref{<2>1} with % chktex 8
         \SpineRes, \SpinePhi, \SpineComp{} respectively; \StmtRetT{}.}
 
     \end{pfproof}
 
-\step{<1>20}{\case{%
+\step{<1>27}{\case{%
     \ExprCCall.
 }{%
     \assume{%
@@ -2715,22 +2726,22 @@ to deduce that $[[ nR' ]]$ can only be what you would have supplied anyways.
 
     \pf{} By \lemmaref{subsec:wt_spine_sub} and $[[ alloct <= N ]]$.}}
 
-\step{<1>21}{\case{%
+\step{<1>28}{\case{%
     \ExprProc.
 }{%
     \pf{}  Similar to \ExprCCall.}}
 
-\step{<1>22}{\case{%
+\step{<1>29}{\case{%
     \ExprMemop, \ExprAction, \ExprPure, \StmtPure.
 }{%
     \pf{} By induction.}}
 
-\step{<1>23}{\case{%
+\step{<1>30}{\case{%
     \StmtExpr.
 }{%
 \pf{} See \StmtLet{} for a more general case and proof.}}
 
-\step{<1>24}{\case{%
+\step{<1>31}{\case{%
     \StmtLet.
 }{%
     \assume{%
@@ -2759,7 +2770,7 @@ to deduce that $[[ nR' ]]$ can only be what you would have supplied anyways.
     By \lemmaref{subsec:sub}, and $[[ subs ( N ) ]] = [[ N ]]$
     because it is well-formed w.r.t $[[ cdot ]] ; [[ L0 ]]$.}}
 
-\step{<1>25}{\case{%
+\step{<1>32}{\case{%
     \StmtLet.
 }{%
     \assume{%
@@ -2772,7 +2783,7 @@ to deduce that $[[ nR' ]]$ can only be what you would have supplied anyways.
     Proceed by induction, instantiating the frame from the inductive hypothesis
     with $[[ h2 + f ]]$.\\}}
 
-\step{<1>26}{\case{%
+\step{<1>33}{\case{%
     \StmtCase.
 }{%
     \assume{%
@@ -2793,12 +2804,12 @@ to deduce that $[[ nR' ]]$ can only be what you would have supplied anyways.
     $[[ cdot ; L0 ; N' ; nR |- subsj ( stmtj ) <= subsj ( ret ) ]]$
     by \lemmaref{subsec:sub}.}} % chktex 9
 
-\step{<1>27}{\case{%
+\step{<1>34}{\case{%
     \StmtIf.
 }{
     See \StmtCase{} for more general case and proof.}}
 
-\step{<1>28}{\case{%
+\step{<1>35}{\case{%
     \StmtRun.
 }{%
     \pf{} Similar to \ExprCCall.}}
