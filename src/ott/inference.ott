@@ -384,22 +384,32 @@ defns
 
   C |- pval => integer
   C ; L ; N ; nR |- pval , pval ~> res_term : norm_res -| nR'
-  norm_ret def= sigma y : loc .: exists x : alloc_id .: y = ptrt /\ norm_res *o I
-  ptrt def= if inj pval = 0 then NULL else ( @ x , inj pval )
+  norm_ret def= sigma y : loc .: exists x : alloc_id .: y = ( @ x , inj pval ) /\ norm_res *o I
   ----------------------------------- :: RtFromInt
   C ; L ; N ; nR |- rtFromInt ( pval ) ~> bind cdot for res_term & norm_ret -| nR'
 
 
   C |- pval => loc
-  norm_ret def= sigma y : integer .: y = inj pval /\ I
+  norm_ret def= sigma y : loc .: exists x : alloc_id .: y = term /\ term' /\ I
+  term def= if inj pval = NULL then ( @ x , 0 ) else inj pval
+  term' def= inj pval = NULL \/ x = inj pval . alloc_id
   ------------------------------------------------ :: RtFromPtr
   C ; L ; N ; nR |- rtFromPtr ( pval ) ~> bind cdot for emp & norm_ret -| nR
 
 
   C |- pval => integer
-  norm_ret def= sigma y : loc .: y = inj pval /\ I
+  C ; L ; N ; nR |- pval , pval ~> res_term : norm_res -| nR'
+  norm_ret def= sigma y : loc .: y = term /\ norm_res *o I
+  term def= if inj pval . addr = 0 then NULL else inj pval
   ----------------------------------- :: PtrFromRt
-  C ; L ; N ; nR |- ptrFromRt < ct > ( pval ) ~> bind cdot for emp & norm_ret -| nR
+  C ; L ; N ; nR |- ptrFromRt < ct > ( pval ) ~> bind cdot for res_term & norm_ret -| nR'
+
+
+  % C |- pval => integer
+  % norm_ret def= sigma y : integer .: exists x : alloc_id .: y = term /\ I
+  % term def= if inj pval . addr = 0 then NULL else ( @ x , inj pval . addr )
+  % ----------------------------------- :: EmptyFromRt
+  % C ; L ; N ; nR |- ptrFromRt < ct > ( pval ) ~> bind cdot for res_term & norm_ret -| nR'
 
 
   C |- pval1 => integer

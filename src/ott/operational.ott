@@ -626,28 +626,39 @@ defns
     alloct | < h ; res_term | ptr1 - ct - ptr2 > --> < h1 + { pred_term ( term ) & None } ; < int , pred_term > : ret >
 
 
-    alloct |- smt ( representable ( ct , inj pval . addr ) )
-    addr def= if inj ptr = NULL then 0 else inj ptr . addr
+    alloct |- smt ( representable ( ct , addr ) )
     ret def= sigma y : integer .: y = addr /\ I
     ----------------------------------------------------------------------- :: IntFromRt
-    alloct | < h ; emp | intFromRt < ct > ( ptr ) > --> < h ; < addr > : ret >
+    alloct | < h ; emp | intFromRt < ct > ( ( @ _int , addr ) ) > --> < h ; < addr > : ret >
 
 
     inj ptr def= ( @ default alloc_id , addr )
     ret def= sigma y : loc .: exists x : alloc_id .: y = ( @ x , addr ) /\ I
     ----------------------------------------------------------------------------------- :: RtFromInt
-    _t | < h ; emp | rtFromInt ( addr ) > --> < h ; < ptr , default alloc_id > : ret >
+    _t | < h ; emp | rtFromInt ( addr ) > --> < h ; < ptr , @ default alloc_id > : ret >
 
-
-    ret def= sigma y : loc .: y = inj ptr /\ I
+ 
+    ret def= sigma y : loc .: exists x : alloc_id .: y = inj ptr' /\ term' /\ I
+    inj ptr' def= if inj ptr = NULL then ( @ x , 0 ) else inj ptr
+    term' def= inj ptr = NULL \/ x = inj ptr . alloc_id
+    inj aid def= if inj ptr = NULL then default alloc_id else inj ptr . alloc_id
     -------------------------------------------------------------- :: RtFromPtr
-    _t | < h ; emp | rtFromInt ( ptr ) > --> < h ; < ptr > : ret >
+    _t | < h ; emp | rtFromInt ( ptr ) > --> < h ; < ptr' , @ aid > : ret >
 
 
-    ret def= sigma y : loc .: y = inj ptr /\ I
+    alloct | < h ; res_term > ||v < h1 + { pred_term ( oarg ) & None } ; pred_term >
+    alloct | is_live pred_term ( oarg ) & ptr1 ,  ptr2
+    alloct | in_bounds ptr1 , ptr2
+    ret def= sigma y : loc .: y = inj ptr' /\ res *o I
+    inj ptr' def= if inj ptr . addr = 0 then NULL else inj ptr
     -------------------------------------------------------------- :: PtrFromRt
-    _t | < h ; emp | ptrFromRt < ct > ( ptr ) > --> < h ; < ptr > : ret >
+    alloct | < h ; res_term | ptrFromRt < ct > ( ptr ) > --> < h ; < ptr' > : ret >
 
+
+    % ret def= sigma y : integer .: exists x : alloc_id .: y = inj ptr' /\ I
+    % inj ptr' def= if inj ptr . addr = 0 then NULL else ( @ x , inj pval . addr )
+    % -------------------------------------------------------------- :: EmptyFromRt
+    % _t | < h ; emp | ptrFromRt < ct > ( ptr ) > --> < h ; < ptr' , @ default alloc_id > : ret >
 
     alloct | < h ; res_term > ||v < h1 + { pred_term ( oarg ) & None } ; pred_term >
     inj ptr' def= ( @ inj ptr . alloc_id , addr )
