@@ -1,4 +1,216 @@
 \bookmarksetup{startatroot}
+
+\chapter{Future Directions}%
+\label{chap:future-directions}
+
+\margintoc{}
+
+In this chapter, I will recap some of \kl{CN}'s more pressing limitations, and
+sketch out some solutions to it.
+
+\section{Inferring frames}
+
+Recall the \kl{Core} operators for expressing most control-flow:
+\coreinline{run()} and \coreinline{save()}, first presented % chktex 36
+in~\nameref{sec:core-grammar}.
+
+These very general constructs are used by \kl{Cerberus}' elaboration into
+\kl{Core} to support a variety of control flow constructs: loops (continue,
+break, iteration), switches (cases, fall-through and defaults), labels, and
+\cinline{goto}.
+
+\kl{CN} currently deals with these on an ad-hoc basis, such as by marking
+labels with their original structure and use (loop continue, loop break,
+return, switch, case, default) labels, and maximally inlining label bodies to
+avoid requiring annotations at awkward places such as loop continues and breaks
+and switch cases.
+
+There are two main problems with this approach.
+
+\textbf{Inlining slows down performance and duplicates
+work.}\sidenote{\href{https://github.com/rems-project/cerberus/issues/289}{Cerberus\#289.}}
+The transformation from \kl{Core} with \coreinline{run()} and % chktex 36
+\coreinline{save()}to \kl{Core} with non-recursive runs inlined and % chktex 36
+recursive runs hoisted to the top level induces some impressive code bloat. A
+nested-loop
+example,\sidenote{\href{https://github.com/rems-project/cerberus/issues/938}{Cerberus\#938.}}
+shows a 7x increase (226 lines of \kl{Core} to 1389 lines); a \cinline{switch}
+with 3 \cinline{case}s and a \cinline{default} example, shows a 5x increase.
+
+\textbf{Loop-annotations do not compose as expected, and are thus confusing and
+verbose.}\sidenote{\href{https://github.com/rems-project/cerberus/issues/913}{Cerberus\#931.}}
+
+The reason for this is the \kl{Core} dynamics for the
+\coreinline{run()} operator. In particular, note that the current % chktex 36
+continuation $C$ is discarded, and the continuation associated with the label
+$\cnnt{id}$, $C_\cnnt{id}$ is resumed.
+
+{\small%
+\[
+\inferrule[{[Run]}]
+  { \mathrm{labelmap} ( \cnnt{id} ) = \left(\cncomp{x_i}{i}\right).\ C_{\cnnt{id}} [ E_{\cnnt{id}} ] \\
+    \cncomp{e_i \Downarrow \cnnt{value}_i}{i} }
+  { \langle h , C\left[ \cnkw{run}\, \cnnt{id} \left( \cncomp{e_i}{i} \right) \right] , \kappa \rangle
+    \rightarrow \left< h , C_{\cnnt{id}} \left[ \left[ \cncomp{\cnnt{value}_i / x_i}{i} \right] E_{\cnnt{id}} \right] , \kappa \right> }
+\]}
+
+Its associated (\kl{ResCore}) typing rule is as follows. Note that because
+control-flow does not return to this point in the program, the return type is
+$\cnkw{false} \wedge \cnkw{I}$, even if, for example, a program is entering and
+exiting a loop in a well-bracketed way. This has the effect of requiring the
+pre-condition of the label to consume \emph{all} resources from the context
+of a \coreinline{run()}. % chktex 36
+
+{\small%
+\[
+\cndruleStmtXXRun{}
+\]}
+
+% \onlyUseRules{\cndefnStmt{}}{
+%     \cndruleStmtXXRun{}
+% }
+
+In particular, this means that loop invariants must explicitly mention all
+resources in a context (even ones which are morally framed out), so that they
+are reinstated upon loop exit. The situation compounds for each level of
+loop nesting: invariants of all enclosing loops must be manually threaded through
+by the user
+(see~\href{https://github.com/rems-project/cerberus/issues/913}{Cerberus\#931}).
+The problem holds for all \kl{Core} labels, but only manifests itself at loops
+since \kl{CN} inlines all labels whose bodies do not recursively \coreinline{run()} % chktex 36
+to themselves.
+
+Whilst it may be possible to engineer \kl{CN} for the common cases,
+for example by extending \kl{Core} with specific loop or switch constructs,
+the root of the problem will remain to handle labels and \cinline{goto}s in C.
+
+Hence a prinicipled solution is desirable, and would be useful to ensure
+our handling of the common cases is sound.
+
+A \emph{potential} solution is to adjust the grammar and elaboration of
+\kl{Core} to borrow an idea from an inductive representation of SSA, based on
+work by~\sidetextcite{ghalayini2024denotational}: represent
+\emph{dominance-based scoping} as \emph{lexical scoping}.
+
+\begin{quote}
+In particular, a variable $x$ is considered to be in scope at a specific point
+$P$ if and only if all execution paths from the program’s entry point to $P$
+pass through a definition $D$ for $x$. In this case, we say that the definition
+$D$ \emph{strictly dominates} $P$. The relation on basic blocks ``$A$ strictly
+dominates $B$'' intersected with ``$A$ is a direct predecessor of $B$'' forms a
+tree called the \emph{dominance tree} of the [control-flow graph].
+\end{quote}
+
+More specifically: replace the \coreinline{save()} operator % chktex 36
+with a ``where-block'': 
+\[
+    \cnnt{E}\ \cnkw{where}\ \left( \cncomp{\cnnt{id}_i\ (x_i {:} \beta_i).\ E_i}{i} \right).
+\]
+Labels $\cnnt{id}_i$ are
+in scope in $E$ and in each $E_i$, allowing for mutual recursion, but are
+encapsulated from the enclosing expression. This is unlike \kl{Core}'s
+\coreinline{save()} operator, whose labels are in scope of the % chktex 36
+enclosing \emph{procedure}. Variables defined in $E$ are not in scope in
+$E_i$, which are parameterised over (for simplicity) a single variable $x_i$.
+Most importantly, the enclosing expression is its \emph{frame}, and unlike
+in \kl{Core}, is preserved in the dynamic semantics.
+
+{\small%
+\[
+\inferrule[{[OpStmtWhere]}]
+  { l' \eqdef \cncomp{\cnnt{id}_i\ (x_i {:} \beta_i).\ E_i}{i} \Colon{} l }
+  { \langle h , E\ \cnkw{where}
+     		\ ( \cncomp{\cnnt{id}_i\ (x_i {:} \beta_i).\ E_i}{i} ), l, \kappa \rangle
+    \rightarrow \left< h , E , l', \kappa \right> }
+\]}
+
+{\small%
+\[
+\inferrule[{[OpStmtRunW]}]
+  { l \eqdef l_1 \Colon \ldots \Colon l_k \Colon l'
+    \and \cnnt{id}\ (x {:} \beta).\ E \in l_k
+    \and e \Downarrow \cnnt{value} }
+  { \langle h , \cnkw{run}\, \cnnt{id}\,e, l, \kappa \rangle
+    \rightarrow \left< h , \left[ \cnnt{value} / x \right] E , l_k \Colon l', \kappa \right> }
+\]}
+
+The \kl{Core} thread-local reduction configuration is extended with a
+\emph{stack} $l$, where each element is a family of label definitions
+($\cncomp{\cnnt{id}_i\ (x_i {:} \beta_i).\ E_i}{i}$). Upon entry, the label
+definitions are pushed ($\Colon$) on to the stack. When $\cnkw{run}$ning to a
+label, we search the stack ($l \eqdef l_1 \Colon \ldots \Colon{} l_k \Colon
+l'$) for it ($\cnnt{id}\ (x {:} \beta).\ E \in l_k$) and jump to its body,
+proceeding with only the labels at and below that level on the stack ($l_k
+\Colon{} l'$). This $l$ stack would be discarded when returning from a
+procedure.
+
+As for typing, I conjecture the $\cnkw{where}$-stack in the dynamics would be
+mirrored in an \emph{ordered} resource context $\mathcal{W}$, consisting of
+linear resource contexts $\mathcal{R}$, separated by label definitions $l$ as
+ordering markers. Typing these definitions requires threading such a
+$\mathcal{W}$ through.
+
+{\small%
+\[
+\inferrule[{[WhereDefns]}]
+  { \cncomp{\cnnt{fun}_i \rightsquigarrow \mathcal{C}_i; \mathcal{L}_i; \Phi_i; \mathcal{R}_i}{i}
+    \\ \cncomp{\mathcal{C}, \mathcal{C}_i; \mathcal{L}, \mathcal{L}_i; \Phi, \Phi_i; \mathcal{R}_i \Colon \mathcal{W} \vdash E_i \Leftarrow \cnnt{ret}}{i} }
+  { \mathcal{C}; \mathcal{L}; \Phi; \mathcal{W} \vdash \cncomp{\cnnt{id}_i {:} \cnnt{fun}_i.\ E_i}{i} \Leftarrow \cnnt{ret} }
+\]}
+
+Typing a $\cnkw{where}$-block itself would pass any resources it has to the
+left expression, and adding the definitions as an ordering marker to bring them
+in scope. The same is done for checking the definition bodies too, because
+labels can refer to each other (mutually) recursively.
+
+{\small%
+\[
+\inferrule[{[StmtWhere]}]
+  { \mathcal{C}; \mathcal{L}; \Phi; \mathcal{R} \Colon l \Colon \mathcal{W} \vdash E \Leftarrow \cnnt{ret}
+    \and \mathcal{C}; \mathcal{L}; \Phi; l \Colon \mathcal{W} \vdash l \Leftarrow \cnnt{ret} }
+  { \mathcal{C}; \mathcal{L}; \Phi; \mathcal{R} \Colon \mathcal{W} \vdash{} E\ \cnkw{where}\  l \Leftarrow \cnnt{ret} }
+\]}
+
+With this, I can sketch out a rough idea on typing for a $\cnkw{run}$ to any
+label in scope. First any resources in the intervening depths would need to
+disposed, for example, removing the storage for block-local variables. After
+that, the $\cnnt{spine}$ would be checked against the function type
+$\cnnt{fun}$ (obtained via a lookup of the label $\cnnt{id}$ in the ordered
+resource context). Only the resources at the same level as the target
+$\cnkw{where}$-block need to be consumed, everything above it is `framed' when
+checking the label body.
+
+{\small%
+\[
+\inferrule[{[StmtRun]}]
+  { \mathcal{W} \eqdef \mathcal{R}_1 \Colon l_1 \Colon \ldots \Colon \mathcal{R}_k \Colon l_k \Colon \ldots \Colon \mathcal{R}_n \Colon l_n
+    \and \cnnt{id} {:} \cnnt{fun}.\ E' \in l_k
+    \\ \mathcal{C}; \mathcal{L}; \Phi; \mathcal{R}_1 , \ldots, \mathcal{R}_{k-1} \vdash E \Leftarrow \Sigma y{:} \cnkw{unit}.\ \cnkw{I}
+    \\ \mathcal{C} ; \mathcal{L} ; \Phi ; \mathcal{R}_k \vdash \cnnt{spine} \Colon \cnnt{fun} >\!> \outpol{\sigma}; \outpol{\cnkw{false} \wedge \cnkw{I}} }
+    { \mathcal{C}; \mathcal{L}; \Phi; \mathcal{W} \vdash{} \cnkw{let\ strong\ ()\ =}\ E\ \cnkw{in}\ \cnkw{run}\ \cnnt{id}\,\cnnt{spine} \Leftarrow \cnkw{false} \wedge \cnkw{I} }
+\]}
+
+As in~\arefpart{formalisation}, the aboves rules are phrased over a
+hypothetical, explicitly annotated \kl{ResCore} with this new construct. Whilst
+the setup enables inferring frames for a label, inferring pre-conditions
+$\cnnt{fun}$ remains a distinct problem. As a first approximation, loops and
+mutually recursive labels would require annotations from the user, though
+annotations on loops would no longer need to manually thread through unusued
+parts of the resource context. Other labels could have their pre-conditions
+inferred by saving the typing context when the first $\cnkw{run}$ is
+encountered, and ensuring that subsequent ones match the first, thus preventing
+inlining and code bloat.
+
+\section{Weak sequencing}
+
+\section{Join-points}
+
+\section{Higher order predicates}
+
+\section{Integers and bitvectors}
+
+\section{Predicate definition checks}
+
 \chapter{Conclusion}%
 \label{chap:conclusion}
 
@@ -62,8 +274,6 @@ discuss the remaining aspects here.
 % Increasing expressiveness of \kl{CN} means adding support for more C features,
 % and in tow, a richer separation logic.
 \begin{itemize}
-    \item \textbf{Support for unions.} This is a type system design
-        question, and is expected to be straightforward.
     \item \textbf{User-defined variadic functions.} I believe the types of
         \kl{CN} are rich enough to support this, but supporting the
         \kl{Cerberus} constructs which enable this will require more work.
@@ -72,7 +282,7 @@ discuss the remaining aspects here.
         be considerable departure from the current design and require
         thinking deeply about reasonable schemes and expectations for
         automation.
-    \item \textbf{Standard library support.} Full support for the above 
+    \item \textbf{Standard library support.} Full support for the above
         two features should allow this straightforwardly, though
         there may be considerable engineering involved.
     \item \textbf{Locks and relaxed-memory concurrency.} A first-order solution
@@ -95,10 +305,6 @@ discuss the remaining aspects here.
 \section{More performance}
 
 \begin{itemize}
-    \item \textbf{Inferring join-points for resource contexts.} If this
-        was possible, even many if not all cases, then this would
-        reduce the chances of state-explosion affecting verification
-        complexity.
     \item \textbf{Optimising solvers for typical queries.} It seems
         likely that the types of queries \kl{CN} will typically send a
         solver are quite amenable to automation, especially related
