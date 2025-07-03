@@ -27,18 +27,20 @@ and switch cases.
 
 There are two main problems with this approach.
 
-\textbf{Inlining slows down performance and duplicates
-work.}\sidenote{\href{https://github.com/rems-project/cerberus/issues/289}{Cerberus\#289.}}
-The transformation from \kl{Core} with \coreinline{run()} and % chktex 36
-\coreinline{save()}to \kl{Core} with non-recursive runs inlined and % chktex 36
-recursive runs hoisted to the top level induces some impressive code bloat. A
-nested-loop
-example,\sidenote{\href{https://github.com/rems-project/cerberus/issues/938}{Cerberus\#938.}}
-shows a 7x increase (226 lines of \kl{Core} to 1389 lines); a \cinline{switch}
-with 3 \cinline{case}s and a \cinline{default} example, shows a 5x increase.
-
-\textbf{Loop-annotations do not compose as expected, and are thus confusing and
-verbose.}\sidenote{\href{https://github.com/rems-project/cerberus/issues/913}{Cerberus\#931.}}
+\begin{enumerate}
+    \item \textbf{Inlining slows down performance and duplicates
+        work.}\sidenote{\href{https://github.com/rems-project/cerberus/issues/289}{Cerberus\#289.}}
+        The transformation from \kl{Core} with \coreinline{run()}  % chktex 36
+        and \coreinline{save()}to \kl{Core} with non-recursive runs % chktex 36
+        inlined and recursive runs hoisted to the top level induces some
+        impressive code bloat. A nested-loop
+        example,\sidenote{\href{https://github.com/rems-project/cerberus/issues/938}{Cerberus\#938.}}
+        shows a 7x increase (226 lines of \kl{Core} to 1389 lines); a
+        \cinline{switch} with 3 \cinline{case}s and a \cinline{default}
+        example, shows a 5x increase.
+    \item \textbf{Loop-annotations do not compose as expected, and are thus confusing and
+        verbose.}\sidenote{\href{https://github.com/rems-project/cerberus/issues/913}{Cerberus\#931.}}
+\end{enumerate}
 
 The reason for this is the \kl{Core} dynamics for the
 \coreinline{run()} operator. In particular, note that the current % chktex 36
@@ -101,8 +103,8 @@ dominates $B$'' intersected with ``$A$ is a direct predecessor of $B$'' forms a
 tree called the \emph{dominance tree} of the [control-flow graph].
 \end{quote}
 
-More specifically: replace the \coreinline{save()} operator % chktex 36
-with a ``where-block'': 
+More specifically: replace the $\cnkw{save}\ \cnnt{id}\ (x {:}{=}\ \cnnt{pce}) \cnkw{in}\ E$
+construct with a ``where-block'':
 \[
     \cnnt{E}\ \cnkw{where}\ \left( \cncomp{\cnnt{id}_i\ (x_i {:} \beta_i).\ E_i}{i} \right).
 \]
@@ -129,8 +131,8 @@ in \kl{Core}, is preserved in the dynamic semantics.
 \inferrule[{[OpStmtRunW]}]
   { l \eqdef l_1 \Colon \ldots \Colon l_k \Colon l'
     \and \cnnt{id}\ (x {:} \beta).\ E \in l_k
-    \and e \Downarrow \cnnt{value} }
-  { \langle h , \cnkw{run}\, \cnnt{id}\,e, l, \kappa \rangle
+    \and \cnnt{pce} \Downarrow \cnnt{value} }
+  { \langle h , \cnkw{run}\, \cnnt{id}\,\cnnt{pce}, l, \kappa \rangle
     \rightarrow \left< h , \left[ \cnnt{value} / x \right] E , l_k \Colon l', \kappa \right> }
 \]}
 
@@ -141,7 +143,7 @@ definitions are pushed ($\Colon$) on to the stack. When $\cnkw{run}$ning to a
 label, we search the stack ($l \eqdef l_1 \Colon \ldots \Colon{} l_k \Colon
 l'$) for it ($\cnnt{id}\ (x {:} \beta).\ E \in l_k$) and jump to its body,
 proceeding with only the labels at and below that level on the stack ($l_k
-\Colon{} l'$). This $l$ stack would be discarded when returning from a
+\Colon{} l'$). This $l$ stack is cleared when returning from a
 procedure.
 
 As for typing, I conjecture the $\cnkw{where}$-stack in the dynamics would be
@@ -202,6 +204,167 @@ encountered, and ensuring that subsequent ones match the first, thus preventing
 inlining and code bloat.
 
 \section{Weak sequencing}
+
+Sequencing strength is one of the most subtle and confusing aspects about C,
+and its treatment in \kl{Core}, whilst inventive, is difficult to understand
+and reason about.
+
+Sequencing strength is used to specify the (lack of) ordering between memory
+actions. Quoting at length from \sidetextcite{memarian2022cerberus}:
+
+\begin{quote}
+ Each use of an action is either ``positive'' (the default case) or
+ ``negative'' (if the action appears in the syntax as the operand of the
+ $\cnkw{neg()}$ operator). [..] Intuitively, a \kl{Core} action is negative
+ when it elaborates what the C standard calls a ``side-effect'' (as opposed to
+ value computations), that is, memory accesses which are not directly used for
+ producing the value of a C expression. This is for example, the store
+ performed by a postfix increment operator.
+\end{quote}
+
+The $\cnkw{let}\ \cnkw{strong}\ \cnnt{pat}\ \cnkw{=}\ \cnnt{E}_1\ \cnkw{in}\
+\cnnt{E}_2$ construct sequences all memory actions performed by $\cnnt{E}_1$
+before those performed by $\cnnt{E}_2$. However, $\cnkw{let}\ \cnkw{weak}$ only
+sequences positive memory actions similarly; in other words, for $\cnkw{let}\
+\cnkw{weak}\ \cnnt{pat}\ \cnkw{=}\ \cnnt{E}_1\ \cnkw{in}\ \cnnt{E}_2$, any
+negative memory actions performed by $\cnnt{E}_1$ are unsequenced with respect
+to all memory actions performed by $\cnnt{E}_2$. A race only occurs if
+unsequenced memory actions have overlapping footprints, and is deemed \kl{UB}.
+
+The formalisation and implementation of weak sequencing is complex. Here, I
+offer a simpler presentation which I conjecture is equivalent and then offer
+few remarks on how to adapt the \kl{CN} resource framework to fit it.
+
+A footprint $\cnnt{fp}$ of an action is the range of bytes in memory it touches.
+Like actions, footprints can be positive ${\color{red}\cnkw{pos}(\cnnt{fp})}$
+or negative ${\color{red}\cnkw{neg}(\cnnt{fp})}$. A set of such footprints is
+called an annotation ${\color{red}A}$, and I use the notation
+${\color{red}A^{-}}$ to denote all the negative footprints in ${\color{red}A}$
+and ${\color{red}A^{+}}$ for all the positive ones.
+
+Negative actions step to a new $\cnkw{delay}(\cnnt{actions}, \cnnt{E})$
+construct, where $\cnnt{actions}$ is a set.
+
+{\small%
+\[
+\inferrule[{[ActionNeg]}]
+    { \sigma \overset{\cnnt{action}}{\longrightarrow} \langle \_ , \cnkw{Unit}, \cnnt{fp} \rangle }
+    { \langle \sigma, \cnkw{neg}(\cnnt{action}), \kappa \rangle \rightarrow
+      \langle
+          \sigma,
+          \cnkw{delay}(\{\, \cnnt{action} \, \},
+            \prescript{\color{red}\{\cnkw{neg}(\cnnt{fp})\}}{}{\cnkw{pure}(\cnkw{Unit})}),
+          \kappa
+      \rangle }
+\]}
+
+The dynamics of this construct allowing reducing either one of the actions in
+the set, or the expression inside at any time; the latter because it counts as
+a context $\cnnt{C} \, {:}{=} \, \ldots \mid \cnkw{delay}(\cnnt{actions}, C)$.
+All $\cnkw{delay}$ed actions are negative, and all negative actions evaluate to
+$\cnkw{Unit}$ (since they are side effects) and so the result of the action is
+ignored. The footprint is unnecessary as per the previous rule.
+
+{\small%
+\[
+\inferrule[{[DelayAction]}]
+    { \sigma \overset{\cnnt{action}}{\longrightarrow} \langle \sigma' , \cnkw{Unit}, \_ \rangle }
+    { \langle
+          \sigma,
+            \cnkw{delay}(\cnnt{actions} \cup \{\, \cnnt{action} \,\}, E),
+          \kappa
+      \rangle
+      \rightarrow
+      \langle \sigma', \cnkw{delay}(\cnnt{actions}, E), \kappa \rangle }
+\]}
+
+The next ingredient is a $\cnkw{disj}({\color{red}A}, E)$ construct, which is
+used to check if ${\color{red}A}$ races with $E$.
+
+{\small%
+\[
+\inferrule[{[Disj]}]
+    { {\color{red}\neg \mathrm{do\_race}(A_1, A_2)} }
+    { \langle
+          \sigma,
+          \cnkw{disj}({\color{red}A_1}, \prescript{\color{red}A_2}{}{\cnkw{pure}(v)}),
+          \kappa
+      \rangle
+      \rightarrow
+      \langle
+          \sigma,
+          \prescript{\color{red}A_1 \cup A_2}{}{\cnkw{pure}(v)},
+          \kappa
+      \rangle }
+\]}
+
+The construct is used for weak sequencing, and is also a context $\cnnt{C} \,
+{:}{=} \, \ldots \mid \cnkw{disj}({\color{red}A}, C)$, allowing for the
+expression inside to reduce. Splitting the annotations, placing the positive
+ones on the outside and the negative ones in a $\cnkw{disj}$ ensures the
+negative actions which \emph{were} part of evaluating $\cnkw{pure}(v)$ are
+treated as if unsequenced with $E$, i.e.\ checked to ensure they do not race.
+
+{\small%
+\[
+\inferrule[{[Weak]}]
+    {  }
+    { \langle
+          \sigma,
+          \cnkw{let}\ \cnkw{weak}\ \cnnt{pat}\ =\ \prescript{\color{red}A}{}{\cnkw{pure}(v)}\ \cnkw{in}\ E,
+          \kappa
+      \rangle
+      \rightarrow
+      \langle
+          \sigma,
+          \prescript{\color{red}A^{+}}{}{\cnkw{disj}({\color{red}A^{-}}, [ v / \cnnt{pat} ] E)},
+          \kappa
+      \rangle }
+\]}
+
+Nested $\cnkw{delay}$s can be combined by taking the union of the actions.
+
+{\small%
+\[
+\inferrule[{[HoistDelay]}]
+    {  }
+    { \langle \sigma, \cnkw{delay}(\cnnt{actions}_1, \cnkw{delay}(\cnnt{actions}_2, E)), \kappa \rangle
+      \rightarrow
+      \\ \quad
+      \langle \sigma, \cnkw{delay}(\cnnt{actions}_1 \cup \cnnt{actions}_2, E), \kappa \rangle }
+\]}
+
+Cruicially, $\cnkw{delay}$s can be hoisted out of $\cnkw{let}\ \cnkw{weak}$,
+$\cnkw{unseq}$, $\cnkw{disj}$ and annotated $\prescript{\color{red}A}{}{E}$
+expressions. The rule for the first is given below, and the rest follow a
+similar pattern.
+
+{\small%
+\[
+\inferrule[{[HoistWeak]}]
+    {  }
+    { \langle
+          \sigma,
+          \cnkw{let}\ \cnkw{weak}\ \cnnt{pat}\ =\ \cnkw{delay}(\cnnt{actions}, E_1)\ \cnkw{in}\ E_2,
+          \kappa
+      \rangle
+      \rightarrow
+      \\ \quad
+      \langle
+          \sigma,
+          \cnkw{delay}(\cnnt{actions}, \cnkw{let}\ \cnkw{weak}\ \cnnt{pat}\ =\ E_1\ \cnkw{in}\ E_2),
+          \kappa
+      \rangle }
+\]}
+
+Notably absent, $\cnkw{let}\ \cnkw{strong}$ or $\cnkw{bound}$ expressions
+\emph{do not} permit hoisting $\cnkw{delay}$s out of them. This forces any
+delayed actions to be evaluated and any races to checked before proceeding.
+
+Though unusual, the constructs and rules are simple. One straightforward
+approach to typing could be to split resource types into positive and negative.
+Negative resources are not usable, and are converted into positive ones after a
+$\cnkw{let}\ \cnkw{strong}$ or a $\cnkw{bound}$ expression.
 
 \section{Join-points}
 
