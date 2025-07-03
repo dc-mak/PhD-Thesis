@@ -103,48 +103,59 @@ dominates $B$'' intersected with ``$A$ is a direct predecessor of $B$'' forms a
 tree called the \emph{dominance tree} of the [control-flow graph].
 \end{quote}
 
-More specifically: replace the $\cnkw{save}\ \cnnt{id}\ (x {:}{=}\ \cnnt{pce}) \cnkw{in}\ E$
-construct with a ``where-block'':
+More specifically, replace $\cnkw{save}\ \cnnt{id}\ (x\, {:}{=}\, \cnnt{pce})\ \cnkw{in}\ E$
+with a $\cnkw{where}$ expression:
 \[
     \cnnt{E}\ \cnkw{where}\ \left( \cncomp{\cnnt{id}_i\ (x_i {:} \beta_i).\ E_i}{i} \right).
 \]
-Labels $\cnnt{id}_i$ are
-in scope in $E$ and in each $E_i$, allowing for mutual recursion, but are
-encapsulated from the enclosing expression. This is unlike \kl{Core}'s
-\coreinline{save()} operator, whose labels are in scope of the % chktex 36
-enclosing \emph{procedure}. Variables defined in $E$ are not in scope in
-$E_i$, which are parameterised over (for simplicity) a single variable $x_i$.
-Most importantly, the enclosing expression is its \emph{frame}, and unlike
-in \kl{Core}, is preserved in the dynamic semantics.
+
+Labels $\cnnt{id}_i$ are in scope in $E$ and in each $E_i$, allowing for mutual
+recursion, but are encapsulated from the enclosing expression. This is unlike
+\kl{Core}'s \coreinline{save()} operator, whose label is in scope of % chktex 36
+the enclosing \emph{procedure}. Variables defined in $E$ are not in scope
+in $E_i$, which are parameterised over (for simplicity) a single variable
+$x_i$. Most importantly, the enclosing expression is its \emph{frame}, and
+unlike in \kl{Core}, is preserved in the dynamic semantics.
 
 {\small%
 \[
 \inferrule[{[OpStmtWhere]}]
-  { l' \eqdef \cncomp{\cnnt{id}_i\ (x_i {:} \beta_i).\ E_i}{i} \Colon{} l }
-  { \langle h , E\ \cnkw{where}
-     		\ ( \cncomp{\cnnt{id}_i\ (x_i {:} \beta_i).\ E_i}{i} ), l, \kappa \rangle
-    \rightarrow \left< h , E , l', \kappa \right> }
+  { l_1 \eqdef \cncomp{\cnnt{id}_i\ (x_i {:} \beta_i).\ E_i}{i} }
+  { \langle h , E\ \cnkw{where}\ l, w, \kappa \rangle
+    \rightarrow \left< h , \cnkw{pop}_l (E) , l \Colon w, \kappa \right> }
 \]}
 
 {\small%
 \[
 \inferrule[{[OpStmtRunW]}]
-  { l \eqdef l_1 \Colon \ldots \Colon l_k \Colon l'
+  { w \eqdef l_1 \Colon \ldots \Colon l_k \Colon w'
     \and \cnnt{id}\ (x {:} \beta).\ E \in l_k
     \and \cnnt{pce} \Downarrow \cnnt{value} }
-  { \langle h , \cnkw{run}\, \cnnt{id}\,\cnnt{pce}, l, \kappa \rangle
-    \rightarrow \left< h , \left[ \cnnt{value} / x \right] E , l_k \Colon l', \kappa \right> }
+  { \langle h , \cnkw{run}\, \cnnt{id}\,\cnnt{pce}, w, \kappa \rangle
+    \rightarrow \left< h , \left[ \cnnt{value} / x \right] E , l_k \Colon w', \kappa \right> }
 \]}
 
 The \kl{Core} thread-local reduction configuration is extended with a
-\emph{stack} $l$, where each element is a family of label definitions
+\emph{stack} $w$, where each element is a family of label definitions
 ($\cncomp{\cnnt{id}_i\ (x_i {:} \beta_i).\ E_i}{i}$). Upon entry, the label
 definitions are pushed ($\Colon$) on to the stack. When $\cnkw{run}$ning to a
-label, we search the stack ($l \eqdef l_1 \Colon \ldots \Colon{} l_k \Colon
-l'$) for it ($\cnnt{id}\ (x {:} \beta).\ E \in l_k$) and jump to its body,
+label, we search the stack ($w \eqdef l_1 \Colon \ldots \Colon{} l_k \Colon
+w'$) for it ($\cnnt{id}\ (x {:} \beta).\ E \in l_k$) and jump to its body,
 proceeding with only the labels at and below that level on the stack ($l_k
-\Colon{} l'$). This $l$ stack is cleared when returning from a
-procedure.
+\Colon{} w'$), and $w$ stack is cleared when returning from a procedure.
+
+Note that, \sidetextcite{ghalayini2024denotational} stratify their language
+into statements and expressions; their $\cnkw{where}$ construct is a statement,
+so the value it computes is never bound. A $\cnkw{pop}_l$ expression
+marks the exit from a $\cnkw{where}$ expression when it returns a value.
+
+{\small%
+\[
+\inferrule[{[OpStmtPop]}]
+  { w \eqdef l_1 \Colon \ldots \Colon l_k \Colon w' }
+  { \langle h , \cnkw{pop}_{l_k} (\cnkw{pure}(v)), w, \kappa \rangle
+    \rightarrow \left< h , \cnkw{pure}(v), w', \kappa \right> }
+\]}
 
 As for typing, I conjecture the $\cnkw{where}$-stack in the dynamics would be
 mirrored in an \emph{ordered} resource context $\mathcal{W}$, consisting of
@@ -160,7 +171,7 @@ $\mathcal{W}$ through.
   { \mathcal{C}; \mathcal{L}; \Phi; \mathcal{W} \vdash \cncomp{\cnnt{id}_i {:} \cnnt{fun}_i.\ E_i}{i} \Leftarrow \cnnt{ret} }
 \]}
 
-Typing a $\cnkw{where}$-block itself would pass any resources it has to the
+Typing a $\cnkw{where}$ expression itself would pass any resources it has to the
 left expression, and adding the definitions as an ordering marker to bring them
 in scope. The same is done for checking the definition bodies too, because
 labels can refer to each other (mutually) recursively.
@@ -179,8 +190,8 @@ disposed, for example, removing the storage for block-local variables. After
 that, the $\cnnt{spine}$ would be checked against the function type
 $\cnnt{fun}$ (obtained via a lookup of the label $\cnnt{id}$ in the ordered
 resource context). Only the resources at the same level as the target
-$\cnkw{where}$-block need to be consumed, everything above it is `framed' when
-checking the label body.
+$\cnkw{where}$ expression need to be consumed, everything above it is `framed'
+when checking the label body.
 
 {\small%
 \[
