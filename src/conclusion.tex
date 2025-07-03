@@ -379,6 +379,152 @@ $\cnkw{let}\ \cnkw{strong}$ or a $\cnkw{bound}$ expression.
 
 \section{Join-points}
 
+Currently, \kl{CN} bifurcates control-flow during type checking at every
+branch, with no way to merge paths once this is done. The main issue with this
+is that any resource inference which is not path dependent repeated across
+different branches.
+
+Whilst it is possible to define syntax and rules for user-provided join-points,
+the better solution may be to not branch the control-flow in the first place.
+
+This requires (a) defining how to merge constraint and resource contexts after
+an if-expression and (b) defining how to handle resource lookup/inference with
+conditional-resources in the context whilst avoiding performance slowdown.
+
+Assume a judgement of the form $\Phi ; \mathcal{R} \vdash E \dashv \cnnt{term}
+\mathrel{\&} \Phi' ; \mathcal{R}'$ is the input constraint context,
+$\mathcal{R}$ is the input resource context, context, $E$ is the input
+\kl{Core} expression, $\cnnt{term}$ is the output symbolic evaluation of the
+\kl{Core} expression, $\Phi' ; \mathcal{R}'$ are the output constraint and
+resource contexts respectively (to reduce clutter, I am omitting variable
+environments).
+
+We can define join-points for conditional expressions as below.
+
+{\small%
+\[
+\inferrule[{[StmtIf]}]
+  { \Phi \wedge \cnnt{pce} ; \mathcal{R} \vdash E_1 \dashv \cnnt{term}_1 \mathbin{\&} \Phi_1 ; \mathcal{R}_1
+    \\ \Phi \wedge \neg \cnnt{pce} ; \mathcal{R} \vdash E_2 \dashv \cnnt{term}_2 \mathbin{\&} \Phi_2 ; \mathcal{R}_2
+    \\ \cnnt{term}_3 \eqdef \cnkw{if}\ \cnnt{pce}\ \cnkw{then}\ \cnnt{term}_1\ \cnkw{else}\ \cnnt{term}_2
+    \\ \Phi' \eqdef (\cnnt{pce} \rightarrow \Phi_1) \wedge ( \neg \cnnt{pce} \rightarrow \Phi_2)
+    \\ \mathcal{R}' \eqdef (\mathcal{R}_1 \cap \mathcal{R_2})
+       \ast (\cnkw{if}\ \cnnt{pce}\ \cnkw{then}\ (\mathcal{R}_1 - \mathcal{R}_2)\ \cnkw{else}\ (\mathcal{R}_2 - \mathcal{R}_1)) }
+  { \Phi ; \mathcal{R}
+    \vdash \cnkw{if}\ \cnnt{pce}\ \cnkw{then}\ E_1\ \cnkw{else}\ E_2
+    \dashv \cnnt{term}_3 \mathbin{\&} \Phi' ; \mathcal{R}' }
+\]}
+
+Calculating the intersection and difference of two resource contexts, should be
+done carefully to avoid having it be accidentally quadratic in complexity.
+Marking which resources are not used will also help, by framing them out and
+thus reducing the number of items considered for intersection and difference.
+Calculating the intersection precisely is not necessary for soundness; its
+primary benefit is to reduce work later.
+
+
+The problem then becomes how to use a conditional-resource in the context.
+Specifically, how to handle the below situation without resorting to an
+exponential blow-up. Inputs are constraints $\Phi$, resources $\mathcal{R} , r
+{:} \ldots$ and the requested resources $\cnkw{if}\ \cnnt{pce}_2\ \ldots$;
+Outputs are the remaining lookup $\mathcal{R}'$, and the leftover context
+$\mathcal{R}''$ after a partially successful lookup.
+
+{\small%
+\[
+    \Phi \vdash (\cnkw{if}\ \cnnt{pce}_1\ \cnkw{then}\ \mathcal{R}_{21}\ \cnkw{else}\ \mathcal{R}_{22})
+                \mathrel{{\in}{?}}
+                (\mathcal{R} , r {:} \cnkw{if}\ \cnnt{pce}_2\ \cnkw{then}\ \mathcal{R}_{11}\ \cnkw{else}\ \mathcal{R}_{12})
+                \rightsquigarrow
+                \outpol{\mathcal{R}'; \mathcal{R}''}
+\]}
+
+The first thing to check would be \emph{nominal} equality. A conditional
+resource may come from what a user wrote (in a specification or a predicate
+definition) and so can be identified as an anonymous predicate of sorts:
+$\cnnt{\#loc}\;(\ldots)$. In this case, it would suffice to check equality on
+source location and arguments.
+
+{\small%
+\[
+\inferrule[{[StmtIf-Nominal]}]
+    { }
+    { \Phi \vdash \cnnt{\#loc}\;(\cnnt{iargs})
+            \mathrel{{\in}?}
+            (\mathcal{R}, \cnnt{\#loc}\;(\cnnt{iargs}))
+            \rightsquigarrow \cdot ; \mathcal{R} }
+\]}
+
+If the nominal equality fails, the next thing to check would be
+\emph{structural} equality, if either $\cnnt{pce}_1 \leftrightarrow
+\cnnt{pce}_2$ or $\cnnt{pce}_1 \leftrightarrow \neg \cnnt{pce}_2$, then the
+check can recurse on both branches.
+
+{\small%
+\[
+\inferrule[{[StmtIf-TwoSided1]}]
+    { \Phi \vdash \cnnt{pce}_1 \leftrightarrow \cnnt{pce}_2
+      \\ \Phi \wedge \cnnt{pce}_1 \vdash \mathcal{R}_{21}
+      \mathbin{{\in}?} (\mathcal{R} , \cnnt{r.then} {:} \mathcal{R}_{11}) \rightsquigarrow \cdot ; \mathcal{R}
+      \\ \Phi \wedge \neg \cnnt{pce}_1 \vdash \mathcal{R}_{22}
+      \mathbin{{\in}?} (\mathcal{R} , \cnnt{r.else} {:} \mathcal{R}_{12}) \rightsquigarrow \cdot ; \mathcal{R} }
+    { \Phi \vdash (\cnkw{if}\ \cnnt{pce}_2\ \cnkw{then}\ \mathcal{R}_{21}\ \cnkw{else}\ \mathcal{R}_{22})
+           \mathbin{{\in}?}
+           (\mathcal{R} , r {:} \cnkw{if}\ \cnnt{pce}_1\ \cnkw{then}\ \mathcal{R}_{11}\ \cnkw{else}\ \mathcal{R}_{12})
+           \rightsquigarrow \cdot ; \mathcal{R} }
+\]}
+
+And similarly for $\cnnt{pce}_1 \leftrightarrow \neg \cnnt{pce}_2$. If a
+two-sided match fails, then the next thing to check would be a one-sided
+strucural equality.
+
+{\small%
+\[
+\inferrule[{[StmtIf-OneSided1]}]
+    { \Phi \vdash \cnnt{pce}_1 \rightarrow \cnnt{pce}_2
+      \\ \Phi \wedge \cnnt{pce}_1 \vdash \mathcal{R}_{21}
+      \mathbin{{\in}?} (\mathcal{R} , \cnnt{r.then} {:} \mathcal{R}_{11}) \rightsquigarrow \cdot ; \mathcal{R} }
+    { \Phi \vdash (\cnkw{if}\ \cnnt{pce}_2\ \cnkw{then}\ \mathcal{R}_{21}\ \cnkw{else}\ \mathcal{R}_{22})
+           \mathbin{{\in}?}
+           (\mathcal{R} , r {:} \cnkw{if}\ \cnnt{pce}_1 \cnkw{then}\ \mathcal{R}_{11}\ \cnkw{else}\ \mathcal{R}_{12})
+           \\ \quad \rightsquigarrow (\cnkw{if}\ \cnkw{pce}_2\ \cnkw{emp}\ \cnkw{else}\ \mathcal{R}_{22}) ; \mathcal{R} }
+\]}
+
+Similarly we can test $\cnnt{pce}_1 \rightarrow \neg \cnnt{pce}_2$, $\neg
+\cnnt{pce}_1 \rightarrow \cnnt{pce}_2$ or $\neg \cnnt{pce}_1 \rightarrow \neg
+\cnnt{pce}_2$, and proceed accordingly.
+
+If all of these fail, then the inference fails, or requires the user to give
+explicit permission to split on the condition of the resource and duplicate the
+lookup across two branched resource contexts. Notably, the permission is given
+for a \emph{resource} for every lookup, and not a condition.
+
+% This might be necessary if there's a situation a bit like the below:
+% ```
+%            r1                  r2
+%          /    \              /    \
+%    r1.then    r1.else   r2.then r2.else
+%         |        \        /       |
+%         |         req.then        |
+%         |-------\          /------|
+%                  \        /
+%                   req.else
+% ```
+%
+% In this instance, the user would need to give permission to split on both `r1`
+% and `r2` separately, if the their conditions lined up suitably.
+%
+% If the resource is consumed from the context (e.g. by a lemma or a function
+% call) then there will be no more splitting.
+
+Hence the user opts-in to the slow case, if it happens to be the right thing to
+do. If there's a smarter way to eliminate conditional-resources from the
+context, the user can write a lemma/function to do so.
+
+Thus we have a scheme of automating the fast common cases, explicitly opting-in
+to the slow general case, \emph{and} a mechanism for the user to intervene with
+something else should it be necessary.
+
 \section{Higher order predicates}
 
 \section{Integers and bitvectors}
