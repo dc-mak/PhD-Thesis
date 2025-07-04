@@ -60,7 +60,7 @@ Its associated (\kl{ResCore}) typing rule is as follows. Note that because
 control-flow does not return to this point in the program, the return type is
 $\cnkw{false} \wedge \cnkw{I}$, even if, for example, a program is entering and
 exiting a loop in a well-bracketed way. This has the effect of requiring the
-pre-condition of the label to consume \emph{all} resources from the context
+precondition of the label to consume \emph{all} resources from the context
 of a \coreinline{run()}. % chktex 36
 
 {\small%
@@ -205,11 +205,11 @@ when checking the label body.
 
 As in~\arefpart{formalisation}, the aboves rules are phrased over a
 hypothetical, explicitly annotated \kl{ResCore} with this new construct. Whilst
-the setup enables inferring frames for a label, inferring pre-conditions
+the setup enables inferring frames for a label, inferring preconditions
 $\cnnt{fun}$ remains a distinct problem. As a first approximation, loops and
 mutually recursive labels would require annotations from the user, though
 annotations on loops would no longer need to manually thread through unusued
-parts of the resource context. Other labels could have their pre-conditions
+parts of the resource context. Other labels could have their preconditions
 inferred by saving the typing context when the first $\cnkw{run}$ is
 encountered, and ensuring that subsequent ones match the first, thus preventing
 inlining and code bloat.
@@ -237,9 +237,9 @@ The $\cnkw{let}\ \cnkw{strong}\ \cnnt{pat}\ \cnkw{=}\ \cnnt{E}_1\ \cnkw{in}\
 \cnnt{E}_2$ construct sequences all memory actions performed by $\cnnt{E}_1$
 before those performed by $\cnnt{E}_2$. However, $\cnkw{let}\ \cnkw{weak}$ only
 sequences positive memory actions similarly; in other words, for $\cnkw{let}\
-\cnkw{weak}\ \cnnt{pat}\ \cnkw{=}\ \cnnt{E}_1\ \cnkw{in}\ \cnnt{E}_2$, any
+\cnkw{weak}\ \cnnt{pat} = \cnnt{E}_1\ \cnkw{in}\ \cnnt{E}_2$, any
 negative memory actions performed by $\cnnt{E}_1$ are unsequenced with respect
-to all memory actions performed by $\cnnt{E}_2$. A race only occurs if
+to all memory actions performed by $\cnnt{E}_2$. A \emph{race} occurs if
 unsequenced memory actions have overlapping footprints, and is deemed \kl{UB}.
 
 The formalisation and implementation of weak sequencing is complex. Here, I
@@ -314,7 +314,7 @@ The construct is used for weak sequencing, and is also a context $\cnnt{C} \,
 expression inside to reduce. Splitting the annotations, placing the positive
 ones on the outside and the negative ones in a $\cnkw{disj}$ ensures the
 negative actions which \emph{were} part of evaluating $\cnkw{pure}(v)$ are
-treated as if unsequenced with $E$, i.e.\ checked to ensure they do not race.
+treated as if unsequenced with $E$, i.e.\ required to not race.
 
 {\small%
 \[
@@ -525,9 +525,168 @@ Thus we have a scheme of automating the fast common cases, explicitly opting-in
 to the slow general case, \emph{and} a mechanism for the user to intervene with
 something else should it be necessary.
 
-\section{Higher order predicates}
-
 \section{Integers and bitvectors}
+
+Sometimes specifications are written and proved over integers, for example,
+with the buddy allocator, but need to be called from the bit-vector world, and
+sometimes vice-versa.
+
+Integers are unbounded and bit-vectors are bounded. Mapping from bit-vectors to
+integers is straightforward: insert $\cnnt{term} \mod 2^k$ as needed, as long
+as accepts the resulting expression may not being decidable/interpretable: $x
+\times y$ in bit-vectors will be $\mathrm{mul\_uf}(x,y) \mod 2^{64}$ in
+integers. We can apply this transformation and get an expression which will
+give the same answer.
+
+Going from integers to bit-vectors is difficult because the process is
+fundamentally partial, i.e.\ it is only defined for a certain inputs under
+certain conditions, however SMT expressions must be total.
+
+Let $\beta$ be the basetypes in the bounded bit-vector world. Let $\iota$ be
+the basetypes in the unbounded integer world. Let $\cnkw{num} \mathrel{{:}{=}}
+\cnkw{int} \mid \cnkw{bit}$ be a parameter for the following. Let
+$\cnnt{term}_{\cnkw{num}}$ be the grammar of SMT terms, parameterised over the
+choice of integers or bit-vectors.
+
+{\small%
+\begin{align*}
+\cnnt{term}_{\cnkw{num}}, t_{\cnkw{num}}, b_{\cnkw{num}} \mathrel{{:}{=}}
+\, & x \mid t_{\cnkw{num}} \oplus t'_{\cnkw{num}} \mid
+\cnkw{let}\ = t_{\cnkw{num}}; t'_{\cnkw{num}} \mid \\
+& \cnkw{if} \, (b_{\cnkw{num}}) \,\{\, t_{\cnkw{num}} \,\}\, \cnkw{else} \,\{\, t'_{\cnkw{num}} \,\} \mid
+f(t^1_{\cnkw{num}}, \ldots, t^n_{\cnkw{num}})
+\end{align*}}
+
+Under this convention, closed terms $t_{\cnkw{int}} {:} \iota$ and
+$t_{\cnkw{bit}} {:} \beta$. I use $b$ for formulas of boolean type:
+$b_{\cnkw{bit}} {:} \cnkw{bool}$.
+
+Let $\mathrm{Decls}$ be a context with declaration types of pure SMT functions
+(in CN, defined with the $\cnkw{function}$ keyword). The judgement
+$\mathrm{Decls} ; \Gamma \vdash t_{\cnkw{int}} \Rightarrow \iota$  means that
+under declarations $\mathrm{Decls}$ and context $\Gamma$, expression in the
+integer world $t_{\cnkw{int}}$ has type $\iota$. $\mathrm{Decls}$ is a map from
+function names to function types, $\Gamma$ is a map from parameters and local
+variables to types.
+
+{\small%
+\[
+\inferrule[]
+  { \mathrm{Decls} , ( f {:} ( \iota_1 \times \cdots \times \iota_n \rightarrow \iota ) ) ; x_1 {:} \iota_1 , \ldots , x_n {:} \iota_n \vdash t_{\cnkw{int}} \Rightarrow \iota }
+  { \mathrm{Decls} ; \cdot \vdash \cnkw{function}\ (\iota)\ f(\iota_1 x_n, \ldots, \iota_n x_n) \, \{ \, t_{\cnkw{int}} \,\} \Rightarrow \iota_1 \times \cdots \times \iota_n \rightarrow \iota }
+\]}
+
+For bit-vectors, the setup is similar, except recursive functions, have named
+recursive constraints, named $f_b$.
+
+Note that the bottom-rule has \emph{two} function definitions: the first one is
+the precondition, assuming which, the second gives the same result as the
+original (integer-world) function.
+
+{\small%
+\[
+\inferrule[]
+  { \mathrm{Decls}',
+        {\begin{matrix}
+            ( f' {:} ( \beta_1 \times \cdots \times \beta_n \rightarrow \beta ) ),
+            \\ ( f'_b {:} ( \beta_1 \times \cdots \times \beta_n \rightarrow \cnkw{bool} ) )
+        \end{matrix}} ; x_1 {:} \beta_1, \ldots , x_n {:} beta_n \vdash t_{\cnkw{bit}} \Rightarrow \beta }
+  { \mathrm{Decls} ; \cdot \vdash
+      {\begin{matrix}
+      \cnkw{function}\ (\beta)\ f'_b(\beta_1 x_n, \ldots, \beta_n x_n) \, \{ \, b_{\cnkw{bit}} \,\}
+      \\ \cnkw{function}\ (\beta)\ f'(\beta_1 x_n, \ldots, \beta_n x_n) \, \{ \, t_{\cnkw{bit}} \,\}
+      \end{matrix}}
+     \Rightarrow
+     {\begin{matrix}
+     \beta_1 \times \cdots \times \beta_n \rightarrow \cnkw{bool}
+     \\ \beta_1 \times \cdots \times \beta_n \rightarrow \beta
+     \end{matrix}} }
+\]}
+
+I will use $\rightsquigarrow$ to define a mapping from the integer world to the
+bit-vector world. For example, the mapping between types, from $\iota$ to
+$\beta$, would be along the lines of the below.
+
+{\small
+\begin{align*}
+    \cnkw{integer}   &\rightsquigarrow \cnkw{i64} \\
+    \cnkw{unit}      &\rightsquigarrow \cnkw{unit} \\
+    \cnkw{alloc\_id} &\rightsquigarrow \cnkw{alloc\_id} \\
+    \{\, \cnkw{integer}\ \cnnt{addr}, \cnkw{alloc\_id}\ \cnnt{id} \,\}
+        &\rightsquigarrow \{\, \cnkw{i64}\ \cnnt{addr}, \cnkw{alloc\_id}\ \cnnt{id} \,\} \\
+    \cnkw{map}\ \iota_1\ \iota_2 &\rightsquigarrow \cnkw{map} \beta_1\ \beta_2
+                                 \ \textrm{where}\ \iota_1 \rightsquigarrow \beta_1, \iota_2 \rightsquigarrow \beta_2
+\end{align*}}
+
+For typing judgments, variables are typed with a lookup in the context.
+
+{\small
+\[
+\inferrule[]
+  { \Gamma ( x ) = \iota \rightsquigarrow \Gamma' ( x ) = \beta }
+  { ( \mathrm{Decls} ; \Gamma \vdash x \Rightarrow \iota ) \rightsquigarrow ( \mathrm{Decls}' ; \Gamma' \vdash x \Rightarrow ( \beta , \cnkw{true} ) ) }
+\]}
+
+Typing for binary operation is translated by inserting no-overflow
+constraints.\sidenote{\url{https://github.com/Z3Prover/z3/discussions/5138\#discussioncomment-544642}}
+I will omit the kind annotation on terms to reduce syntactic noise, using $t$
+for $t_{\cnkw{num}}$ and $t'$ for $t_{\cnkw{bit}}$. The context should also
+make it clear which is intended.
+
+{\small%
+\[
+\inferrule[]
+    { ( \mathrm{Decls} ; \Gamma \vdash t_1 \Rightarrow \cnkw{int} ) \rightsquigarrow ( \mathrm{Decls} ; \Gamma' \vdash t'_1 \Rightarrow ( \cnkw{i64}, b_1 ) ) 
+    \\ ( \mathrm{Decls} ; \Gamma \vdash t_2 \Rightarrow \cnkw{int} ) \rightsquigarrow ( \mathrm{Decls} ; \Gamma' \vdash t'_2 \Rightarrow ( \cnkw{i64}, b_2 ) ) }
+    { ( \mathrm{Decls} ; \Gamma \vdash t_1 \oplus t_2 \Rightarrow \cnkw{int} ) \rightsquigarrow
+    \\ \quad ( \mathrm{Decls}' ; \Gamma' \vdash t'_1 \oplus t'_2 \Rightarrow ( \cnkw{i64} , b_1 \wedge b_2 \wedge \mathrm{no\_ovfl}(\oplus, t'_1, t'_2) ) ) }
+\]}
+
+Typing for let-expressions is translated as follows. The precondition for the
+whole expresison consists of the precondition for the bound expression, and for
+the same for the body, which may refer to the bound variable.
+
+{\small%
+\[
+\inferrule[]
+    { ( \mathrm{Decls} ; \Gamma \vdash t_1 \Rightarrow \iota_1 ) \rightsquigarrow ( \mathrm{Decls}' ; \Gamma' \vdash t'_1 \Rightarrow ( \beta_1, b_1 ) )
+    \\ ( \mathrm{Decls} ; \Gamma , x {:} \iota_1 \vdash t_2 \Rightarrow \iota_2 ) \rightsquigarrow ( \mathrm{Decls} ; \Gamma' , x {:} \beta_1 \vdash t'_2 \Rightarrow ( \beta_2, b_2 ) ) }
+    { ( \mathrm{Decls} ; \Gamma \vdash \cnkw{let}\ x = t_1 ; t_2 \Rightarrow \iota_2 ) \rightsquigarrow
+    \\ \quad ( \mathrm{Decls}' ; \Gamma' \vdash \cnkw{let}\ x = t'_1 ; t'_2 \Rightarrow ( \beta_2 , b_1 \wedge (\cnkw{let}\ x = t'_1\ \cnkw{in}\ b_2) ) ) }
+\]}
+
+Typing for if-expressions is translated as follows. The evaluation of the
+branch condtion $t'_1$ is constrained by $b_1$, and the evaluation of each
+branch is constrained similarly. Note that the precondition refers to $t'_1$
+too.
+
+{\small%
+\[
+\inferrule[]
+    { ( \mathrm{Decls} ; \Gamma \vdash t_1 \Rightarrow \cnkw{bool} ) \rightsquigarrow ( \mathrm{Decls}' ; \Gamma' \vdash t'_1 \Rightarrow ( \cnkw{bool}, b_1 ) )
+    \\ ( \mathrm{Decls} ; \Gamma \vdash t_2 \Rightarrow \iota ) \rightsquigarrow ( \mathrm{Decls}' ; \Gamma' \vdash t'_2 \Rightarrow ( \beta, b_2 ) )
+    \\ ( \mathrm{Decls} ; \Gamma \vdash t_3 \Rightarrow \iota ) \rightsquigarrow ( \mathrm{Decls}' ; \Gamma' \vdash t'_3 \Rightarrow ( \beta, b_3 ) ) }
+    { ( \mathrm{Decls} ; \Gamma \vdash \cnkw{if}\, (t_1)\, \{\, t_2 \,\}\, \cnkw{else} \,\{\, t_3 \,\}\, \Rightarrow \iota ) \rightsquigarrow
+    \\ \quad ( \mathrm{Decls}' ; \Gamma' \vdash \cnkw{if}\, (t'_1)\, \{\, t'_2 \,\}\, \cnkw{else} \,\{\, t'_3 \,\}\, \Rightarrow ( \beta , b_1 \wedge (\cnkw{if}\ t'_1\ \cnkw{then}\ b_2\ \cnkw{else}\ b_3) ) ) }
+\]}
+
+Lastly, function names, which may be recursive, are handled similarly to variables, and
+their arguments by recursion.
+
+{\small%
+\[
+\inferrule[]
+    { \mathrm{Decls}( f ) = \iota_1 \times \cdots \times \iota_n \rightarrow \iota 
+    \\ \mathrm{Decls}( f' ) = \beta_1 \times \cdots \times \beta_n \rightarrow \beta
+    \\ \mathrm{Decls}( f'_b ) = \beta_1 \times \cdots \times \beta_n \rightarrow \cnkw{bool}
+    \\ ( \mathrm{Decls} ; \Gamma \vdash t_1 \Rightarrow \iota_1 ) \rightsquigarrow ( \mathrm{Decls}' ; \Gamma' \vdash t'_1 \Rightarrow ( \beta_1 , b_1) )
+    \\ \cdots ( \mathrm{Decls} ; \Gamma \vdash t_n \Rightarrow \iota_n ) \rightsquigarrow ( \mathrm{Decls}' ; \Gamma' \vdash t'_n \Rightarrow ( \beta_n , b_n) ) }
+    { ( \mathrm{Decls} ; \Gamma \vdash f ( t_1, \ldots, t_n) \Rightarrow \iota ) \rightsquigarrow
+        \\ ( \mathrm{Decls}' ; \Gamma' \vdash f' (t'_1, \ldots, t'_n )
+        \Rightarrow ( \beta , b_1 \wedge \ldots \wedge b_n \wedge f'_b (t'_1 , \ldots , t'_n) ) ) }
+\]}
+
+\section{Higher order predicates}
 
 \section{Predicate definition checks}
 
