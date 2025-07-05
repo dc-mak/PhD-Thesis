@@ -552,7 +552,7 @@ choice of integers or bit-vectors.
 \begin{align*}
 \cnnt{term}_{\cnkw{num}}, t_{\cnkw{num}}, b_{\cnkw{num}} \mathrel{{:}{=}}
 \, & x \mid t_{\cnkw{num}} \oplus t'_{\cnkw{num}} \mid
-\cnkw{let}\ = t_{\cnkw{num}}; t'_{\cnkw{num}} \mid \\
+\cnkw{let}\ x\ = t_{\cnkw{num}}\ \cnkw{in}\ t'_{\cnkw{num}} \mid \\
 & \cnkw{if} \, (b_{\cnkw{num}}) \,\{\, t_{\cnkw{num}} \,\}\, \cnkw{else} \,\{\, t'_{\cnkw{num}} \,\} \mid
 f(t^1_{\cnkw{num}}, \ldots, t^n_{\cnkw{num}})
 \end{align*}}
@@ -636,7 +636,7 @@ make it clear which is intended.
 {\small%
 \[
 \inferrule[]
-    { ( \mathrm{Decls} ; \Gamma \vdash t_1 \Rightarrow \cnkw{int} ) \rightsquigarrow ( \mathrm{Decls} ; \Gamma' \vdash t'_1 \Rightarrow ( \cnkw{i64}, b_1 ) ) 
+    { ( \mathrm{Decls} ; \Gamma \vdash t_1 \Rightarrow \cnkw{int} ) \rightsquigarrow ( \mathrm{Decls} ; \Gamma' \vdash t'_1 \Rightarrow ( \cnkw{i64}, b_1 ) )
     \\ ( \mathrm{Decls} ; \Gamma \vdash t_2 \Rightarrow \cnkw{int} ) \rightsquigarrow ( \mathrm{Decls} ; \Gamma' \vdash t'_2 \Rightarrow ( \cnkw{i64}, b_2 ) ) }
     { ( \mathrm{Decls} ; \Gamma \vdash t_1 \oplus t_2 \Rightarrow \cnkw{int} ) \rightsquigarrow
     \\ \quad ( \mathrm{Decls}' ; \Gamma' \vdash t'_1 \oplus t'_2 \Rightarrow ( \cnkw{i64} , b_1 \wedge b_2 \wedge \mathrm{no\_ovfl}(\oplus, t'_1, t'_2) ) ) }
@@ -651,8 +651,8 @@ the same for the body, which may refer to the bound variable.
 \inferrule[]
     { ( \mathrm{Decls} ; \Gamma \vdash t_1 \Rightarrow \iota_1 ) \rightsquigarrow ( \mathrm{Decls}' ; \Gamma' \vdash t'_1 \Rightarrow ( \beta_1, b_1 ) )
     \\ ( \mathrm{Decls} ; \Gamma , x {:} \iota_1 \vdash t_2 \Rightarrow \iota_2 ) \rightsquigarrow ( \mathrm{Decls} ; \Gamma' , x {:} \beta_1 \vdash t'_2 \Rightarrow ( \beta_2, b_2 ) ) }
-    { ( \mathrm{Decls} ; \Gamma \vdash \cnkw{let}\ x = t_1 ; t_2 \Rightarrow \iota_2 ) \rightsquigarrow
-    \\ \quad ( \mathrm{Decls}' ; \Gamma' \vdash \cnkw{let}\ x = t'_1 ; t'_2 \Rightarrow ( \beta_2 , b_1 \wedge (\cnkw{let}\ x = t'_1\ \cnkw{in}\ b_2) ) ) }
+    { ( \mathrm{Decls} ; \Gamma \vdash \cnkw{let}\ x = t_1\ \cnkw{in}\ t_2 \Rightarrow \iota_2 ) \rightsquigarrow
+    \\ \quad ( \mathrm{Decls}' ; \Gamma' \vdash \cnkw{let}\ x = t'_1\ \cnkw{in}\ t'_2 \Rightarrow ( \beta_2 , b_1 \wedge (\cnkw{let}\ x = t'_1\ \cnkw{in}\ b_2) ) ) }
 \]}
 
 Typing for if-expressions is translated as follows. The evaluation of the
@@ -676,9 +676,9 @@ their arguments by recursion.
 {\small%
 \[
 \inferrule[]
-    { \mathrm{Decls}( f ) = \iota_1 \times \cdots \times \iota_n \rightarrow \iota 
-    \\ \mathrm{Decls}( f' ) = \beta_1 \times \cdots \times \beta_n \rightarrow \beta
-    \\ \mathrm{Decls}( f'_b ) = \beta_1 \times \cdots \times \beta_n \rightarrow \cnkw{bool}
+    { \mathrm{Decls}( f ) = \iota_1 \times \cdots \times \iota_n \rightarrow \iota
+    \\ \mathrm{Decls}'( f' ) = \beta_1 \times \cdots \times \beta_n \rightarrow \beta
+    \\ \mathrm{Decls}'( f'_b ) = \beta_1 \times \cdots \times \beta_n \rightarrow \cnkw{bool}
     \\ ( \mathrm{Decls} ; \Gamma \vdash t_1 \Rightarrow \iota_1 ) \rightsquigarrow ( \mathrm{Decls}' ; \Gamma' \vdash t'_1 \Rightarrow ( \beta_1 , b_1) )
     \\ \cdots ( \mathrm{Decls} ; \Gamma \vdash t_n \Rightarrow \iota_n ) \rightsquigarrow ( \mathrm{Decls}' ; \Gamma' \vdash t'_n \Rightarrow ( \beta_n , b_n) ) }
     { ( \mathrm{Decls} ; \Gamma \vdash f ( t_1, \ldots, t_n) \Rightarrow \iota ) \rightsquigarrow
@@ -688,7 +688,116 @@ their arguments by recursion.
 
 \section{Higher order predicates}
 
+Currently, \kl{CN} has `predicates' which can access and affect both the
+constraint context and the resource context, and `functions' which are pure and
+can do neither.
+
+The two not only have incompatible grammars, but also different auto-unfolding
+behaviour, leading to confusion for the user.
+
+Grammar for predicates is restricted to either straight-line code, or
+one-top-level if-then-else, but has good auto-unfolding behaviour. Grammar for
+functions is not just restricted, but has no auto-unfolding behaviour,
+requiring manual `unfold' commands.
+
+Though they have very different semantics, unifying the grammar and unfolding
+behaviour is desirable, so long as there is some way to ensue pure expressions
+do not refer to resourceful ones.
+
+Additionally, the lack of a half-way ground where we can affect the constraint
+context and access the SMT solver, but not the resourceful one is confusing.
+This would allow the user to write morally partial functions and specifications
+more naturally, and have \kl{CN} do the heavy lifting of inferring appropriate
+preconditions, similar in spirit to the aforementioned translation from
+integers to bit-vectors,
+
+One way to solve this is by introducing the distinction at the basetype-level.
+Pure basetypes are $\beta$, resourceful ones could be $\cnkw{res}\,\beta$, and
+the SMT-related ones could be $\cnkw{smt}\,\beta$. Note that this can be merely
+an internal representation to make it easier to specify type inference and
+checking. If one is apprehensive about systems programmers seeing parameterised
+types (despite the pervasiveness of C++ and popularity of Rust), it does not
+need to affect the surface syntax that the user sees.
+
+Terms of type $\cnkw{res}\,\beta$ can be interpreted as map into separation
+logic propositions, $\beta \rightarrow \mathsf{Prop}^\mathsf{SL}$, as mentioned
+in~\cref{fig:monad-sl}. Terms of $\cnkw{smt}\,\beta$ are instead interpreted as
+a \emph{pairs} $\beta \times \mathsf{Prop}^\mathsf{SMT}$. Consider the
+aforementioned term grammar extended with $\cnkw{assert}(b)$. A full treatment
+would involve a typed translation similar to that for the integer-to-bit-vector
+translation, particularly to get the type $\beta$ for translating
+$\cnkw{assert}(b)$ to $\cnkw{default}\,\beta$, but a sketch is given below.
+
+{\small%
+\begin{align*}
+    \llbracket \cnkw{assert}(b) \rrbracket &= ( \cnkw{default}\,\beta, b ) \\
+    \llbracket x \rrbracket &= ( x, \cnkw{true} ) \\
+    \llbracket t_1 \oplus t_2 \rrbracket &= ( t'_1 \oplus t'_2 , b_1 \wedge b_2 )
+    \ \text{where}\ \llbracket t_i \rrbracket = ( t'_i , b_i ),\ i \in \{\, 1, 2 \,\} \\
+    \llbracket \cnkw{if}\, (t_1) \,\{\, t_2 \,\}\, \cnkw{else} \,\{\, t_3 \,\} \rrbracket &=
+        (\cnkw{if}\, (t'_1) \,\{\, t'_2 \,\}\, \cnkw{else} \,\{\, t'_3 \,\}, \\
+        & \qquad b_1 \wedge (\cnkw{if}\, (t'_1) \,\{\, b_2 \,\}\, \cnkw{else} \,\{\, b_3 \,\})) \\
+        & \quad \text{where}\ \llbracket t_i \rrbracket = ( t'_i , b_i ),\ i \in \{\, 1, 2, 3 \,\} \\
+    \llbracket \cnkw{let}\ x = t_1\ \cnkw{in}\ t_2 \rrbracket &=
+    (\cnkw{let}\ x = t'_1\ \cnkw{in}\ t'_2, b_1 \wedge (\cnkw{let}\ x = t'_1\ \cnkw{in}\ b_2)) \\
+        & \quad \text{where}\ \llbracket t_i \rrbracket = ( t'_i , b_i ),\ i \in \{\, 1, 2 \,\} \\
+    \llbracket f (t_1, \ldots, t_n) \rrbracket &=
+    (f (t'_1, \ldots, t'_n), b_1 \wedge \ldots b_n \wedge f_b (t'_1, \ldots, t'_n)) \\
+        & \quad \text{where}\ \llbracket t_i \rrbracket = ( t'_i , b_i ),\ i \in \{\, 1, \ldots, n \,\} \\
+\end{align*}}
+
 \section{Predicate definition checks}
+
+\kl{CN} can diverge on certain inputs. Below is a small example to illustrate
+the problem, and later, a solution.
+
+\cfile[lastline=21]{code/diverge.c}
+
+First the code declares the simplest possible recursive structure:
+\cinline{struct node} contains one \cinline{struct node*} called
+\cinline{next}.
+
+The first predicate asserts ownership of a points-to at \cninline{front}, binds
+the pointee to \cninline{F}, and then calls \cninline{List_Next_Seg} with
+\cninline{front}, \cninline{F.next}, and \cninline{back}. In turn, that
+predicate checks whether \cninline{front} and \cninline{back} are equal,
+returning if so, and recursing on \cninline{next} and \cninline{back} on the
+original predicate if not. If not for \kl{CN}'s syntax limitations
+(\nameref{sec:restriction-branching}), the two definitions could be combined
+into one. Though the predicate is unusual, it is derived from an example
+written by a user, and is a priori a sensible
+definition (for non-empty list segments).\sidenote{\href{https://github.com/rems-project/cerberus/issues/451}{Cerberus\#451}}
+
+\cfile[firstline=23]{code/diverge.c}
+
+The definitions are problematic because they can be used in a context which
+causes \kl{CN} to diverge. Using \cinline{List_Seg(front, back)} % chktex 36
+with \cinline{RW(back)} causes the auto-unfolding mechanism to loop. % chktex 36
+This is because the \cinline{List_Seg} predicate included ownership of
+\cinline{front}, and so by the time \kl{CN} symbolically evaluates the
+condition in \cinline{List_Next_Seg}, it deduces
+\cinline{!ptr_eq(front, back)} and recurses. This introduces new % chktex 36
+ownership for \cinline{front->next}, the condition is guaranteed to always be
+false in a context with ownership of \cinline{back}.
+
+The root of the problem is the combination of automatically deriving logical
+facts based on the resource context, and the auto-unfolding scheme for
+recursive predicates. Intuitively, the problem is that the constraints on, and
+behaviour of pointers changes after they have been owned. A potential remedy
+for this is a monotonic dataflow analysis.
+
+Informally, for a block of (mutually) recursive predicates, all parameters
+start off marked as safe. The predicates are evaluated symbolically, and any
+variables used in the argument of \cninline{RW}/\cninline{W} predicate are then
+marked as unsafe. Those unsafe variables cannot then be used inside the
+condition of an \cninline{if}-expression which is guarding a (mutually)
+recursive call.
+
+In the above example, at line 4, \cninline{front} is safe, but after line 5
+\cninline{front} is unsafe. The call on line 6 then propogates that information
+to the parameter on lines 11. Finally, line 15 has the condition which guards
+the recursive call on line 18. Because \cninline{front} is unsafe, its use in
+on line 15 is rejected.
 
 \chapter{Conclusion}%
 \label{chap:conclusion}
