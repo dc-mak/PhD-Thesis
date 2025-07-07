@@ -1,4 +1,804 @@
 \bookmarksetup{startatroot}
+
+\chapter{Future Directions}%
+\label{chap:future-directions}
+
+\margintoc{}
+
+In this chapter, I will recap some of \kl{CN}'s more pressing limitations, and
+sketch out some solutions to it.
+
+\section{Inferring frames}
+
+Recall the \kl{Core} operators for expressing most control-flow:
+\coreinline{run()} and \coreinline{save()}, first presented % chktex 36
+in~\nameref{sec:core-grammar}.
+
+These very general constructs are used by \kl{Cerberus}' elaboration into
+\kl{Core} to support a variety of control flow constructs: loops (continue,
+break, iteration), switches (cases, fall-through and defaults), labels, and
+\cinline{goto}.
+
+\kl{CN} currently deals with these on an ad-hoc basis, such as by marking
+labels with their original structure and use (loop continue, loop break,
+return, switch, case, default) labels, and maximally inlining label bodies to
+avoid requiring annotations at awkward places such as loop continues and breaks
+and switch cases.
+
+There are two main problems with this approach.
+
+\begin{enumerate}
+    \item \textbf{Inlining slows down performance and duplicates
+        work.}\sidenote{\href{https://github.com/rems-project/cerberus/issues/289}{Cerberus\#289.}}
+        The transformation from \kl{Core} with \coreinline{run()}  % chktex 36
+        and \coreinline{save()}to \kl{Core} with non-recursive runs % chktex 36
+        inlined and recursive runs hoisted to the top level induces some
+        impressive code bloat. A nested-loop
+        example,\sidenote{\href{https://github.com/rems-project/cerberus/issues/938}{Cerberus\#938.}}
+        shows a 7x increase (226 lines of \kl{Core} to 1389 lines); a
+        \cinline{switch} with 3 \cinline{case}s and a \cinline{default}
+        example, shows a 5x increase.
+    \item \textbf{Loop-annotations do not compose as expected, and are thus confusing and
+        verbose.}\sidenote{\href{https://github.com/rems-project/cerberus/issues/913}{Cerberus\#931.}}
+\end{enumerate}
+
+The reason for this is the \kl{Core} dynamics for the
+\coreinline{run()} operator. In particular, note that the current % chktex 36
+continuation $C$ is discarded, and the continuation associated with the label
+$\cnnt{id}$, $C_\cnnt{id}$ is resumed.
+
+{\small%
+\[
+\inferrule[{[Run]}]
+  { \mathrm{labelmap} ( \cnnt{id} ) = \left(\cncomp{x_i}{i}\right).\ C_{\cnnt{id}} [ E_{\cnnt{id}} ] \\
+    \cncomp{e_i \Downarrow \cnnt{value}_i}{i} }
+  { \langle h , C\left[ \cnkw{run}\, \cnnt{id} \left( \cncomp{e_i}{i} \right) \right] , \kappa \rangle
+    \rightarrow \left< h , C_{\cnnt{id}} \left[ \left[ \cncomp{\cnnt{value}_i / x_i}{i} \right] E_{\cnnt{id}} \right] , \kappa \right> }
+\]}
+
+Its associated (\kl{ResCore}) typing rule is as follows. Note that because
+control-flow does not return to this point in the program, the return type is
+$\cnkw{false} \wedge \cnkw{I}$, even if, for example, a program is entering and
+exiting a loop in a well-bracketed way. This has the effect of requiring the
+precondition of the label to consume \emph{all} resources from the context
+of a \coreinline{run()}. % chktex 36
+
+{\small%
+\[
+\cndruleStmtXXRun{}
+\]}
+
+% \onlyUseRules{\cndefnStmt{}}{
+%     \cndruleStmtXXRun{}
+% }
+
+In particular, this means that loop invariants must explicitly mention all
+resources in a context (even ones which are morally framed out), so that they
+are reinstated upon loop exit. The situation compounds for each level of
+loop nesting: invariants of all enclosing loops must be manually threaded through
+by the user
+(see~\href{https://github.com/rems-project/cerberus/issues/913}{Cerberus\#931}).
+The problem holds for all \kl{Core} labels, but only manifests itself at loops
+since \kl{CN} inlines all labels whose bodies do not recursively \coreinline{run()} % chktex 36
+to themselves.
+
+Whilst it may be possible to engineer \kl{CN} for the common cases,
+for example by extending \kl{Core} with specific loop or switch constructs,
+the root of the problem will remain to handle labels and \cinline{goto}s in C.
+
+Hence a prinicipled solution is desirable, and would be useful to ensure
+our handling of the common cases is sound.
+
+A \emph{potential} solution is to adjust the grammar and elaboration of
+\kl{Core} to borrow an idea from an inductive representation of SSA, based on
+work by~\sidetextcite{ghalayini2024denotational}: represent
+\emph{dominance-based scoping} as \emph{lexical scoping}.
+
+\begin{quote}
+In particular, a variable $x$ is considered to be in scope at a specific point
+$P$ if and only if all execution paths from the program’s entry point to $P$
+pass through a definition $D$ for $x$. In this case, we say that the definition
+$D$ \emph{strictly dominates} $P$. The relation on basic blocks ``$A$ strictly
+dominates $B$'' intersected with ``$A$ is a direct predecessor of $B$'' forms a
+tree called the \emph{dominance tree} of the [control-flow graph].
+\end{quote}
+
+More specifically, replace $\cnkw{save}\ \cnnt{id}\ (x\, {:}{=}\, \cnnt{pce})\ \cnkw{in}\ E$
+with a $\cnkw{where}$ expression:
+\[
+    \cnnt{E}\ \cnkw{where}\ \left( \cncomp{\cnnt{id}_i\ (x_i {:} \beta_i).\ E_i}{i} \right).
+\]
+
+Labels $\cnnt{id}_i$ are in scope in $E$ and in each $E_i$, allowing for mutual
+recursion, but are encapsulated from the enclosing expression. This is unlike
+\kl{Core}'s \coreinline{save()} operator, whose label is in scope of % chktex 36
+the enclosing \emph{procedure}. Variables defined in $E$ are not in scope
+in $E_i$, which are parameterised over (for simplicity) a single variable
+$x_i$. Most importantly, the enclosing expression is its \emph{frame}, and
+unlike in \kl{Core}, is preserved in the dynamic semantics.
+
+{\small%
+\[
+\inferrule[{[OpStmtWhere]}]
+  { l_1 \eqdef \cncomp{\cnnt{id}_i\ (x_i {:} \beta_i).\ E_i}{i} }
+  { \langle h , E\ \cnkw{where}\ l, w, \kappa \rangle
+    \rightarrow \left< h , \cnkw{pop}_l (E) , l \Colon w, \kappa \right> }
+\]}
+
+{\small%
+\[
+\inferrule[{[OpStmtRunW]}]
+  { w \eqdef l_1 \Colon \ldots \Colon l_k \Colon w'
+    \and \cnnt{id}\ (x {:} \beta).\ E \in l_k
+    \and \cnnt{pce} \Downarrow \cnnt{value} }
+  { \langle h , \cnkw{run}\, \cnnt{id}\,\cnnt{pce}, w, \kappa \rangle
+    \rightarrow \left< h , \left[ \cnnt{value} / x \right] E , l_k \Colon w', \kappa \right> }
+\]}
+
+The \kl{Core} thread-local reduction configuration is extended with a
+\emph{stack} $w$, where each element is a family of label definitions
+($\cncomp{\cnnt{id}_i\ (x_i {:} \beta_i).\ E_i}{i}$). Upon entry, the label
+definitions are pushed ($\Colon$) on to the stack. When $\cnkw{run}$ning to a
+label, we search the stack ($w \eqdef l_1 \Colon \ldots \Colon{} l_k \Colon
+w'$) for it ($\cnnt{id}\ (x {:} \beta).\ E \in l_k$) and jump to its body,
+proceeding with only the labels at and below that level on the stack ($l_k
+\Colon{} w'$), and $w$ stack is cleared when returning from a procedure.
+
+Note that, \sidetextcite{ghalayini2024denotational} stratify their language
+into statements and expressions; their $\cnkw{where}$ construct is a statement,
+so the value it computes is never bound. A $\cnkw{pop}_l$ expression
+marks the exit from a $\cnkw{where}$ expression when it returns a value.
+
+{\small%
+\[
+\inferrule[{[OpStmtPop]}]
+  { w \eqdef l_1 \Colon \ldots \Colon l_k \Colon w' }
+  { \langle h , \cnkw{pop}_{l_k} (\cnkw{pure}(v)), w, \kappa \rangle
+    \rightarrow \left< h , \cnkw{pure}(v), w', \kappa \right> }
+\]}
+
+As for typing, I conjecture the $\cnkw{where}$-stack in the dynamics would be
+mirrored in an \emph{ordered} resource context $\mathcal{W}$, consisting of
+linear resource contexts $\mathcal{R}$, separated by label definitions $l$ as
+ordering markers. Typing these definitions requires threading such a
+$\mathcal{W}$ through.
+
+{\small%
+\[
+\inferrule[{[WhereDefns]}]
+  { \cncomp{\cnnt{fun}_i \rightsquigarrow \mathcal{C}_i; \mathcal{L}_i; \Phi_i; \mathcal{R}_i}{i}
+    \\ \cncomp{\mathcal{C}, \mathcal{C}_i; \mathcal{L}, \mathcal{L}_i; \Phi, \Phi_i; \mathcal{R}_i \Colon \mathcal{W} \vdash E_i \Leftarrow \cnnt{ret}}{i} }
+  { \mathcal{C}; \mathcal{L}; \Phi; \mathcal{W} \vdash \cncomp{\cnnt{id}_i {:} \cnnt{fun}_i.\ E_i}{i} \Leftarrow \cnnt{ret} }
+\]}
+
+Typing a $\cnkw{where}$ expression itself would pass any resources it has to the
+left expression, and adding the definitions as an ordering marker to bring them
+in scope. The same is done for checking the definition bodies too, because
+labels can refer to each other (mutually) recursively.
+
+{\small%
+\[
+\inferrule[{[StmtWhere]}]
+  { \mathcal{C}; \mathcal{L}; \Phi; \mathcal{R} \Colon l \Colon \mathcal{W} \vdash E \Leftarrow \cnnt{ret}
+    \and \mathcal{C}; \mathcal{L}; \Phi; l \Colon \mathcal{W} \vdash l \Leftarrow \cnnt{ret} }
+  { \mathcal{C}; \mathcal{L}; \Phi; \mathcal{R} \Colon \mathcal{W} \vdash{} E\ \cnkw{where}\  l \Leftarrow \cnnt{ret} }
+\]}
+
+With this, I can sketch out a rough idea on typing for a $\cnkw{run}$ to any
+label in scope. First any resources in the intervening depths would need to
+disposed, for example, removing the storage for block-local variables. After
+that, the $\cnnt{spine}$ would be checked against the function type
+$\cnnt{fun}$ (obtained via a lookup of the label $\cnnt{id}$ in the ordered
+resource context). Only the resources at the same level as the target
+$\cnkw{where}$ expression need to be consumed, everything above it is `framed'
+when checking the label body.
+
+{\small%
+\[
+\inferrule[{[StmtRun]}]
+  { \mathcal{W} \eqdef \mathcal{R}_1 \Colon l_1 \Colon \ldots \Colon \mathcal{R}_k \Colon l_k \Colon \ldots \Colon \mathcal{R}_n \Colon l_n
+    \and \cnnt{id} {:} \cnnt{fun}.\ E' \in l_k
+    \\ \mathcal{C}; \mathcal{L}; \Phi; \mathcal{R}_1 , \ldots, \mathcal{R}_{k-1} \vdash E \Leftarrow \Sigma y{:} \cnkw{unit}.\ \cnkw{I}
+    \\ \mathcal{C} ; \mathcal{L} ; \Phi ; \mathcal{R}_k \vdash \cnnt{spine} \Colon \cnnt{fun} >\!> \outpol{\sigma}; \outpol{\cnkw{false} \wedge \cnkw{I}} }
+    { \mathcal{C}; \mathcal{L}; \Phi; \mathcal{W} \vdash{} \cnkw{let\ strong\ ()\ =}\ E\ \cnkw{in}\ \cnkw{run}\ \cnnt{id}\,\cnnt{spine} \Leftarrow \cnkw{false} \wedge \cnkw{I} }
+\]}
+
+As in~\arefpart{formalisation}, the aboves rules are phrased over a
+hypothetical, explicitly annotated \kl{ResCore} with this new construct. Whilst
+the setup enables inferring frames for a label, inferring preconditions
+$\cnnt{fun}$ remains a distinct problem. As a first approximation, loops and
+mutually recursive labels would require annotations from the user, though
+annotations on loops would no longer need to manually thread through unusued
+parts of the resource context. Other labels could have their preconditions
+inferred by saving the typing context when the first $\cnkw{run}$ is
+encountered, and ensuring that subsequent ones match the first, thus preventing
+inlining and code bloat.
+
+\section{Weak sequencing}
+
+Sequencing strength is one of the most subtle and confusing aspects about C,
+and its treatment in \kl{Core}, whilst inventive, is difficult to understand
+and reason about.
+
+Sequencing strength is used to specify the (lack of) ordering between memory
+actions. Quoting at length from \sidetextcite{memarian2022cerberus}:
+
+\begin{quote}
+ Each use of an action is either ``positive'' (the default case) or
+ ``negative'' (if the action appears in the syntax as the operand of the
+ $\cnkw{neg()}$ operator). [..] Intuitively, a \kl{Core} action is negative
+ when it elaborates what the C standard calls a ``side-effect'' (as opposed to
+ value computations), that is, memory accesses which are not directly used for
+ producing the value of a C expression. This is for example, the store
+ performed by a postfix increment operator.
+\end{quote}
+
+The $\cnkw{let}\ \cnkw{strong}\ \cnnt{pat}\ \cnkw{=}\ \cnnt{E}_1\ \cnkw{in}\
+\cnnt{E}_2$ construct sequences all memory actions performed by $\cnnt{E}_1$
+before those performed by $\cnnt{E}_2$. However, $\cnkw{let}\ \cnkw{weak}$ only
+sequences positive memory actions similarly; in other words, for $\cnkw{let}\
+\cnkw{weak}\ \cnnt{pat} = \cnnt{E}_1\ \cnkw{in}\ \cnnt{E}_2$, any
+negative memory actions performed by $\cnnt{E}_1$ are unsequenced with respect
+to all memory actions performed by $\cnnt{E}_2$. A \emph{race} occurs if
+unsequenced memory actions have overlapping footprints, and is deemed \kl{UB}.
+
+The formalisation and implementation of weak sequencing is complex. Here, I
+offer a simpler presentation which I conjecture is equivalent and then offer
+few remarks on how to adapt the \kl{CN} resource framework to fit it.
+
+A footprint $\cnnt{fp}$ of an action is the range of bytes in memory it touches.
+Like actions, footprints can be positive ${\color{red}\cnkw{pos}(\cnnt{fp})}$
+or negative ${\color{red}\cnkw{neg}(\cnnt{fp})}$. A set of such footprints is
+called an annotation ${\color{red}A}$, and I use the notation
+${\color{red}A^{-}}$ to denote all the negative footprints in ${\color{red}A}$
+and ${\color{red}A^{+}}$ for all the positive ones.
+
+Negative actions step to a new $\cnkw{delay}(\cnnt{actions}, \cnnt{E})$
+construct, where $\cnnt{actions}$ is a set.
+
+{\small%
+\[
+\inferrule[{[ActionNeg]}]
+    { \sigma \overset{\cnnt{action}}{\longrightarrow} \langle \_ , \cnkw{Unit}, \cnnt{fp} \rangle }
+    { \langle \sigma, \cnkw{neg}(\cnnt{action}), \kappa \rangle \rightarrow
+      \langle
+          \sigma,
+          \cnkw{delay}(\{\, \cnnt{action} \, \},
+            \prescript{\color{red}\{\cnkw{neg}(\cnnt{fp})\}}{}{\cnkw{pure}(\cnkw{Unit})}),
+          \kappa
+      \rangle }
+\]}
+
+The dynamics of this construct allowing reducing either one of the actions in
+the set, or the expression inside at any time; the latter because it counts as
+a context $\cnnt{C} \, {:}{=} \, \ldots \mid \cnkw{delay}(\cnnt{actions}, C)$.
+All $\cnkw{delay}$ed actions are negative, and all negative actions evaluate to
+$\cnkw{Unit}$ (since they are side effects) and so the result of the action is
+ignored. The footprint is unnecessary as per the previous rule.
+
+{\small%
+\[
+\inferrule[{[DelayAction]}]
+    { \sigma \overset{\cnnt{action}}{\longrightarrow} \langle \sigma' , \cnkw{Unit}, \_ \rangle }
+    { \langle
+          \sigma,
+            \cnkw{delay}(\cnnt{actions} \cup \{\, \cnnt{action} \,\}, E),
+          \kappa
+      \rangle
+      \rightarrow
+      \langle \sigma', \cnkw{delay}(\cnnt{actions}, E), \kappa \rangle }
+\]}
+
+The next ingredient is a $\cnkw{disj}({\color{red}A}, E)$ construct, which is
+used to check if ${\color{red}A}$ races with $E$.
+
+{\small%
+\[
+\inferrule[{[Disj]}]
+    { {\color{red}\neg \mathrm{do\_race}(A_1, A_2)} }
+    { \langle
+          \sigma,
+          \cnkw{disj}({\color{red}A_1}, \prescript{\color{red}A_2}{}{\cnkw{pure}(v)}),
+          \kappa
+      \rangle
+      \rightarrow
+      \langle
+          \sigma,
+          \prescript{\color{red}A_1 \cup A_2}{}{\cnkw{pure}(v)},
+          \kappa
+      \rangle }
+\]}
+
+The construct is used for weak sequencing, and is also a context $\cnnt{C} \,
+{:}{=} \, \ldots \mid \cnkw{disj}({\color{red}A}, C)$, allowing for the
+expression inside to reduce. Splitting the annotations, placing the positive
+ones on the outside and the negative ones in a $\cnkw{disj}$ ensures the
+negative actions which \emph{were} part of evaluating $\cnkw{pure}(v)$ are
+treated as if unsequenced with $E$, i.e.\ required to not race.
+
+{\small%
+\[
+\inferrule[{[Weak]}]
+    {  }
+    { \langle
+          \sigma,
+          \cnkw{let}\ \cnkw{weak}\ \cnnt{pat}\ =\ \prescript{\color{red}A}{}{\cnkw{pure}(v)}\ \cnkw{in}\ E,
+          \kappa
+      \rangle
+      \rightarrow
+      \langle
+          \sigma,
+          \prescript{\color{red}A^{+}}{}{\cnkw{disj}({\color{red}A^{-}}, [ v / \cnnt{pat} ] E)},
+          \kappa
+      \rangle }
+\]}
+
+Nested $\cnkw{delay}$s can be combined by taking the union of the actions.
+
+{\small%
+\[
+\inferrule[{[HoistDelay]}]
+    {  }
+    { \langle \sigma, \cnkw{delay}(\cnnt{actions}_1, \cnkw{delay}(\cnnt{actions}_2, E)), \kappa \rangle
+      \rightarrow
+      \\ \quad
+      \langle \sigma, \cnkw{delay}(\cnnt{actions}_1 \cup \cnnt{actions}_2, E), \kappa \rangle }
+\]}
+
+Cruicially, $\cnkw{delay}$s can be hoisted out of $\cnkw{let}\ \cnkw{weak}$,
+$\cnkw{unseq}$, $\cnkw{disj}$ and annotated $\prescript{\color{red}A}{}{E}$
+expressions. The rule for the first is given below, and the rest follow a
+similar pattern.
+
+{\small%
+\[
+\inferrule[{[HoistWeak]}]
+    {  }
+    { \langle
+          \sigma,
+          \cnkw{let}\ \cnkw{weak}\ \cnnt{pat}\ =\ \cnkw{delay}(\cnnt{actions}, E_1)\ \cnkw{in}\ E_2,
+          \kappa
+      \rangle
+      \rightarrow
+      \\ \quad
+      \langle
+          \sigma,
+          \cnkw{delay}(\cnnt{actions}, \cnkw{let}\ \cnkw{weak}\ \cnnt{pat}\ =\ E_1\ \cnkw{in}\ E_2),
+          \kappa
+      \rangle }
+\]}
+
+Notably absent, $\cnkw{let}\ \cnkw{strong}$ or $\cnkw{bound}$ expressions
+\emph{do not} permit hoisting $\cnkw{delay}$s out of them. This forces any
+delayed actions to be evaluated and any races to checked before proceeding.
+
+Though unusual, the constructs and rules are simple. One straightforward
+approach to typing could be to split resource types into positive and negative.
+Negative resources are not usable, and are converted into positive ones after a
+$\cnkw{let}\ \cnkw{strong}$ or a $\cnkw{bound}$ expression.
+
+\section{Join-points}
+
+Currently, \kl{CN} bifurcates control-flow during type checking at every
+branch, with no way to merge paths once this is done. The main issue with this
+is that any resource inference which is not path dependent repeated across
+different branches.
+
+Whilst it is possible to define syntax and rules for user-provided join-points,
+the better solution may be to not branch the control-flow in the first place.
+
+This requires (a) defining how to merge constraint and resource contexts after
+an if-expression and (b) defining how to handle resource lookup/inference with
+conditional-resources in the context whilst avoiding performance slowdown.
+
+Assume a judgement of the form $\Phi ; \mathcal{R} \vdash E \dashv \cnnt{term}
+\mathrel{\&} \Phi' ; \mathcal{R}'$ is the input constraint context,
+$\mathcal{R}$ is the input resource context, context, $E$ is the input
+\kl{Core} expression, $\cnnt{term}$ is the output symbolic evaluation of the
+\kl{Core} expression, $\Phi' ; \mathcal{R}'$ are the output constraint and
+resource contexts respectively (to reduce clutter, I am omitting variable
+environments).
+
+We can define join-points for conditional expressions as below.
+
+{\small%
+\[
+\inferrule[{[StmtIf]}]
+  { \Phi \wedge \cnnt{pce} ; \mathcal{R} \vdash E_1 \dashv \cnnt{term}_1 \mathbin{\&} \Phi_1 ; \mathcal{R}_1
+    \\ \Phi \wedge \neg \cnnt{pce} ; \mathcal{R} \vdash E_2 \dashv \cnnt{term}_2 \mathbin{\&} \Phi_2 ; \mathcal{R}_2
+    \\ \cnnt{term}_3 \eqdef \cnkw{if}\ \cnnt{pce}\ \cnkw{then}\ \cnnt{term}_1\ \cnkw{else}\ \cnnt{term}_2
+    \\ \Phi' \eqdef (\cnnt{pce} \rightarrow \Phi_1) \wedge ( \neg \cnnt{pce} \rightarrow \Phi_2)
+    \\ \mathcal{R}' \eqdef (\mathcal{R}_1 \cap \mathcal{R_2})
+       \ast (\cnkw{if}\ \cnnt{pce}\ \cnkw{then}\ (\mathcal{R}_1 - \mathcal{R}_2)\ \cnkw{else}\ (\mathcal{R}_2 - \mathcal{R}_1)) }
+  { \Phi ; \mathcal{R}
+    \vdash \cnkw{if}\ \cnnt{pce}\ \cnkw{then}\ E_1\ \cnkw{else}\ E_2
+    \dashv \cnnt{term}_3 \mathbin{\&} \Phi' ; \mathcal{R}' }
+\]}
+
+Calculating the intersection and difference of two resource contexts, should be
+done carefully to avoid having it be accidentally quadratic in complexity.
+Marking which resources are not used will also help, by framing them out and
+thus reducing the number of items considered for intersection and difference.
+Calculating the intersection precisely is not necessary for soundness; its
+primary benefit is to reduce work later.
+
+
+The problem then becomes how to use a conditional-resource in the context.
+Specifically, how to handle the below situation without resorting to an
+exponential blow-up. Inputs are constraints $\Phi$, resources $\mathcal{R} , r
+{:} \ldots$ and the requested resources $\cnkw{if}\ \cnnt{pce}_2\ \ldots$;
+Outputs are the remaining lookup $\mathcal{R}'$, and the leftover context
+$\mathcal{R}''$ after a partially successful lookup.
+
+{\small%
+\[
+    \Phi \vdash (\cnkw{if}\ \cnnt{pce}_1\ \cnkw{then}\ \mathcal{R}_{21}\ \cnkw{else}\ \mathcal{R}_{22})
+                \mathrel{{\in}{?}}
+                (\mathcal{R} , r {:} \cnkw{if}\ \cnnt{pce}_2\ \cnkw{then}\ \mathcal{R}_{11}\ \cnkw{else}\ \mathcal{R}_{12})
+                \rightsquigarrow
+                \outpol{\mathcal{R}'; \mathcal{R}''}
+\]}
+
+The first thing to check would be \emph{nominal} equality. A conditional
+resource may come from what a user wrote (in a specification or a predicate
+definition) and so can be identified as an anonymous predicate of sorts:
+$\cnnt{\#loc}\;(\ldots)$. In this case, it would suffice to check equality on
+source location and arguments.
+
+{\small%
+\[
+\inferrule[{[StmtIf-Nominal]}]
+    { }
+    { \Phi \vdash \cnnt{\#loc}\;(\cnnt{iargs})
+            \mathrel{{\in}?}
+            (\mathcal{R}, \cnnt{\#loc}\;(\cnnt{iargs}))
+            \rightsquigarrow \cdot ; \mathcal{R} }
+\]}
+
+If the nominal equality fails, the next thing to check would be
+\emph{structural} equality, if either $\cnnt{pce}_1 \leftrightarrow
+\cnnt{pce}_2$ or $\cnnt{pce}_1 \leftrightarrow \neg \cnnt{pce}_2$, then the
+check can recurse on both branches.
+
+{\small%
+\[
+\inferrule[{[StmtIf-TwoSided1]}]
+    { \Phi \vdash \cnnt{pce}_1 \leftrightarrow \cnnt{pce}_2
+      \\ \Phi \wedge \cnnt{pce}_1 \vdash \mathcal{R}_{21}
+      \mathbin{{\in}?} (\mathcal{R} , \cnnt{r.then} {:} \mathcal{R}_{11}) \rightsquigarrow \cdot ; \mathcal{R}
+      \\ \Phi \wedge \neg \cnnt{pce}_1 \vdash \mathcal{R}_{22}
+      \mathbin{{\in}?} (\mathcal{R} , \cnnt{r.else} {:} \mathcal{R}_{12}) \rightsquigarrow \cdot ; \mathcal{R} }
+    { \Phi \vdash (\cnkw{if}\ \cnnt{pce}_2\ \cnkw{then}\ \mathcal{R}_{21}\ \cnkw{else}\ \mathcal{R}_{22})
+           \mathbin{{\in}?}
+           (\mathcal{R} , r {:} \cnkw{if}\ \cnnt{pce}_1\ \cnkw{then}\ \mathcal{R}_{11}\ \cnkw{else}\ \mathcal{R}_{12})
+           \rightsquigarrow \cdot ; \mathcal{R} }
+\]}
+
+And similarly for $\cnnt{pce}_1 \leftrightarrow \neg \cnnt{pce}_2$. If a
+two-sided match fails, then the next thing to check would be a one-sided
+strucural equality.
+
+{\small%
+\[
+\inferrule[{[StmtIf-OneSided1]}]
+    { \Phi \vdash \cnnt{pce}_1 \rightarrow \cnnt{pce}_2
+      \\ \Phi \wedge \cnnt{pce}_1 \vdash \mathcal{R}_{21}
+      \mathbin{{\in}?} (\mathcal{R} , \cnnt{r.then} {:} \mathcal{R}_{11}) \rightsquigarrow \cdot ; \mathcal{R} }
+    { \Phi \vdash (\cnkw{if}\ \cnnt{pce}_2\ \cnkw{then}\ \mathcal{R}_{21}\ \cnkw{else}\ \mathcal{R}_{22})
+           \mathbin{{\in}?}
+           (\mathcal{R} , r {:} \cnkw{if}\ \cnnt{pce}_1 \cnkw{then}\ \mathcal{R}_{11}\ \cnkw{else}\ \mathcal{R}_{12})
+           \\ \quad \rightsquigarrow (\cnkw{if}\ \cnkw{pce}_2\ \cnkw{emp}\ \cnkw{else}\ \mathcal{R}_{22}) ; \mathcal{R} }
+\]}
+
+Similarly we can test $\cnnt{pce}_1 \rightarrow \neg \cnnt{pce}_2$, $\neg
+\cnnt{pce}_1 \rightarrow \cnnt{pce}_2$ or $\neg \cnnt{pce}_1 \rightarrow \neg
+\cnnt{pce}_2$, and proceed accordingly.
+
+If all of these fail, then the inference fails, or requires the user to give
+explicit permission to split on the condition of the resource and duplicate the
+lookup across two branched resource contexts. Notably, the permission is given
+for a \emph{resource} for every lookup, and not a condition.
+
+% This might be necessary if there's a situation a bit like the below:
+% ```
+%            r1                  r2
+%          /    \              /    \
+%    r1.then    r1.else   r2.then r2.else
+%         |        \        /       |
+%         |         req.then        |
+%         |-------\          /------|
+%                  \        /
+%                   req.else
+% ```
+%
+% In this instance, the user would need to give permission to split on both `r1`
+% and `r2` separately, if the their conditions lined up suitably.
+%
+% If the resource is consumed from the context (e.g. by a lemma or a function
+% call) then there will be no more splitting.
+
+Hence the user opts-in to the slow case, if it happens to be the right thing to
+do. If there's a smarter way to eliminate conditional-resources from the
+context, the user can write a lemma/function to do so.
+
+Thus we have a scheme of automating the fast common cases, explicitly opting-in
+to the slow general case, \emph{and} a mechanism for the user to intervene with
+something else should it be necessary.
+
+\section{Integers and bitvectors}
+
+Sometimes specifications are written and proved over integers, for example,
+with the buddy allocator, but need to be called from the bit-vector world, and
+sometimes vice-versa.
+
+Integers are unbounded and bit-vectors are bounded. Mapping from bit-vectors to
+integers is straightforward: insert $\cnnt{term} \mod 2^k$ as needed, as long
+as accepts the resulting expression may not being decidable/interpretable: $x
+\times y$ in bit-vectors will be $\mathrm{mul\_uf}(x,y) \mod 2^{64}$ in
+integers. We can apply this transformation and get an expression which will
+give the same answer.
+
+Going from integers to bit-vectors is difficult because the process is
+fundamentally partial, i.e.\ it is only defined for a certain inputs under
+certain conditions, however SMT expressions must be total.
+
+Let $\beta$ be the basetypes in the bounded bit-vector world. Let $\iota$ be
+the basetypes in the unbounded integer world. Let $\cnkw{num} \mathrel{{:}{=}}
+\cnkw{int} \mid \cnkw{bit}$ be a parameter for the following. Let
+$\cnnt{term}_{\cnkw{num}}$ be the grammar of SMT terms, parameterised over the
+choice of integers or bit-vectors.
+
+{\small%
+\begin{align*}
+\cnnt{term}_{\cnkw{num}}, t_{\cnkw{num}}, b_{\cnkw{num}} \mathrel{{:}{=}}
+\, & x \mid t_{\cnkw{num}} \oplus t'_{\cnkw{num}} \mid
+\cnkw{let}\ x\ = t_{\cnkw{num}}\ \cnkw{in}\ t'_{\cnkw{num}} \mid \\
+& \cnkw{if} \, (b_{\cnkw{num}}) \,\{\, t_{\cnkw{num}} \,\}\, \cnkw{else} \,\{\, t'_{\cnkw{num}} \,\} \mid
+f(t^1_{\cnkw{num}}, \ldots, t^n_{\cnkw{num}})
+\end{align*}}
+
+Under this convention, closed terms $t_{\cnkw{int}} {:} \iota$ and
+$t_{\cnkw{bit}} {:} \beta$. I use $b$ for formulas of boolean type:
+$b_{\cnkw{bit}} {:} \cnkw{bool}$.
+
+Let $\mathrm{Decls}$ be a context with declaration types of pure SMT functions
+(in CN, defined with the $\cnkw{function}$ keyword). The judgement
+$\mathrm{Decls} ; \Gamma \vdash t_{\cnkw{int}} \Rightarrow \iota$  means that
+under declarations $\mathrm{Decls}$ and context $\Gamma$, expression in the
+integer world $t_{\cnkw{int}}$ has type $\iota$. $\mathrm{Decls}$ is a map from
+function names to function types, $\Gamma$ is a map from parameters and local
+variables to types.
+
+{\small%
+\[
+\inferrule[]
+  { \mathrm{Decls} , ( f {:} ( \iota_1 \times \cdots \times \iota_n \rightarrow \iota ) ) ; x_1 {:} \iota_1 , \ldots , x_n {:} \iota_n \vdash t_{\cnkw{int}} \Rightarrow \iota }
+  { \mathrm{Decls} ; \cdot \vdash \cnkw{function}\ (\iota)\ f(\iota_1 x_n, \ldots, \iota_n x_n) \, \{ \, t_{\cnkw{int}} \,\} \Rightarrow \iota_1 \times \cdots \times \iota_n \rightarrow \iota }
+\]}
+
+For bit-vectors, the setup is similar, except recursive functions, have named
+recursive constraints, named $f_b$.
+
+Note that the bottom-rule has \emph{two} function definitions: the first one is
+the precondition, assuming which, the second gives the same result as the
+original (integer-world) function.
+
+{\small%
+\[
+\inferrule[]
+  { \mathrm{Decls}',
+        {\begin{matrix}
+            ( f' {:} ( \beta_1 \times \cdots \times \beta_n \rightarrow \beta ) ),
+            \\ ( f'_b {:} ( \beta_1 \times \cdots \times \beta_n \rightarrow \cnkw{bool} ) )
+        \end{matrix}} ; x_1 {:} \beta_1, \ldots , x_n {:} beta_n \vdash t_{\cnkw{bit}} \Rightarrow \beta }
+  { \mathrm{Decls} ; \cdot \vdash
+      {\begin{matrix}
+      \cnkw{function}\ (\beta)\ f'_b(\beta_1 x_n, \ldots, \beta_n x_n) \, \{ \, b_{\cnkw{bit}} \,\}
+      \\ \cnkw{function}\ (\beta)\ f'(\beta_1 x_n, \ldots, \beta_n x_n) \, \{ \, t_{\cnkw{bit}} \,\}
+      \end{matrix}}
+     \Rightarrow
+     {\begin{matrix}
+     \beta_1 \times \cdots \times \beta_n \rightarrow \cnkw{bool}
+     \\ \beta_1 \times \cdots \times \beta_n \rightarrow \beta
+     \end{matrix}} }
+\]}
+
+I will use $\rightsquigarrow$ to define a mapping from the integer world to the
+bit-vector world. For example, the mapping between types, from $\iota$ to
+$\beta$, would be along the lines of the below.
+
+{\small
+\begin{align*}
+    \cnkw{integer}   &\rightsquigarrow \cnkw{i64} \\
+    \cnkw{unit}      &\rightsquigarrow \cnkw{unit} \\
+    \cnkw{alloc\_id} &\rightsquigarrow \cnkw{alloc\_id} \\
+    \{\, \cnkw{integer}\ \cnnt{addr}, \cnkw{alloc\_id}\ \cnnt{id} \,\}
+        &\rightsquigarrow \{\, \cnkw{i64}\ \cnnt{addr}, \cnkw{alloc\_id}\ \cnnt{id} \,\} \\
+    \cnkw{map}\ \iota_1\ \iota_2 &\rightsquigarrow \cnkw{map} \beta_1\ \beta_2
+                                 \ \textrm{where}\ \iota_1 \rightsquigarrow \beta_1, \iota_2 \rightsquigarrow \beta_2
+\end{align*}}
+
+For typing judgments, variables are typed with a lookup in the context.
+
+{\small
+\[
+\inferrule[]
+  { \Gamma ( x ) = \iota \rightsquigarrow \Gamma' ( x ) = \beta }
+  { ( \mathrm{Decls} ; \Gamma \vdash x \Rightarrow \iota ) \rightsquigarrow ( \mathrm{Decls}' ; \Gamma' \vdash x \Rightarrow ( \beta , \cnkw{true} ) ) }
+\]}
+
+Typing for binary operation is translated by inserting no-overflow
+constraints.\sidenote{\url{https://github.com/Z3Prover/z3/discussions/5138\#discussioncomment-544642}}
+I will omit the kind annotation on terms to reduce syntactic noise, using $t$
+for $t_{\cnkw{num}}$ and $t'$ for $t_{\cnkw{bit}}$. The context should also
+make it clear which is intended.
+
+{\small%
+\[
+\inferrule[]
+    { ( \mathrm{Decls} ; \Gamma \vdash t_1 \Rightarrow \cnkw{int} ) \rightsquigarrow ( \mathrm{Decls} ; \Gamma' \vdash t'_1 \Rightarrow ( \cnkw{i64}, b_1 ) )
+    \\ ( \mathrm{Decls} ; \Gamma \vdash t_2 \Rightarrow \cnkw{int} ) \rightsquigarrow ( \mathrm{Decls} ; \Gamma' \vdash t'_2 \Rightarrow ( \cnkw{i64}, b_2 ) ) }
+    { ( \mathrm{Decls} ; \Gamma \vdash t_1 \oplus t_2 \Rightarrow \cnkw{int} ) \rightsquigarrow
+    \\ \quad ( \mathrm{Decls}' ; \Gamma' \vdash t'_1 \oplus t'_2 \Rightarrow ( \cnkw{i64} , b_1 \wedge b_2 \wedge \mathrm{no\_ovfl}(\oplus, t'_1, t'_2) ) ) }
+\]}
+
+Typing for let-expressions is translated as follows. The precondition for the
+whole expresison consists of the precondition for the bound expression, and for
+the same for the body, which may refer to the bound variable.
+
+{\small%
+\[
+\inferrule[]
+    { ( \mathrm{Decls} ; \Gamma \vdash t_1 \Rightarrow \iota_1 ) \rightsquigarrow ( \mathrm{Decls}' ; \Gamma' \vdash t'_1 \Rightarrow ( \beta_1, b_1 ) )
+    \\ ( \mathrm{Decls} ; \Gamma , x {:} \iota_1 \vdash t_2 \Rightarrow \iota_2 ) \rightsquigarrow ( \mathrm{Decls} ; \Gamma' , x {:} \beta_1 \vdash t'_2 \Rightarrow ( \beta_2, b_2 ) ) }
+    { ( \mathrm{Decls} ; \Gamma \vdash \cnkw{let}\ x = t_1\ \cnkw{in}\ t_2 \Rightarrow \iota_2 ) \rightsquigarrow
+    \\ \quad ( \mathrm{Decls}' ; \Gamma' \vdash \cnkw{let}\ x = t'_1\ \cnkw{in}\ t'_2 \Rightarrow ( \beta_2 , b_1 \wedge (\cnkw{let}\ x = t'_1\ \cnkw{in}\ b_2) ) ) }
+\]}
+
+Typing for if-expressions is translated as follows. The evaluation of the
+branch condtion $t'_1$ is constrained by $b_1$, and the evaluation of each
+branch is constrained similarly. Note that the precondition refers to $t'_1$
+too.
+
+{\small%
+\[
+\inferrule[]
+    { ( \mathrm{Decls} ; \Gamma \vdash t_1 \Rightarrow \cnkw{bool} ) \rightsquigarrow ( \mathrm{Decls}' ; \Gamma' \vdash t'_1 \Rightarrow ( \cnkw{bool}, b_1 ) )
+    \\ ( \mathrm{Decls} ; \Gamma \vdash t_2 \Rightarrow \iota ) \rightsquigarrow ( \mathrm{Decls}' ; \Gamma' \vdash t'_2 \Rightarrow ( \beta, b_2 ) )
+    \\ ( \mathrm{Decls} ; \Gamma \vdash t_3 \Rightarrow \iota ) \rightsquigarrow ( \mathrm{Decls}' ; \Gamma' \vdash t'_3 \Rightarrow ( \beta, b_3 ) ) }
+    { ( \mathrm{Decls} ; \Gamma \vdash \cnkw{if}\, (t_1)\, \{\, t_2 \,\}\, \cnkw{else} \,\{\, t_3 \,\}\, \Rightarrow \iota ) \rightsquigarrow
+    \\ \quad ( \mathrm{Decls}' ; \Gamma' \vdash \cnkw{if}\, (t'_1)\, \{\, t'_2 \,\}\, \cnkw{else} \,\{\, t'_3 \,\}\, \Rightarrow ( \beta , b_1 \wedge (\cnkw{if}\ t'_1\ \cnkw{then}\ b_2\ \cnkw{else}\ b_3) ) ) }
+\]}
+
+Lastly, function names, which may be recursive, are handled similarly to variables, and
+their arguments by recursion.
+
+{\small%
+\[
+\inferrule[]
+    { \mathrm{Decls}( f ) = \iota_1 \times \cdots \times \iota_n \rightarrow \iota
+    \\ \mathrm{Decls}'( f' ) = \beta_1 \times \cdots \times \beta_n \rightarrow \beta
+    \\ \mathrm{Decls}'( f'_b ) = \beta_1 \times \cdots \times \beta_n \rightarrow \cnkw{bool}
+    \\ ( \mathrm{Decls} ; \Gamma \vdash t_1 \Rightarrow \iota_1 ) \rightsquigarrow ( \mathrm{Decls}' ; \Gamma' \vdash t'_1 \Rightarrow ( \beta_1 , b_1) )
+    \\ \cdots ( \mathrm{Decls} ; \Gamma \vdash t_n \Rightarrow \iota_n ) \rightsquigarrow ( \mathrm{Decls}' ; \Gamma' \vdash t'_n \Rightarrow ( \beta_n , b_n) ) }
+    { ( \mathrm{Decls} ; \Gamma \vdash f ( t_1, \ldots, t_n) \Rightarrow \iota ) \rightsquigarrow
+        \\ ( \mathrm{Decls}' ; \Gamma' \vdash f' (t'_1, \ldots, t'_n )
+        \Rightarrow ( \beta , b_1 \wedge \ldots \wedge b_n \wedge f'_b (t'_1 , \ldots , t'_n) ) ) }
+\]}
+
+\section{Higher order predicates}
+
+Currently, \kl{CN} has `predicates' which can access and affect both the
+constraint context and the resource context, and `functions' which are pure and
+can do neither.
+
+The two not only have incompatible grammars, but also different auto-unfolding
+behaviour, leading to confusion for the user.
+
+Grammar for predicates is restricted to either straight-line code, or
+one-top-level if-then-else, but has good auto-unfolding behaviour. Grammar for
+functions is not just restricted, but has no auto-unfolding behaviour,
+requiring manual `unfold' commands.
+
+Though they have very different semantics, unifying the grammar and unfolding
+behaviour is desirable, so long as there is some way to ensue pure expressions
+do not refer to resourceful ones.
+
+Additionally, the lack of a half-way ground where we can affect the constraint
+context and access the SMT solver, but not the resourceful one is confusing.
+This would allow the user to write morally partial functions and specifications
+more naturally, and have \kl{CN} do the heavy lifting of inferring appropriate
+preconditions, similar in spirit to the aforementioned translation from
+integers to bit-vectors,
+
+One way to solve this is by introducing the distinction at the basetype-level.
+Pure basetypes are $\beta$, resourceful ones could be $\cnkw{res}\,\beta$, and
+the SMT-related ones could be $\cnkw{smt}\,\beta$. Note that this can be merely
+an internal representation to make it easier to specify type inference and
+checking. If one is apprehensive about systems programmers seeing parameterised
+types (despite the pervasiveness of C++ and popularity of Rust), it does not
+need to affect the surface syntax that the user sees.
+
+Terms of type $\cnkw{res}\,\beta$ can be interpreted as map into separation
+logic propositions, $\beta \rightarrow \mathsf{Prop}^\mathsf{SL}$, as mentioned
+in~\cref{fig:monad-sl}. Terms of $\cnkw{smt}\,\beta$ are instead interpreted as
+a \emph{pairs} $\beta \times \mathsf{Prop}^\mathsf{SMT}$. Consider the
+aforementioned term grammar extended with $\cnkw{assert}(b)$. A full treatment
+would involve a typed translation similar to that for the integer-to-bit-vector
+translation, particularly to get the type $\beta$ for translating
+$\cnkw{assert}(b)$ to $\cnkw{default}\,\beta$, but a sketch is given below.
+
+{\small%
+\begin{align*}
+    \llbracket \cnkw{assert}(b) \rrbracket &= ( \cnkw{default}\,\beta, b ) \\
+    \llbracket x \rrbracket &= ( x, \cnkw{true} ) \\
+    \llbracket t_1 \oplus t_2 \rrbracket &= ( t'_1 \oplus t'_2 , b_1 \wedge b_2 )
+    \ \text{where}\ \llbracket t_i \rrbracket = ( t'_i , b_i ),\ i \in \{\, 1, 2 \,\} \\
+    \llbracket \cnkw{if}\, (t_1) \,\{\, t_2 \,\}\, \cnkw{else} \,\{\, t_3 \,\} \rrbracket &=
+        (\cnkw{if}\, (t'_1) \,\{\, t'_2 \,\}\, \cnkw{else} \,\{\, t'_3 \,\}, \\
+        & \qquad b_1 \wedge (\cnkw{if}\, (t'_1) \,\{\, b_2 \,\}\, \cnkw{else} \,\{\, b_3 \,\})) \\
+        & \quad \text{where}\ \llbracket t_i \rrbracket = ( t'_i , b_i ),\ i \in \{\, 1, 2, 3 \,\} \\
+    \llbracket \cnkw{let}\ x = t_1\ \cnkw{in}\ t_2 \rrbracket &=
+    (\cnkw{let}\ x = t'_1\ \cnkw{in}\ t'_2, b_1 \wedge (\cnkw{let}\ x = t'_1\ \cnkw{in}\ b_2)) \\
+        & \quad \text{where}\ \llbracket t_i \rrbracket = ( t'_i , b_i ),\ i \in \{\, 1, 2 \,\} \\
+    \llbracket f (t_1, \ldots, t_n) \rrbracket &=
+    (f (t'_1, \ldots, t'_n), b_1 \wedge \ldots b_n \wedge f_b (t'_1, \ldots, t'_n)) \\
+        & \quad \text{where}\ \llbracket t_i \rrbracket = ( t'_i , b_i ),\ i \in \{\, 1, \ldots, n \,\} \\
+\end{align*}}
+
+\section{Predicate definition checks}
+
+\kl{CN}'s resource inference can diverge on certain inputs. Below is a small
+example to illustrate the problem, and later, a solution.
+
+\cfile[lastline=21]{code/diverge.c}
+
+First the code declares the simplest possible recursive structure:
+\cinline{struct node} contains one \cinline{struct node*} called
+\cinline{next}.
+
+The first predicate asserts ownership of a points-to at \cninline{front}, binds
+the pointee to \cninline{F}, and then calls \cninline{List_Next_Seg} with
+\cninline{front}, \cninline{F.next}, and \cninline{back}. In turn, that
+predicate checks whether \cninline{front} and \cninline{back} are equal,
+returning if so, and recursing on \cninline{next} and \cninline{back} on the
+original predicate if not. If not for \kl{CN}'s syntax limitations
+(\nameref{sec:restriction-branching}), the two definitions could be combined
+into one. Though the predicate is unusual, it is derived from an example
+written by a user, and is a priori a sensible
+definition (for non-empty list segments).\sidenote{\href{https://github.com/rems-project/cerberus/issues/451}{Cerberus\#451}}
+
+\cfile[firstline=23]{code/diverge.c}
+
+The definitions are problematic because they can be used in a context which
+causes \kl{CN} to diverge. Using \cinline{List_Seg(front, back)} % chktex 36
+with \cinline{RW(back)} causes the auto-unfolding mechanism to loop. % chktex 36
+This is because the \cinline{List_Seg} predicate included ownership of
+\cinline{front}, and so by the time \kl{CN} symbolically evaluates the
+condition in \cinline{List_Next_Seg}, it deduces
+\cinline{!ptr_eq(front, back)} and recurses. This introduces new % chktex 36
+ownership for \cinline{front->next}, the condition is guaranteed to always be
+false in a context with ownership of \cinline{back}.
+
+The root of the problem is the combination of automatically deriving logical
+facts based on the resource context, and the auto-unfolding scheme for
+recursive predicates. Intuitively, the problem is that the constraints on, and
+behaviour of pointers changes after they have been owned. A potential remedy
+for this is a monotonic dataflow analysis.
+
+Informally, for a block of (mutually) recursive predicates, all parameters
+start off marked as safe. The predicates are evaluated symbolically, and any
+variables used in the argument of \cninline{RW}/\cninline{W} predicate are then
+marked as unsafe. Those unsafe variables cannot then be used inside the
+condition of an \cninline{if}-expression which is guarding a (mutually)
+recursive call.
+
+In the above example, at line 4, \cninline{front} is safe, but after line 5
+\cninline{front} is unsafe. The call on line 6 then propogates that information
+to the parameter on lines 11. Finally, line 15 has the condition which guards
+the recursive call on line 18. Because \cninline{front} is unsafe, its use in
+on line 15 is rejected.
+
 \chapter{Conclusion}%
 \label{chap:conclusion}
 
@@ -62,8 +862,6 @@ discuss the remaining aspects here.
 % Increasing expressiveness of \kl{CN} means adding support for more C features,
 % and in tow, a richer separation logic.
 \begin{itemize}
-    \item \textbf{Support for unions.} This is a type system design
-        question, and is expected to be straightforward.
     \item \textbf{User-defined variadic functions.} I believe the types of
         \kl{CN} are rich enough to support this, but supporting the
         \kl{Cerberus} constructs which enable this will require more work.
@@ -72,7 +870,7 @@ discuss the remaining aspects here.
         be considerable departure from the current design and require
         thinking deeply about reasonable schemes and expectations for
         automation.
-    \item \textbf{Standard library support.} Full support for the above 
+    \item \textbf{Standard library support.} Full support for the above
         two features should allow this straightforwardly, though
         there may be considerable engineering involved.
     \item \textbf{Locks and relaxed-memory concurrency.} A first-order solution
@@ -95,10 +893,22 @@ discuss the remaining aspects here.
 \section{More performance}
 
 \begin{itemize}
-    \item \textbf{Inferring join-points for resource contexts.} If this
-        was possible, even many if not all cases, then this would
-        reduce the chances of state-explosion affecting verification
-        complexity.
+    \item \textbf{Perform a `mem2reg' pass on \kl{Core}.} Representing stack
+        variables whose address is not taken as resources is unnecessary.
+        Transforming memory actions on such locations into immutable \kl{Core}
+        variables and expressions, akin to the \kl{LLVM} memory-to-register
+        pass (mem2reg), would reduce the amount of resource inference,
+        bounds-checking, disjointness reasonsing required of the \kl{SMT}
+        solver.
+    \item \textbf{Use ownership typing.} Whilst low-level systems C code relies
+        on aliasing pointers, most code and most pointers are not aliasing. Hence,
+        a more restrictive discipline handled quickly for those common
+        situaitons, for example using Rust-style borrow-checking as a type
+        system,\sidenote{\url{https://smallcultfollowing.com/babysteps/blog/2024/03/04/borrow-checking-without-lifetimes}}
+        could allow users to benefit from fast checking by default, and opt-in to a slower,
+        more general scheme as needed. For this to work, the ownership
+        discipline would need to be expressible in terms of \kl{CN}'s resource
+        logic.
     \item \textbf{Optimising solvers for typical queries.} It seems
         likely that the types of queries \kl{CN} will typically send a
         solver are quite amenable to automation, especially related

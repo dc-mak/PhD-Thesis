@@ -251,7 +251,7 @@ example loose evaluation order and coercions respectively, by making them all
         on line 7 would prevent UB in this example.}\label{fig:perplexing-ub}
 \end{marginfigure}
 
-\section{Core grammar}
+\section{Core grammar}\label{sec:core-grammar}
 
 Instead of working directly over something similar to C and trying to express
 static and dynamic semantics over something so complex, \kl{Cerberus}
@@ -365,8 +365,8 @@ expression.\sidenote{Since this does not manipulate the heap or the stack, it
 {\small%
 \[
 \inferrule[{[Save]}]
-  { \cncomp{\cnnt{e}_i \Downarrow{} \cnnt{value}_i}{i} }
-  { \cnkw{save} \, \cnnt{id} \left( \cncomp{x_i \cnkw{:=} e_i}{i} \right) \, \cnkw{in} \, \cnnt{E}
+  { \cncomp{\cnnt{pce}_i \Downarrow{} \cnnt{value}_i}{i} }
+  { \cnkw{save} \, \cnnt{id} \left( \cncomp{x_i \cnkw{:=} \cnnt{pce}_i}{i} \right) \, \cnkw{in} \, \cnnt{E}
     \rightsquigarrow \left[ \cncomp{ \cnnt{value}_i / x_i }{i} \right] E }
 \]}
 
@@ -382,8 +382,8 @@ stack $\kappa$ is unchanged.
 \[
 \inferrule[{[Run]}]
   { \mathrm{labelmap} ( \cnnt{id} ) = \left(\cncomp{x_i}{i}\right).\ C_{\cnnt{id}} [ E_{\cnnt{id}} ] \\
-    \cncomp{e_i \Downarrow \cnnt{value}_i}{i} }
-  { \langle h , C\left[ \cnkw{run}\, \cnnt{id} \left( \cncomp{e_i}{i} \right) \right] , \kappa \rangle
+    \cncomp{\cnnt{pce}_i \Downarrow \cnnt{value}_i}{i} }
+  { \langle h , C\left[ \cnkw{run}\, \cnnt{id} \left( \cncomp{\cnnt{pce}_i}{i} \right) \right] , \kappa \rangle
     \rightarrow \left< h , C_{\cnnt{id}} \left[ \left[ \cncomp{\cnnt{value}_i / x_i}{i} \right] E_{\cnnt{id}} \right] , \kappa \right> }
 \]}
 
@@ -434,7 +434,7 @@ their effects.\sidenote{$\cnkw{let}\ \cnkw{strong}\ \cnnt{pat}\ \cnkw{=}\
     ($\cnkw{neg}(\cnnt{action})$) performed by $\cnnt{E}_1$ are
     unsequenced with respect to all memory actions performed by $\cnnt{E}_2$.
     A race only occurs if unsequenced memory actions have overlapping
-   footprints, and is deemed \kl{UB}.}
+    footprints, and is deemed \kl{UB}.}\label{sn:sequencing}
 In this example, weak sequencing has no observable effect, and so is
 safe to read as \coreinline{let strong}.
 
@@ -1001,7 +1001,7 @@ append from \cref{fig:append-annot,fig:list-pred}, reproduced in
 \cref{fig:append-annot-formal,fig:list-pred-formal} for convenience.
 
 \begin{marginfigure}
-    \small
+    \small%
     \centering
     \begin{align*}
         \mathrm{list} &(\mathsf{p}, l) \mathrel{{=}^\mathrm{def}} \\
@@ -1115,6 +1115,7 @@ production in the grammar for \kl{linear} \kl{resource types}
 (\cref{fig:kernel-res}), stays within the precise fragment.
 
 \begin{marginfigure}
+\small%
 \begin{mathpar}
     \mathsf{emp}
     \and p \mapsto v
@@ -1143,6 +1144,7 @@ definition of precise, despite including a disjunction in its definition
 (\cref{fig:list-pred-formal}).
 
 \begin{marginfigure}
+\small%
 \begin{mathpar}
     \mathsf{true}
     \and \mathsf{emp} \vee{} \mathsf{x} \mapsto{} 42
@@ -1207,6 +1209,7 @@ elsewhere in an output position.
 
 \begin{marginfigure}
     \centering
+    \small%
     \begin{align*}
         \_ \mapsto{} \_ \:&: \mathrm{Loc}^{\mathsf{in}} \times \mathrm{Value}^{\mathsf{out}} \rightarrow \mathrm{Prop} \\
         \mathrm{list} \:&: \mathrm{Loc}^{\mathsf{in}} \times \mathrm{IntList}^{\mathsf{out}} \rightarrow \mathrm{Prop}
@@ -1244,14 +1247,15 @@ weighting'' to input and outputs, this form makes the input role of
 $\mathrm{Loc}$ and the output role of $\mathrm{IntList}$ very natural.
 
 \begin{marginfigure}
+    \small%
     \begin{align*}
-        &\llbracket \_ \rrbracket \::\: \mathcal{P}(\tau) \rightarrow (\tau \rightarrow \mathsf{Prop}) \\
+        &\llbracket \_ \rrbracket \::\: \tau \rightarrow (\tau \rightarrow \mathsf{Prop}) \\
         &\llbracket \mathsf{return}\ t \rrbracket = \lambda a.\ t = a \wedge{} \mathsf{emp} \\
         &\llbracket \mathsf{Own(t)} \rrbracket = \lambda a.\ t \mapsto{} a \\
         &\llbracket \mathsf{let\ x} = e; e' \rrbracket \\
-        &\qquad = \lambda a.\ \exists x.\ \llbracket e \rrbracket x \astRef{} \llbracket e' \rrbracket a \\
+        &\: = \lambda a.\ \exists x.\ \llbracket e \rrbracket x \astRef{} \llbracket e' \rrbracket a \\
         &\llbracket \mathsf{if}\ t\ \mathsf{then}\ e\ \mathsf{else}\ e' \rrbracket \\
-        &\qquad = \lambda a.\  \left( t \wedge \llbracket e \rrbracket a \right) \vee \left( \neg\;t \wedge \llbracket e' \rrbracket a \right)
+        &\: = \lambda a.\  \left( t \wedge \llbracket e \rrbracket a \right) \vee \left( \neg t \wedge \llbracket e' \rrbracket a \right)
     \end{align*}
     \caption{Monadic syntax for separation logic, along with a translation into the traditional presentations. Pure
         terms are denoted by $t$, and monadic expression are denoted with $e$.}\label{fig:monad-sl}
