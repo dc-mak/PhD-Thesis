@@ -748,8 +748,8 @@ $\cnkw{assert}(b)$ to $\cnkw{default}\,\beta$, but a sketch is given below.
 
 \section{Predicate definition checks}
 
-\kl{CN} can diverge on certain inputs. Below is a small example to illustrate
-the problem, and later, a solution.
+\kl{CN}'s resource inference can diverge on certain inputs. Below is a small
+example to illustrate the problem, and later, a solution.
 
 \cfile[lastline=21]{code/diverge.c}
 
@@ -893,6 +893,22 @@ discuss the remaining aspects here.
 \section{More performance}
 
 \begin{itemize}
+    \item \textbf{Perform a `mem2reg' pass on \kl{Core}.} Representing stack
+        variables whose address is not taken as resources is unnecessary.
+        Transforming memory actions on such locations into immutable \kl{Core}
+        variables and expressions, akin to the \kl{LLVM} memory-to-register
+        pass (mem2reg), would reduce the amount of resource inference,
+        bounds-checking, disjointness reasonsing required of the \kl{SMT}
+        solver.
+    \item \textbf{Use ownership typing.} Whilst low-level systems C code relies
+        on aliasing pointers, most code and most pointers are not aliasing. Hence,
+        a more restrictive discipline handled quickly for those common
+        situaitons, for example using Rust-style borrow-checking as a type
+        system,\sidenote{\url{https://smallcultfollowing.com/babysteps/blog/2024/03/04/borrow-checking-without-lifetimes}}
+        could allow users to benefit from fast checking by default, and opt-in to a slower,
+        more general scheme as needed. For this to work, the ownership
+        discipline would need to be expressible in terms of \kl{CN}'s resource
+        logic.
     \item \textbf{Optimising solvers for typical queries.} It seems
         likely that the types of queries \kl{CN} will typically send a
         solver are quite amenable to automation, especially related
