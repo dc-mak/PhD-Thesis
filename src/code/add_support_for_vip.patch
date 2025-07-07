@@ -111,7 +111,7 @@ index d8e724f..440a2cb 100644
 +++ queue_cn_types_2.h
 @@ -5,6 +5,7 @@ predicate (datatype seq) QueueFB (pointer front, pointer back) {
    } else {
-     take B = Owned<struct queue_cell>(back);
+     take B = RW<struct queue_cell>(back);
      assert (is_null(B.next));
 +    assert (ptr_eq(front, back) || !addr_eq(front, back));
      take L = QueueAux (front, back);
@@ -124,7 +124,7 @@ index 99f22eb..83deddf 100644
 @@ -4,7 +4,8 @@ predicate (datatype seq) QueueAux (pointer f, pointer b) {
      return Seq_Nil{};
    } else {
-     take F = Owned<struct queue_cell>(f);
+     take F = RW<struct queue_cell>(f);
      assert (!is_null(F.next));
 +    assert (ptr_eq(F.next, b) || !addr_eq(F.next, b));
      take B = QueueAux(F.next, b);
@@ -140,13 +140,13 @@ index 9d0f897..dc1b012 100644
    requires
 +      ptr_eq(front, second_last) || !addr_eq(front, second_last);
        take Q = QueueAux(front, second_last);
-       take Second_last = Owned(second_last);
+       take Second_last = RW(second_last);
        ptr_eq(Second_last.next, last);
-       take Last = Owned(last);
+       take Last = RW(last);
    ensures
 +      ptr_eq(front, last) || !addr_eq(front, last);
        take NewQ = QueueAux(front, last);
-       take Last2 = Owned(last);
+       take Last2 = RW(last);
        NewQ == snoc(Q, Second_last.first);
 diff --git queue_push_lemma.h queue_push_lemma.h
 index d3052dc..a93abe5 100644
@@ -158,7 +158,7 @@ index d3052dc..a93abe5 100644
    requires
 +      ptr_eq(front, p) || !addr_eq(front, p);
        take Q = QueueAux(front, p);
-       take P = Owned<struct queue_cell>(p);
+       take P = RW<struct queue_cell>(p);
    ensures
 +      ptr_eq(front, P.next) || !addr_eq(front, P.next);
        take NewQ = QueueAux(front, P.next);

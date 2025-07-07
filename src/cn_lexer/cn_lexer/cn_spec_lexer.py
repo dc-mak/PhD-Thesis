@@ -10,13 +10,14 @@ class CNSpecLexer(RegexLexer):
             # Handle line comments inside spec code
             (r'//[^\n]*', Comment.Single),
             # Keywords
-            (r'\b(datatype|function|predicate|lemma|requires|ensures|take|assert|match|return|if|else|apply)\b', Keyword),
+            (r'\b(datatype|function|predicate|lemma|requires|ensures|take|assert|match|return|if|else|apply|each|extract)\b', Keyword),
             # Types
-            (r'\b(i32|pointer|struct|RW|W|Nil|Cons)\b', Name.Class),
+            (r'\b(i32|u64|pointer|struct|RW|W|Nil|Cons)\b', Name.Class),
             # Identifiers
             (r'[A-Za-z_][A-Za-z0-9_]*', Name),
             # Numbers
             (r'\b\d+i32\b', Number.Integer),
+            (r'\b\d+u64\b', Number.Integer),
             (r'\b\d+\b', Number.Integer),
             # Operators and punctuation
             (r'[\{\}\[\]\(\)\.,:;]', Punctuation),
