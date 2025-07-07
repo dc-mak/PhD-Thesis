@@ -666,7 +666,7 @@ Where in separation logic, we may say $p \mapsto v$ for arbitrary expressions
 $p$ and $v$, in \kl{CN}, we restrict it so that $v$ is always a variable, akin
 to $\exists{} v.\ p \mapsto v \wedge v = e$ for some expression $e$. For both
 usability and technical reasons explained later (\cref{sec:monadic-syntax}), we
-write this as \cninline{take v = Owned(p);}. % chktex 36
+write this as \cninline{take v = RW(p);}. % chktex 36
 
 \begin{marginfigure}
     \centering
@@ -675,15 +675,15 @@ write this as \cninline{take v = Owned(p);}. % chktex 36
 \end{marginfigure}
 
 This generalises to work with arrays, with syntax of the form
-\cninline[breaklines,breakafter=\{=()]{take arr = each (u64 i; .. ) { Owned(p) };}, % chktex 26 chktex 37 chktex 36
+\cninline[breaklines,breakafter=\{=()]{take arr = each (u64 i; .. ) { RW(p) };}, % chktex 26 chktex 37 chktex 36
 called \intro{quantified} or \intro{iterated} resources, for the pre- and
 postconditions of the function. \kl{CN} can also handle (in a limited, careful
 fashion to preserve decidability) \intro{quantified constraints}, such as the
 one in the postcondition of \cref{fig:owned-array}, to express constraints
-about the elements of an array. Within the \cninline{Owned}, we express the
+about the elements of an array. Within the \cninline{RW}, we express the
 location with \cninline{array_shift(p,i)}, which is the specification language % chktex 36
 equivalent of pointer arithmetic in \cinline{&p[i]}. Within the body of the
-function, we use a \intro{CN statement}, \cninline{extract Owned<int>, 0u64;},
+function, we use a \intro{CN statement}, \cninline{extract RW<int>, 0u64;},
 which acts a proof hint to \kl{CN} to tell which index of the \kl{iterated}
 resource we wish to read or write from.
 
@@ -699,17 +699,17 @@ resource we wish to read or write from.
 \kl{Iterated} resources are powerful because they supports random access
 (unlike a recursive predicate over an array, which would fix the order of
 traversal).~\cref{fig:init-arr-rev} shows how \kl{CN} can transform an array of
-uninitialised values (\cninline{Block}s) from the precondition, into an array
-of initialised values (\cninline{Owned}s) in the postcondition, by looping over
+uninitialised values (\cninline{W}s) from the precondition, into an array
+of initialised values (\cninline{RW}s) in the postcondition, by looping over
 it \emph{in reverse}. All loops in \kl{CN} must be annotated with \intro{loop
 invariants}, which are mostly as expected with exception of the verbose and
 confusing \cninline|{_} unchanged|
 syntax,\sidenote{\url{https://github.com/rems-project/cerberus/issues/443}}
 which tells CN that the loop does not mutate the function arguments.
 
-Within the loop, writing to a \cninline{Block} (or an \cninline{Owned}) transforms
-it into a new \cninline{Owned}. We need two \cninline{extract}s to tell CN we
-wish to first take a \cninline{Block} out of \cinline{Uninit} and then move
+Within the loop, writing to a \cninline{W} (or an \cninline{RW}) transforms
+it into a new \cninline{RW}. We need two \cninline{extract}s to tell CN we
+wish to first take a \cninline{W} out of \cinline{Uninit} and then move
 it into the \cninline{Init}.
 
 \begin{figure*}[tp]

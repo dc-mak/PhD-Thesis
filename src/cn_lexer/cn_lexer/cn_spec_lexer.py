@@ -12,7 +12,7 @@ class CNSpecLexer(RegexLexer):
             # Keywords
             (r'\b(datatype|function|predicate|lemma|requires|ensures|take|assert|match|return|if|else|apply)\b', Keyword),
             # Types
-            (r'\b(i32|pointer|struct|Owned|Nil|Cons)\b', Name.Class),
+            (r'\b(i32|pointer|struct|RW|W|Nil|Cons)\b', Name.Class),
             # Identifiers
             (r'[A-Za-z_][A-Za-z0-9_]*', Name),
             # Numbers
