@@ -1,17 +1,18 @@
-\chapter{\kl{CN} Comparsion and Feedback}
+\chapter{\kl{CN} Comparison and Feedback}
 
 \margintoc{}
 
 In this chapter, I will discuss the reality and expectations of how usable a
 verification tool for C \emph{can} be at this stage. I will start with my brief
 and informal comparison between \kl{CN} and similar tools, based on my
-experience of verifying \kl{pKVM}'s simpler \emph{early} allocator, in \kl{CN},
-\kl{VeriFast}~\sidecite{jacobs2011verifast} and
-\kl{Frama-C}\sidecite{baudin2021dogged}.\sidenote{\url{https://github.com/rems-project/CN-pKVM-early-allocator-case-study}}
-I will also discuss a \kl{RefinedC} verification of the same, which was
-completed by the developers~\sidecite{sammler2021refinedc}. Part of this
-comparison was featured in~\sidetextcite{pulte2023cn}, including the annotation
-overhead and execution times.
+experience of verifying \kl{pKVM}'s simpler
+\href{https://github.com/rems-project/CN-pKVM-early-allocator-case-study}{\emph{early}
+allocator}, in \kl{CN}, \kl{VeriFast}~\cite{jacobs2011verifast} and
+\kl{Frama-C}\cite{baudin2021dogged}.\sidenote{\url{}} I will also discuss a
+\kl{RefinedC} verification of the same, which was completed by the
+developers~\cite{sammler2021refinedc}. Part of this comparison was featured
+in~\textcite{pulte2023cn}, including the annotation overhead and execution
+times.
 
 After that, I will discuss some feedback given by some industry partners on
 \kl{CN}. As an academic, these seem borderline unreasonable, especially when
@@ -49,7 +50,7 @@ the loop index. This version of \kl{CN} required manually folding and unfolding
 predicates, but inferred indices, and so the body of the loop features
 annotations to do the former.
 
-\cfile[fontsize=\footnotesize,breaklines,lastline=18]{code/cn_early_alloc.c}
+\cfile[fontsize=\footnotesize,breaklines,lastline=18,highlightlines={2-4,7-11,13,15}]{code/cn_early_alloc.c} % chktex 8
 
 The second version is to allocate a zeroed page. It accesses two global
 variables, \cinline{cur} which marks the current pointer of the allocator, and
@@ -64,7 +65,7 @@ returned value is the base address of an array of bytes. The body of the
 function simply unfolds and folds the \cninline{EarlyAlloc} predicate,
 incrementing the pointer by the page size in between.
 
-\cfile[fontsize=\footnotesize,breaklines,firstline=20]{code/cn_early_alloc.c}
+\cfile[fontsize=\footnotesize,breaklines,firstline=20,highlightlines={21-26,28,38}]{code/cn_early_alloc.c} % chktex 8
 
 \subsection{Early allocator in VeriFast}
 
@@ -83,7 +84,7 @@ defined; and is marked as precise. This allows \kl{VeriFast} to unfold
 loop invariant is expressed in Tuerk-style,\sidecite{tuerk2010local} but
 regular loop-invariants are supported too.
 
-\cfile[fontsize=\footnotesize,breaklines,lastline=13]{code/verifast_early_alloc.c}
+\cfile[fontsize=\footnotesize,breaklines,lastline=13,highlightlines={2,3,7,8}]{code/verifast_early_alloc.c}
 
 If \kl{VeriFast} does not support iterated separating conjunctions, then how
 does it support the indexing in this example without lemmas? The answer lies in
@@ -115,7 +116,7 @@ that generalised \cninline{character} relating a current and end pointer to a
 function that I defined, which creates a list of only \cninline{item} of length
 \cninline{count}.
 
-\cfile[fontsize=\footnotesize,breaklines,lastline=2]{code/verifast_alt_loop.c}
+\cfile[fontsize=\footnotesize,breaklines,lastline=2,highlightlines={1,2}]{code/verifast_alt_loop.c}
 
 \kl{VeriFast} generally has good support for automation, and the ability to
 state and prove lemmas (pure and resourceful) from within the system itself.
@@ -132,14 +133,14 @@ exactly when needed. Marking it as an automatic lemma without a trigger worked,
 but it slowed down verification considerably: usable in batch mode, a not usable
 interactively. There is no fallback to external assistants.
 
-\cfile[fontsize=\footnotesize,breaklines,firstline=3]{code/verifast_alt_loop.c}
+\cfile[fontsize=\footnotesize,breaklines,firstline=4,highlightlines={5-28}]{code/verifast_alt_loop.c} % chktex 8
 
 Like \kl{CN}, \kl{VeriFast} also requires annotations to read (and write)
 global variables. The rest of the specification is very similar to the \kl{CN}
 one; the \cninline{earlyAlloc} predicate could be marked as precise, this would
 have removed the need for the unfolding and folding statements.
 
-\cfile[fontsize=\footnotesize,breaklines,firstline=15]{code/verifast_early_alloc.c}
+\cfile[fontsize=\footnotesize,breaklines,firstline=15,highlightlines={16-22,24,34}]{code/verifast_early_alloc.c} % chktex 8
 
 \kl{VeriFast} has a similar (but slightly smaller) annotation overhead to
 \kl{CN}\@. Though I did not use them, fractional permissions are also
@@ -159,11 +160,11 @@ following. The semicolon is to mark the predicate as precise, and to separate
 input arguments from output ones. Confusingly, it fails, with an error `no
 matching heap chunks s2\_x(..)'. % chktex 36
 
-\cfile[fontsize=\footnotesize,breaklines,lastline=15]{code/verifast_structs.c}
+\cfile[fontsize=\footnotesize,breaklines,lastline=15,highlightlines={4,5,8,9}]{code/verifast_structs.c}
 
 However, changing the predicate definition to explicitly mention the fields in
 the \cinline{inner} struct allows it to pass.
-\cfile[fontsize=\footnotesize,breaklines,firstline=17,lastline=18]{code/verifast_structs.c}
+\cfile[fontsize=\footnotesize,breaklines,firstline=17,lastline=17,highlightlines={17}]{code/verifast_structs.c}
 
 This strikes me as unusual because any changes to the representation of
 \cinline{struct s2} are no longer encapsulated fields of that type. In \kl{CN},
@@ -179,7 +180,7 @@ adjusting the specification to link the output value \cninline|?val| of the
 field to the output value of its member, causes the verification to fail again,
 this time saying that it cannot prove \cninline|in.x == 1|.
 
-\cfile[fontsize=\footnotesize,breaklines,firstline=19,lastline=20]{code/verifast_structs.c}
+\cfile[fontsize=\footnotesize,breaklines,firstline=19,lastline=20,highlightlines={19,20}]{code/verifast_structs.c}
 
 To be clear: I know I am at fault, and specifying things incorrectly. I am
 quite confident such an example can be verified in \kl{VeriFast}. My point is
@@ -357,12 +358,12 @@ to the next chapter.
 
 \margintoc{}
 
-In the last chapter, I compared \kl{CN} to some relevant tools in the
-space,\sidenote{A notable omission was \kl{VST}, mostly due to lack of time and
-expertise for a fair comparison.} and I presented industry feedback on \kl{CN}.
-Based on my experience of having worked on programming language tooling both in
-industry and in academia, I will synthesise the two and lay out what I believe
-are achievable standards of usability for \kl{CN}, with an emphasis on how new
+In the last chapter, I compared \kl{CN} to some relevant tools in the space. A
+notable omission was \kl{VST}, mostly due to lack of time and expertise for a
+fair comparison. I also presented industry feedback on \kl{CN}. Based on my
+experience of having worked on programming language tooling both in industry
+and in academia, I will synthesise the two and lay out what I believe are
+achievable standards of usability for \kl{CN}, with an emphasis on how new
 projects can avoid several pitfalls.
 
 \section{Work backwards from examples}
@@ -377,7 +378,7 @@ Whilst this produced a successful paper, this over-fitted \kl{CN} to the example
 More concretely, it meant that we had accrued significant technical and design
 debt, which became more obvious by the time it came to specifying and verifying
 more pedestrian examples, such as those now in the \kl{CN
-tutorial}~\sidecite{pulte2024tutorial}.
+tutorial}~\cite{pulte2024tutorial}.
 
 Many of the features mentioned in \cref{chap:inform-impl} might have been
 incorporated earlier. An obvious candidate is unifying the syntax for
@@ -587,12 +588,12 @@ failing \emph{for the same reason} (we would not a division-by-zero test
 changing its behaviour after a change to the memory-object model).
 
 To assist with this, I wrote a small but increasingly sophisticated Python
-script\sidenote{\href{https://github.com/rems-project/cerberus/pull/703}{Cerberus
-\#703}.} to run a given program, in a particular configuration (consisting a
-name, a filter on file names, and arguments to the program) and capture and
-check the return codes and all the output, against a pre-existing file. If
-there is a difference, the program will raise an error, and also provide a diff
-the developer can apply \emph{across some or all of the affected files} if the
+script\sidenote{\href{https://github.com/rems-project/cerberus/pull/703}{Cerberus\#703}.}
+to run a given program, in a particular configuration (consisting a name, a
+filter on file names, and arguments to the program) and capture and check the
+return codes and all the output, against a pre-existing file. If there is a
+difference, the program will raise an error, and also provide a diff the
+developer can apply \emph{across some or all of the affected files} if the
 change is expected.
 
 \subsection{Profile early and often, at the right level}\label{subsec:profile}
@@ -686,9 +687,9 @@ most important reason for this is that \emph{the output from \kl{CN} can and
 will be used by other tooling, to provide editor services and
 GUIs}.\sidenote{For example,
 \href{https://github.com/rems-project/cerberus/issues/286}{cn \-\-json
-can produce non-JSON output \#286} and
+can produce non-JSON output (Cerberus\#286)} and
 \href{https://github.com/rems-project/cerberus/issues/221}{Flycheck
-support \#221}.}\label{sn:gui-issues} At the time of writing, there are 185 uses of
+support (Cerberus\#221)}.}\label{sn:gui-issues} At the time of writing, there are 185 uses of
 \ocamlinline{failwith} and 297 uses \ocamlinline{assert} in the code
 base, all of which can cause backtraces, and make it difficult for
 tools to build on top of \kl{CN}. Whilst it is possible to work
@@ -742,7 +743,7 @@ server\sidenote{\url{https://github.com/rems-project/cn-lsp-server}} and
 client\sidenote{\url{https://github.com/rems-project/cn-lsp-client}} I
 prototyped (\cref{fig:lsp-state,fig:lsp-extra}).
 
-\begin{figure*}[htp]
+\begin{figure*}[tp]
     \includegraphics{figures/lsp-structs9-state.png}
     \caption{LSP server and client I prototyped using \kl{CN}'s temperamental
         JSON output. It shows the counter-example for why signed integer
@@ -805,16 +806,15 @@ This prevented code re-use, complicated the code and introduced subtle
 location bugs because of accidentally re-using shared mutable token
 buffers. I simplified the lexer and parser to avoid this, and in the
 process improved and unified the error-reporting for parsing C and
-\kl{CN}.\sidenote{\href{https://github.com/rems-project/cerberus/pull/252}{Cerberus
-\#252}.}
+\kl{CN}.\sidenote{\href{https://github.com/rems-project/cerberus/pull/252}{Cerberus\#252}.}
 
 \subsection{Investigate strange source locations}
 
 Strange source locations are
 bugs which deserve to be investigated, or at the very least, have their
 triggers documented. One such
-issue\sidenote{\href{https://github.com/rems-project/cerberus/issues/382}{Cerberus
-\#382}.} uncovered a subtle interaction between the `lexer hack' used to parse
+issue\sidenote{\href{https://github.com/rems-project/cerberus/issues/382}{Cerberus\#382}.}
+uncovered a subtle interaction between the `lexer hack' used to parse
 C11~\sidecite{jourdan2017simple}, and a token buffer feature offered by
 \kl{Menhir} for more helpful error messages. Again, the issue was mutable state
 which was accidentally shared across what should be separate, fresh instances
@@ -835,8 +835,8 @@ Because the type representing this term was large, and used in many places,
 this made adding the location information after the fact much more tedious and
 painful, and adding new code only exacerbates this further. Eventually, I spent
 about one month fixing this
-problem.\sidenote{\href{https://github.com/rems-project/cerberus/pull/225}{Cerberus
-\#225}.} Whilst in some cases, threading source location through was obvious,
+problem.\sidenote{\href{https://github.com/rems-project/cerberus/pull/225}{Cerberus\#225}.}
+Whilst in some cases, threading source location through was obvious,
 in many cases it is not. The question then arises: is it better to have all
 terms have source location information, even if some of it is approximate,
 or to have missing location information, but be confident about the ones
@@ -902,8 +902,8 @@ parsing "cn_statement": seen "ASSERT", expecting "LPAREN assert_expr RPAREN SEMI
 
 Of course, it is better to fill these and the remainder (593) manually, as I
 demonstrated for one
-case.\sidenote{\href{https://github.com/rems-project/cerberus/issues/245}{Cerberus
-\#245}.} Details of how best to do so are in the \kl{Menhir} manual, along with
+case.\sidenote{\href{https://github.com/rems-project/cerberus/issues/245}{Cerberus\#245}.}
+Details of how best to do so are in the \kl{Menhir} manual, along with
 examples and links to how \kl{CompCert} uses it for its C parser (proof that
 the approach can be scaled). For the cases I did not auto-generate, I
 output an message which says that an error message is missing for the state
