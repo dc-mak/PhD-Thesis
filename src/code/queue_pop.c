@@ -17,8 +17,7 @@ int pop_queue (struct queue *q)
              Q != Nil{};
     ensures take Q_post = QueuePtr_At(q);
             Q_post == tl(Q);
-            return == hd(Q);
-@*/
+            return == hd(Q); @*/
 {
   /*@ split_case is_null(q->front); @*/
   struct queue_cell* h = q->front;

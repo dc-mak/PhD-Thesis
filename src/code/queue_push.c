@@ -13,8 +13,7 @@ lemma push_lemma (pointer front, pointer p)
 void push_queue (int x, struct queue *q)
 /*@ requires take Q = QueuePtr_At(q);
     ensures take Q_post = QueuePtr_At(q);
-            Q_post == Snoc (Q, x);
-@*/
+            Q_post == Snoc (Q, x); @*/
 {
   struct queue_cell *c = malloc_queue_cell();
   c->first = x;
