@@ -91,36 +91,30 @@ cost of C verification from a Rocq programmer who knows separation logic to a
 systems programmer who knows Haskell''} (\cref{sec:cn-intro}) helps narrow
 down the large design space of verification tools.
 
-The reason for picking this particular goal is in \kl{CN}'s origins as
-an attempt to verify the pKVM hypervisor, developed by Google.
+The reason for picking this particular goal is in \kl{CN}'s origins as an
+attempt to verify the pKVM hypervisor, developed by
+Google~\cite{deacon2020virtualization}.
 
-To explain pKVM, I need to situate it in its context: the Android
-operating system, which runs on billions of devices worldwide, plays a central role
-in many lives, including handling an enormous amount of sensitive data. This
-means that security is paramount, however because each device runs its own
-kernel (up to half the code is not Android's version of Linux), updates are
-very challenging and expensive to test and deploy to each device. Aside from
+To explain pKVM, I need to situate it in its context: the Android operating
+system, which runs on billions of devices worldwide, plays a central role in
+many lives, including handling an enormous amount of sensitive data. This means
+that security is paramount, however because each device runs its own kernel (up
+to half the code is not Android's version of Linux), updates are very
+challenging and expensive to test and deploy to each device. Aside from
 security issues, this also leads to fragmentation of Android, so devices and
 apps are not all up-to-date and the long delay (at least 18 months) between
 Linux and device releases makes it difficult to upstream features and fixes.%
-\sidenote{%
-TODO\@: cite these properly.
-\begin{itemize}
-    \item \url{https://youtu.be/7novnkldMmQ?feature=shared}
-    \item \url{https://youtu.be/wY-u6n75iXc?feature=shared} and \url{https://lwn.net/Articles/836693/}
-    \item \url{https://source.android.com/docs/core/architecture/kernel/generic-kernel-image}
-    \item \url{https://source.android.com/docs/core/virtualization/whyavf}
-    \item \url{https://googleprojectzero.blogspot.com/2020/02/mitigations-are-attack-surface-too.html}
-    \item \url{https://lpc.events/event/7/contributions/780/}
-\end{itemize}
-}
+
+% \url{https://youtu.be/7novnkldMmQ}
 
 Whilst some of this has been mitigated with the introduction of
-\intro[GKI]{Generic Kernel Images (GKI)}, which provide a small and stable
-kernel ABI \emph{for a particular long-term release} version of Android, there
-are still security issues present in this model, because the kernel is too
-large (20 million lines of code) to be a reasonable trusted computing base, and
-the drivers vendors ship with a device are part of it.
+\intro[GKI]{Generic Kernel Images
+(GKI)},\sidenote{\url{https://source.android.com/docs/core/architecture/kernel/generic-kernel-image}}
+which provide a small and stable kernel ABI \emph{for a particular long-term
+release} version of Android, there are still security issues present in this
+model, because the kernel is too large (20 million lines of code) to be a
+reasonable trusted computing base, and the drivers vendors ship with a device
+are part of it.
 
 Some manufacturers use hypervisors, which attempt to isolate the kernel from
 the rest of the system by running Android and other hardware components in
@@ -129,10 +123,11 @@ Aside from security, hypervisors are also used to partition memory at boot-time
 so that devices can use it for things like direct memory access, and run
 arbitrary code outside of Android, which is worrying because this code would
 run at a more privileged level than Android itself. All of this just
-\emph{shifts} the attack surface, and has also resulted in \emph{more}
-fragmentation at the hypervisor layer.
+\emph{shifts} the attack
+surface,\sidenote{\url{https://googleprojectzero.blogspot.com/2020/02/mitigations-are-attack-surface-too.html}}
+and has also resulted in \emph{more} fragmentation at the hypervisor layer.
 
-Similar to GKI, the proposed solution to standardise the hypervisor used. There
+Similar to \kl{GKI}, the proposed solution to standardise the hypervisor used. There
 is already a mature hypervisor which is part of the Linux kernel, the
 Kernel-based Virtual Machine (KVM)\@. It is set up so that a host kernel can
 dynamically allocate virtual machines for guests to run on, and protect the
@@ -143,15 +138,17 @@ running code for a secure hardware component (e.g.\ a biometric authenticator),
 the host could be a compromised version of Android, so an attacker could still
 get access to sensitive information.
 
-To solve this, Google, as part of the Android Virtualisation Framework, is
-developing a \intro[pKVM]{protected KVM (pKVM)}, which runs \emph{underneath}
-the kernel, and ships \emph{as part} of the kernel image. Not only does this
-tight coupling remove issues around ABI compatibility between the hypervisor
-and the kernel, since the source is always in the same repository, it also
-allows pKVM to commit to only handling implementing a select few functions such
-as virtual memory management and remain very small, and rely on the Linux
-kernel to manage the rest, such as scheduling, device drivers and power
-management.
+To solve this, Google, as part of the Android Virtualisation
+Framework,\sidenote{\url{https://source.android.com/docs/core/virtualization/whyavf}}
+is developing a \intro[pKVM]{protected KVM
+(pKVM)},\sidenote{\url{https://lpc.events/event/7/contributions/780/}} which
+runs \emph{underneath} the kernel, and ships \emph{as part} of the kernel
+image. Not only does this tight coupling remove issues around ABI compatibility
+between the hypervisor and the kernel, since the source is always in the same
+repository, it also allows pKVM to commit to only handling implementing a
+select few functions such as virtual memory management and remain very small,
+and rely on the Linux kernel to manage the rest, such as scheduling, device
+drivers and power management.
 
 If successful, this could make the attack surface a lot smaller, but it could
 also make it one that is used very widely. It is in this context that Google
@@ -1010,13 +1007,13 @@ append from \cref{fig:append-annot,fig:list-pred}, reproduced in
                       &\qquad (\mathsf{p} \mapsto{} {head}) \\
                       &\qquad \astRef{} (\mathsf{p} + 1 \mapsto{} \mathsf{p\_tail}) \\
                       &\qquad \astRef{} \mathrm{list} (\mathsf{p\_tail}, {tl}) \\
-                      &\qquad \astRef{} l = {head} {:}{:} {tl} \\
-    \end{align*}
+                      &\qquad \astRef{} l = {head} {:}{:} {tl}
+    \end{align*}%
     \caption{Definition of a recursive list predicate in a simple separation
         logic.}\label{fig:list-pred-formal}
 \end{marginfigure}
 
-\begin{figure}[h]
+\begin{figure}[tp]
     \inputminted[breaklines,mathescape,fontsize=\small]{py}{code/append_annot.py}
     \caption{A separation logic proof sketch of a linked integer list
         append.}\label{fig:append-annot-formal}
@@ -1255,7 +1252,7 @@ $\mathrm{Loc}$ and the output role of $\mathrm{IntList}$ very natural.
         &\llbracket \mathsf{let\ x} = e; e' \rrbracket \\
         &\: = \lambda a.\ \exists x.\ \llbracket e \rrbracket x \astRef{} \llbracket e' \rrbracket a \\
         &\llbracket \mathsf{if}\ t\ \mathsf{then}\ e\ \mathsf{else}\ e' \rrbracket \\
-        &\: = \lambda a.\  \left( t \wedge \llbracket e \rrbracket a \right) \vee \left( \neg t \wedge \llbracket e' \rrbracket a \right)
+        &\: = \lambda a.\  \left( t \wedge \llbracket e \rrbracket a \right) \vee \left( \neg \! t \wedge \llbracket e' \rrbracket a \right)
     \end{align*}
     \caption{Monadic syntax for separation logic, along with a translation into the traditional presentations. Pure
         terms are denoted by $t$, and monadic expression are denoted with $e$.}\label{fig:monad-sl}

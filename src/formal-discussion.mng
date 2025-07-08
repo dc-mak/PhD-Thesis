@@ -21,8 +21,8 @@ as technical debt. This chapter lists a few of these, and explains how the
 formalisation brings much needed clarity to many questions around the
 implementation.
 
-\url{https://github.com/rems-project/cerberus/labels/language}
-\url{https://github.com/rems-project/cerberus/labels/resource\%20reasoning}
+% \url{https://github.com/rems-project/cerberus/labels/language}
+% \url{https://github.com/rems-project/cerberus/labels/resource\%20reasoning}
 
 \section{Supporting partially initialised reads of structs/unions}\label{sec:partial-init-structs}
 
@@ -62,12 +62,11 @@ expressive enough for all of its use cases.
 
 \section{Auto unfolding scheme for logical functions}\label{sec:auto-unfold-functions}
 
-\url{https://github.com/rems-project/cerberus/issues/483}
-
-One of the strange parts of working with \kl{CN} is the predicate definitions are
-automatically unfolded but not logical functions, even though both may be
-recursive. As such there is separate and cumbersome annotation to manually
-unfold a function.
+One of the strange parts of working with \kl{CN} is the predicate definitions
+are automatically unfolded but not logical functions, even though both may be
+recursive.\sidenote{\href{https://github.com/rems-project/cerberus/issues/483}{Cerberus\#483}.}
+As such there is separate and cumbersome annotation to manually unfold a
+function.
 
 The way the implementation determines whether to unfold a predicate is
 to always unfold it if there is no top-level if, or to check if the condition
@@ -89,14 +88,14 @@ It is important to note that with automatic constraint-based unfolding, it is
 possible for users to write constraints (including via control flow) which make
 \kl{CN} diverge, and at this stage it is unclear how any well-foundedness
 checks on the definitions of predicates would prevent this particular failure
-mode.\sidenote{\url{https://github.com/rems-project/cerberus/issues/451}}
+mode.\sidenote{\href{https://github.com/rems-project/cerberus/issues/451}{Cerberus\#451}.}
 
 \section{Higher-order resources}
-\url{https://github.com/rems-project/cerberus/issues/363}
 
 If we want \kl{CN} to be used in real-world settings, it must support
-concurrency. We can use the formalisation to reflect on what changes
-would be needed to support this.
+concurrency.\sidenote{\href{https://github.com/rems-project/cerberus/issues/363}{Cerberus\#363}.}
+We can use the formalisation to reflect on what changes would be needed to
+support this.
 
 Fractional permissions would be useful to enable sharing. After that,
 the issue becomes what level of support would be useful and worth implementing
@@ -109,15 +108,13 @@ locks can be defined rather than an built-in feature, would be substantial
 change to the resource type definitions and rules.
 
 \section{Restrictions on branching}\label{sec:restriction-branching}
-\url{https://github.com/rems-project/cerberus/issues/483}
-\url{https://github.com/rems-project/cerberus/issues/266}
 
 As mentioned in~\nameref{sec:auto-unfold-functions}, the formalisation
 separates out two features (unfolding definitions, and selecting a branch of an
-ordered-disjunction) which are tied together in the implementation. One of
-the other places this shows up is in a restricted syntax for predicate definitions:
+ordered-disjunction) which are tied together in the implementation. One of the
+other places this shows up is in a restricted syntax for predicate definitions:
 they must either have no ordered-disjunctions, or only one, placed first at the
-top-level.
+top-level.\sidenote{\href{https://github.com/rems-project/cerberus/issues/266}{Cerberus\#266}}
 
 With the formalisation, not only can I show that that restriction is
 unnecessary, I can also shed light on how to change the implementation to lift it.
@@ -137,13 +134,13 @@ implementation and offer those options, with their own trade-offs, to other
 developers and users to decide which, if any, is preferable.
 
 \section{Removing the pointer first restriction on predicates}\label{sec:rm-ptr-first}
-\url{https://github.com/rems-project/cerberus/issues/303}
 
 Another awkward restriction in working with \kl{CN} is that the first argument
 to a predicate must always be a pointer. This is usually fine because it would
 be strange to speak of ownership without a pointer, but the pointer is derived
 from elsewhere (a fixed base pointer, but a given index), or sometimes the
-pointer is in a record and that is the easiest thing to pass in.
+pointer is in a record and that is the easiest thing to pass
+in.\sidenote{\href{https://github.com/rems-project/cerberus/issues/303}{Cerberus\#303}.}
 
 With the formalisation, we can estimate the impact of removing this restriction
 and see that the main thing we would lose is not in terms of typing fewer
@@ -156,21 +153,23 @@ either, because users currently can and do just use a dummy parameter.}
 
 \section{Unifying the syntax of functions, predicates and specifications}
 
-\url{https://github.com/rems-project/cerberus/issues/304}
+\url{}
 
 Syntax is part of the user-interface of \kl{CN}, and as such it is subject to
 strong constraints, strong scrutiny and strong opinions.
 
 Currently, logical (ghost) functions and predicates are separated (represented
-by different OCaml types) in the implementation. This is with good reason:
-the pure parts are shipped off to an SMT solver, but the heap parts are the
-domain of the resource reasoning. However, \kl{CN} also enforces this
-distinction syntactically, which is a perfectly valid choice, but it trades
-concision and occasional confusion when those worlds need to mix, for clarity
-in separating when the two do not.\sidenote{\url{https://github.com/rems-project/cerberus/issues/288}}
+by different OCaml types) in the implementation. This is with good reason: the
+pure parts are shipped off to an SMT solver, but the heap parts are the domain
+of the resource reasoning. However, \kl{CN} also enforces this distinction
+syntactically, which is a perfectly valid choice, but it trades concision and
+occasional confusion when those worlds need to
+mix,\sidenote{\href{https://github.com/rems-project/cerberus/issues/288}{Cerberus\#288}.}
+for clarity in separating when the two do not.
 
 Another equally valid choice would be to unify the two syntaxes and find some
-other way of enforcing the necessary distinction between the two worlds.
+other way of enforcing the necessary distinction between the two
+worlds.\sidenote{\href{https://github.com/rems-project/cerberus/issues/304}{Cerberus\#304}.}
 Exposing the monad implicit in the predicate syntax as a type constructor would
 achieve both, though at the cost of exposing developers to a fancier type
 system. As a programming-language theorist, I prefer this, though the ultimate
@@ -343,8 +342,7 @@ around this by passing around explicit continuations
 (\href{https://github.com/rems-project/cerberus/commit/350fefc675626dcc69c7adc9edea30ff9687b752}{commit
 350fefc6}). Another way of implementing this would be to have the type
 system's symbolic evaluation \emph{itself} specified as a non-determinism
-monad (\href{https://github.com/rems-project/cerberus/issues/730}{issue
-\#730}).}
+monad (\href{https://github.com/rems-project/cerberus/issues/730}{Cerberus\#730}).}
 
 \section{Lack of let-normalisation requires join-points}\label{sec:lack-let-norm}
 
