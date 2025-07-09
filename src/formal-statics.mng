@@ -12,7 +12,7 @@ separation logic assertions, monadic syntax for the latter and its relation to
 kernel syntax for types, let-normalisation and explicit resource terms in
 \kl{ResCore}. I use all of these ingredients in defining the type system for
 \kl{kernel CN} that I will explain in this chapter. Some of the sections will
-based on my contributions to~\sidetextcite[4.5cm]{pulte2023cn}.%
+based on my contributions to~\textcite{pulte2023cn}.%
 
 The \kl{Kernel CN} type system is ordinary \kl{CN}, defined over \kl{ResCore}
 instead of \kl{Core}, without any type or resource inference. In particular, it
@@ -364,7 +364,7 @@ for \coreinline{kill()} is the converse of the one for \coreinline{create()}, %
 chktex 36 in that it \emph{consumes} the ownership and allocation token for a
 location (premise 2), checks that the addresses and allocations being considered
 are the same (premises 3 and 4) and synthesises a return type with no
-resources.\sidenote{I need to add the rule for dynamic allocations.}
+resources.
 
 \begin{figure*}[tp]
     \small
@@ -472,9 +472,12 @@ function type before using the spine judgement.
 \begin{figure*}[tp]
     \small
     \raggedright{}
-    \cndefnExpr{}
+    \onlyUseRules{\cndefnExpr{}}{%
+        \cndruleExprXXCCall{},
+        \cndruleExprXXProc{}
+    }
     \onlyUseRules{\cndefnStmt{}}{
-        \cndefnStmtXXRetT{}
+        \cndruleStmtXXRetT{}
     }
     \caption{\kl{Kernel CN} typing rules for return-terms.}\label{fig:typing-ret-terms}
 \end{figure*}
@@ -698,8 +701,8 @@ argument $p +_\mathrm{ptr} i * \mathit{step}$ where $\mathit{step}$ is some
 constant integer. Given these, inferring an index (for either
 \coreinline{break}ing or \emph{glue}ing) reduced to $i = (p' - p) /
 \mathit{step}$ where $p'$ is the pointer in the first argument of the request
-predicate. This is made precise in \cref{fig:res-diff-break}.\sidenote{This
-allows for empty iterated remainder: change it?}  The judgement
+predicate. This is made precise in \cref{fig:res-diff-break}.\sidenote{TODO:\@
+This allows for empty iterated remainder: change it?}  The judgement
 $[[ N |- r : norm_res -? pred_ipred ~> res_diff ]]$
 says that given constraint context, a
 \kl{normalised} resource,\sidenote{Predicate (iterated) or an under-determined
@@ -777,7 +780,7 @@ terms) are the main things elaborated into the program.
         actions.}\label{fig:elab-action}
 \end{figure}
 
-\begin{figure*}[hb]
+\begin{figure*}[htp]
     \small
     \raggedright{}
     \onlyUseRules{\cndefnElabXXSpine{}}{%
@@ -843,10 +846,12 @@ this property is not completely trivial). The key one is the substitution
 lemma stated below.
 
 \begin{lemma}[Substitution lemma]
-If $[[ C' ; L' ; N ; R' ]] [[|-]] J$,
-then $[[forall]]\ [[ C ]], [[ L ]], [[ R ]], [[ subs ]].\
-\left( [[ C ; L ; subs ( N ) ; R |- subs <= ( C' ; L' ; R' ) ]] \right) [[=>]]\allowbreak
-[[ C ; L ; subs ( N ) ; R ]] [[|-]] [[ subs ]] ( J ) $.
+If $[[ C' ; L' ; N ; R' ]] [[|-]] J$, then
+\begin{align*}
+    [[forall]]\ [[ C ]], [[ L ]], &[[ R ]], [[ subs ]].\ \allowbreak
+    \left( [[ C ; L ; subs ( N ) ; R |- subs <= ( C' ; L' ; R' ) ]] \right) [[=>]] \\
+    &[[ C ; L ; subs ( N ) ; R ]] [[|-]] [[ subs ]] ( J ).
+\end{align*}
 
 For types, substitutions are only defined over resource types $[[res]]$, and
 return types $[[ret]]$, not base types $[[base_type]]$. Similarly,
@@ -1051,7 +1056,10 @@ inconvenient, it becomes necessary in the \textsc{Stmt\_Let} case.
 Second is in the lemma \nameref{subsec:wt_values_pat_match}.
 There are two substitutions at play here. As an example, let
 the value being matched be $[[ Cons ( Unit , Nil unit ( ) ) , ret_terms ]]$ and
-the pattern be $[[ comp Cons ( x1 , x2 ) , ret_pat ]]$.
+the pattern be
+\[
+    [[ comp Cons ( x1 , x2 ) , ret_pat ]].
+\]
 For the return type $[[ sigma y : list unit .: ret ]]$, the type-level
 substitution will be $[[ Cons ( x1 , x2 ) / y ( ret )]]$.  However, at the
 term-level, the substitution will be $[[ [ Unit / x1 , Nil unit ( ) / x2 ] ]]$.

@@ -2,10 +2,10 @@
 lemma snoc_facts (pointer front, pointer back, i32 x)
   requires
       take Q = QueueAux(front, back);
-      take B = Owned<struct queue_cell>(back);
+      take B = RW<struct queue_cell>(back);
   ensures
       take Q_post = QueueAux(front, back);
-      take B_post = Owned<struct queue_cell>(back);
+      take B_post = RW<struct queue_cell>(back);
       Q == Q_post; B == B_post;
       let L = snoc (Cons{Head: x, Tail: Q}, B.first);
       hd(L) == x;
@@ -17,8 +17,7 @@ int pop_queue (struct queue *q)
              Q != Nil{};
     ensures take Q_post = QueuePtr_At(q);
             Q_post == tl(Q);
-            return == hd(Q);
-@*/
+            return == hd(Q); @*/
 {
   /*@ split_case is_null(q->front); @*/
   struct queue_cell* h = q->front;

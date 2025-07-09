@@ -598,12 +598,12 @@ for $a \neq 0$. For integer types, $0 \sim \mathit{Int}\,(0)$ and $a \sim
 In addition to designing, formalising, and proving it sound, I also implemented
 CN-VIP\@. This was a substantial project which I worked on for about seven
 months, from August to October of 2023, and May, June, September and October
-of 2024.\sidenote{See
-    \href{https://github.com/search?q=repo\%3Arems-project\%2Fcerberus+author\%3Adc-mak\&type=commits\&s=committer-date\&o=asc}{my commits}
-    to the \kl{Cerberus} repository. In the intervening months, I
-    worked on a failed update to the buddy allocator of pKVM to work with
-    bitvectors (\cref{chap:buddy}), engineering for accurate source location
-    information (\cref{sec:error-msgs}), and MiniCN (\cref{chap:kernel-alternative}).}
+of 2024, based on
+\href{https://github.com/search?q=repo\%3Arems-project\%2Fcerberus+author\%3Adc-mak\&type=commits\&s=committer-date\&o=asc}{my
+commits} to the \kl{Cerberus} repository. In the intervening months, I worked
+on a failed update to the buddy allocator of pKVM to work with bitvectors
+(\cref{chap:buddy}), engineering for accurate source location information
+(\cref{sec:error-msgs}), and MiniCN (\cref{chap:kernel-alternative}).
 
 What made it more challenging was that it had to be developed and integrated
 piecemeal alongside other active \kl{CN} development.
@@ -682,7 +682,7 @@ A definition of a predicate is a record of a location, a symbol for the first
 pointer argument, a list of any other input arguments, a type for the output
 argument, and an optional list of clauses (the body, potentially guarded by a
 series of top-level ifs). The clauses represent the contents of the predicate,
-if it can be unfolded (\cninline{Owned} and \cninline{Block} are built-in and
+if it can be unfolded (\cninline{RW} and \cninline{W} are built-in and
 so cannot be unfolded).
 
 \ocamlfile{code/definition_predicate.ml}
@@ -819,7 +819,7 @@ is \emph{not} constrained, and so for that, I used macros
 (\cinline{NON_DET_TRUE} and \cinline{NON_DET_FALSE}) as a switch. I show the
 example from \cref{fig:nd-ptr-eq-example}, adapted to test CN VIP, below.
 
-\cfile[fontsize=\footnotesize,breaklines]{code/provenance_equality_global_yx.nondet.c}
+\cfile[fontsize=\footnotesize,breaklines,highlightlines={5,13-19}]{code/provenance_equality_global_yx.nondet.c} % chktex 8
 
 In addition to checking a variable is \emph{not} constrained, I also needed to
 check that some tests fail without \cinline{copy_alloc_id} annotations, and
@@ -828,7 +828,7 @@ and reconstruct and valid pointer address via an integer. Under VIP, the only
 way to recover its provenance is to use \cinline{copy_alloc_id}, so the test
 must be run both ways to ensure it errors and succeeds appropriately.
 
-\cfile[fontsize=\footnotesize,breaklines]{code/pointer_offset_xor_auto.annot.c}
+\cfile[fontsize=\footnotesize,breaklines,highlightlines={13-17,21,22}]{code/pointer_offset_xor_auto.annot.c} % chktex 8
 
 Finally there are tests which should just pass with no annotations, which I
 omit for space.
@@ -945,7 +945,7 @@ Deriving constraints is necessary for soundness but incurs a non-trivial
 performance penalty. Hence, there is a flag for disabling it (experimental).
 Care must also be taken to not re-derive the same facts, since this also seems
 to result in a performance hit to the SMT
-solver.\sidenote{\url{https://github.com/rems-project/cerberus/pull/436}}
+solver.\sidenote{\href{https://github.com/rems-project/cerberus/pull/436}{Cerberus\#436}.}
 
 \ocamlfile[firstline=37]{code/resource_derived_lc.ml}
 
@@ -968,7 +968,7 @@ saying the arrays are equal over the given range. This is because the SMT arrays
 are total (not finite), and stating a constraint which says the arrays are equal
 would spuriously fail with a counter-example index outside of the intended range.
 
-\cfile[fontsize=\footnotesize,breaklines,firstline=9,lastline=23]{code/pointer_copy_user_dataflow_direct_bytewise.c}
+\cfile[fontsize=\footnotesize,breaklines,firstline=9,lastline=23,highlightlines={10-22}]{code/pointer_copy_user_dataflow_direct_bytewise.c} % chktex 8
 
 To use this in the intended way, one has to use a lemma that the terms are
 equal at all indices. The proof of the lemma in Rocq would rely on the fact
@@ -976,7 +976,7 @@ that the terms are defined with respect to iterated resources which cover the
 same finite range.
 
 \begin{figure}[h]
-\cfile[fontsize=\footnotesize,breaklines]{code/cn_lemmas_byte_arrays_equal.h}
+\cfile[fontsize=\footnotesize,breaklines,highlightlines={2-17}]{code/cn_lemmas_byte_arrays_equal.h} % chktex 8
 \caption{\kl{CN} lemma that two ``byte'' (\cinline{unsigned char}) arrays
     are equal if they have the same elements over a finite range. This needs
     to be a lemma because of the mismatch between the intended finite nature
@@ -1010,7 +1010,7 @@ of the memory object model. Consider the below call to the
 \cinline{memcpy}, sans the application of the \cinline{byte_arrays_equal}
 lemma).
 
-\cfile[fontsize=\footnotesize,breaklines,firstline=48]{code/pointer_copy_user_dataflow_direct_bytewise.c}
+\cfile[fontsize=\footnotesize,breaklines,firstline=48,highlightlines={50,54,55,57-63,65-66}]{code/pointer_copy_user_dataflow_direct_bytewise.c} % chktex 8
 
 The issue is that upon converting ownership of pointers \cinline{&p} and
 \cinline{&q} into bytes, the type system loses the provenance they carry. And
@@ -1234,7 +1234,7 @@ middle of a function and bind its output \textemdash{} means that we are
 forced to mention resources to get a handle on the logical values of their
 output.
 
-\cfile[fontsize=\footnotesize,breaklines]{code/queue_pop_lemma.h}
+\cfile[fontsize=\footnotesize,breaklines,highlightlines={2-12}]{code/queue_pop_lemma.h} % chktex 8
 
 The lemma for pushing however (seen in the diff above), is more interesting,
 because it requires induction on a user-defined recursive resource predicate,
@@ -1249,7 +1249,7 @@ The lemma proved here includes an extra parameter and constraint on line 10 as
 a sanity check at the call site. It also includes ownership of the last node on
 line 11, which turns out to be necessary to prove the constraint on line 14.
 
-\cfile[fontsize=\footnotesize,breaklines,firstline=3,lastline=29]{code/queue_push_induction.c}
+\cfile[fontsize=\footnotesize,breaklines,firstline=3,lastline=29,highlightlines={7-18,22,26}]{code/queue_push_induction.c} % chktex 8
 
 The proof itself is simply a recursive C function, which follows the structure
 of the \cinline{QueueAux} predicate (\cref{fig:queue-aux-def}). In particular,
@@ -1257,7 +1257,7 @@ it can be seen as traversing the queue until the base case and adding the extra
 \cinline[breaklines]{struct queue_cell}.
 
 \begin{marginfigure}
-    \cfile[fontsize=\footnotesize,breaklines]{code/queue_aux.h}
+    \cfile[fontsize=\footnotesize,breaklines,highlightlines={1-15}]{code/queue_aux.h} % chktex 8
     \caption{\cninline{QueueAux} predicate which states ownership of a linked
     list of \cinline{queue_cell}s from \cninline{front} inclusive to
     \cninline{back} exclusive. The ownership for \cinline{back} is

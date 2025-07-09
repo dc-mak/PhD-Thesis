@@ -22,11 +22,7 @@ predicate void List_Next_Seg(
 @*/
 
 void push_front (struct node *front, struct node* back)
-/*@
-requires
-    take Void = List_Seg(front, back);
-    take B = RW(back);
-ensures
-    true;
-@*/
+/*@ requires take Void = List_Seg(front, back);
+             take B = RW(back);
+     ensures true; @*/
 { /* diverges immediately */ }

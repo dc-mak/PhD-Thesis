@@ -95,12 +95,13 @@ work by~\sidetextcite{ghalayini2024denotational}: represent
 \emph{dominance-based scoping} as \emph{lexical scoping}.
 
 \begin{quote}
+\emph{%
 In particular, a variable $x$ is considered to be in scope at a specific point
 $P$ if and only if all execution paths from the program’s entry point to $P$
 pass through a definition $D$ for $x$. In this case, we say that the definition
 $D$ \emph{strictly dominates} $P$. The relation on basic blocks ``$A$ strictly
 dominates $B$'' intersected with ``$A$ is a direct predecessor of $B$'' forms a
-tree called the \emph{dominance tree} of the [control-flow graph].
+tree called the \emph{dominance tree} of the [control-flow graph].}
 \end{quote}
 
 More specifically, replace $\cnkw{save}\ \cnnt{id}\ (x\, {:}{=}\, \cnnt{pce})\ \cnkw{in}\ E$
@@ -224,13 +225,14 @@ Sequencing strength is used to specify the (lack of) ordering between memory
 actions. Quoting at length from \sidetextcite{memarian2022cerberus}:
 
 \begin{quote}
- Each use of an action is either ``positive'' (the default case) or
- ``negative'' (if the action appears in the syntax as the operand of the
- $\cnkw{neg()}$ operator). [..] Intuitively, a \kl{Core} action is negative
- when it elaborates what the C standard calls a ``side-effect'' (as opposed to
- value computations), that is, memory accesses which are not directly used for
- producing the value of a C expression. This is for example, the store
- performed by a postfix increment operator.
+\emph{%
+Each use of an action is either ``positive'' (the default case) or
+``negative'' (if the action appears in the syntax as the operand of the
+$\cnkw{neg()}$ operator). [..] Intuitively, a \kl{Core} action is negative
+when it elaborates what the C standard calls a ``side-effect'' (as opposed to
+value computations), that is, memory accesses which are not directly used for
+producing the value of a C expression. This is for example, the store
+performed by a postfix increment operator.}
 \end{quote}
 
 The $\cnkw{let}\ \cnkw{strong}\ \cnnt{pat}\ \cnkw{=}\ \cnnt{E}_1\ \cnkw{in}\
@@ -254,7 +256,8 @@ ${\color{red}A^{-}}$ to denote all the negative footprints in ${\color{red}A}$
 and ${\color{red}A^{+}}$ for all the positive ones.
 
 Negative actions step to a new $\cnkw{delay}(\cnnt{actions}, \cnnt{E})$
-construct, where $\cnnt{actions}$ is a set.
+construct, where $\cnnt{actions}$ is a set. Note that the store $\sigma$
+does not change (yet).
 
 {\small%
 \[
@@ -425,18 +428,13 @@ primary benefit is to reduce work later.
 
 The problem then becomes how to use a conditional-resource in the context.
 Specifically, how to handle the below situation without resorting to an
-exponential blow-up. Inputs are constraints $\Phi$, resources $\mathcal{R} , r
-{:} \ldots$ and the requested resources $\cnkw{if}\ \cnnt{pce}_2\ \ldots$;
-Outputs are the remaining lookup $\mathcal{R}'$, and the leftover context
-$\mathcal{R}''$ after a partially successful lookup.
+exponential blow-up. Inputs are constraints $\Phi$, resources $\mathcal{R}$ and
+the requested resource $r$; Outputs are the remaining lookup $\mathcal{R}'$,
+and the leftover context $\mathcal{R}''$ after a partially successful lookup.
 
 {\small%
 \[
-    \Phi \vdash (\cnkw{if}\ \cnnt{pce}_1\ \cnkw{then}\ \mathcal{R}_{21}\ \cnkw{else}\ \mathcal{R}_{22})
-                \mathrel{{\in}{?}}
-                (\mathcal{R} , r {:} \cnkw{if}\ \cnnt{pce}_2\ \cnkw{then}\ \mathcal{R}_{11}\ \cnkw{else}\ \mathcal{R}_{12})
-                \rightsquigarrow
-                \outpol{\mathcal{R}'; \mathcal{R}''}
+    \Phi \vdash r \mathrel{{\in}{?}} \mathcal{R} \rightsquigarrow \outpol{\mathcal{R}'; \mathcal{R}''}
 \]}
 
 The first thing to check would be \emph{nominal} equality. A conditional
@@ -751,7 +749,7 @@ $\cnkw{assert}(b)$ to $\cnkw{default}\,\beta$, but a sketch is given below.
 \kl{CN}'s resource inference can diverge on certain inputs. Below is a small
 example to illustrate the problem, and later, a solution.
 
-\cfile[lastline=21]{code/diverge.c}
+\cfile[lastline=21,highlightlines={4-21}]{code/diverge.c} % chktex 8
 
 First the code declares the simplest possible recursive structure:
 \cinline{struct node} contains one \cinline{struct node*} called
@@ -768,7 +766,7 @@ into one. Though the predicate is unusual, it is derived from an example
 written by a user, and is a priori a sensible
 definition (for non-empty list segments).\sidenote{\href{https://github.com/rems-project/cerberus/issues/451}{Cerberus\#451}}
 
-\cfile[firstline=23]{code/diverge.c}
+\cfile[firstline=23,highlightlines={25-27}]{code/diverge.c} % chktex 8
 
 The definitions are problematic because they can be used in a context which
 causes \kl{CN} to diverge. Using \cinline{List_Seg(front, back)} % chktex 36
