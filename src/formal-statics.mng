@@ -472,9 +472,12 @@ function type before using the spine judgement.
 \begin{figure*}[tp]
     \small
     \raggedright{}
-    \cndefnExpr{}
+    \onlyUseRules{\cndefnExpr{}}{%
+        \cndruleExprXXCCall{},
+        \cndruleExprXXProc{}
+    }
     \onlyUseRules{\cndefnStmt{}}{
-        \cndefnStmtXXRetT{}
+        \cndruleStmtXXRetT{}
     }
     \caption{\kl{Kernel CN} typing rules for return-terms.}\label{fig:typing-ret-terms}
 \end{figure*}
@@ -777,7 +780,7 @@ terms) are the main things elaborated into the program.
         actions.}\label{fig:elab-action}
 \end{figure}
 
-\begin{figure*}[hb]
+\begin{figure*}[htp]
     \small
     \raggedright{}
     \onlyUseRules{\cndefnElabXXSpine{}}{%
@@ -843,10 +846,12 @@ this property is not completely trivial). The key one is the substitution
 lemma stated below.
 
 \begin{lemma}[Substitution lemma]
-If $[[ C' ; L' ; N ; R' ]] [[|-]] J$,
-then $[[forall]]\ [[ C ]], [[ L ]], [[ R ]], [[ subs ]].\
-\left( [[ C ; L ; subs ( N ) ; R |- subs <= ( C' ; L' ; R' ) ]] \right) [[=>]]\allowbreak
-[[ C ; L ; subs ( N ) ; R ]] [[|-]] [[ subs ]] ( J ) $.
+If $[[ C' ; L' ; N ; R' ]] [[|-]] J$, then
+\begin{align*}
+    [[forall]]\ [[ C ]], [[ L ]], &[[ R ]], [[ subs ]].\ \allowbreak
+    \left( [[ C ; L ; subs ( N ) ; R |- subs <= ( C' ; L' ; R' ) ]] \right) [[=>]] \\
+    &[[ C ; L ; subs ( N ) ; R ]] [[|-]] [[ subs ]] ( J ).
+\end{align*}
 
 For types, substitutions are only defined over resource types $[[res]]$, and
 return types $[[ret]]$, not base types $[[base_type]]$. Similarly,
@@ -1051,7 +1056,10 @@ inconvenient, it becomes necessary in the \textsc{Stmt\_Let} case.
 Second is in the lemma \nameref{subsec:wt_values_pat_match}.
 There are two substitutions at play here. As an example, let
 the value being matched be $[[ Cons ( Unit , Nil unit ( ) ) , ret_terms ]]$ and
-the pattern be $[[ comp Cons ( x1 , x2 ) , ret_pat ]]$.
+the pattern be
+\[
+    [[ comp Cons ( x1 , x2 ) , ret_pat ]].
+\]
 For the return type $[[ sigma y : list unit .: ret ]]$, the type-level
 substitution will be $[[ Cons ( x1 , x2 ) / y ( ret )]]$.  However, at the
 term-level, the substitution will be $[[ [ Unit / x1 , Nil unit ( ) / x2 ] ]]$.
