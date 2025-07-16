@@ -136,24 +136,23 @@ unlike in \kl{Core}, is preserved in the dynamic semantics.
 \]}
 
 First, a $\cnkw{where}$ expression is a context $\cnnt{C} \, {:}{=} \, \ldots
-\mid C\ \cnkw{where}\ l$, where $l$ is a short-hand for the family of labels
-$\cncomp{\cnnt{id}_i\ (x_i {:} \beta_i).\ E_i}{i}$. Upon entry, the label
-definitions are pushed ($\Colon$) on to the stack. When $\cnkw{run}$ning to a
+\mid C\ \cnkw{where}\ l$; $l$ is a short-hand for the family of labels
+$\cncomp{\cnnt{id}_i\ (x_i {:} \beta_i).\ E_i}{i}$. When $\cnkw{run}$ning to a
 label, we search the context for its defintion $l$ and jumps to its body with
 paramenter substituted $[\cnnt{value} / x] E$, keeping the enclosing context
 $C_1$, but discarding the intervening context $C_2$.
 
 Note that, \sidetextcite{ghalayini2024denotational} stratify their language
 into statements and expressions; their $\cnkw{where}$ construct is a statement,
-so the value it computes is never bound. A $\cnkw{pop}_l$ expression
-marks the exit from a $\cnkw{where}$ expression when it returns a value.
+so the value it computes is never bound. Here, a $\cnkw{pure}(\cnnt{value})$ expression
+exits a $\cnkw{where}$ expression straightforwardly.
 
 {\small%
 \[
 \inferrule[{[OpStmtPureW]}]
   { }
-  { \langle h , \cnkw{pure}(v)\ \cnkw{where}\ l, \kappa \rangle
-    \rightarrow \left< h , \cnkw{pure}(v), \kappa \right> }
+  { \langle h , \cnkw{pure}(\cnnt{value})\ \cnkw{where}\ l, \kappa \rangle
+    \rightarrow \left< h , \cnkw{pure}(\cnnt{value}), \kappa \right> }
 \]}
 
 As for typing, I conjecture the $\cnkw{where}$ contexts in the dynamics would be
@@ -253,16 +252,16 @@ ${\color{red}A^{-}}$ to denote all the negative footprints in ${\color{red}A}$
 and ${\color{red}A^{+}}$ for all the positive ones.
 
 Negative actions step to a new $\cnkw{delay}(\cnnt{actions}, \cnnt{E})$
-construct, where $\cnnt{actions}$ is a set. Note that the store $\sigma$
+construct, where $\cnnt{actions}$ is a set. Note that the heap $h$
 does not change (yet).
 
 {\small%
 \[
 \inferrule[{[ActionNeg]}]
-    { \sigma \overset{\cnnt{action}}{\longrightarrow} \langle \_ , \cnkw{Unit}, \cnnt{fp} \rangle }
-    { \langle \sigma, \cnkw{neg}(\cnnt{action}), \kappa \rangle \rightarrow
+    { h \overset{\cnnt{action}}{\longrightarrow} \langle \_ , \cnkw{Unit}, \cnnt{fp} \rangle }
+    { \langle h, \cnkw{neg}(\cnnt{action}), \kappa \rangle \rightarrow
       \langle
-          \sigma,
+          h,
           \cnkw{delay}(\{\, \cnnt{action} \, \},
             \prescript{\color{red}\{\cnkw{neg}(\cnnt{fp})\}}{}{\cnkw{pure}(\cnkw{Unit})}),
           \kappa
@@ -279,14 +278,14 @@ ignored. The footprint is unnecessary as per the previous rule.
 {\small%
 \[
 \inferrule[{[DelayAction]}]
-    { \sigma \overset{\cnnt{action}}{\longrightarrow} \langle \sigma' , \cnkw{Unit}, \_ \rangle }
+    { h \overset{\cnnt{action}}{\longrightarrow} \langle h' , \cnkw{Unit}, \_ \rangle }
     { \langle
-          \sigma,
+          h,
             \cnkw{delay}(\cnnt{actions} \cup \{\, \cnnt{action} \,\}, E),
           \kappa
       \rangle
       \rightarrow
-      \langle \sigma', \cnkw{delay}(\cnnt{actions}, E), \kappa \rangle }
+      \langle h', \cnkw{delay}(\cnnt{actions}, E), \kappa \rangle }
 \]}
 
 The next ingredient is a $\cnkw{disj}({\color{red}A}, E)$ construct, which is
@@ -297,14 +296,14 @@ used to check if ${\color{red}A}$ races with $E$.
 \inferrule[{[Disj]}]
     { {\color{red}\neg \mathrm{do\_race}(A_1, A_2)} }
     { \langle
-          \sigma,
-          \cnkw{disj}({\color{red}A_1}, \prescript{\color{red}A_2}{}{\cnkw{pure}(v)}),
+          h,
+          \cnkw{disj}({\color{red}A_1}, \prescript{\color{red}A_2}{}{\cnkw{pure}(\cnnt{value})}),
           \kappa
       \rangle
       \rightarrow
       \langle
-          \sigma,
-          \prescript{\color{red}A_1 \cup A_2}{}{\cnkw{pure}(v)},
+          h,
+          \prescript{\color{red}A_1 \cup A_2}{}{\cnkw{pure}(\cnnt{value})},
           \kappa
       \rangle }
 \]}
@@ -313,7 +312,7 @@ The construct is used for weak sequencing, and is also a context $\cnnt{C} \,
 {:}{=} \, \ldots \mid \cnkw{disj}({\color{red}A}, C)$, allowing for the
 expression inside to reduce. Splitting the annotations, placing the positive
 ones on the outside and the negative ones in a $\cnkw{disj}$ ensures the
-negative actions which \emph{were} part of evaluating $\cnkw{pure}(v)$ are
+negative actions which \emph{were} part of evaluating $\cnkw{pure}(\cnnt{value})$ are
 treated as if unsequenced with $E$, i.e.\ required to not race.
 
 {\small%
@@ -321,14 +320,15 @@ treated as if unsequenced with $E$, i.e.\ required to not race.
 \inferrule[{[Weak]}]
     {  }
     { \langle
-          \sigma,
-          \cnkw{let}\ \cnkw{weak}\ \cnnt{pat}\ =\ \prescript{\color{red}A}{}{\cnkw{pure}(v)}\ \cnkw{in}\ E,
+          h,
+          \cnkw{let}\ \cnkw{weak}\ \cnnt{pat}\ =\ \prescript{\color{red}A}{}{\cnkw{pure}(\cnnt{value})}\ \cnkw{in}\ E,
           \kappa
       \rangle
       \rightarrow
+      \\ \quad
       \langle
-          \sigma,
-          \prescript{\color{red}A^{+}}{}{\cnkw{disj}({\color{red}A^{-}}, [ v / \cnnt{pat} ] E)},
+          h,
+          \prescript{\color{red}A^{+}}{}{\cnkw{disj}({\color{red}A^{-}}, [ \cnnt{value} / \cnnt{pat} ] E)},
           \kappa
       \rangle }
 \]}
@@ -339,10 +339,10 @@ Nested $\cnkw{delay}$s can be combined by taking the union of the actions.
 \[
 \inferrule[{[HoistDelay]}]
     {  }
-    { \langle \sigma, \cnkw{delay}(\cnnt{actions}_1, \cnkw{delay}(\cnnt{actions}_2, E)), \kappa \rangle
+    { \langle h, \cnkw{delay}(\cnnt{actions}_1, \cnkw{delay}(\cnnt{actions}_2, E)), \kappa \rangle
       \rightarrow
       \\ \quad
-      \langle \sigma, \cnkw{delay}(\cnnt{actions}_1 \cup \cnnt{actions}_2, E), \kappa \rangle }
+      \langle h, \cnkw{delay}(\cnnt{actions}_1 \cup \cnnt{actions}_2, E), \kappa \rangle }
 \]}
 
 Cruicially, $\cnkw{delay}$s can be hoisted out of $\cnkw{let}\ \cnkw{weak}$,
@@ -355,14 +355,14 @@ similar pattern.
 \inferrule[{[HoistWeak]}]
     {  }
     { \langle
-          \sigma,
+          h,
           \cnkw{let}\ \cnkw{weak}\ \cnnt{pat}\ =\ \cnkw{delay}(\cnnt{actions}, E_1)\ \cnkw{in}\ E_2,
           \kappa
       \rangle
       \rightarrow
       \\ \quad
       \langle
-          \sigma,
+          h,
           \cnkw{delay}(\cnnt{actions}, \cnkw{let}\ \cnkw{weak}\ \cnnt{pat}\ =\ E_1\ \cnkw{in}\ E_2),
           \kappa
       \rangle }
@@ -392,8 +392,8 @@ an if-expression and (b) defining how to handle resource lookup/inference with
 conditional-resources in the context whilst avoiding performance slowdown.
 
 Assume a judgement of the form $\Phi ; \mathcal{R} \vdash E \dashv \cnnt{term}
-\mathrel{\&} \Phi' ; \mathcal{R}'$ is the input constraint context,
-$\mathcal{R}$ is the input resource context, context, $E$ is the input
+\mathrel{\&} \Phi' ; \mathcal{R}'$ where $\Phi$ is the input constraint
+context, $\mathcal{R}$ is the input resource context, context, $E$ is the input
 \kl{Core} expression, $\cnnt{term}$ is the output symbolic evaluation of the
 \kl{Core} expression, $\Phi' ; \mathcal{R}'$ are the output constraint and
 resource contexts respectively (to reduce clutter, I am omitting variable
