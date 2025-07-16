@@ -118,32 +118,30 @@ in $E_i$, which are parameterised over (for simplicity) a single variable
 $x_i$. Most importantly, the enclosing expression is its \emph{frame}, and
 unlike in \kl{Core}, is preserved in the dynamic semantics.
 
-{\small%
-\[
-\inferrule[{[OpStmtWhere]}]
-  { l_1 \eqdef \cncomp{\cnnt{id}_i\ (x_i {:} \beta_i).\ E_i}{i} }
-  { \langle h , E\ \cnkw{where}\ l, w, \kappa \rangle
-    \rightarrow \left< h , \cnkw{pop}_l (E) , l \Colon w, \kappa \right> }
-\]}
+% {\small%
+% \[
+% \inferrule[{[OpStmtWhere]}]
+%   { l_1 \eqdef \cncomp{\cnnt{id}_i\ (x_i {:} \beta_i).\ E_i}{i} }
+%   { \langle h , E\ \cnkw{where}\ l, w, \kappa \rangle
+%     \rightarrow \left< h , \cnkw{pop}_l (E) , l \Colon w, \kappa \right> }
+% \]}
 
 {\small%
 \[
 \inferrule[{[OpStmtRunW]}]
-  { w \eqdef l_1 \Colon \ldots \Colon l_k \Colon w'
-    \and \cnnt{id}\ (x {:} \beta).\ E \in l_k
+  { \cnnt{id}\ (x {:} \beta).\ E \in l
     \and \cnnt{pce} \Downarrow \cnnt{value} }
-  { \langle h , \cnkw{run}\, \cnnt{id}\,\cnnt{pce}, w, \kappa \rangle
-    \rightarrow \left< h , \left[ \cnnt{value} / x \right] E , l_k \Colon w', \kappa \right> }
+    { \langle h , C_1 \left[ C_2 \left[ \cnkw{run}\, \cnnt{id}\,\cnnt{pce} \right]\ \cnkw{where}\ l \right], \kappa \rangle
+    \rightarrow \left< h , C_1 \left[ \left[ \cnnt{value} / x \right] E\ \cnkw{where}\ l \right], \kappa \right> }
 \]}
 
-The \kl{Core} thread-local reduction configuration is extended with a
-\emph{stack} $w$, where each element is a family of label definitions
-($\cncomp{\cnnt{id}_i\ (x_i {:} \beta_i).\ E_i}{i}$). Upon entry, the label
+First, a $\cnkw{where}$ expression is a context $\cnnt{C} \, {:}{=} \, \ldots
+\mid C\ \cnkw{where}\ l$, where $l$ is a short-hand for the family of labels
+$\cncomp{\cnnt{id}_i\ (x_i {:} \beta_i).\ E_i}{i}$. Upon entry, the label
 definitions are pushed ($\Colon$) on to the stack. When $\cnkw{run}$ning to a
-label, we search the stack ($w \eqdef l_1 \Colon \ldots \Colon{} l_k \Colon
-w'$) for it ($\cnnt{id}\ (x {:} \beta).\ E \in l_k$) and jump to its body,
-proceeding with only the labels at and below that level on the stack ($l_k
-\Colon{} w'$), and $w$ stack is cleared when returning from a procedure.
+label, we search the context for its defintion $l$ and jumps to its body with
+paramenter substituted $[\cnnt{value} / x] E$, keeping the enclosing context
+$C_1$, but discarding the intervening context $C_2$.
 
 Note that, \sidetextcite{ghalayini2024denotational} stratify their language
 into statements and expressions; their $\cnkw{where}$ construct is a statement,
@@ -152,13 +150,13 @@ marks the exit from a $\cnkw{where}$ expression when it returns a value.
 
 {\small%
 \[
-\inferrule[{[OpStmtPop]}]
-  { w \eqdef l_1 \Colon \ldots \Colon l_k \Colon w' }
-  { \langle h , \cnkw{pop}_{l_k} (\cnkw{pure}(v)), w, \kappa \rangle
-    \rightarrow \left< h , \cnkw{pure}(v), w', \kappa \right> }
+\inferrule[{[OpStmtPureW]}]
+  { }
+  { \langle h , \cnkw{pure}(v)\ \cnkw{where}\ l, \kappa \rangle
+    \rightarrow \left< h , \cnkw{pure}(v), \kappa \right> }
 \]}
 
-As for typing, I conjecture the $\cnkw{where}$-stack in the dynamics would be
+As for typing, I conjecture the $\cnkw{where}$ contexts in the dynamics would be
 mirrored in an \emph{ordered} resource context $\mathcal{W}$, consisting of
 linear resource contexts $\mathcal{R}$, separated by label definitions $l$ as
 ordering markers. Typing these definitions requires threading such a
@@ -209,11 +207,10 @@ hypothetical, explicitly annotated \kl{ResCore} with this new construct. Whilst
 the setup enables inferring frames for a label, inferring preconditions
 $\cnnt{fun}$ remains a distinct problem. As a first approximation, loops and
 mutually recursive labels would require annotations from the user, though
-annotations on loops would no longer need to manually thread through unusued
-parts of the resource context. Other labels could have their preconditions
-inferred by saving the typing context when the first $\cnkw{run}$ is
-encountered, and ensuring that subsequent ones match the first, thus preventing
-inlining and code bloat.
+annotations on loops would no longer need to thread through framed resources.
+Other labels could have their preconditions inferred by saving the typing
+context when the first $\cnkw{run}$ is encountered, and ensuring that
+subsequent ones match the first, thus preventing inlining and code bloat.
 
 \section{Weak sequencing}
 
