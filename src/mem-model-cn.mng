@@ -1073,8 +1073,8 @@ that the return value is 0 iff the arrays have equal bit values.
 
 Unlike \cinline{memcpy}, \cinline{memcmp} requires any \cinline{byte}s compared
 to be initialised. For pointers, the specification only mentions of address
-in/equality rather than provenance. Since \kl{CN} does not support a % chktex
-36 `map' operation on arrays, the cleanest way to enforce these to constraints
+in/equality rather than provenance. Since \kl{CN} does not support a % chktex 36
+`map' operation on arrays, the cleanest way to enforce these to constraints
 is a recursive function. The below code says that either the length of the
 array is 0 (line 11), or both bytes at the end of the array are initialised
 (line 12), finally recursing on the length less one (line 13). The recursive
@@ -1097,7 +1097,95 @@ function is equivalent to an unrolled constraint from indices 0 to 7.
 
 \section{Memory bytes implementation}\label{sec:mem-bytes-impl}
 
-%
+In \kl{CN}, the C type for bytes is mapped to an \coreinline{Option MemByte}
+basetype. The representation of a \coreinline{MemByte} is isomorphic to a pair
+of a \coreinline{u8} and an \coreinline{Option Alloc_id}.
+
+The most involved part of using memory bytes is reconstructing a pointer from
+an array of bytes, since here the bytes must all be initialised, and the
+provenance must be computed from 8 optional allocation IDs.
+
+The function which does this is called \ocamlinline{bytes_constraints} and
+takes as its parameters a source location \ocamlinline{loc}, a mode flag
+\ocamlinline{to_from}, a term representing the \ocamlinline{value} being
+de/constructed, a term representing the byte array \ocamlinline{byte_arr} being
+constrained, and a C type \ocamlinline{ct} to determine the layout of the
+value. It returns a constraint \ocamlinline{IT.t} inside the type checking
+monad \ocamlinline{_ t}.
+
+\ocamlfile[lastline=7]{code/check_bytes_constraints.ml}
+
+The function recurses on the structure of the C type; below is the start of the
+pointer case. First, terms for the provenance and the address of the pointer
+are projected out of the pointer (by casting, lines 51\textendash{}52). After
+that, terms for the 8 bytes of the pointer are indexed from the byte array
+(lines 53\textendash{}57). Having done that, terms for the address (lines
+59\textendash{}68) and the provenance (lines 70\textendash{}72) for the bytes
+are constructed. The address is constructed by getting the initialised value
+from each byte, casting it to \ocamlinline{bt} (which, from line 50, we see is
+the basetype for \cinline{uintptr_t}) on line 62, calculate the appropriate
+shift amount based on the bytes index (assuming big-endianness, line 63) and
+then shifting it (line 64). All the shifted bytes are then added on line 67.
+The provenance will be constructed later.
+
+\ocamlfile[firstline=49,lastline=69]{code/check_bytes_constraints.ml}
+
+Getting the initialised value from each byte requires that each byte be
+initialised in the first place, which must be proven in \ocamlinline{From}
+case. Line 72 constructs the term for this, which is the checked with a call to
+the SMT solver on line 77. If the constraint cannot be proven, then the code
+raises an error (lines 77\textendash{}85).
+
+\ocamlfile[firstline=72,lastline=85]{code/check_bytes_constraints.ml}
+
+If the constraint can be proven, that is the bytes under inspection are all
+initialised, then we proceed to reconstruct the provenance. This is non-trivial
+because of the definition of $\mathrm{combine\_prov}$ given
+in~\sidetextcite{memarian2022cerberus}.
+
+\begin{align*}
+    &\mathrm{combine\_prov}(\pi_1, \ldots, \pi_n) = \\
+    &\quad
+    \begin{cases}
+        @i & { \begin{matrix*}[l]
+                \exists k \in \{\, 1, \ldots, n \,\}.\ \pi_k = @i\ \text{and,} \\ 
+                \forall k \in \{\, 1, \ldots, n \,\}.\ \pi_k = @i \vee \pi_k = \mathsf{@empty}
+                \end{matrix*} } \\
+        \mathsf{@empty} & \text{otherwise}
+    \end{cases}
+\end{align*}
+
+Each pair of optional allocation IDs are subject to constraints, to ensure that
+all non-\ocamlinline{CN_None} provenances agree with one another (lines
+87\textendash{}107). This is done by folding over all the list of bytes (lines
+97\textendash{}106) the \ocamlinline{pairwise} function (lines
+89\textendash{}96).
+
+\ocamlfile[firstline=87,lastline=107]{code/check_bytes_constraints.ml}
+
+That just constrains all the non-\ocamlinline{CN_None} provenances to agree
+with one another, but does not say \emph{which} allocation ID that is, if there
+is one. For this, we introduce a fresh symbol named \ocamlinline{combined_prov}
+(lines 108\textendash{}110), construct a nested if-then-else which evaluates to
+the first \ocamlinline{CN_Some}-provenance if it exists by folding over all
+the byte provenances (lines 111\textendash{}117), add the new symbol to the
+typing context (lines 119\textendash{}124), and constrain that new symbol to be
+equal to the nested if-then-else (line 125).
+
+\ocamlfile[firstline=108,lastline=125]{code/check_bytes_constraints.ml}
+
+With this we can finally constrain the provenances appropriately. Lines
+127\textendash{}132 state that \emph{if} the non-\ocamlinline{CN_None}
+provenances agree with one another \emph{and} the combined provenance is a
+\ocamlinline{CN_Some} value, \emph{then} the value (pointer) allocation ID is
+equal to the unwrapped combined proveannce. Note that if the antecedent is
+false, then the value allocation ID is left unconstrained, which is how the
+empty provenance is represented for pointers (\cref{subsec:smt-rep}). The value
+(pointer) address and the shifted and added byte bits are cosntrained to be
+equal too (line 133).
+
+\ocamlfile[firstline=126,lastline=133]{code/check_bytes_constraints.ml}
+
 % \section{Integer with/out provenance union type for round-trip casts}
 
 \chapter{Epilogue on CN-VIP}
