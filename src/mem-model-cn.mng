@@ -980,7 +980,7 @@ same finite range.
 \caption{\kl{CN} lemma that two ``byte'' (\cinline{unsigned char}) arrays
     are equal if they have the same elements over a finite range. This needs
     to be a lemma because of the mismatch between the intended finite nature
-    of arrays and the total nature of the ones use by SMT solver.}\label{fig:byte-array-eq-lemma}
+    of arrays and the total nature of the ones used by SMT solver.}\label{fig:byte-array-eq-lemma}
 \end{figure}
 
 However, when typing a built-in, I can simply combine the two so that users do
@@ -1021,13 +1021,82 @@ A temporary work-around for this is to \cinline{copy_alloc_id} the
 provenance back, but this just happens to work because the original pointer is
 in scope. If it was not, then the example could not be rescued. And as it
 happens, the lack of provenances in bytes affects 18 out of 44 tests, and a
-lack of provenance in integers affects another 2.
+lack of provenance in integers affects another 3.
 
 
-% \section{Memory bytes and their use in \coreinline{memcpy}, \coreinline{malloc}
-% and \coreinline{free}}\label{sec:mem-bytes-use}
-%
-% \section{Comparable bytes in \coreinline{memcmp}}
+\section{Memory bytes use}\label{sec:mem-bytes-use}
+
+I modified \kl{Cerberus}' internal representtion of C types to add a new
+variant for \coreinline{Byte}, distinct from any other types, including
+integers. Users can use this C type by annotating an \cinline{typedef}
+as follows.
+
+\cfile[fontsize=\footnotesize,breaklines]{code/byte_is_not_char.c} % chktex 8
+
+If one tries to run this example with \kl{Cerberus}, they will be greeted with
+an error, reminding them that bytes are not integers. The idea behind using
+annotations and \cinline{typedef}s is that existing C toolchains will be able
+to process this code unmodified, but \kl{Cerberus} and \kl{CN} will be opted-in
+to the different behaviour. It also allows the user to choose a name for bytes
+which does not clash with existing names in their code. Following C++, bytes
+are restricted to \cinline{unsigned char}s. Currently, no unary or binary
+operators are supported on bytes, neither is casting between integers and
+bytes. These features were not required for most of the \kl{VIP} testsuite, nor
+\kl{pKVM}, and can be added later if required.
+
+With this extra C type, the \cninline{to_bytes} and \cninline{from_bytes}
+statements preserve provenance of pointers, and \cinline{memcpy} and
+\cinline{memcmp} propogate the same. For the former, only the C types need to
+be updated to adapt the specification. For the latter, the more complex type
+presents a minor inconvenience, which requires a lemma to overcome. An example
+which uses \cinline{memcmp} is pointer\_from\_int\_disambiguation\_1.c, given
+below. The focus here is on the use of \cinline{memcmp} rather than the
+specifics of the memory object model features at play. In particular, the call
+to \cinline{memcmp} (line 19) is preceded by two uses of \cninline{to_bytes}
+and an application of a lemma (lines 16\textendash{}18) and succeeded by an
+application of a different lemma and two uses of \cninline{from_bytes} (lines
+21\textendash{}23).
+
+\cfile[fontsize=\footnotesize,firstline=16,lastline=22,breaklines,highlightlines={10,16-18,20-22,30-31}]{code/pointer_from_int_disambiguation_1.annot.c} % chktex 8
+
+The lemmas are used to manually unroll two different recursive functions used
+in the specification of \cinline{memcmp}, on lines 34, 39 and 40. Note that the
+specification is simpler than what the standard requires (negative for less
+than, 0 for equal, positive for greater than), but is sufficient for the
+\kl{VIP} testsuite. It requires the address ranges to not wrap-around (lines
+29\textendash{}31), and ownership of the two arrays (merely to get a hold of
+their ghost representation, lines 32\textendash{}33). It ensures ownership of
+both arrays (lines 36\textendash{}37), that they are unchanged (line 38) and
+that the return value is 0 iff the arrays have equal bit values.
+
+\cfile[fontsize=\footnotesize,breaklines,firstline=26,lastline=41,highlightlines={27-40}]{code/cn_lemmas_memcmp.h} % chktex 8
+
+Unlike \cinline{memcpy}, \cinline{memcmp} requires any \cinline{byte}s compared
+to be initialised. For pointers, the specification only mentions of address
+in/equality rather than provenance. Since \kl{CN} does not support a % chktex
+36 `map' operation on arrays, the cleanest way to enforce these to constraints
+is a recursive function. The below code says that either the length of the
+array is 0 (line 11), or both bytes at the end of the array are initialised
+(line 12), finally recursing on the length less one (line 13). The recursive
+function used to test whether two initialised byte arrays have equal bits,
+\cinline{byte_array_bits_eq}, is similar and omitted.
+
+\cfile[fontsize=\footnotesize,breaklines,firstline=6,lastline=14,highlightlines={6-14}]{code/cn_lemmas_memcmp.h} % chktex 8
+
+Due to a lack of auto-unfolding for functions
+(\cref{sec:auto-unfold-functions}), any uses use of \cinline{memcmp} must deal
+with these recursive functions. I choose to use lemmas for simplicity and
+brevity, which completely unrolls the finite recursion. For example, the lemma
+when \cinline{memcmp} is called with \cinline{n == 8} is as follows. As with
+the \cinline{memcmp} specification, the resources are merely there to get a
+handle on the ghost representation of the arrays. The key lines are 46 and
+53\textendash{}55, which fix the length and then assert that the recursive
+function is equivalent to an unrolled constraint from indices 0 to 7.
+
+\cfile[fontsize=\footnotesize,breaklines,firstline=44,lastline=55,highlightlines={44-55}]{code/cn_lemmas_memcmp.h} % chktex 8
+
+\section{Memory bytes implementation}\label{sec:mem-bytes-impl}
+
 %
 % \section{Integer with/out provenance union type for round-trip casts}
 
