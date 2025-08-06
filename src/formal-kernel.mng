@@ -109,6 +109,16 @@ quite standard, except for the only mention of branching in any of the types,
 with the \emph{ordered} disjunction, to prevent the need for backtracking,
 rather than the usual $\vee{}$.
 
+\begin{figure*}
+    \small
+    \grammartabularSTY{%
+        \cnres{}\cnafterlastrule{}
+    }
+    \caption{\kl{Kernel CN} resource types, a linear type for separation logic
+        assertions.}\label{fig:kernel-res}
+\end{figure*}
+
+
 For ease of implementation and formalisation, we do not have branching for pre-
 and postconditions and function/return types, but this does not affect
 expressiveness because these can be embedded into the resource types. Note that
@@ -148,15 +158,6 @@ $[[ Owned < Uninit , ct > ]]$ respectively. \sidenote{Prior versions of this
         is set up with some syntactic sugar (marked with $\mathsf{S}$) to make
         the meanings of these constructs more intuitive.}\label{fig:kernel-ipred}
 
-\end{figure*}
-
-\begin{figure*}
-    \small
-    \grammartabularSTY{%
-        \cnres{}\cnafterlastrule{}
-    }
-    \caption{\kl{Kernel CN} resource types, a linear type for separation logic
-        assertions.}\label{fig:kernel-res}
 \end{figure*}
 
 \section{Desugaring \kl{CN} types into \kl{kernel} types}\label{sec:desugaring}
@@ -268,8 +269,8 @@ This dramatically simplifies presenting and working with the type system, becaus
         \emph{synthesis} rule for the bound expression, since that removes the
         need for an annotation to be placed on the binder there.
     \item \textbf{Memory actions}. These too are well-suited to synthesis, since
-        they can manipulate they manipulate the resource context via the
-        resources types they will synthesise.
+        they manipulate the resource context via the resources types they will
+        synthesise.
 \end{itemize}
 
 Initial implementations of \kl{CN} did a full A-normalisation of Core, but this resulted
@@ -322,19 +323,11 @@ judgement, so are part of pure statement.
 \end{figure}
 
 Effectful expressions (\cref{fig:kernel-expr}), include memory actions, memory
-operations, C function calls and Core procedure calls.
-
-\begin{figure}[htp]
-    \small
-    \grammartabularSTY{%
-        \cnexpr{}\cnafterlastrule{}
-    }
-    \caption{Effectful expressions in ResCore.}\label{fig:kernel-expr}
-\end{figure}
-
-Effectful statements include \kl{return terms}, pure statements, bound effectful
-expressions, standard conditional and pattern-matching constructs and the
-\coreinline{run} operator (\cref{fig:effectful-core-grammar}).
+operations, C function calls and Core procedure calls.\sidenote{Explanation of
+\kl{Core} constructs, including \coreinline{run()}, and the distinction % chktex 36
+between \coreinline{pcall()} and \coreinline{ccall()}, is in % chktex 36
+\cref{sec:core-grammar}.} Arguments are $[[spine]]$s, which are lists
+of $[[ret_term]]$s/$[[spine_elem]]$s.
 
 \begin{figure}[htp]
     \small
@@ -342,6 +335,18 @@ expressions, standard conditional and pattern-matching constructs and the
     \multirow[t]{2}{0.12\textwidth}{\begin{mathbreakcomma}#1\end{mathbreakcomma}} & & ${\Colon}{=}$ & \multicolumn{3}{l}{#3}}
     \grammartabularSTY{%
         \cnretXXterm{}\cninterrule{}
+        \cnexpr{}\cnafterlastrule{}
+    }
+    \caption{Effectful expressions in ResCore.}\label{fig:kernel-expr}
+\end{figure}
+
+Effectful statements (\cref{fig:kernel-expr}) include \kl{return terms}, pure
+statements, bound effectful expressions, standard conditional and
+pattern-matching constructs and the \coreinline{run} operator.
+
+\begin{figure}[htp]
+    \small
+    \grammartabularSTY{%
         \cnstmt{}\cnafterlastrule{}
     }
     \caption{Effectful statements in ResCore.}\label{fig:kernel-stmt}
@@ -459,7 +464,7 @@ assertions $[[ term ]]$, and they have corresponding forms for eliminating
 them too. Variables are also resource terms and patterns, for any resource
 type. Terms $[[pred_term]]$ and $[[ipred_term]]$ introduce
 $[[ pred ]]$ and $[[ ipred ]]$ types respectively (the only difference
-between the two is that the latter also carry their output arguments). Angle
+between the pairs is that the latter also carry their output arguments). Angle
 brackets $\langle \_ , \_ \rangle$ and $[[ pack ( _x , _rest ) ]]$ are
 introduction forms for the separating conjunction $\astRef{}$ and $\exists$
 types respectively, and they have corresponding eliminators too.
