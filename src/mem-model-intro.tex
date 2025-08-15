@@ -473,42 +473,53 @@ does not. Remember that exposure tracking was devised to support round-trip
 casts, but restrict the number of aliases which could be considered for the
 results of those casts.
 
-Exposure tracking has the distinct advantage over \kl{VIP} that round-trip
-casts can happen (a) in the presence of intervening operations on the integer
-value and (b) more importantly, \emph{without} a pointer to the specific
-allocation we care about being available at runtime.
+Exposure tracking has the following advantages over \kl{VIP}.
+\begin{itemize}
+    \item \textbf{More permissive round-trip casts}, which can happen (a) in
+        the presence of intervening operations on the integer value and (b)
+        more importantly, \emph{without} a pointer to the specific allocation
+        we care about being available at runtime.
+    \item \textbf{Simpler (and backwards compatible) representation of
+        integers}. \kl{CN} currently maps C integers to bit-vectors, whereas
+        as mentioned above, \kl{VIP} has a more complicated representation
+        with two constructors.
+    \item \textbf{Exposure is an intuitionistic fact.} Forgetting an exposure
+        would lead to fewer valid programs, but not unsoundness. This
+        means that allocations can be annotated as exposed using an SMT
+        constraint, rather than potentially requiring changes to the code
+        to thread through a pointer with the appropriate provenance to
+        use with \cinline{copy_alloc_id}.
+    \item \textbf{Consistent interface for casting integers to pointers.}
+        \kl{VIP} permits either `plain' (round-trip) casts from integers to
+        valid pointers, or casts with \cinline{copy_alloc_id}, whereas exposure
+        tracking would consistently require a \kl{CN} annotation at each
+        integer to pointer cast.
+\end{itemize}
 
-That being said, it is difficult to think of any idioms which require both of
-these constraints to be true. One example is XOR linked-lists, where each node
-stores the bitwise exclusive-or of the address of its previous and next
-pointers, allowing a list to be traversed in forwards and reverse direction,
-whilst saving the space for an additional pointer per node, and ``opinions
-differ as to whether that idiom matters for modern
-code''~\sidecite{gustedt2021provenance}.
-
-Unlike provenance disambiguation, exposure is an intuitionistic fact:
-forgetting an exposure would lead to fewer valid programs, but not
-unsoundness. But still, this means that to be useful the trade-off here is
-similar: use annotations to thread allocation exposure in pre- and
-postconditions, or (if possible) change the code to pass in a pointer with the
-correct provenance to use with \cinline{copy_alloc_id}. \kl{VIP} rules
-already require tracking allocation liveness linearly, and so in principle,
-adding exposure to that is not a very big change.
-
-That being said, it is not clear to me how much this exposure tracking reflects
-the analysis inside compilers, especially across functions. Address exposure
-seems to be a syntactic over-approximation to pointer capture and escape
-analyses.\sidenote{\url{https://jonasdevlieghere.com/post/escape-analysis-capture-tracking-in-llvm/}}
-It seems unlikely to me that if a call to a function exposed an
-allocation, but did so without leaking any information about the exposed
-address to the caller, that analyses in the caller would add that allocation to
-the list of potential aliases resulting from an integer-to-pointer cast.
+That being said, tracking exposure has the following disadvantages.
+\begin{itemize}
+    \item \textbf{Unnecessarily expressive.} It is difficult to think of any
+        idioms which require both of these constraints to be true. One example
+        is XOR linked-lists, where each node stores the bitwise exclusive-or of
+        the address of its previous and next pointers, allowing a list to be
+        traversed in forwards and reverse direction, whilst saving the space
+        for an additional pointer per node, and ``opinions differ as to whether
+        that idiom matters for modern code''~\sidecite{gustedt2021provenance}.
+    \item \textbf{Unclear correspondence with existing compiler analyses},
+        especially across functions boundaries. Address exposure seems to be a
+        syntactic over-approximation to pointer capture and escape
+        analyses.\sidenote{\url{https://jonasdevlieghere.com/post/escape-analysis-capture-tracking-in-llvm/}}
+        For example, if a function exposed an allocation, but did so without
+        leaking any information about the exposed address to the caller, it
+        seems unlikely that analyses in the caller would add that allocation to
+        the list of potential aliases resulting from an integer-to-pointer
+        cast.
+\end{itemize}
 
 So whilst tracking allocation address exposure would be a reasonable choice,
-especially given an important implementation advantage (which I will discuss
-next), and would likely be sound with respect to \kl{PNVI-ae-udi}, I ultimately
-decided that (a) it is not clear it is worth the additional complexity and (b)
-it can be added later straightforwardly if the need arose.
+especially given the implementation advantages, and would likely be sound with
+respect to \kl{PNVI-ae-udi}, I ultimately decided that to outline its
+its design and defer implementation until it was necessary.
 
 \subsection{Provenance in integers and bytes}\label{subsec:prov-int-bytes}
 
@@ -518,14 +529,18 @@ via integer operations to retain a simple theory of integers for optimisation).
 
 From the view of a formalisation, an extra constructor or optional field on
 each integer value does not make too much of a difference, since all the rules
-handle this uniformly and sensibly. But, as I hinted at earlier, this comes
-with a disadvantage for implementations above SMT solvers which, at first
-glance, looks like it could be sidestepped by tracking exposure instead.
+handle this uniformly and sensibly. But, as I mentioned previously, this comes
+with a disadvantage for using SMT solvers (and Fuliminate's runtime
+checking~\cite{banerjee2023fulminate}) which, at first glance, looks like it
+could be sidestepped by tracking exposure instead.
 
-The concern with enriching the SMT representation of integers (currently
-represented with plain bit vectors) is that it may lead to a slow down of
-\emph{all} integer related problems handled by the SMT solver, and complicate
-counter-examples for users. This presents us with four options.
+Aside from breaking backwards compatiblity and complicating specifications,
+another concern with enriching the SMT representation of integers (currently
+plain bit-vectors) is that it may lead to a slow down of \emph{all} integer
+related problems handled by the SMT solver, and complicate counter-examples for
+users.
+
+This presents us with four options.
 \begin{itemize}
     \item \textbf{Drop support for round-trip casts.} Use only
         \cinline{copy_alloc_id} instead, at the cost of being able
@@ -555,10 +570,8 @@ exposure tracking:
         would obviate the need to put allocation IDs in integer values at all.
 \end{itemize}
 
-If round-trip casts were the only issue related to provenance in integers, then
-the situation would be relatively simple to handle. However, two of the
-features of \kl{VIP} and \kl{PNVI-ae-udi} which does not get discussed very
-much, but are quite important, is pointer bytes and
+Before proceeding further, I need to discuss an understated but important
+aspect of \kl{VIP} and \kl{PNVI-ae-udi}: pointer bytes and
 \cinline{memcpy}/\cinline{memcmp}.
 
 In C, it is possible to convert any pointer to an (\cinline{unsigned})
@@ -653,13 +666,12 @@ informative because it showed that the lack of provenance in bytes was much
 more restrictive (on the \kl{VIP}/\kl{PNVI-ae-udi} tests cases) than the lack
 of provenance in integers.
 
-Considering this, and the options outlined above, I chose to restrict
-the features (supporting round-trip casts, and having provenance in
-bytes) to different, new C types. Aside from making any complexity and
-performance penalties opt-in, it also follows the convention set out in C++17
-with the introduction \mintinline{cpp}{std::byte}, which is specifically
-intended to be used to access byte representation of objects. For simplicity, I
-chose to defer any implementation of subtyping resources automatically.
+Considering this, and the options outlined above, I chose to restrict having
+provenance in bytes to a different, new C type. Aside from making any
+complexity and performance penalties opt-in, it also follows the convention set
+out in C++17 with the introduction \mintinline{cpp}{std::byte}, which is
+specifically intended to be used to access byte representation of objects. As I
+mentioned before, I deferred exposure tracking until it was required.
 
 \subsection{Non-deterministic pointer equality}\label{subsec:non-det-ptr-eq}
 
@@ -1103,18 +1115,17 @@ for \cninline{array_shift}).
         requires using \cinline{copy_alloc_id}, but saves tracking
         disambiguation in the resource system (and sidesteps wondering what
         adjacent addresses look like in a symbolic evaluation setting).
-    \item \textbf{Allocation address exposure is not tracked.} This prevents
-        verifying code like XOR-lists, and complicates support for round-trip
-        casts and limits options for byte-level provenance. If needed,
-        implementing such tracking should be a straightforward extension in the
-        future.
-    \item \textbf{Initially, no support for provenances in integers or bytes
+    \item \textbf{For now, no support for tracking allocation address
+        exposure.} This prevents verifying code like XOR-lists, and reduces
+        expressivity for round-trip casts. Since exposure is an
+        intuititionistic property, it should be straightforward to
+        implement it as an SMT constraint.
+    \item \textbf{Initially, no support for provenances or bytes
         (or a resource polymorphic \cinline{memcpy}).}
         This prevents a substantial amount of the \kl{VIP}/\kl{PNVI-ae-udi}
         test-suite from passing without additional annotations.
-    \item \textbf{Later, support provenance in integers and bytes via new C
-        types.} This makes their associated complexity and any performance
-        penalties opt-in.
+    \item \textbf{Later, support provenance bytes via a new C type.} This makes
+        their associated complexity and any performance penalties opt-in.
     \item \textbf{Allocation history tracked in constraints.} This makes
         bounds checks easy to state and check.
     \item \textbf{Allocation liveness tracked in resources.} This leverages the
