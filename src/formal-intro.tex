@@ -279,6 +279,19 @@ specified/unspecified/integer values.
     \caption{The pure fragment of Core.}\label{fig:pure-core-grammar}
 \end{figure*}
 
+\begin{figure*}[tp]
+    \ContinuedFloat{}
+    \raggedright%
+    \small%
+    \cngrammarcompressed{\textwidth}{%
+        \cncore{}\cninterrule{}
+        \cncoreXXctxt{}\cninterrule{}
+        \cncmemop{}\cninterrule{}
+        \cncaction{}\cnafterlastrule{}
+    }
+    \caption{The effectful fragment of Core.}\label{fig:effectful-core-grammar}
+\end{figure*}
+
 The effectful fragment captures interactions with memory (via a memory
 interface), various ordering constraints, and more exotic control flow with a
 goto-like operator used in the elaboration of C's iteration and \cinline{goto}
@@ -293,18 +306,39 @@ operations are effects, part of the memory interface \kl{Core} uses to abstract
 over choices of different handlers, implementations of those effects in a
 specific memory object model.
 
-The following constructs are all related to evaluation order:
-\coreinline{neg()}, \coreinline{unseq()}, \coreinline{let weak}, % chktex 36
-\coreinline{let strong}, \coreinline{bound()}. These were supported % chktex 36
-in the implementation at one point,\sidenote{See note~\ref{sn:new-inf}.} but
-stopped working due to a change in the resource inference scheme, and not
-enough of a priority to re-enable. I did not attempt to formalise their complex
-operational behaviour; I considered supporting these constructs using
-fractional permissions, but decided to leave that for future work because of
-the noise and complexity it would add to the initial version of the
-formalisation. The \coreinline{par()} construct is for spawning % chktex 36
-threads. The \coreinline{nd()} construct models non-determinism % chktex 36
-as required or implied by aspects of the standard.
+Next are the constructs related to evaluation order. A more precise treatment
+of evaluation order and footprints of memory actions and expressions is given
+later in \nameref{sec:weak-seq}.
+\begin{itemize}
+    \item $\cnkw{unseq}(E_1, \ldots, E_n)$ is unsequenced evaluation of each
+        sub-expression.
+    \item $\cnkw{let}\ \cnkw{strong}\ \cnnt{pat}\ \cnkw{=}\ \cnnt{E}_1
+        \ \cnkw{in}\ \cnnt{E}_2$ sequences all memory actions performed by
+        $\cnnt{E}_1$ before those performed by $\cnnt{E}_2$.
+    \item $\cnkw{let}\ \cnkw{weak}\ \cnnt{pat}\ \cnkw{=}\ \cnnt{E}_1
+        \ \cnkw{in}\ \cnnt{E}_2$ only only sequences positive memory actions of
+        $\cnnt{E}_1$ before those performed by $\cnnt{E}_2$. In other words,
+        any negative memory actions ($\cnkw{neg}(\cnnt{action})$) performed by
+        $\cnnt{E}_1$ are unsequenced with respect to all memory actions
+        performed by $\cnnt{E}_2$. A race only occurs if unsequenced memory
+        actions have overlapping footprints (\cref{sec:weak-seq}), and is
+        deemed \kl{UB}.
+    \item $\cnkw{neg}(\cnnt{action})$ marks which memory actions are side
+        effects (see text to note~\ref{sn:side-effect}).
+    \item $\cnkw{bound}(\cnnt{E})$ evaluates its argument $\cnnt{E}$ and
+        then clears its footprint (\cref{sec:weak-seq}). It marks the
+        boundary of a C expression as a statement.
+\end{itemize}
+
+These were supported in the implementation at one point,\sidenote{See
+note~\ref{sn:new-inf}.} but stopped working due to a change in the resource
+inference scheme, and not enough of a priority to re-enable. I did not attempt
+to formalise their complex operational behaviour; I considered supporting these
+constructs using fractional permissions, but decided to leave that for future
+work because of the noise and complexity it would add to the initial version of
+the formalisation. The \coreinline{par()} construct is for spawning % chktex 36
+threads. The \coreinline{nd()} construct models non-determinism as % chktex 36
+required or implied by aspects of the standard.
 
 The \coreinline{ccall()} and \coreinline{pcall()} constructs for % chktex 36
 calling elaborate C functions and Core procedures (effectful functions)
@@ -313,7 +347,7 @@ found, with \coreinline{ccall()} using the memory interface to do so. % chktex 3
 
 The (thread-local) Core operational semantics is defined as a small-step
 transition from a configuration to either undefined behaviour or a new
-configuration. Formally, it looks like this $\langle h, E, \kappa \rangle
+configuration. Formally, this is $\langle h, E, \kappa \rangle
 \rightarrow (\textsc{Undef} \mid{} \langle h', E', \kappa' \rangle)$, for a
 heap $h$, effectful expressions $E$ and stack $\kappa$ (list of evaluation
 contexts $C$). These steps rely on evaluating pure expressions (in a big-step
@@ -346,18 +380,38 @@ the values, and proceeds with the resulting expression.
 \]}
 
 The \coreinline{save()} operator is \kl{Core}'s way of introducing named % chktex 36
-continuations with default arguments. The label $l$ and arguments $x_1, \ldots,
-x_n$ are in scope in $E$; those variables are associated pure expressions
-provided by the \coreinline{run()} operator or with the default $e_1, \ldots, % chktex 36
-e_n$, if the operator is reached otherwise. This is the \cinline{goto}-like
-operator referred to earlier, which is used to elaborate all of C's iteration
-and \cinline{goto} statements.
+continuations with default arguments. This is the \cinline{goto}-like operator
+referred to earlier, which is used to elaborate all of C's iteration and
+\cinline{goto} statements.
+\begin{itemize}
+    \item $\cnnt{id}$ is the name, also referred to as the label.
+    \item $x_1, \ldots, x_n$ are parameters which in scope in $E$.
+    \item $e_1, \ldots, e_n$ are \emph{default arguments} for those parameters.
+\end{itemize}
 
-Formally, reaching a label via \coreinline{save()} evaluates its % chktex 36
-default expressions into values and then substitutes those values into its
-expression.\sidenote{Since this does not manipulate the heap or the stack, it
-    is phrased purely as is expression reduction, with a separated, omitted
-    rule to lift expression reductions to thread-local reductions.}
+\textbf{The label of \coreinline{save()} expression is scoped to its % chktex 36
+enclosing \kl{Core} procedure.} This means there are a three ways of reaching
+one.
+
+\begin{itemize}
+    \item Forward jump, with a \coreinline{run()} operator. % chktex 36
+    \item Backwards jump, with a \coreinline{run()} operator. % chktex 36
+    \item No jump, via evaluation of the enclosing expression.
+\end{itemize}
+
+When evaluating a \coreinline{save()} expression, its parameters % chktex 36
+must be instantiated and substituted into its body. The instantiaion
+depends on how the expression was reached. If it was via the
+\coreinline{run()} operator, then they are instantiated % chktex 36
+with the arguments of the same. If it was via the enclosing expression,
+then they are instantiated with the default arguments.
+
+Formally, reaching a \coreinline{save()} expression via its enclosing % chktex 36
+expression evaluates its default arguments (pure expressions) into values and
+then substitutes those values into its expression.\sidenote{Since this does not
+manipulate the heap or the stack, it is phrased purely as is expression
+reduction, with a separate, omitted rule to lift expression reductions to
+thread-local reductions.}
 
 {\small%
 \[
@@ -367,13 +421,14 @@ expression.\sidenote{Since this does not manipulate the heap or the stack, it
     \rightsquigarrow \left[ \cncomp{ \cnnt{value}_i / x_i }{i} \right] E }
 \]}
 
-Reaching the same label via a \coreinline{run()} however, is more % chktex 36
-complicated. Like a procedure call, it evaluates its arguments into values and
-looks up the label $\cnnt{id}$. Unlike a procedure call, the result of the
-lookup is \emph{a context} $C_{\cnnt{id}}$ and an expression $E_{\cnnt{id}}$.
-It substitutes the values for the parameters in $E_\cnnt{id}$, \emph{discards
-the current context} $C$, and uses $C_\cnnt{id}$ instead. All the while, the
-stack $\kappa$ is unchanged.
+Reaching the same \coreinline{save()} via a \coreinline{run()}  % chktex 36
+however, is more complicated. Like a procedure call, it evaluates its arguments
+into values and looks up the label $\cnnt{id}$. The $\mathrm{labelmap}$ is
+precomputed on a per-procedure basis by \kl{Cerberus} during elaboration.
+Unlike a procedure call, the result of the lookup is \emph{a context}
+$C_{\cnnt{id}}$ and an expression $E_{\cnnt{id}}$. It substitutes the values
+for the parameters in $E_\cnnt{id}$, \emph{discards the current context} $C$,
+and uses $C_\cnnt{id}$ instead. All the while, the stack $\kappa$ is unchanged.
 
 {\small%
 \[
@@ -384,22 +439,9 @@ stack $\kappa$ is unchanged.
     \rightarrow \left< h , C_{\cnnt{id}} \left[ \left[ \cncomp{\cnnt{value}_i / x_i}{i} \right] E_{\cnnt{id}} \right] , \kappa \right> }
 \]}
 
-The important aspect for our purposes is that while control flows into
+\textbf{The important aspect for our purposes is that while control flows into
 \coreinline{ccall()}, \coreinline{pcall()} and \coreinline{run()}, it % chktex 36
-only returns from the first two and not the last.
-
-\begin{figure*}[tp]
-    \ContinuedFloat{}
-    \raggedright%
-    \small%
-    \cngrammarcompressed{\textwidth}{%
-        \cncore{}\cninterrule{}
-        \cncoreXXctxt{}\cninterrule{}
-        \cncmemop{}\cninterrule{}
-        \cncaction{}\cnafterlastrule{}
-    }
-    \caption{The effectful fragment of Core.}\label{fig:effectful-core-grammar}
-\end{figure*}
+only returns from the first two and not the last.}
 
 \section{Elaboration example: list append}
 
@@ -418,24 +460,35 @@ for it are separated syntactically. The parameters have type
 (an option monad for potentially uninitialised values read from memory). The
 result of the function has type \coreinline{eff loaded t} where
 \coreinline{eff t} is a value of type \coreinline{t} produced with effects
-(also a monad). The \coreinline{create()} and \coreinline{store()} operations are % chktex 36
+(also a monad).
+
+\corefile[firstline=3, lastline=4]{code/append_plain.core}
+
+To keep the elaboration compositional (reflecting the structure of the C
+program), especially for early returns, when a C function is elaborated into a
+\kl{Core} procedure, \kl{Cerberus} adds a single \coreinline{save()} % chktex 36
+expression to delare a return label (here, \coreinline{ret_430}) \emph{at the
+end of the procedure}. Any part of the procedure may thus \emph{forward jump}
+to the return label because, as mentioned earlier, \textbf{labels are scoped to
+their enclosing procedure.}
+
+Like C labels, Core labels can be reached by evaluating the enclosing
+expression as well as being jumped to. In this case, the arguments to the label
+still need to be given a value; these default values are defined by the
+right-hand-side of the \coreinline{:=}, here an \coreinline{undef()} % chktex 36
+value because it is UB to reach the end of a function with a non-void return
+type without returning a value.
+
+\corefile[firstline=147, lastline=148]{code/append_plain.core}
+
+The \coreinline{create()} and \coreinline{store()} operations are % chktex 36
 memory actions, and produce values of type \coreinline{eff pointer} and
 \coreinline{eff unit} respectively. Binding constructs \coreinline{let strong}
 and \coreinline{let weak} (monadically) bind effectful values, and sequence
-their effects.\sidenote{$\cnkw{let}\ \cnkw{strong}\ \cnnt{pat}\ \cnkw{=}\
-    \cnnt{E}_1\ \cnkw{in}\ \cnnt{E}_2$ sequences all memory
-    actions performed by $\cnnt{E}_1$ before those performed by $\cnnt{E}_2$.
-    $\cnkw{let}\ \cnkw{weak}$ only sequences positive memory actions similarly;
-    in other words, for $\cnkw{let}\ \cnkw{weak}\ \cnnt{pat}\ \cnkw{=}\
-    \cnnt{E}_1\ \cnkw{in}\ \cnnt{E}_2$, any negative memory actions
-    ($\cnkw{neg}(\cnnt{action})$) performed by $\cnnt{E}_1$ are
-    unsequenced with respect to all memory actions performed by $\cnnt{E}_2$.
-    A race only occurs if unsequenced memory actions have overlapping
-    footprints, and is deemed \kl{UB}.}\label{sn:sequencing}
-In this example, weak sequencing has no observable effect, and so is
-safe to read as \coreinline{let strong}.
+their effects. In this example, weak sequencing has no observable effect, and
+so is safe to read as \coreinline{let strong}.
 
-\corefile[firstline=3, lastline=10]{code/append_plain.core}
+\corefile[firstline=5, lastline=10]{code/append_plain.core}
 
 
 In C, the test to check if \cinline{x} is \cinline{NULL} looks like this.
@@ -463,16 +516,6 @@ using the \coreinline{bound()} operator. After that is one % chktex 36
 \coreinline{run()} to the return label \coreinline{ret_430}. % chktex 36
 
 \corefile[firstline=48, lastline=56]{code/append_plain.core}
-
-The \coreinline{ret_430} label is defined with a \coreinline{save}, at the end
-of the procedure. Like C labels, Core labels can be reached by fall-through
-execution as well as being jumped to. In the fall-through case, the arguments
-to the label still need to be given a value; these default values are defined
-by the right-hand-side of the \coreinline{:=}, here an \coreinline{undef()} % chktex 36
-value because it is UB to reach the end of a function with a non-void return
-type without returning a value.
-
-\corefile[firstline=143, lastline=144]{code/append_plain.core}
 
 In the C code, the else-branch defines a new local variable \cinline{new_tail},
 and assigns it to the result of a recursive call.
@@ -540,7 +583,7 @@ In C, assignments can be used as expressions. In the jargon of the standard,
 any loads used to evaluate the operands form a \emph{value computation}, but
 the stores do not: they are classed as \emph{side effects}.\sidenote{%
 §5.1.2.3\#2: [\ldots] Evaluation of an expression in general includes both
-value computations and initiation of side effects.} As
+value computations and initiation of side effects.}\label{sn:side-effect} As
 per~\textcite[p61, p66, p99]{memarian2022cerberus}, \emph{``intuitively, a Core action
 is negative when it elaborates what the C standard calls a `side
 effect'\,''}.
@@ -816,7 +859,7 @@ synthesis and checking (\cref{fig:simple-bidir}).
     \and
     \inferrule[{[$\rightarrow{}$E]}]
         { \Gamma{} \vdash{} e_1 \synths{T_1 \rightarrow{} T_2} \and \Gamma{} \vdash{} e_2 \checks{T_2}}
-        { \Gamma{} \vdash{} e_1\ e_2 \synths{T_1 \rightarrow{} T_2}}
+        { \Gamma{} \vdash{} e_1\ e_2 \synths{T_2}}
     \end{mathpar}
     \endgroup%
     \caption{Simple \intro{bidirectional} type system, adapted
@@ -1126,12 +1169,13 @@ production in the grammar for \kl{linear} \kl{resource types}
 \end{marginfigure}
 
 \citeauthor{brotherston2016model}~\sidecite{brotherston2016model}~showed that
-precise assertions allow for efficient model checking without backtracking;
-in~\nameref{sec:elaboration}, I show how the same allow for \kl{CN} to infer
-instantiations of quantifiers without backtracking. I do so by leaning on input
-and output \kl{modes} which (a) is intuitive, given that in C source a pointer
-is an ``input'' and dereferenced value an ``output'' and (b) happens to
-coincide.
+precise assertions an ordered-disjunction allow for efficient (polynomial time)
+model checking without backtracking (since a normal disjunction is enough to
+require backtracking and thus exponential); in~\nameref{sec:elaboration}, I
+show how the same allow for \kl{CN} to infer instantiations of quantifiers
+without backtracking. I do so by leaning on input and output \kl{modes} which
+(a) is intuitive, given that in C source a pointer is an ``input'' and
+dereferenced value an ``output'' and (b) happens to coincide.
 
 This brings us nicely to the second question about disjunctions. As visible
 from \cref{fig:imprecise}, we see that arbitrary disjunctions pose a problem.
@@ -1241,7 +1285,8 @@ $\mathrm{list} : \mathrm{Loc} \times \mathrm{IntList} \rightarrow
 \times \mathrm{IntList})$, which is isomorphic to $\mathrm{Loc} \rightarrow
 \mathcal{P} (\mathrm{IntList})$. Unlike the initial form, which gave ``equal
 weighting'' to input and outputs, this form makes the input role of
-$\mathrm{Loc}$ and the output role of $\mathrm{IntList}$ very natural.
+$\mathrm{Loc}$ and the output role of $\mathrm{IntList}$, inside a covariant
+powerset monad, very natural.
 
 \begin{marginfigure}
     \small%
@@ -1252,20 +1297,20 @@ $\mathrm{Loc}$ and the output role of $\mathrm{IntList}$ very natural.
         &\llbracket \mathsf{let\ x} = e; e' \rrbracket \\
         &\: = \lambda a.\ \exists x.\ \llbracket e \rrbracket x \astRef{} \llbracket e' \rrbracket a \\
         &\llbracket \mathsf{if}\ t\ \mathsf{then}\ e\ \mathsf{else}\ e' \rrbracket \\
-        &\: = \lambda a.\  \left( t \wedge \llbracket e \rrbracket a \right) \vee \left( \neg \! t \wedge \llbracket e' \rrbracket a \right)
+        &\: = \lambda a.\  \left( t \wedge \llbracket e \rrbracket a \right) \vee \left( \neg \; t \wedge \llbracket e' \rrbracket a \right)
     \end{align*}
     \caption{Monadic syntax for separation logic, along with a translation into the traditional presentations. Pure
         terms are denoted by $t$, and monadic expression are denoted with $e$.}\label{fig:monad-sl}
 \end{marginfigure}
 
-Not only does this notational transformation turn \emph{mode correctness} into
-\emph{variable scoping} with the $\mathsf{let\ x} = e; e'$ construct, it also
-enforces the disjointness of computational values and the shape of the heap
-mentioned earlier with the $\mathsf{if}\ t\ \mathsf{then}\ e\ \mathsf{else}\
-e'$ construct. Not only can all logical quantifiers now be \emph{inferred}
-without backtracking, branching assertions can be checked without backtracking
-too: check $e$ if you can can prove $t$ and check $e'$ if you can prove
-$\neg\;t$.
+This notational transformation turns \emph{mode correctness} into
+\emph{variable scoping}, when one interprets let-bindings $\mathsf{let\ x} = e;
+e'$ as monadic bindings inside a covariant powerset monad. It also enforces the
+disjointness of computational values and the shape of the heap mentioned
+earlier with the $\mathsf{if}\ t\ \mathsf{then}\ e\ \mathsf{else}\ e'$
+construct. Not only can all logical quantifiers now be \emph{inferred} without
+backtracking, branching assertions can be checked without backtracking too:
+check $e$ if you can can prove $t$ and check $e'$ if you can prove $\neg\;t$.
 
 \subsection{\kl[iterated]{Iterated} separating conjunctions to handle arrays}\label{sec:it-array}
 
@@ -1299,7 +1344,7 @@ quantifier-free SMT queries. Specifically,
         statement.
 \end{itemize}
 
-This enables a few convenient features:
+This enables a few convenient features.
 \begin{itemize}
     \item Iterated separating conjunctions can be tested for equality by
         looking only at the name of the predicate being iterated over, symbolic
@@ -1315,21 +1360,29 @@ This enables a few convenient features:
         does not have to be contiguous.
 \end{itemize}
 
-\kl{CN} does not however, support automatically \emph{merging} arrays, because
-the constraints required to express the \emph{merged values} are outside the
-decidable fragment for the SMT theory of arrays.\sidenote{So \kl{CN} could, but
-does not, support merging for uninitialised arrays.} Relatedly, \kl{CN} did
-support the decidable array property fragment,~\sidecite{bradley2006whats}, but
-it was not expressive enough for verifying pKVM's \kl{buddy allocator}
-(\cref{chap:buddy}) and so it was removed. \kl{CN} also supported a scheme for
-inferring indices (instead of requiring the movable ones to be declared up
-front), but this was removed during a change to the inference
+It also comes with a few limitations.
+\begin{itemize}
+    \item It does not support automatically \emph{merging} arrays, because the
+        constraints required to express the \emph{merged values} are outside
+        the decidable fragment for the SMT theory of arrays.\sidenote{\kl{CN}
+        could, but does not, support merging for uninitialised arrays.}
+    \item It does not make it clear what the lower and upper bounds of the
+        iteration is. This would be useful for both disjointness reasoning in
+        proof mode, and runtime checking for
+        Fulminate~\sidecite{banerjee2025fulminate}.
+\end{itemize}
+
+\kl{CN} did support the decidable array property
+fragment,~\sidecite{bradley2006whats}, but it was not expressive enough for
+verifying pKVM's \kl{buddy allocator} (\cref{chap:buddy}) and so it was
+removed. \kl{CN} also supported a scheme for inferring indices (instead of
+requiring the movable ones to be declared up front), but this was removed
+during a change to the inference
 scheme.\sidenote{\href{https://github.com/rems-project/cerberus/commit/7c2c0a364a4373e4eb109f32d01cc9584f51e81f}{Commit
 7c2c0a36.}}\label{sn:new-inf}
 
-\section{Alternatives and related work}
-
-\begin{itemize}
-    \item Do I want to talk about this here?
-\end{itemize}
-
+% \section{Alternatives and related work}
+%
+% \begin{itemize}
+%     \item Do I want to talk about this here?
+% \end{itemize}

@@ -284,7 +284,7 @@ programming language put in place several restrictions to prevent aliasing in
 the language, unlike its main influence, Pascal, which permitted
 it~\sidecite{popek1977notes}.
 
-The key breakthrough came with the arrival of separation logic by 
+The key breakthrough came with the arrival of separation logic by
 Reynolds, O'Hearn, Yang and Ishtiaq~\sidecite{reynolds2002separation,ishtiaq2001BI,o2001local}.
 Specifically, the introduction of the \intro{separating conjunction}, $\astRef$, allows us to
 state a version of the rule of constancy which is sound, known as a the
@@ -1001,7 +1001,82 @@ pointer to next node \cinline{struct queue_cell *next}.
 
 Based on this, we define some predicates relating the shape of the heap, and
 invariants we expect to hold on the data-structure at all times, to the logical
-value represented in memory. The first is the top-level predicate
+value we wish to reason about. A diagram of the shape of the heap, the C types
+involved, and the ownership structure of the predicates, is shown in
+\cref{fig:queue-heap-shape}.
+
+\begin{figure}[tp]
+\begin{center}
+\begin{tikzpicture}[
+    x=0.7cm,
+    y=0.7cm,
+    box/.style={draw, rectangle, minimum height=0.7cm, minimum width=1.4cm},
+    every arrow/.style={-{Latex[length=2mm]}, thick}
+]
+
+% % Optional: draw the grid to help align things
+% \draw[step=0.7cm,gray,very thin] (0,0) grid (13,4);
+%
+% % Column numbers (top)
+% \foreach \x in {0,...,9} {
+%     \node[above] at (\x,9) {\x};
+% }
+%
+% % Row numbers (left)
+% \foreach \y in {0,...,9} {
+%     \node[left] at (0,\y) {\y};
+% }
+
+% Nodes placed on the grid
+\node[box,fill=blue!20]      (queue_empty) at (1,4) {queue};
+\node[box,fill=darkgreen!20] (nullpair)    at (1,0) {NULL};
+\node[box,fill=darkgreen!20] (nullpair2)   at (3,0) {NULL};
+
+\node[box,fill=blue!20]      (queue_full) at (6,4) {queue};
+\node[box,fill=darkgreen!20] (fb)         at (6,2) {front};
+\node[box,fill=darkgreen!20] (fb2)        at (8,2) {back};
+
+\node[box,fill=darkgray!20] (node1)      at (6,0) {first$_1$};
+\node[box,fill=darkgray!20] (node1_next) at (8,0) {next$_1$};
+
+\node[box,fill=darkgray!20] (node2)      at (11,0) {first$_2$};
+\node[box,fill=darkgray!20] (node2_next) at (13,0) {next$_2$};
+
+\node[box,fill=darkgray!20] (noden)      at (11,2) {first$_{n-1}$};
+\node[box,fill=darkgray!20] (noden_next) at (13,2) {back};
+
+\node[box,fill=darkgray!20] (nullnode)  at (11,4) {first$_n$};
+\node[box,fill=darkgray!20] (nullnode2) at (13,4) {NULL};
+
+% Arrows for empty queue
+\draw[->] (queue_empty.south) -- (nullpair.north);
+
+% Arrows for non-empty queue
+\draw[->] (queue_full.south) -- (fb.north);
+\draw[->] (fb.south) -- (node1.north);
+\draw[->] (fb2.north) -- (nullnode.south);
+\draw[->] (node1_next.east) -- (node2.west);
+\draw[->] (node2_next.north) -- (noden.south);
+\draw[->] (node2_next.north) -- (noden.south);
+
+\node[fill=white, inner sep=3pt] at (12,1) {$\cdots$};
+
+\end{tikzpicture}
+\end{center}
+\caption{Pointer diagram for the queue-related predicates. Nodes represent
+    values, and arrows represent \emph{owned} pointer links. It starts with
+    \cinline{struct queue*} value `queue' at the top (in light blue),
+    representing the QueuePtr\_At predicate. From there are two cases as, in the
+    QueueFB predicate. On the left is the empty case shown by a \cinline{struct
+    queue} where both \cinline{.front} and \cinline{.back} values are
+    \cinline{NULL} (in light green). On the right, is the non-empty case, where
+    both \cinline{front} and \cinline{back} point to \cinline{struct
+    queue_cell}s (in light grey). The chain of grey boxes represents the
+    recursive QueueAux predicate.}\label{fig:queue-heap-shape}
+\end{figure}
+
+
+The first is the top-level predicate
 \cninline{QueuePtr_At(p)} for a pointer \cninline{p}, with output % chktex 36
 argument \cninline{datatype List}. It takes ownership of a \cinline{struct
 queue} at that pointer, and binds the logical value at that location in memory
@@ -1138,8 +1213,8 @@ ownership of a longer segment from \cninline{front} to \cninline{p->next}
 
 \section{Proofs of lemmas}
 
-\kl{CN} currently does not support export and proofs of lemmas which mention
-resources, even if those resources are there just to help state a pure fact.
-Support for this is planned (\cref{sec:lemma-prover}). However, as it turns
-out, for some lemmas, such as the ones shown here, it is possible to give a
-proof in terms of a C function (\cref{sec:lemma-proof-c}).
+\kl{CN} has in-progress support for export and proofs of lemmas which mention
+resources, which may be combined with in-progress support for ghost arguments
+and returns for lemmas which merely state pure fact (\cref{sec:lemma-prover}).
+However, as it turns out, for some lemmas, such as the ones shown here, it is
+possible to give a proof in terms of a C function (\cref{sec:lemma-proof-c}).
