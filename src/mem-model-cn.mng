@@ -319,58 +319,58 @@ whether each argument is in bounds of the same live allocation.
         checks.}\label{fig:cnvip-liveness-bounds}
 \end{figure*}
 
-\section{Supporting roundtrip casts}
-
-As explained in \nameref{subsec:prov-int-bytes}, whereas \kl{VIP} and
-\kl{PNVI-ae-udi} support casts between pointers and integers directly,
-\kl{CN-VIP} requires such casts to proceed via a new, intermediate C type for
-supporting roundtrip casts. To be clear, from the point of view of the user,
-the new intermediate C type is just a \cinline{typedef} for an integer such as
-\cinline{uintptr_t}, so any code that uses it will continue to compile and run
-with standard C toolchains. However, when used within \kl{CN}, the new C type
-enables supporting roundtrip casts at the cost of a few more casts; for now
-these must be inserted manually by the programmer, but it is possible to tweak
-the \kl{Cerberus} elaboration to insert some of them automatically.
-
-Remember, the idea is that the new C type will allow \kl{CN} to track the
-representation of integers more precisely than in \kl{VIP} which uses a
-datatype with two cases, to sidestep any potential performance issues and make
-additional complexity in specifications opt-in.
-
-Note that, in line with the C standard, the the PNVI-* code for casting
-pointers to integers allows for casting pointers belonging to dead allocations,
-or pointers with $@\mathsf{empty}$ provenances, whereas the formalised rules in
-\citeauthor{memarian2022cerberus} erroneously do not mention this case. This
-omission is then compounded by the \citeauthor{lepigre2022vip} rules, which,
-overly-restrictively, require the cast pointer to be alive. Upon examining the
-proof of soundness of \kl{VIP} above \kl{PNVI-ae-udi} for this case, I
-concluded that the restriction can be relaxed to the intended meaning. As such,
-the \kl{CN-VIP} typing rules \kl{do not} require the cast pointer to belong to
-a live allocation, and thus do not require any resource term proofs of it
-(\cref{fig:cnvip-roundtrip}).
-
-\begin{figure*}[tp]
-    \small
-    \raggedright{}
-    \cndefnLive{}
-    \cndefnBounds{}
-    \onlyUseRules{\cndefnMemop{}}{%
-        \cndruleMemopXXIntFromRt{},
-        \cndruleMemopXXRtFromInt{},
-        \cndruleMemopXXRtFromPtr{},
-        \cndruleMemopXXPtrFromRt{}
-    }
-    \caption{\kl{Kernel CN} casts between pointer, roundtrip and integer
-        types.}\label{fig:cnvip-roundtrip}
-\end{figure*}
-
-At the \kl{Kernel CN} level, the basetype for the new, roundtrip C type is just
-$[[loc]]$. This means the cast between pointers and roundtrip at the
-specification level is just the identity. However, it is still necessary as a
-distinct memory operation \MemopRtFromPtr{} because it corresponds to a pointer
-value being cast to a $\mathit{Loc}\,(@i, a)$, integer value in \kl{VIP}, and
-similarly the memory operation \MemopIntFromRt{} corresponds to the transition
-to the $\mathit{Int}\,(a)$ integer value in \kl{VIP}.
+% \section{Supporting roundtrip casts}
+%
+% As explained in \nameref{subsec:prov-int-bytes}, whereas \kl{VIP} and
+% \kl{PNVI-ae-udi} support casts between pointers and integers directly,
+% \kl{CN-VIP} requires such casts to proceed via a new, intermediate C type for
+% supporting roundtrip casts. To be clear, from the point of view of the user,
+% the new intermediate C type is just a \cinline{typedef} for an integer such as
+% \cinline{uintptr_t}, so any code that uses it will continue to compile and run
+% with standard C toolchains. However, when used within \kl{CN}, the new C type
+% enables supporting roundtrip casts at the cost of a few more casts; for now
+% these must be inserted manually by the programmer, but it is possible to tweak
+% the \kl{Cerberus} elaboration to insert some of them automatically.
+%
+% Remember, the idea is that the new C type will allow \kl{CN} to track the
+% representation of integers more precisely than in \kl{VIP} which uses a
+% datatype with two cases, to sidestep any potential performance issues and make
+% additional complexity in specifications opt-in.
+%
+% Note that, in line with the C standard, the the PNVI-* code for casting
+% pointers to integers allows for casting pointers belonging to dead allocations,
+% or pointers with $@\mathsf{empty}$ provenances, whereas the formalised rules in
+% \citeauthor{memarian2022cerberus} erroneously do not mention this case. This
+% omission is then compounded by the \citeauthor{lepigre2022vip} rules, which,
+% overly-restrictively, require the cast pointer to be alive. Upon examining the
+% proof of soundness of \kl{VIP} above \kl{PNVI-ae-udi} for this case, I
+% concluded that the restriction can be relaxed to the intended meaning. As such,
+% the \kl{CN-VIP} typing rules \kl{do not} require the cast pointer to belong to
+% a live allocation, and thus do not require any resource term proofs of it
+% (\cref{fig:cnvip-roundtrip}).
+%
+% \begin{figure*}[tp]
+%     \small
+%     \raggedright{}
+%     \cndefnLive{}
+%     \cndefnBounds{}
+%     \onlyUseRules{\cndefnMemop{}}{%
+%         \cndruleMemopXXIntFromRt{},
+%         \cndruleMemopXXRtFromInt{},
+%         \cndruleMemopXXRtFromPtr{},
+%         \cndruleMemopXXPtrFromRt{}
+%     }
+%     \caption{\kl{Kernel CN} casts between pointer, roundtrip and integer
+%         types.}\label{fig:cnvip-roundtrip}
+% \end{figure*}
+%
+% At the \kl{Kernel CN} level, the basetype for the new, roundtrip C type is just
+% $[[loc]]$. This means the cast between pointers and roundtrip at the
+% specification level is just the identity. However, it is still necessary as a
+% distinct memory operation \MemopRtFromPtr{} because it corresponds to a pointer
+% value being cast to a $\mathit{Loc}\,(@i, a)$, integer value in \kl{VIP}, and
+% similarly the memory operation \MemopIntFromRt{} corresponds to the transition
+% to the $\mathit{Int}\,(a)$ integer value in \kl{VIP}.
 
 \section{Soundness}\label{sec:cn-vip-soundness}
 
@@ -561,8 +561,8 @@ and the statement too
 
 \subsection{Linking \kl{CN-VIP} to \kl{VIP}}\label{sec:linking}
 
-\kl{CN-VIP} departs from \kl{VIP} in two ways: the introduction of a types for
-bytes and for roundtrip types.
+\kl{CN-VIP} departs from \kl{VIP} in due to the introduction of a new C type
+for bytes.
 
 Bytes are intended only for transforming C types to and from their
 representation, critical for supporting dynamic memory allocation and unions.
@@ -581,15 +581,23 @@ $\sim$ related to \kl{VIP} \cinline{char} as follows: $\mathsf{unspec} \sim
 \mathsf{unspec}$, $(@\mathsf{empty}, a) \sim \mathit{Int}\,(a)$, and $(@i, a)
 \sim \mathit{Loc}\,(@i, a)$.
 
-Roundtrip values are also new values, neither pointers nor integers, and
-abstract from the perspective of the C programmer. Thus the soundness of
-various integer and pointer memory operations (excluding casts) are unaffected
-by their introduction. The new \kl{CN-VIP} casts involving roundtrip types, are
-simulated by casting to specific constructors in \kl{VIP}. For pointers,
-$\mathsf{NULL} \sim \mathsf{NULL}$, and $(\pi, a) \sim (\pi, a)$. For roundtrip
-types, $(\pi, 0) \sim \mathit{Int}\,(0)$ and $(\pi, a) \sim \mathit{Loc}\,(\pi, a)$
-for $a \neq 0$. For integer types, $0 \sim \mathit{Int}\,(0)$ and $a \sim
-\mathit{Int}\,(a)$ for $a \neq 0$.
+The addition of exposure tracking would complicate the relationship between
+\kl{CN-VIP} and \kl{VIP}: neither would be strictly more expressive than the
+other. The former is more restrictive for byte-related features, requiring
+\emph{more} annotations (explicit casts to and from bytes). The latter would be
+more restrictive for round-trip related features, requiring changes to the
+source program, by threading pointers in and using them from
+\cinline{copy_alloc_id}s.
+
+% Roundtrip values are also new values, neither pointers nor integers, and
+% abstract from the perspective of the C programmer. Thus the soundness of
+% various integer and pointer memory operations (excluding casts) are unaffected
+% by their introduction. The new \kl{CN-VIP} casts involving roundtrip types, are
+% simulated by casting to specific constructors in \kl{VIP}. For pointers,
+% $\mathsf{NULL} \sim \mathsf{NULL}$, and $(\pi, a) \sim (\pi, a)$. For roundtrip
+% types, $(\pi, 0) \sim \mathit{Int}\,(0)$ and $(\pi, a) \sim \mathit{Loc}\,(\pi, a)$
+% for $a \neq 0$. For integer types, $0 \sim \mathit{Int}\,(0)$ and $a \sim
+% \mathit{Int}\,(a)$ for $a \neq 0$.
 
 \chapter{Implementation of CN-VIP}\label{chap:impl-cnvip}
 
@@ -1146,7 +1154,7 @@ in~\sidetextcite{memarian2022cerberus}.
     &\quad
     \begin{cases}
         @i & { \begin{matrix*}[l]
-                \exists k \in \{\, 1, \ldots, n \,\}.\ \pi_k = @i\ \text{and,} \\ 
+                \exists k \in \{\, 1, \ldots, n \,\}.\ \pi_k = @i\ \text{and,} \\
                 \forall k \in \{\, 1, \ldots, n \,\}.\ \pi_k = @i \vee \pi_k = \mathsf{@empty}
                 \end{matrix*} } \\
         \mathsf{@empty} & \text{otherwise}
