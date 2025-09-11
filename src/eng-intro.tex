@@ -62,19 +62,19 @@ by creating a parallel mode of elaboration to support the more intuitive model.
 
 Influenced by \kl{Cerberus}'s decision to model C integers as unbounded with
 constraints, \kl{CN} originally adopted a similar design, and used to verify
-the \kl{pKVM}'s buddy allocator, as mentioned in \sidetextcite{pulte2023cn}.
+the \kl{pKVM}'s \kl{buddy allocator}, as mentioned in \sidetextcite{pulte2023cn}.
 However, this soon became cumbersome due to the use for frequent bit
 manipualation idioms in \kl{pKVM}'s page table walker, because expressing these
 idioms on integers then required the frequent use of lemmas to handle the
 (undecidable) non-linear arithmetic. This prompted an overhaul of \kl{CN} to
 work with bit vectors as its fundamental integer type.
 
-My contributions to this thread began as I attempted to update the buddy
-allocator to handle a very early version of \kl{VIP}, which coincided with the
+My contributions to this thread began as I attempted to update the \kl{buddy
+allocator} to handle a very early version of \kl{VIP}, which coincided with the
 move to bit-vectors, \emph{and} a change in the inference scheme. Alongside
 this, this was my first serious use of \kl{CN} and separation logic, and I did
 not have the benefit of the helpful \kl{CN tutorial} to serve as less steep
-cliff to ascend. To top it all off, the underlying code of the buddy allocator
+cliff to ascend. To top it all off, the underlying code of the \kl{buddy allocator}
 had been updated, unbeknownst to anyone at the time (we did not have
 performance benchmarking) \kl{CN} became dramatically slower, and at the time
 had no ability to track source location information across the majority of its
@@ -515,13 +515,13 @@ The \kl{pKVM} hypervisor is intended to provide isolation between virtual
 machines, protecting both the guest from the host and vice versa. It is also
 intended to support creating and destroying virtual machines dynamically, and
 so one of its key features it needs to implement is memory management. It
-implements a buddy allocator~\cite{knowlton1965fast} to manage the pages it
+implements a \kl{buddy allocator}~\cite{knowlton1965fast} to manage the pages it
 allocates. The example is discussed in~\textcite{pulte2023cn}, so I will focus
 only on my experience in updating the code.
 
 \section{Successful update to intrusive free lists}
 
-The major code change is easy to describe. The buddy allocator maintains a
+The major code change is easy to describe. The \intro{buddy allocator} maintains a
 doubly-linked list of free pages (per order). Initially, the pointers for these
 were stored externally to the free pages, but an update to the code changed it
 so that the pointers were stored intrusively, on the free pages themselves.
@@ -531,7 +531,7 @@ error reporting, which I will explain later, but also partly due to a lack
 of experience and resulting intuition around the code and its predicates.
 With significant help, I was able to make worthwhile progress on it.
 
-The \kl{pKVM} buddy allocator is a challenging piece of code to understand and
+The \kl{pKVM} \kl{buddy allocator} is a challenging piece of code to understand and
 verify. It shifts between physical and virtual addresses frequently, and I
 found this difficult to follow. At the time, the original proof did not have or
 use helper functions, so tracking the complex arithmetic and different `types'
@@ -558,7 +558,7 @@ cognitive capabilities and of \kl{CN}'s abstractions and error reporting.
 \subsection{Carving and integrated the upstream code}
 I did the update before I had a functioning tree carver, and so I had to
 manually carve out and integrate the upstream changes into the pre-existing
-buddy allocator proof. This was slow and tedious. It was also occasionally
+\kl{buddy allocator} proof. This was slow and tedious. It was also occasionally
 error-prone, because although clang and Cerberus were helpful to sanity check
 the new cutdown version, they would not complain if annotations were missing.
 
@@ -644,7 +644,7 @@ body).
 
 \subsection{Indexing and signed bit vector division}
 
-The main predicate of the buddy allocator claims a contiguous iterated
+The main predicate of the \kl{buddy allocator} claims a contiguous iterated
 ownership of page metadata, and \emph{spare} iterated ownership of the pages
 themselves, specifically the free pages (determined by the metadata).
 
@@ -704,7 +704,7 @@ of the code, which took at most 2 weeks.
 \section{Successful update to experimental VIP}
 
 Towards the end of the update to support the intrusive free lists, I started
-working up updating the buddy allocator proof to an early version of the
+working up updating the \kl{buddy allocator} proof to an early version of the
 \kl{VIP} implementation. In this early version, pointers were augmented with an
 allocation ID, and the typing rules were updated to handle this. I had
 implemented a flag for turning \kl{VIP} behaviour on and off, and also
@@ -738,7 +738,7 @@ functional at each step.
 
 This did not pan out due to a substantial change to \kl{CN}: switching the
 representation of integers from mathematical integers to fixed-width bit
-vectors. In short, the change made verifying the buddy allocator at at least
+vectors. In short, the change made verifying the \kl{buddy allocator} at at least
 50x slower, and, remarkably, this went unnoticed for a long time. The reasons
 for this will become clear in the following takeaways.
 
@@ -750,7 +750,7 @@ for this will become clear in the following takeaways.
 
 \subsection{Features}\label{subesc:takeaway-features}
 
-\paragraph{Tutorials are indispensable.} The buddy allocator verification is
+\paragraph{Tutorials are indispensable.} The \kl{buddy allocator} verification is
 complex, and learning it without building up intuition for separation logic and
 how to operate \kl{CN} made the process unnecessarily difficult. This has been
 remedied with the introduction of the \kl{CN
@@ -768,20 +768,20 @@ up, but instead the user must figure out and maintain the dependency structure
 in their head when planning the proof effort, and manually select the functions
 to verify one at a time.
 
-\paragraph{Function-like macros represent real abstractions.} The buddy allocator code
-uses function-like macros heavily to convert between a pointer to metadata, an
-index into metadata, a physical address and a virtual address. Ideally there
-would be some way of automatically converting such macros into logical (ghost)
-functions, but this is difficult because macros can and do refer to global
-variables. Instead of converting macros to logical functions, it may be more
-fruitful to simply expand their use in specifications, but macros are not
-expanded in comments, where \kl{CN}'s annotations live.\sidenote{This is close
-to essential for maintaining compatibility with existing C tool chains.}
-\kl{CN} does have an experimental feature for lifting a C function into a
-logical one, with the idea being that writing a C function around a macro call
-is an option sometimes. All this being said, even if by hand, the benefit of
-defining logical equivalents of function-like macros is worthwhile for the
-readability, reliability and maintainability it brings.
+\paragraph{Function-like macros represent real abstractions.} The \kl{buddy
+allocator} code uses function-like macros heavily to convert between a pointer
+to metadata, an index into metadata, a physical address and a virtual address.
+Ideally there would be some way of automatically converting such macros into
+logical (ghost) functions, but this is difficult because macros can and do
+refer to global variables. Instead of converting macros to logical functions,
+it may be more fruitful to simply expand their use in specifications, but
+macros are not expanded in comments, where \kl{CN}'s annotations
+live.\sidenote{This is close to essential for maintaining compatibility with
+existing C tool chains.} \kl{CN} does have an experimental feature for lifting
+a C function into a logical one, with the idea being that writing a C function
+around a macro call is an option sometimes. All this being said, even if by
+hand, the benefit of defining logical equivalents of function-like macros is
+worthwhile for the readability, reliability and maintainability it brings.
 
 \paragraph{Constant-like macros also represent real abstractions.} I spent a
 bit of time removing magic constants prevalent in the original proof. Part of
@@ -846,8 +846,8 @@ less readable and less understandable.
 \kl{CN}'s transition to bit vectors was to support reasoning about \kl{pKVM}'s
 page table code, which used bit manipulation extensively, without resorting to
 lemmas frequently. However, the change was compulsory, rather than optional,
-and it left updating the buddy allocator high and dry, rather than turned on
-after understanding the specification and performance overhead.
+and it left updating the \kl{buddy allocator} high and dry, rather than turned
+on after understanding the specification and performance overhead.
 
 \paragraph{Syntax changes should be opt-in/gated underneath a flag.} The update
 to bit vectors changed the syntax of integer types too, and this was tedious to

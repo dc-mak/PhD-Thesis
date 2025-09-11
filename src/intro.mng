@@ -102,16 +102,19 @@ effort.
 In this thesis, I will argue that building a verification tool for C, suitable
 for handling low-level systems programming idioms, is two parts engineering,
 and one part theory. Little of the theory is novel or complex, but its
-application at scale present new challenges and insights. The proportions do
-not correspond to three different topics, which fit neatly in either bucket.
-Rather, each conceptual part of this thesis has varying mix of those
+application at scale presents new challenges and insights.
+% The proportions do not correspond to three different topics, which fit neatly
+% in either bucket. Rather,
+Each conceptual part of this thesis has a varying mix of those
 categories, which I will explain later in \nameref{sec:contributions}.
 
 To put those parts into context, I first need to explain the role and quirks of
 the venerable C programming language, and the relevant developments in
 verification theory.
 
-\section{The C programming language}\label{sec:c-lang}
+\section{Background}
+
+\subsection{The C programming language}\label{sec:c-lang}
 
 More than fifty years after its introduction, and despite competition from
 C++~\sidecite{isocpp1998} and Rust~\sidecite{rust}, C remains in common use. Part
@@ -135,31 +138,32 @@ However, most of this is the success C had in meeting its initial design goals:
 
 As time went on, hardware became faster, by becoming more complex and so C's
 proximity to it waned~\sidecite{chisnall2018c}. However, it continued to be
-used in performance critical code such as the Linux \kl{kernel}. Portability,
-assisted by a large set of \kl{UB}, became avenues for optimisations. Under
-pressure for faster code, simplicity of compilation gave way to complex alias
-analysis and pointer provenance reasoning to optimise code.
+used in performance critical code such as the Linux \kl{kernel}.
+\kl[UB]{Undefined behaviours}, originally to support portability, were
+repurposed as avenues avenues for aggressive optimisations. Under pressure for
+faster code, simplicity of compilation gave way to complex alias analysis and
+pointer provenance reasoning to optimise code.
 
+\cref{fig:ptr-from-int-ub} shows an example (derived
+from~\sidetextcite{memarian2019exploring}).%
 \begin{marginfigure}
     \raggedleft%
     \cfile{code/pointer_from_integer_1i.c}
     \caption{A modified version of examples
         pointer\_from\_integer\_\{1i,1ie\}.c.}\label{fig:ptr-from-int-ub}
-\end{marginfigure}%
+\end{marginfigure}
+It is not `natural' code one would expect programmers to write; rather, it
+illustrates aliasing rules a compiler may assume. It guesses that
+\cinline{ADDRESS_PFI_1I} is the address of a variable local to function
+\cinline{f}, and passes that guess in as an argument \cinline{f(j)}.% chktex 36
+Inside the function, it declares a local variable \cinline{i} and then creates
+a pointer \cninline{p} from the argument. If this new pointer is equal to the
+address of the local variable, it writes to that location (\cinline{if (p ==
+&i) *p=7;}).  The value of the local variable is then printed.
 
-\cref{fig:ptr-from-int-ub} shows a slightly contrived example (derived
-from~\sidetextcite{memarian2019exploring}), which nevertheless illustrates the
-alias assumptions at play here. It guesses that \cinline{ADDRESS_PFI_1I} is the
-address of a variable local to function \cinline{f}, and passes that guess in as
-an argument \cinline{f(j)}. Inside the function, it declares a local variable % chktex 36
-\cinline{i} and then creates a pointer \cninline{p} from the argument. If this
-new pointer is equal to the address of the local variable, it writes to that
-location (\cinline{if (p == &i) *p=7;}).  The value of the local variable is
-then printed.
-
-Based on this, assuming the address is guessed correctly, the reader will wish
-to ponder two questions: Does this program have undefined behaviour, and if so,
-where and why?  What will it print?
+Based on this, assuming the address is guessed correctly, the reader may ponder
+two questions: Does this program have undefined behaviour, and if so, where and
+why?  What will it print?
 
 If one is under the impression that C pointers and integers are interchangeable,
 one may be surprised to learn (a) the program has undefined behaviour, because
@@ -168,14 +172,14 @@ the pointer \cinline{p} is not constructed in a ``reasonable'' way
 may assume that \cninline{p} cannot alias the local variable \cinline{i}, and
 thus perform constant propagation over the assignment.
 
-We can thus conclude that to optimise pointer code, compilers assume that
+To optimise pointer code, compilers assume that
 pointers in C are \emph{not} completely concrete, and are only constructed in
 ``reasonable'' ways. We also know that to support low-level idioms of
 \emph{computing} with pointers (incrementing, offsetting, casting to and from
 integers), compilers assume that pointers are \emph{not} completely abstract.
-Compilers must also be conservative in such assumptions. This is evident by the
-surprising fact that \emph{despite a lack of dataflow between} \cinline{k} and
-\cinline{j}, uncommenting line 6 would make the program defined and print 7.
+Compilers must also be conservative in such assumptions. Even though there is
+\emph{no dataflow} between \cinline{k} and \cinline{j}, uncommenting line 6
+would make the program defined and print 7.
 
 Stakeholders have attempted to resolve questions of what a compiler may assume
 by the formation of and continual updates to the \kl{ISO} standard of
@@ -191,15 +195,38 @@ Given this state of affairs, the \intro{Cerberus}
 project~\sidecite{memarian2022cerberus} aims to provide a formally defined,
 executable and \emph{empirically validated} semantics of C, both ISO and \kl{de
 facto}. We shall explain Cerberus' particular advantages over other tools in
-\cref{sec:cerberus-core}. For now, it suffices to say that Cerberus works by
-\emph{\kl{compositional}ly} elaborating C into a first-order functional
-language (known as `\intro{Core}') with a few purpose-built constructs. It
-makes explicit many implicit quirks of C such as integer promotion, \kl{UB} and
-loose evaluation order.
+\cref{sec:cerberus-core}.
 
-The \intro{compositional} nature allows a user to see how the
-elaborated \kl{Core} relates to the C a user wrote. I will use a function which
-appends two linked lists of integers as a running example.
+For now, it suffices to say that Cerberus works by \emph{\kl{compositional}ly}
+elaborating C into a first-order functional language (known as `\intro{Core}')
+with a few purpose-built constructs. It makes explicit many implicit quirks of
+C such as integer promotion, \kl{UB}, and loose evaluation order. This
+elaboration has a non-deterministic dynamic semantics, and can thus be executed
+to detect \kl{UB}s. A program as a whole is deemed to have \kl{UB} if any
+execution reaches \kl{UB}. The \intro{compositional} nature allows a user to
+see how the elaborated \kl{Core} relates to the C a user wrote.
+
+\kl{UBs} form the contract between the compiler and the programmer, one which
+is easy to violate by accident due to their quantity and subtlety. Common
+examples include: signed integer over/underflow, use-after-free, leaking, and
+double-free memory management errors, \kl[OOB]{out-of-bounds} indexing in
+arrays, and dereferencing a \cinline{NULL} pointer. To make matters worse,
+introducing \kl{UB} can result in unintended behaviours which are be difficult
+and costly to debug.
+
+This is because, from the perspective of the compiler, they are
+\emph{assumptions about the program and its execution}; they are not things one
+can check by running the program, and should ideally be
+\emph{proven} absent.\sidenote{There are tools which can instrument code to
+find some classes of assumption violations, CN included.}
+
+Thus, to aid programmers in proving such \kl{UB} absent, we must understand how
+we can prove thing about imperative, memory manipulating programs. To illustrate
+how to do such proofs, I will use a function which appends two
+linked lists of integers, as an example in both C (\cref{fig:append-c}) and
+in a simple separation logic soon (\cref{fig:append-annot}).
+
+% \cref{sec:append-core} somewhere?
 
 \begin{figure}
     \centering
@@ -207,310 +234,364 @@ appends two linked lists of integers as a running example.
     \caption{Linked list append in C.}\label{fig:append-c}
 \end{figure}%
 
-In this (admittedly unidiomatic) example, \cinline{NULL} pointers represent
+In this (admittedly non-idiomatic) example, \cinline{NULL} pointers represent
 empty lists, and so the function returns \cinline{ys} if \cinline{xs} is empty,
 otherwise it recurses on \cinline{xs->tail} to get the new tail
 \cinline{new_tail} and sets \cinline{xs->tail} to point to that,  returning the
 result as \cinline{xs}.
 
-This is elaborated into \kl{Core} (\cref{sec:append-core}). All the
-subtleties and sources of \kl{UB} in C are made explicit, such as signed integer over/underflow,
-use-after-free, leaking, and double-free memory management errors,
-\kl[OOB]{out-of-bounds} indexing in arrays, and dereferencing a \cinline{NULL}
-pointer. These form the contract between the compiler and the programmer, and
-violations can result in difficult to debug and costly mistakes. From the
-perspective of the compiler, they are \emph{assumptions about the program and
-its execution}; they are not things one
-can check by running the program, and should ideally be \emph{proven}
-absent.\sidenote{There are tools which can instrument code
-to find some classes of assumption violations, CN included.} To aid programmers in
-proving such \kl{UB} absent, we must understand how we can prove things about
-imperative, memory manipulating programs.
+\subsection{Verification with Separation Logic}\label{sec:sep-logic-intro}
 
-\section{Verification with Separation Logic}\label{sec:sep-logic-intro}
+To prove properties about imperative programs, \kl{CN} tugs on a thread of
+ideas woven in the late 1960s courtesy of~\sidetextcite{hoare1969axiomatic}
+and~\sidetextcite{floyd1993assigning}.
 
-The key ideas around proving properties about imperative programs originate all
-the way back towards the end of the 1960s, with~\citeauthor{floyd1993assigning}
-and~\citeauthor{hoare1969axiomatic}. The basic setup is a triple of
-$\{A\} \; C \; \{A'\}$, where $A$ is a \intro{precondition}, an assertion describing the
-intial state of the program; $C$ is the program which executes; and $A'$ is
-\intro{postcondition}, an assertion describing the final state of the program.
-Combined with a set of inference rules to construct proofs from smaller parts
-of $C$, this gave programmers a way to do pen-and-paper proofs about the
-behaviour of imperative programs.
+The basic setup is a triple of $\{A\} \; C \; \{A'\}$, where $A$ is a
+\intro{precondition}, an assertion describing the intial state of the program;
+$C$ is the program which executes; and $A'$ is a \intro{postcondition}, an
+assertion describing the final state of the program. Such triples are used in
+conjunction with a set of inference rules to construct pen-and-paper proofs
+from smaller proofs of $C$.\sidenote{This and the following two sections rely
+    heavily on the explanation of \textcite{pichon2017hlogmodc}.}
 
-This approach works well enough, up until the programming language introduces
-support for potentially aliasing pointers, at which it becomes
-unfeasible.\sidenote{This and the following two sections rely heavily on the
-explanation of \textcite{pichon2017hlogmodc}.} In short, the issue is that
-whilst assertions in the specification language might \emph{syntactically}
-refer to different locations, \emph{semantically} those locations may alias,
-thus breaking the rule of constancy (\cref{fig:rule-of-constancy}). This rule
-is critical for \intro{modular} verification for programs because we can use it
-to glue together two separately verified programs, and compose them (e.g.\
-sequentially) so long as they refer to separate program variables.
+\emph{Modularity is key}; it is enabled by the rule of constancy
+(\cref{fig:rule-of-constancy}).Using it, we can separately verify two
+complicated programs and compose them (e.g.\ sequentially), so long as they
+refer to separate program variables.
 
-\begin{marginfigure}
-  \begin{mathpar}
-      \inferrule{
-          \vdash{} \{\, A \,\} \; C \; \{\, A' \,\}  \\ \mod{(C)} \cap{} \mathrm{FV}(A'') = \emptyset{}
-      }{
-          \vdash{} \{\, A \wedge{} A'' \,\}\, C \,\{\, A' \wedge{} A'' \,\}}
-  \end{mathpar}
-  \caption{The rule of constancy, where $\mathrm{FV}$ refers to the free
-      variables of an assertion and $\mod{}$ is a syntactic
-      over-approximation to the set of program variables a program might
-      modify. It states that \kl{precondition}s which do not refer to mutated
-      program variables remain true that program terminates.}\label{fig:rule-of-constancy}
-\end{marginfigure}
+\begin{figure}[ht]
+\small%
+\begin{mathpar}
+  \inferrule[{[Constancy]}]{
+      \vdash{} \{\, A \,\} \; C \; \{\, A' \,\}  \\ \mod{(C)} \cap{} \mathrm{FV}(A'') = \emptyset{}
+  }{
+      \vdash{} \{\, A \wedge{} A'' \,\}\, C \,\{\, A' \wedge{} A'' \,\}}
+\end{mathpar}
+\caption{Rule of constancy for $\textsc{Cmd}_p$. $\mathrm{FV}$ refers to the
+  free variables of an assertion and $\mod{}$ is a syntactic
+  over-approximation to the set of program variables a program might
+  modify. It states that assertions which do not refer to mutated program
+  variables automatically remain true.}\label{fig:rule-of-constancy}
+\end{figure}
 
-To prevent this, we would have to use the following rule, which requires the
-pre- and postconditions to mention $E_3$ and $E_4$ even though they are not
+Consider $\textsc{Cmd}_p$, a toy imperative language with pointers, and an
+assertion language, which is first-order logic extended with mathematical terms
+and predicates (\cref{fig:cmdp-grammar}). The predicate $t \mapsto{} t'$ states
+that the location $t$ holds value $t'$. Arithmetic expressions can be lifted to
+terms, and so I will abuse notation and write $E_1 \mapsto E_2$.
+
+\begin{figure}[ht]
+\small%
+\begin{tabular}{l@{}l@{ }l@{ }l}
+\cncom{arith.\ expr.}  & $E$ & $\mathrel{{\Colon}{=}}$ & $ n \in{} \mathbb{N} \mid{} E + E' \mid{} E \times{} E' \mid{} \ldots $ \\ % chktex 8
+\cncom{boolean expr.} & $B$ & $\mathrel{{\Colon}{=}}$ & $\cnkw{T} \mid{} \cnkw{F} \mid{} E \leq{} E' \mid{} B\ \mathop{\cnkw{\&\&}} B' \mid{} \ldots$ \\
+\cncom{commands}      & $C$ & $\mathrel{{\Colon}{=}}$ & $\cnkw{skip} \mid{} C; C' \mid{} X \coloneq{} E \mid{} \ldots \mid{} X \coloneq{} [E]$ \\ % chktex 26 chktex 13
+                      &     &                         & $[E] \coloneq{} E' \mid{} \cnkw{alloc}(E_0, \ldots, E_n) \mid{} \cnkw{free}(E)$ \\ % chktex 36 chktex 26
+\cncom{terms}         & $t$ & $\mathrel{{\Colon}{=}}$ & $ x \mid{} X \mid{} n \in{} \mathbb{N} \mid{} f (t_1, \ldots, t_n)$ \\
+\cncom{predicates}    & $P$ & $\mathrel{{\Colon}{=}}$ & $ t = t' \mid{} t \mapsto{} t' \mid{} p(t_1, \ldots, t_n)$ \\ % chktex 36
+\cncom{assertions}    & $A$ & $\mathrel{{\Colon}{=}}$ & $ \bot{} \mid{} \top{} \mid{} P \mid{} A \wedge{} A' \mid{} A \vee{} A' \mid{} A \Rightarrow{} A'$ \\
+                      &     &                         & $ \forall{} x.\ A \mid{} \exists{} x.\ A$ \\
+\end{tabular}%
+\caption{Grammar for $\textsc{Cmd}_p$ language and assertions. It has
+    sequencing ($C; C'$) for control-flow, a class of boolean expressions
+    $B$ for conditions, and a class of arithmetic expressions $E$ as data,
+    and mutable, stack-based variables $X$. It also includes constructs for
+    allocating and initialising contiguous memory cells ($\cnkw{alloc}(E_1,
+    \ldots, E_n)$), as well as loading ($X \coloneq{} [E]$), storing ($[E]
+    \coloneq{} E'$), and deallocating ($\cnkw{free}(E)$) them. Assertions
+    are first-order logic extended with mathematical terms and predicates.
+    The predicate $t \mapsto{} t'$ states that the location $t$ holds value
+    $t'$.}\label{fig:cmdp-grammar}
+\end{figure}
+
+Semantically, arithmetic expressions denote values in $\mathbb{N}$, and boolean
+expressions denote either true ($\cnkw{T}$) or false $(\cnkw{F})$. Commands $C$
+denote a change in configuration $\langle{} C, s, h \rangle{} \rightarrow
+\langle{} C', s', h' \rangle{}$, with a stack $s$ and a heap $h$. Terms $t$ are
+mathematical expressions (with functions $f(t_1, \ldots, t_n)$) denoting values
+in $\mathbb{N}$, and may refer to stack or logical variables. Stacks are finite
+maps from program variables to $\mathbb{N}$, and heaps are finite maps
+$\mathbb{N} \rightharpoonup{} \mathbb{N}$. Informally, assertions denote a set
+of stacks and heaps. A triple is a statement that if the initial stack and
+heaps is in the denotation of the precondition, and the program terminates, the
+then final stack and heap is in the denotation of the postcondition. This will
+be spelled out formally in~\cref{fig:cmdp-assertions,fig:simple-sep-logic-triple}.
+
+Some of its inference rules are shown~\cref{fig:simple-cmd-logic}. These and
+other rules which do not involve manipulating the heap work well with
+standard first-order logic and its connectives, and the aforementioned rule of
+constancy.
+
+\begin{figure}[ht]
+\small%
+\begin{mathpar}
+\inferrule[{[Skip]}]
+    { }
+    { \vdash{} \{\, A \,\}\; \cnkw{skip} \;\{\, A \,\} }
+\and
+\inferrule[{[Assign]}]
+    { }
+    { \vdash{} \{\, E/X (A) \,\}\; X \coloneq{} E \;\{\, A \,\} }
+\and
+\inferrule[{[Consequence]}]
+    { \vdash{} A_1 \Rightarrow A_2 \\ \vdash{} \{\, A_2 \,\} \; C \; \{\, A'_2 \,\} \vdash{} A'_2 \Rightarrow A'_1 }
+    { \vdash{} \{\, A_1 \,\} \; C \; \{\, A'_1 \,\}}
+\end{mathpar}
+\caption{Some inference rules for the $\textsc{Cmd}_p$ language. The
+    \textsc{Skip} rule says that any assertion which holds before a
+    $\cnkw{skip}$ command is executed also holds afterwards. The
+    \textsc{Assign} rule says that any assertion $A$ about a program
+    variable $X$ which holds its updated expression $E$, before an $X
+    \coloneq{} E$ command, holds afterwards. I use $E/X (A)$ as to mean
+    `substitute expression $E$ for variable $X$ in $A$'. The
+    \textsc{Consequence} rules says that if $A_1$ implies $A_2$, and $A_2$
+    is a precondition of a command $C$ whose postcondition is $A'_2$, and
+    $A'_2$ implies $A'_1$, then $A_1$ and $A'_1$ are also pre- and
+        postconditions of $C$ respectively. }\label{fig:simple-cmd-logic}
+\end{figure}
+
+For that, one might be tempted to introduce the following inference rule to
+reason about writing to locations in the heap.
+
+{\small%
+\[
+    \inferrule[{[Bad-Store]}]{}{\vdash{}
+        \{ \exists{} v.\ E_1 \mapsto{} v \}
+        \; [ E_1 ] \mathbin{{:}{=}} E_2 \;
+        \{ E_1 \mapsto{} E_2 \} }
+\]}
+
+However, doing so would entail losing the rule of constancy and thus any hope
+of modular reasoning, since the combination of the two rules would allow the
+prover to prove false. As an example, in the case $Y = 37$ the postcondition
+would ensure $0 = 42$.
+
+{\small%
+\[
+    \inferrule{%
+        \{\, \exists{} v.\ 37 \mapsto{} v \,\} \; [37] \coloneq{} 42 \; \{\, 37 \mapsto 42 \,\}
+        \\
+        \mod{([37] \coloneq{} 42)} \cap{} \mathrm{FV}(Y \mapsto 0) = \emptyset{}
+    }{%
+        \{\, \exists{} v.\ 37 \mapsto{} v \wedge Y \mapsto 0 \,\} \; [37] \coloneq{} 42 \; \{\, 37 \mapsto 42 \wedge Y \mapsto 0 \,\}
+    }
+\]}
+
+The issue is that whilst assertions in the specification language might
+\emph{syntactically} refer to different locations, \emph{semantically} those
+locations may alias. Pointer assigments in one expression influence the state
+referenced via other expressions. Early attempts to prevent this, explicitly
+tracked inequality of pointers to reason about updates.
+
+{\small%
+\[
+    \inferrule[{Cumbersome-Store}]{}{\vdash{}
+        \{\, \exists{} v.\ E_1 \mapsto{} v \wedge{} E_1 \neq E_3 \wedge{} E_3 \mapsto{} E_4 \,\}
+        \; [ E_1 ] \mathbin{{:}{=}} E_2 \;
+        \{\, E_1 \mapsto{} E_2 \wedge{} E_3 \mapsto{} E_4 \,\} }
+\]}
+
+Unfortunately, this scales poorly because it is not compositional:
+pre- and postconditions mention $E_3$ and $E_4$ even though they are not
 mentioned syntactically in $ [ E_1 ] \mathbin{{:}{=}} E_2$, so that the
 non-aliasing condition $E_1 \neq E_3$ can be stated, and the morally disjoint
-fact $E_3 \hookrightarrow{} E_4$ is preserved into the postcondition.%
-\[
-    \inferrule{}{\vdash{}
-        \{ \exists{} v.\ E_1 \hookrightarrow{} v \wedge{} E_1 \neq E_3 \wedge{} E_3 \hookrightarrow{} E_4 \}
-        \; [ E_1 ] \mathbin{{:}{=}} E_2 \;
-        \{ E_1 \hookrightarrow{} E_2 \wedge{} E_3 \hookrightarrow{} E_4 \} }
-\]
+fact $E_3 \mapsto{} E_4$ is preserved into the postcondition.%
 
-This scales poorly: composing one program with $n$ variables and up to $O(n^2)$
-no-aliasing conditions, with another program of $m$ variables and up to
-$O(m^2)$ leads to new assertions with up to ${O(n + m)}^2$ conditions. The
-problem is bad enough that the design of the verification-oriented Euclid
-programming language put in place several restrictions to prevent aliasing in
-the language, unlike its main influence, Pascal, which permitted
+Composing one proof with $n$ variables and up to $O(n^2)$ non-aliasing
+conditions, with another proof of $m$ variables and up to $O(m^2)$ leads to new
+non-aliasing conditions with up to ${O(n + m)}^2$ conditions. The problem is
+bad enough that the design of the verification-oriented Euclid programming
+language put in place several restrictions to prevent aliasing in the language,
+unlike its main influence, Pascal, which permitted
 it~\sidecite{popek1977notes}.
 
 The key breakthrough came with the arrival of separation logic by
 Reynolds, O'Hearn, Yang and Ishtiaq~\sidecite{reynolds2002separation,ishtiaq2001BI,o2001local}.
 Specifically, the introduction of the \intro{separating conjunction}, $\astRef$, allows us to
-state a version of the rule of constancy which is sound, known as a the
-\intro{frame rule} (\cref{fig:simple-sep-logic}). Not only did this enable the
-practical pen-and-paper verification of programs with pointers, aliasing, and
-dynamic memory management, it was very soon extended to aid in reasoning about
-several types of concurrency and is now mechanised in a very general way in
-proof assistants~\cite{jung2018iris, appel2011verified}, enabling complex
-proofs about large and subtle systems.
+state a version of the rule of constancy which is sound, known as the
+\intro{frame rule} (\cref{fig:simple-sep-logic}).
 
-\subsection{Simple separation logic}
+Not only did this enable the practical pen-and-paper verification of programs
+with pointers, aliasing, and dynamic memory management, it was very soon
+extended to aid in reasoning about several types of concurrency and is now
+mechanised in a very general way in proof assistants~\sidecite{jung2018iris,
+appel2011verified}, enabling complex proofs about large and subtle systems.
 
-The core ideas of separation logic are best illustrated by example through a
-toy imperative language, $\textsc{While}_p$ and an assertion language
-resembling first-order logic (\cref{fig:whilep-grammar}).
+\subsubsection{Simple separation logic}
 
-$\textsc{While}_p$ is a an imperative language with while-loops (omitted),
-conditional branching (omitted) and sequencing ($C; C'$) for control-flow, a
-class of boolean expressions $B$ for conditions, and a class of arithmetic
-expressions $E$ as data. It features mutable, stack-based variables $X$, and
-constructs for allocating and initialising contiguous memory cells
-($\cnkw{alloc}(E_1, \ldots, E_n)$), as well as loading ($X \coloneq{} [E]$),
-storing ($[E] \coloneq{} E'$), and deallocating ($\cnkw{free}(E)$) them.
-
-On this, we add a grammar of terms (mathematical expressions denoting values in
-$\mathbb{N}$), predicates and assertions. Assertions include familiar ones from
-first-order logic, as well as $\cnkw{emp}$ stating that the heap is empty, $t
-\mapsto{} t'$ stating that the location $t$ holds value $t'$ and $A \ast{} A'$
-which asserts that the heap can be split into two disjoint parts, one
+We can turn our previous logic into a separation logic by extending it with an
+assertion $\cnkw{emp}$ which states that the heap is empty, and a connective $A
+\ast{} A'$ which states that the heap can be split into two disjoint parts, one
 satisfying $A$ and other satisfying $A'$.
 
-\begin{figure}
-    \ContinuedFloat*%
-    \begin{tabular}{l@{}l@{ }l@{ }l}
-    \cncom{arith.\ expr.}  & $E$ & $\mathrel{{\Colon}{=}}$ & $ n \in{} \mathbb{N} \mid{} E + E' \mid{} E \times{} E' \mid{} \ldots $ \\ % chktex 8
-    \cncom{boolean expr.} & $B$ & $\mathrel{{\Colon}{=}}$ & $\cnkw{T} \mid{} \cnkw{F} \mid{} E \leq{} E' \mid{} B\ \mathop{\cnkw{\&\&}} B' \mid{} \ldots$ \\
-    \cncom{commands}      & $C$ & $\mathrel{{\Colon}{=}}$ & $\cnkw{skip} \mid{} C; C' \mid{} X := E \mid{} \ldots \mid{} X := [E]$ \\ % chktex 26 chktex 13
-                          &     &                         & $[E] := E' \mid{} \cnkw{alloc}(E_0, \ldots, E_n) \mid{} \cnkw{free}(E)$ \\ % chktex 36 chktex 26
-    \cncom{terms}         & $t$ & $\mathrel{{\Colon}{=}}$ & $ x \mid{} X \mid{} n \in{} \mathbb{N} \mid{} f (t_1, \ldots, t_n)$ \\
-    \cncom{predicates}    & $P$ & $\mathrel{{\Colon}{=}}$ & $ \cnkw{emp} \mid{} t = t' \mid{} t \mapsto{} t' \mid{} p(t_1, \ldots, t_n)$ \\ % chktex 36
-    \cncom{assertions}    & $A$ & $\mathrel{{\Colon}{=}}$ & $ \bot{} \mid{} \top{} \mid{} P \mid{} A \wedge{} A' \mid{} A \vee{} A' \mid{} A \Rightarrow{} A'$ \\
-                          &     &                         & $ A \ast{} A' \mid{} \forall{} x.\ A \mid{} \exists{} x.\ A$ \\
-    \end{tabular}%
-    \caption{Syntax of $\textsc{While}_p$ simple imperative language with
-        pointers. Arithmetic expressions denote values in $\mathbb{N}$, and
-        boolean expressions denote either true ($\cnkw{T}$) or false
-        $(\cnkw{F})$. Commands $C$ denote a change in configuration $\langle{}
-        C, s, h \rangle{} \rightarrow \langle{} C', s', h' \rangle{}$, with a
-        stack $s$ and a heap $h$. Terms $t$ are mathematical expressions (with
-        functions $f(t_1, \ldots, t_n)$) denoting values in $\mathbb{N}$, and
-        may refer to stack or logical variables. The semantics of stacks, heaps,
-        predicates and assertions $A$ are discussed in the next
-        figure.}\label{fig:whilep-grammar}
-\end{figure}
-
 Semantically, assertions represent sets of heaps
-(\cref{fig:whilep-assertions}). No heap satisfies $\bot{}$, so it denotes the
+(\cref{fig:cmdp-assertions}). No heap satisfies $\bot{}$, so it denotes the
 empty set. Conversely, all heaps satisfy $\top{}$, so it denotes the set of all
 heaps $\mathsf{Heap} \eqdef{} \mathbb{N} \rightharpoonup{} \mathbb{N}$. In this
 presentation of a \kl{linear}\sidenote{Following the terminology
 of~\textcite{krebbers2018mosel}, I use the terms `affine' and `linear' instead
-of the original `intuitionistic' and `classical' respectively.} only the empty
-heap satisfies $\cnkw{emp}$, and only the singleton heaps satisfy $t \mapsto{}
-t'$.\sidenote{In an \kl{affine} setting, the conditions would be
-    $\mathrm{dom}(h) \supseteq{} \mathsf{emp}$ and $\mathrm{dom}(h) \supseteq{}
-\{\, n \,\}$ respectively. Counter-intuitively, this means all heaps satisfy
-the empty heap.} Lastly, any heap $h$ satisfies $A \ast{} A'$ when it can be
-split into two disjoint heaps $h_1$ and $h_2$ such that $h_1$ satisfies $A$ and
-$h_2$ satisfies $A'$.
+of the original `intuitionistic' and `classical' respectively.} separation
+logic, only the empty heap satisfies $\cnkw{emp}$, and only the singleton heaps
+satisfy $t \mapsto{} t'$.\sidenote{In an \kl{affine} setting, the conditions
+would be $\mathrm{dom}(h) \supseteq{} \mathsf{emp}$ and $\mathrm{dom}(h)
+\supseteq{} \{\, n \,\}$ respectively. Counter-intuitively, this means all
+heaps satisfy the empty heap.} Lastly, any heap $h$ satisfies $A \ast{} A'$
+when it can be split into two disjoint heaps $h_1$ and $h_2$ such that $h_1$
+satisfies $A$ and $h_2$ satisfies $A'$.
 
 \begin{figure}
-    \ContinuedFloat%
-    \begingroup%
-    \newcommand{\denof}[1]{[\![#1]\!]}
-    \begin{align*}
-        \denof{-}(=) &: \mathsf{Assertion} \rightarrow \mathsf{Stack} \rightarrow \mathcal{P}(\mathsf{Heap}) \\
-        \denof{\bot}(s) &\eqdef{} \emptyset{} \\
-        \denof{\top}(s) &\eqdef{} \mathsf{Heap} \\
-        \denof{A \Rightarrow A'} &\eqdef{} \{\, h \in{} \mathsf{Heap} \mid{} h \in{} \denof{A}(s) \Rightarrow{} h \in{} \denof{A'}(s) \,\} \\
-                                 &\vdots{} \\
-        \denof{\cnkw{emp}}(s) &\eqdef{} \{\, h \in{} \mathsf{Heap} \mid{} \mathrm{dom}(h) = \emptyset{} \,\} \\
-        \denof{t \mapsto{} t'}(s) &\eqdef{} \left\{\, h \in{} \mathsf{Heap} \,\middle\vert{}\,
-                \begin{matrix}
-                    \exists n, n'.\ \denof{t}(s) = n \wedge n \neq{} 0 \wedge \denof{t'}(s) = n' \\
-                    \qquad{} \wedge{} \mathrm{dom}(h) = \{\,n\,\} \wedge{} h(n) = n'
-                \end{matrix} \,\right\}\\
-       \denof{A \ast{} A'}(s) &\eqdef{} \left\{\, h \in{} \mathsf{Heap} \,\middle\vert{}\,
-                \begin{matrix}
-                    \exists h_1, h_2.\ h_1 \in{} \denof{A}(s) \wedge h_2 \in{} \denof{A'}(s) \qquad{} \\
-                    \mathrm{dom}(h_1) \cap{} \mathrm{dom}(h_2) = \emptyset{} \wedge{} h = h_1 \cup{} h_2
-                \end{matrix} \,\right\}\\
-    \end{align*}%
-    \endgroup%
-    \caption{Semantics of assertions in this \kl{linear} separation logic.
-        Stacks are finite maps from program variables to $\mathbb{N}$, and
-        heaps are finite maps $\mathbb{N} \rightharpoonup{} \mathbb{N}$. The
-        denotations are parameterised over a stack and represent sets of
-        heaps. The semantics are \kl{linear} because the points-to assertion
-        $t \mapsto{} t'$ requires the heap's domain to be exactly $[\![t]\!](s)$,
-        rather than a superset of it.}\label{fig:whilep-assertions}
+\small%
+\begingroup%
+\newcommand{\denof}[1]{[\![#1]\!]}
+\begin{align*}
+    \denof{-}(=) &: \mathsf{Assertion} \rightarrow \mathsf{Stack} \rightarrow \mathcal{P}(\mathsf{Heap}) \\
+    \denof{\bot}(s) &\eqdef{} \emptyset{} \\
+    \denof{\top}(s) &\eqdef{} \mathsf{Heap} \\
+    \denof{A \Rightarrow A'} &\eqdef{} \{\, h \in{} \mathsf{Heap} \mid{} h \in{} \denof{A}(s) \Rightarrow{} h \in{} \denof{A'}(s) \,\} \\
+                             &\vdots{} \\
+    \denof{\cnkw{emp}}(s) &\eqdef{} \{\, h \in{} \mathsf{Heap} \mid{} \mathrm{dom}(h) = \emptyset{} \,\} \\
+    \denof{t \mapsto{} t'}(s) &\eqdef{} \left\{\, h \in{} \mathsf{Heap} \,\middle\vert{}\,
+            \begin{matrix}
+                \exists n, n'.\ \denof{t}(s) = n \wedge n \neq{} 0 \wedge \denof{t'}(s) = n' \\
+                \qquad{} \wedge{} \mathrm{dom}(h) = \{\,n\,\} \wedge{} h(n) = n'
+            \end{matrix} \,\right\}\\
+   \denof{A \ast{} A'}(s) &\eqdef{} \left\{\, h \in{} \mathsf{Heap} \,\middle\vert{}\,
+            \begin{matrix}
+                \exists h_1, h_2.\ h_1 \in{} \denof{A}(s) \wedge h_2 \in{} \denof{A'}(s) \qquad{} \\
+                \mathrm{dom}(h_1) \cap{} \mathrm{dom}(h_2) = \emptyset{} \wedge{} h = h_1 \cup{} h_2
+            \end{matrix} \,\right\}
+\end{align*}%
+\endgroup%
+\caption{The denotations are parameterised over a stack and represent sets of
+    heaps. The semantics are \kl{linear} because the points-to assertion
+    $t \mapsto{} t'$ requires the heap's domain to be exactly $[\![t]\!](s)$,
+        rather than a superset of it.}\label{fig:cmdp-assertions}
 \end{figure}
 
 With this setup, we can given inference rules for triples $\{A\} \; C \;
 \{A'\}$ for pointer and heap manipulating programs
-(\cref{fig:simple-sep-logic}). For example, the \textsc{Alloc} rule assumes an
-empty heap, and produces a heap with $n+1$ contiguous memory cells initialised
-with the provided values $E_0, \ldots, E_n$, and updates the stack variables
-$X$ with the location of the base of the new allocations. The \textsc{Load}
-rule assumes a singleton heap $E_1 \mapsto{} v$ which remains semantically
-unchanged,\sidenote{Syntactically, any occurrences of $X$ within the location
-expression $E$ must be replaced with their original values.} with the value
-loaded is written into a stack variable $X$. The \textsc{Store} rule also
-assumes a singleton heap $E_1 \mapsto{} \_$, but updates its value to store
-$E_2$. The \textsc{Free} rule also assumes a singleton heap, but deallocates
-it, leaving the heap $\cnkw{emp}$ty.
+(\cref{fig:simple-sep-logic}).
 
-What allows these rules to be usable is \textsc{Frame}, which is a
-\emph{structural} rule, allowing any framing assertion $A_F$ to be
-separating-conjoined with a triple, enabling compositional program verification
-for commands that touch distinct parts of the heap, so long as they do not
-modify the same stack variables (a check which in this setting can be soundly
-approximated syntactically).
+These rules can be used \emph{modularly}, thanks to the most
+important one: \textsc{Frame}.\sidenote{The name comes from the \emph{frame
+    problem} in artificial intelligence~\cite{mccarthy1981some}, where using
+    first-order logic to represent the world requires many axioms to state that
+things do not change arbitrarily.} It is a \emph{structural} rule, allowing any
+framing assertion $A_F$ to be separating-conjoined ($\astRef$) with a triple,
+enabling compositional program verification for commands that touch distinct
+parts of the heap, so long as they do not modify the same stack variables
+($\mod{(C)} \cap{} \mathrm{FV}(R) = \emptyset{}$).
 
-\begin{figure}
-    \ContinuedFloat%
-    \begin{mathpar}
-    \inferrule[{[Alloc]}]
-        { }
-        { \{\, X = x \wedge{} \cnkw{emp} \,\}\, X \coloneq{} \cnkw{alloc}(E_0, \ldots, E_n) \,\{\, X \mapsto{} x/X (E_0, \ldots, E_n) \,\} }
-    \and
-    \inferrule[{[Load]}]
-        { }
-        { \{\, E \mapsto{} v \wedge{} X = x \,\}\, X \coloneq{} [E] \,\{\, x/X (E) \mapsto{} v \wedge{} X = v \,\} }
-    \and
-    \inferrule[{[Store]}]
-        { }
-        {\vdash{} \{\, E_1 \mapsto{} \_ \,\}\, [E_1] \coloneq{} E_2 \,\{\, E_1 \mapsto{} E_2 \,\}}
-    \and
-    \inferrule[{[Free]}]
-        { }
-        { \{\, E \mapsto{} \_ \,\}\, \cnkw{free}(E) \,\{\, \cnkw{emp} \,\} }
-    \and
-    \inferrule[{[Frame]}]
-        {\vdash{} \{\, A \,\} \, C \, \{\, A' \,\}  \\ \mod{(C)} \cap{} \mathrm{FV}(A_F) = \emptyset{}}
-        {\vdash{} \{\, A \ast{} A_F \,\} \, C \, \{\, A' \ast{} A_F \,\}}
-    \end{mathpar}
-    \caption{Simple separation logic. The key rule is \textsc{Frame}: we still
-      need to be careful about non-interference about program variables on the
-      stack, so we retain $\mod{(C)} \cap{} \mathrm{FV}(R) = \emptyset{}$, but
-      locations on the heap are ensured disjoint by the definition of
-      $\astRef$. The name comes from the \emph{frame problem} in artificial
-      intelligence~\cite{mccarthy1981some}, where using first-order logic to
-      represent the world requires many axioms to state that things do not
-      change arbitrarily.}\label{fig:simple-sep-logic}
+\begin{figure}[ht]
+\small%
+\begin{mathpar}
+\inferrule[{[Alloc]}]
+    { }
+    { \vdash{} \{\, X = x \wedge{} \cnkw{emp} \,\}\, X \coloneq{} \cnkw{alloc}(E_0, \ldots, E_n) \,\{\, X \mapsto{} x/X (E_0, \ldots, E_n) \,\} }
+\and
+\inferrule[{[Load]}]
+    { }
+    { \vdash{} \{\, E \mapsto{} v \wedge{} X = x \,\}\, X \coloneq{} [E] \,\{\, x/X (E) \mapsto{} v \wedge{} X = v \,\} }
+\and
+\inferrule[{[Store]}]
+    { }
+    {\vdash{} \{\, E_1 \mapsto{} \_ \,\}\, [E_1] \coloneq{} E_2 \,\{\, E_1 \mapsto{} E_2 \,\}}
+\and
+\inferrule[{[Free]}]
+    { }
+    { \{\, E \mapsto{} \_ \,\}\, \cnkw{free}(E) \,\{\, \cnkw{emp} \,\} }
+\and
+\inferrule[{[Frame]}]
+    {\vdash{} \{\, A \,\} \, C \, \{\, A' \,\}  \\ \mod{(C)} \cap{} \mathrm{FV}(A_F) = \emptyset{}}
+    {\vdash{} \{\, A \ast{} A_F \,\} \, C \, \{\, A' \ast{} A_F \,\}}
+\end{mathpar}
+\caption{Sound and compositional inference rules for heap manipulation in
+    simple separation logic.}\label{fig:simple-sep-logic}
 \end{figure}
+
+For example, the \textsc{Alloc} rule assumes an empty heap, and produces a heap
+with $n+1$ contiguous memory cells initialised with the provided values $E_0,
+\ldots, E_n$, and updates the stack variables $X$ with the location of the base
+of the new allocations.
+
+The \textsc{Load} rule assumes a singleton heap $E_1 \mapsto{} v$ which remains
+semantically unchanged, with the value loaded is written into a stack variable
+$X$. Syntactically, any occurrences of $X$ within the location expression $E$
+must be replaced with their original values.
+
+The \textsc{Store} rule also assumes a singleton heap $E_1 \mapsto{} \_$, but
+updates its value to store $E_2$. The \textsc{Free} rule also assumes a
+singleton heap, but deallocates it, leaving the heap $\cnkw{emp}$ty.
 
 The inference rules for separation logic commands are justified sound with
-respect to some semantic interpretation, which here states that the operational
-semantics (omitted) do not get stuck, and that all executions which start with
-a sub-heap $h_1 \in [\![ A ]\!](s)$ and a frame-heap $h_F$, and end with a
-$\cnkw{skip}$ command, do so with a heap which can be split up to recover the
-frame heap and the changed sub-heap $h_1' \in [\![A']\!]$.
+respect to a semantic interpretation (\cref{fig:simple-sep-logic-triple}). It
+states that the operational semantics (omitted) do not get stuck, and that all
+executions which start with a sub-heap $h_1 \in [\![ A ]\!](s)$ and a
+frame-heap $h_F$, and end with a $\cnkw{skip}$ command, do so with a heap which
+can be split up to recover the frame heap and the changed sub-heap $h_1' \in
+[\![A']\!]$.
 
-\begin{figure}
-    \ContinuedFloat%
-    \[\begin{array}{l}
-        \vDash{} \{\, A \,\}\, C \,\{\, A' \,\} \eqdef{} \\
-        \quad{} \forall{} s, h_1, h_F.\ \mathrm{dom}(h_1) \cap{} \mathrm{dom}(h_F) = \emptyset{} \wedge{} h_1 \in{} [\![A]\!](s) \Rightarrow{} \\
-        \qquad{} \begin{array}{l}
-             \langle{} C, s, h_1 \cup{} h_F \rangle{} \rightarrow^* \langle{} \cnkw{skip}, \_, \_ \rangle{} \wedge{} \\
-             \forall{} s', h'.\ \langle{} C, s, h_1 \cup{} h_F \rangle{} \rightarrow^* \langle{} \cnkw{skip}, s', h' \rangle{} \Rightarrow \\
-              \quad{} \exists{} h_1'.\ \mathrm{dom}(h_1') \cap{} \mathrm{dom}(h_F) = \emptyset{} \wedge \\
-              \qquad{} h' = h_1' \cup{} h_F \wedge{} h_1' \in{} [\![ A' ]\!](s)
-        \end{array}
-    \end{array}\]
-    \caption{Semantics of separation logic triples. Informally and at a
-        high-level, it states that for any heap satisfying the precondition,
-        if combined with a frame-heap and run to termination, there exists
-        a splitting of the final heap which recovers both the original frame,
-        and a part which satisfies the postcondition.}\label{fig:simple-sep-logic-triple}
+\begin{figure}[ht]
+\small%
+\[\begin{array}{l}
+    \vDash{} \{\, A \,\}\, C \,\{\, A' \,\} \eqdef{} \\
+    \quad{} \forall{} s, h_1, h_F.\ \mathrm{dom}(h_1) \cap{} \mathrm{dom}(h_F) = \emptyset{} \wedge{} h_1 \in{} [\![A]\!](s) \Rightarrow{} \\
+    \qquad{} \begin{array}{l}
+         \langle{} C, s, h_1 \cup{} h_F \rangle{} \rightarrow^* \langle{} \cnkw{skip}, \_, \_ \rangle{} \wedge{} \\
+         \forall{} s', h'.\ \langle{} C, s, h_1 \cup{} h_F \rangle{} \rightarrow^* \langle{} \cnkw{skip}, s', h' \rangle{} \Rightarrow \\
+          \quad{} \exists{} h_1'.\ \mathrm{dom}(h_1') \cap{} \mathrm{dom}(h_F) = \emptyset{} \wedge \\
+          \qquad{} h' = h_1' \cup{} h_F \wedge{} h_1' \in{} [\![ A' ]\!](s)
+    \end{array}
+\end{array}\]
+\caption{Semantics of separation logic triples.}\label{fig:simple-sep-logic-triple}
 \end{figure}
 
-\subsection{Example: list append}
+\subsubsection{Example: list append}
 
 To conclude this section, I will continue the example of appending to a list,
-but this time in separation logic, in a simple imperative language. It says
-that expression $\mathsf{i}$ is either $\mathsf{NULL}$ and thus represents an
-empty list in memory, or there exists an integer $v$ and list $l'$ and location
-$\mathsf{j}$ such that $l = v {:}{:} l'$, $\mathsf{i}$ points to $v$, its
-adjacent cell $\mathsf{i}+1$ points to $\mathsf{j}$ and the list predicate
-holds recursively for values $\mathsf{j}$ and $l'$. In this way, it relates the
-contents of linked heaps cells, laid out in a particular format, to a
-mathematical list \intro{ghost} value, which exists only in the specification
-of the program but not in the runtime.
+but this time in separation logic, over an simple, idealised imperative
+language. To do so, we need a predicate to relates the contents of linked heap
+cells, laid out in a particular format, to a mathematical list \intro{ghost}
+value, which exists only in the specification of the program but not in the
+runtime.
 
-\begin{marginfigure}
-    \centering
-    \begin{align*}
-        \mathrm{list} &(\mathsf{p}, l) \mathrel{{=}^\mathrm{def}} \\
-                      &\mathsf{emp} \astRef{} (\mathsf{p} = \mathsf{NULL} \wedge{} l = []) \\
-                      &\vee{} \exists{} \; {head}, \; {tl}, \mathsf{p\_tail}.\\
-                      &\qquad (\mathsf{p} \mapsto{} {head}) \\
-                      &\qquad \astRef{} (\mathsf{p} + 1 \mapsto{} \mathsf{p\_tail}) \\
-                      &\qquad \astRef{} \mathrm{list} (\mathsf{p\_tail}, {tl}) \\
-                      &\qquad \astRef{} l = {head} {:}{:} {tl} \\
-    \end{align*}
-    \caption{Definition of a recursive list predicate in a simple separation
-        logic.}\label{fig:list-pred}
-\end{marginfigure}
+\begin{figure}[ht]
+\small%
+\centering
+\begin{align*}
+    \mathrm{list} (\mathsf{p}, l) \mathrel{{=}^\mathrm{def}}\ &
+        \mathsf{emp} \astRef{} (\mathsf{p} = \mathsf{NULL} \wedge{} l = []) \\
+        &\vee{} \exists{} \; {head}, \; {tl}, \mathsf{p\_tail}.\\
+        &\qquad (\mathsf{p} \mapsto{} {head})
+            \astRef{} (\mathsf{p} + 1 \mapsto{} \mathsf{p\_tail})\\
+        &\qquad \astRef{} \mathrm{list} (\mathsf{p\_tail}, {tl})
+            \astRef{} l = {head} \Colon{} {tl}
+\end{align*}
+\caption{Definition of a recursive list predicate in a simple separation
+    logic. It says that expression $\mathsf{p}$ is either $\mathsf{NULL}$
+    and thus represents an empty list ($l = []$), or there exists an
+    integer ${head}$ and list ${tl}$ and location $\mathsf{p\_tail}$ such
+    that $l = {head} \Colon{} {tl}$, $\mathsf{p}$ points to ${head}$, its
+    adjacent cell $\mathsf{p}+1$ points to $\mathsf{p\_tail}$ and the list
+    predicate holds recursively for values $\mathsf{p\_tail}$ and ${tl}$.}\label{fig:list-pred}
+\end{figure}
 
-With the predicate in \cref{fig:list-pred}, we can write a proof sketch of a
-version of the list \mintinline{text}{append} program from \cref{fig:append-c},
-with intermediate assertions inserted (\cref{fig:append-annot}). Because the
-definition \mintinline{text}{append} is recursive, we annotate it with a pre-
-and postcondition, and prove that the implementation matches it (assuming it
-holds at structurally smaller values). The precondition states we start with
-two disjoint heaplets representing two \kl{ghost} lists,
-$\mathrm{list}(\mathsf{xs}, l_1)$ and $\mathrm{list}(\mathsf{ys}, l_2)$, and
-the postcondition says that the value returned by this function
-($\mathsf{ret}$) represents the concatenation ($@$) of the two logical lists
-from the input.
+This $\mathrm{list}$ predicate is shown in \cref{fig:list-pred}; using it, we
+can write a proof sketch of a version of the list \mintinline{text}{append}
+program from \cref{fig:append-c}, with intermediate assertions inserted
+(\cref{fig:append-annot}). Because the definition \mintinline{text}{append} is
+recursive, we annotate it with a pre- and postcondition, and prove that the
+implementation matches it (assuming it holds at structurally smaller values).
+The precondition states we start with two disjoint heaplets representing two
+\kl{ghost} lists, $\mathrm{list}(\mathsf{xs}, l_1)$ and
+$\mathrm{list}(\mathsf{ys}, l_2)$, and the postcondition says that the value
+returned by this function ($\mathsf{ret}$) represents the concatenation ($@$)
+of the two logical lists from the input.
 
-Under the true-branch of the \mintinline{text}{if}, we have that $\mathsf{xs} =
+Under the true branch of the \mintinline{text}{if}, we have that $\mathsf{xs} =
 \mathsf{NULL}$ and so it represents the empty heap, meaning the return value
 and associated \kl{ghost} list is simply $\mathsf{ys}$ and $l_2$ respectively.
-Under the false-branch, because $\mathsf{xs} \neq \mathsf{NULL}$, we may
+Under the false branch, because $\mathsf{xs} \neq \mathsf{NULL}$, we may
 assume we can unroll the definition of $\mathrm{list}$, before calling
 \mintinline{text}{append} recursively on the smaller
 $\mathrm{list}(\mathsf{xs}', l_1')$, which allows us to conclude
@@ -525,32 +606,44 @@ l_1 @ l_2)$.
         append.}\label{fig:append-annot}
 \end{figure}
 
-Whilst very useful, and certainly a huge leap forward based on what was
-available before, this example also highlights the limitations of the
-traditional approach. It works over an idealised imperative language, suitable
-for simple proofs of algorithms and their implementations, and the link between
-this and the C implementation in \cref{fig:append-c} is based on trust. This
-issue persists with contemporary, mechanised frameworks for separation
-logic~\sidecite{appelSF5,sammler2021refinedc,jacobs2011verifast},
-which use trust-based model of C, rather than an \emph{empirically validated}
-one.
+Such pen-and-paper logics and proofs of algorithms over an idealised imperative
+language were a huge leap forward for the field of program verification.
+However, they were insufficient to verify \emph{pre-existing} C programs, because
+of the absence of three things.
 
-\section{CN:\ C, No bugs!}\label{sec:cn-intro}
+\begin{enumerate}
+    \item An \emph{accurate} mathematical model of C, including all its
+        subtleties.
+    \item An \emph{expressive} separation logic, to support complex reasoning
+        patterns.
+    \item An mechanisation of the two, with an emphasis on \emph{automation}.
+        Keeping precise track of the above in their entirety would be tedious
+        and error-prone, and so a mechanisation enables creating re-usable
+        tools.
+\end{enumerate}
+
+Though contemporary mechanised frameworks for separation
+logic~\sidecite{appelSF5,sammler2021refinedc,jacobs2011verifast} satisfy the
+second and third criteria to varying degrees, they fall short on the first
+because they use an ad-hoc implicit model of C, rather than an explicit,
+\emph{empirically validated} one.
+
+\subsection{CN:\ C, No bugs!}\label{sec:cn-intro}
 
 \intro{CN},\sidenote{`\kl{CN}' does not stand for anything; its name is a
 historical accident, though the backronym in the section title was suggested by
 Elizabeth Austell.} in its \intro{proof mode}\sidenote{There are other modes to
 \kl{CN}, most notably instrumentation and test generation, which I will mostly
-ignore.} is a verification tool whose aspirational goal is to lower the cost of
-C verification from a Rocq~\sidecite{CDT2024} programmer who knows separation
+ignore.} is a verification tool whose aspirational goal is to lower the prerequisites
+for C verification from a Rocq~\sidecite{CDT2024} programmer who knows separation
 logic to a systems programmer who knows
 Haskell~\sidecite{haskell}.\sidenote{This pithy wording is courtesy of Neel
-Krishnaswami.} It is designed to be used pre-existing C programs (so they are
+Krishnaswami.} It is designed to be used on pre-existing C programs (so they are
 not written or structured in a way to be verified beforehand). Before I explain
 how it \emph{works}, I will first explain how it is \emph{used}.
 
 When given a C file, \kl{CN} ensures that (a) the input code is free of
-undefined behaviour and (b) correctly implements any specification written in
+undefined behaviour, and (b) correctly implements any specification written in
 \intro{annotations} in comments with an @ symbol \cinline{/*@..@*/}
 (so that they are first and foremost, for almost all C tools, a regular C
 comment). Importantly, for compositionality, performance (paralellisability),
@@ -558,9 +651,15 @@ and ease of annotation,\sidenote{Annotations follow the structure of the
 program.} these are checked on a per function basis (\cref{sec:bidir-subtyping}).
 
 This means that even in the absence of annotations, code is being checked for
-undefined behaviour. Incrementing an unsigned integer is perfectly acceptable
-(\cref{fig:un-incr}) but incrementing a signed integer triggers an error message
-(\cref{fig:incr-broken}).
+undefined behaviour. Incrementing a signed integer triggers an error message
+(\cref{fig:incr-broken}), but incrementing an unsigned integer is perfectly
+acceptable (\cref{fig:un-incr}).
+
+\begin{figure}
+    \centering
+    \cfile[breaklines,breakafter=\_]{code/increment_broken.c}
+    \caption{Failed signed integer increment in CN.}\label{fig:incr-broken}
+\end{figure}%
 
 \begin{marginfigure}
     \centering
@@ -568,11 +667,6 @@ undefined behaviour. Incrementing an unsigned integer is perfectly acceptable
     \caption{Unsigned integer increment in CN.}\label{fig:un-incr}
 \end{marginfigure}%
 
-\begin{figure}
-    \centering
-    \cfile[breaklines,breakafter=\_]{code/increment_broken.c}
-    \caption{Failed signed integer increment in CN.}\label{fig:incr-broken}
-\end{figure}%
 
 The wording of the error message is inherited from \kl{Cerberus}, and shows its
 origins as a formal, executable specification for \kl{ISO} and \kl{de facto}
@@ -582,7 +676,7 @@ there are values of \cinline{x} for which executing this function would result
 in \kl{UB}. Because of the \intro{per function} checking, the violation is not
 guaranteed, but \emph{possible}. Specifically, it is considered an error
 because there exist values, which if used to call this function, would result
-in \kl{UB}. Phrased differently, it is the combination of the absence
+in \kl{UB}. Phrased differently, it is the combination of the absence of
 \kl{annotation}s constraining the input, \emph{with respect to} what the body
 of the function does with those inputs, which is erroneous.
 
@@ -596,41 +690,27 @@ internal representations of program variables (see \cref{sec:counter-ex}).
 
 \begin{figure}
     \centering
-    \includegraphics[width=\textwidth]{figures/increment_broken_state.png}
+    \includegraphics[width=0.7\textwidth]{figures/increment_broken_state.png}
     \caption{Counter example for increment\_broken.c.}\label{fig:incr-broken-counter-ex}
 \end{figure}
 
-We can avoid this error by constraining the values of the input with a
-precondition annotation, as in \cref{fig:incr}. Here we see the keyword
-\cinline{requires} is used to introduce a pre-condition on the input.
-\cinline{MAXi32()} is an in-built function which represents the maximum value a
-signed 32-bit integer can represent. By constraining the input so that it is
-strictly less than the maximum value, the function is now guaranteed to have
-no \kl{UB} for all its inputs, no matter what the context. This is because
-whilst pre-conditions are \emph{assumed} inside the function, they are
-\emph{required} when calling it.
 
+We can avoid this error by constraining the values of the input with a
+precondition annotation, as in \cref{fig:incr}.%
 \begin{marginfigure}
     \centering
     \cfile[breaklines, highlightlines={2}]{code/increment.c}
     \caption{Successful signed integer increment in CN.}\label{fig:incr}
 \end{marginfigure}
+Here we see the keyword \cinline{requires} is used to introduce a pre-condition
+on the input. \cinline{MAXi32()} is an in-built function which represents the
+maximum value a signed 32-bit integer can represent. By constraining the input
+so that it is strictly less than the maximum value, the function is now
+guaranteed to have no \kl{UB} for all its inputs, no matter what the context.
+This is because whilst pre-conditions are \emph{assumed} inside the function,
+they are \emph{required} when calling it.
 
-\begin{marginfigure}
-    \ContinuedFloat*
-    \centering
-    \cfile[breaklines,lastline=8, highlightlines={6}]{code/call_increment.c}
-    \caption{Successful call (100) to signed integer increment in CN.}\label{fig:call-incr}
-\end{marginfigure}
-
-\begin{figure}
-    \ContinuedFloat{}
-    \centering
-    \cfile[breaklines,firstline=10]{code/call_increment.c}
-    \caption{Failed call (INT\_MAX) to signed integer increment in CN.}\label{fig:call-incr-fail}
-\end{figure}
-
-This is demonstrated in \cref{fig:call-incr} and \cref{fig:call-incr-fail}. In
+This is demonstrated in \cref{fig:call-incr}. In
 the first, we see that from the constraint \cinline{y <=
 100i32},\sidenote{Integer literals are currently written with a type
 annotation, similar to Rust.} \kl{CN} deduces that \cinline[breaklines]{y <=
@@ -640,11 +720,10 @@ relies on \kl{bidirectional} type-checking.} and permits the call to
 \cinline{increment}. Conversely, for the second, \cinline{INT_MAX} does not
 meet that constraint, and so \kl{CN} raises an error.
 
-\begin{figure}
+\begin{figure}[h]
     \centering
-    \cfile[breaklines,firstline=4,highlightlines={6}]{code/decrement_broken.c}
-    \caption{Failed decrement after a signed integer increment in
-        CN.}\label{fig:decr-broken}
+    \cfile[breaklines,firstline=5,highlightlines={6}]{code/call_increment.c}
+    \caption{Failed call (INT\_MAX) to signed integer increment in CN.}\label{fig:call-incr}
 \end{figure}
 
 However, if we try to decrement the result of the successful call, \kl{CN}
@@ -654,32 +733,44 @@ from its C type, namely that it fits within a signed 32-bit integer). To fix
 this, we need to provide a postcondition for the function which
 expresses additional constraints on the returned value (\cref{fig:decr}).
 
-\begin{figure}
+\begin{figure}[h]
+    \centering
+    \cfile[breaklines,firstline=4,highlightlines={6}]{code/decrement_broken.c}
+    \caption{Failed decrement after a signed integer increment in
+        CN.}\label{fig:decr-broken}
+\end{figure}
+
+\begin{figure}[h]
     \centering
     \cfile[breaklines, highlightlines={2,3,8}]{code/decrement.c}
     \caption{Successful decrement after a signed integer increment
         in CN.}\label{fig:decr}
 \end{figure}
 
-To specify pointer manipulating programs, I need to introduce some new syntax.
-Where in separation logic, we may say $p \mapsto v$ for arbitrary expressions
-$p$ and $v$, in \kl{CN}, we restrict it so that $v$ is always a variable, akin
-to $\exists{} v.\ p \mapsto v \wedge v = e$ for some expression $e$. For both
-usability and technical reasons explained later (\cref{sec:monadic-syntax}), we
-write this as \cninline{take v = RW(p);}. % chktex 36
+To specify pointer manipulating programs, such as~\cref{fig:owned-incr}, we
+need to be able to express constraints of the form $\exists{} v.\ p \mapsto v$,
+for a pointer $p$ and value $v$. Introducing quantifiers in pre- and
+postconditions requires instantiating them at call and return sites
+respectively. Arbitrary quantifier instantiation is undecideable, so this
+leaves \kl{CN} with two choices: embrace a heuristic scheme which hopefully
+works well in practice, or enforce syntactic restrictions on the shape of
+assertions to ensure such quantifiers are always inferrable. These restrictions
+(motivated and explained further
+in~\cref{sec:precise-assertion-inferring,sec:monadic-syntax}),
+inform the syntax \cninline{take v = RW(p);}. % chktex 36
 
-\begin{figure}
+\begin{figure}[h]
     \centering
     \cfile[breaklines, highlightlines={2,3}]{code/owned_increment.c}
     \caption{Increment a signed integer via a pointer in CN.}\label{fig:owned-incr}
 \end{figure}
 
-This generalises to work with arrays, with syntax of the form
-\cninline[breaklines,breakafter=\{=()]{take arr = each (u64 i; .. ) { RW(p) };}, % chktex 26 chktex 37 chktex 36
-called \intro{quantified} or \intro{iterated} resources, for the pre- and
-postconditions of the function. \kl{CN} can also handle (in a limited, careful
-fashion to preserve decidability) \intro{quantified constraints}, such as the
-one in the postcondition of \cref{fig:owned-array}, to express constraints
+For working with arrays using \intro{quantified} or \intro{iterated} resources, we write
+\cninline{take arr = each (u64 i; .. ) { RW(p) };}. % chktex 26 chktex 37 chktex 36
+
+\kl{CN} can also handle (in a limited fashion to preserve decidability)
+\intro{quantified constraints}, such as the one in line 7 of the postcondition
+of \cref{fig:owned-array}, to express constraints
 about the elements of an array. Within the \cninline{RW}, we express the
 location with \cninline{array_shift(p,i)}, which is the specification language % chktex 36
 equivalent of pointer arithmetic in \cinline{&p[i]}. Within the body of the
@@ -687,7 +778,7 @@ function, we use a \intro{CN statement}, \cninline{extract RW<int>, 0u64;},
 which acts a proof hint to \kl{CN} to tell which index of the \kl{iterated}
 resource we wish to read or write from.
 
-\begin{figure}[tp]
+\begin{figure}[h]
     \centering
     \cfile[breaklines, highlightlines={2-10}]{code/owned_array.c} % chktex 8
     \caption{Summing up a two-element array of unsigned integers in
@@ -710,28 +801,40 @@ it into a new \cninline{RW}. We need two \cninline{extract}s to tell CN we
 wish to first take a \cninline{W} out of \cinline{Uninit} and then move
 it into the \cninline{Init}.
 
-\begin{figure*}
+\begin{figure}
     \centering
-    \cfile[highlightlines={2-4,7-11,13}]{code/init_array_reverse.c} % chktex 8
+    \cfile[highlightlines={2-8,11-17,19}]{code/init_array_reverse.c} % chktex 8
     \caption{Initialise an array of characters in reverse in
         CN.}\label{fig:init-arr-rev}
-\end{figure*}
+\end{figure}
 
 Lastly, in the same way that separation logic predicates use $\mapsto$ as a
 building block to express more complex relations between heaps and \kl{ghost}
 values, \kl{CN} allows users to write \intro{resource predicate} to express
 more complex relations between heaps and \kl{ghost} values.
 
-Continuing our running example of appending two linked lists of
-integers, \cref{fig:append-cn} shows how one might annotate and prove such an
-example in \kl{CN}. Firstly, it declares the datatype for \cninline{i32} lists,
-since these are not part of \kl{CN}'s base logic. Notably, arguments to
-constructors are named, not positional. After that, it declares a recursive
-\cninline{[rec]} mathematical function \cninline{function} which defines what
-it means to append two lists, serving the same function that $@$ did in
-\cref{fig:append-annot}. The final \kl{CN} declaration is for the equivalent of
-the recursive list predicate in \cref{fig:list-pred}. There are many
-differences:
+Continuing our running example of appending two linked lists of integers, I
+will now show how one might annotate and prove such an example in \kl{CN}.
+Firstly, it declares the datatype for \cninline{i32} lists, since these are not
+part of \kl{CN}'s base logic. Notably, arguments to constructors are named, not
+positional.
+
+\cfile[breaklines,firstline=6,lastline=8,highlightlines={6-8}]{code/append_annot.c} % chktex 8
+
+After that, it declares a recursive \cninline{[rec]} mathematical function
+\cninline{function} which defines what it means to append two lists, serving
+the same function that $@$ did in \cref{fig:append-annot}.
+
+\cfile[breaklines,firstline=10,lastline=15,highlightlines={10-15}]{code/append_annot.c} % chktex 8
+
+The final \kl{CN} declaration is for the equivalent of the recursive list
+predicate in~\cref{fig:list-pred}. Curiously, the syntax looks like a procedure
+definition for traversing the list (tracing the heaplet in which it resides),
+and constructing the ghost value it represents.
+
+\cfile[breaklines,firstline=17,lastline=23,highlightlines={17-23}]{code/append_annot.c} % chktex 8
+
+Compared to~\cref{fig:list-pred}, there are many differences:
 \begin{itemize}
     \item The \kl{CN} \cninline{predicate} looks like a function definition,
         with a signature that takes a \cninline{pointer p}, and a
@@ -747,19 +850,17 @@ differences:
         fields, rather than using pointer arithmetic $\mathsf{p} + 1$.
 \end{itemize}
 
-All of these differences will be explained in more detail and justified in
-\cref{sec:monadic-syntax}. I will note in passing that the syntax can also be
-seen as tracing out the footprint of the heaplet containing the list, and
-constructing the ghost value it represents.
+Now let us see how these definitions are used in the annotations on the
+implementation. The precondition can be read as saying
+``\emph{\cinline{IntList_append} requires \cninline{L1} to be the ghost list
+constructed using \cninline{IntList} with \cinline{xs}, and similarly for
+\cninline{L2} and \cinline{ys}}''. The postcondition can be read as saying
+``\emph{\cinline{IntList_append} ensures that \cninline{L3} is a ghost list
+constructed using \cninline{IntList} with the return value
+\cninline{return}, and \cninline{L3} is equal to \cninline{L2} appended to
+\cninline{L1}}''.
 
-For now, I will move on to the annotations on the implementation. The
-precondition can be read as saying ``\emph{\cinline{IntList_append} requires
-\cninline{L1} to be the ghost list constructed using \cninline{IntList}
-with \cinline{xs}, and similarly for \cninline{L2} and \cinline{ys}}''. The
-postcondition can be read as saying ``\emph{\cinline{IntList_append} ensures that
-\cninline{L3} is a ghost list constructed using \cninline{IntList} with the
-return value \cninline{return}, and \cninline{L3} is equal to \cninline{L2}
-appended to \cninline{L1}}''.
+\cfile[breaklines,firstline=26,lastline=31,highlightlines={28-31}]{code/append_annot.c}% chktex 8
 
 Within the body of the function, in both branches of the \cinline{if}, there is
 a \kl{CN statement}, this time to instruct CN to manually unfold the definition
@@ -770,41 +871,46 @@ inconsistently,\sidenote{\url{https://github.com/rems-project/cerberus/issues/48
 when it is able to prove or disprove the branch conditions of that predicate,
 based on the assertions in its context at a particular program point.
 
-\begin{figure*}[tp]
-    \begin{minipage}{.85\textwidth}
-        \cfile[breaklines,firstline=5,lastline=24, highlightlines={6-23}]{code/append_annot.c} % chktex 8
-    \end{minipage}%
-    \begin{minipage}{.65\textwidth}
-        \cfile[breaklines,firstline=26,lastline=41, highlightlines={28-31,33,36}]{code/append_annot.c}% chktex 8
-    \end{minipage}
-    \caption{Appending a linked list of integers in CN.}\label{fig:append-cn}
-\end{figure*}%
+\cfile[breaklines,firstline=32,lastline=41,highlightlines={33,36}]{code/append_annot.c}% chktex 8
 
 \section{Contributions of this thesis}\label{sec:contributions}
 
-\kl{CN} has been developed by many people; my particular contributions relate
-to the following subsections, which provide an overview of the remaining parts
-of this thesis.
+\kl{CN} is a large project, incorporating
+\kl{Cerberus}~\sidecite{memarian2022cerberus}, proof~\sidecite{pulte2023cn},
+specification testing~\sidecite{banerjee2025fulminate} and
+fuzzing~\sidecite{amer2025bennet}. Contributors span the universities of the
+Cambridge, Pennsylvania, and Oxford, with prior support and use from industry
+partners at Galois and BAE Systems. Within this, my contributions are
+three-fold: \nameref{part:formalisation}, \nameref{part:mem-model},
+\nameref{part:engineering}.
 
 \subsection{Formalisation of \kl{CN}}
 
-Whilst Christopher Pulte and Thomas Sewell are the primary implementers of
-\kl{CN}'s \kl{proof mode}; my contributions to this part of the project have
-been to clarify and formalise \kl{CN}'s theory. The end result of this work was
-not only more confidence in the theoretical merits of the approach of \kl{CN},
-but also clarifying its principles, and generating insights for feeding back to
-the implementation.
+\kl{CN}'s \kl{proof mode} was initially developed by Christopher Pulte and
+Thomas Sewell with the goal of verifying of a \kl{buddy allocator} (used in the
+\kl{pKVM} hypervisor). Its code is challenging to verify due to its frequent
+use of aliasing (in fact, computed) pointers and random-acessed arrays.
+Features were added to \kl{CN} only if they aided in verifying the \kl{buddy
+allocator}. Though this was successful, it had the unintended consequence of
+over-fitting the implementation to the example.
+
+To address this, I formalised a cohesive view of \kl{CN}'s theory. The end
+result of this work was not only more confidence in the theoretical merits of
+the approach of \kl{CN}, but also clarifying its principles, and feeding back
+to the implementation which features to add and how. Examples include reading
+partially-initialised structs, lifting syntax restrictions, and automatic
+unfolding for logical functions (\cref{chap:inform-impl}).
 
 My contributions in this part include:
 \begin{itemize}
     \item A formalisation of the link between the surface syntax of \kl{CN} and
         the formal presentation in this thesis.
     \item A grammar of resource terms for bookkeeping resource operations.
-    \item \intro{ResCore}: A let-normal form of \kl{Cerberus}' \kl{Core} with
+    \item \kl{ResCore}: A let-normal form of \kl{Cerberus}' \kl{Core} with
         reified resources.
     \item A novel, modular heap definition in a dynamic semantics for \kl{ResCore}.
-    \item \intro{Kernel CN}: A formal definition of a bidirectional,
-        \kl{separation logic}, \intro{refinement type} system for \kl{ResCore}.
+    \item \kl{Kernel CN}: A formal definition of a bidirectional,
+        \kl{separation logic}, \kl{refinement type} system for \kl{ResCore}.
     \item A formalisation of two inference algorithms used by \kl{CN}, one for inferring
         instantiations of logical (ghost) quantifiers and one for inferring
         indices for \kl{iterated} predicates.
@@ -812,23 +918,24 @@ My contributions in this part include:
         \kl{ResCore} dynamic semantics.
     \item An experience report on (a) iterating on the design of a very large type
         system using Ott~\sidecite{sewell2010ott} and (b) feeding back insights
-        from the theory to the implementation.
+        from the theory to the implementation, on which features to implement
+        and how.
 \end{itemize}
 
-\subsection{Design, formalisation and implementation of \kl{CN-VIP}}
+\subsection{Memory object model: design, formalisation and implementation}
 
 In its initial version, to simplify matters, \kl{CN} was built on top of a
 simple concrete \kl{memory object model}, where pointers were treated as
 interchangeable with integers. However, as I briefly alluded to in
-\cref{sec:c-lang}, this is not accurate with respect to how the standard and
-modern compilers treat pointers. To remedy this, building on the work of
-\sidetextcite{memarian2019exploring} and \sidetextcite{lepigre2022vip}, I
-designed, formalised and implemented, \intro{CN-VIP}, a memory model based on
-(and sound with respect to) prior work. Because of this, \kl{CN} will now
-automatically check and enforce a large number of subtle rules regarding the
-creation, modification and destruction of pointers and associated allocations,
-at the cost of \kl{CN} becoming harder and slower to use.
+\cref{sec:c-lang}, this is not faithful to how the standard and
+modern compilers treat pointers.
 
+To address this, building on the work of \sidetextcite{memarian2019exploring}
+and \sidetextcite{lepigre2022vip}, I designed, formalised and implemented,
+\kl{CN-VIP}, a memory model based on (and sound with respect to) prior work.
+\kl{CN} now automatically checks and enforces a large number of subtle rules on
+the creation, modification and destruction of pointers and allocations, at the
+cost of \kl{CN} becoming harder and slower to use.
 
 My contributions in this part include:
 \begin{itemize}
@@ -848,35 +955,43 @@ My contributions in this part include:
         into \kl{CN} inspired by the design of \kl{CN-VIP}.
 \end{itemize}
 
-\subsection{Will the real world C, please stand up?}
+\subsection{Engineering: will the real world C, please stand up?}
 
-Though it is developed inside academia, \kl{CN} is fundamentally a piece of
-software, and its job is not to advance cool theory for its own sake, but to
+Though \kl{CN} originates in academia, its job is not to advance cool theory
+for its own sake. Fundamentally, it is intended to be a software tool, used to
 bring a new level of assurance to \emph{existing, real-world} \kl{systems} C
-code. This requires substantial engineering effort, and benefits immensely from
-modern software development best practices. Though a lot of it seems obvious in
-retrospect, it was not initially clear \emph{if} and \emph{when} many of
-engineering challenges would become a bottleneck. I worked on three major
-problems, was successful in two of them, and collaborated closely with partners
-in industry looking to use \kl{CN}. As such, \kl{CN} is better poised to meet
-the challenges facing any verification tool aiming to be useful outside of
-academia.
+code. Three things prevented it from graduating from an academic prototype, to
+a tool which is usable and extendable by outsiders. It needed to work on files
+inside large repositories; it needed to avoid major feature or performance
+regressions; it needed better documentation on its use and development to
+enable external contributions.
+
+To address the first, I developed a tool to enable \kl{CN} to do just that. To
+address the second and third, I worked on three major proof updates (of which
+two were successful) and improved source location information, improved
+continous-integration, wrote onboarding documentation, triaged issues, and
+reviewed code. All of these things allowed partners in industy (Galois and BAE
+Systems) to use \kl{CN} and provide valueable feedback.
 
 My contributions in this part include:
 \begin{itemize}
-    \item \intro[tree-carver]{A tree carver for C}. This is Clang based tool
+    \item \kl[tree-carver]{A tree carver for C}. This is a Clang-based tool
         which, given a C file in a large source tree, and a root file or
         functions, carves out that file and its transitive dependencies,
-        including macros, for processing by other tools.
-    \item \emph{An experience report}, on updating an existing proof of a \intro{buddy
-        allocator} (used in the \intro{pKVM} hypervisor) to work with (a)
+        including macros, for processing by other tools. This enables \kl{CN}
+        to be applied to \emph{parts} of a large code-base without manually
+        removing them, even if the whole uses features that \kl{Cerberus} does
+        not support. For example, we have used it to run \kl{CN} directly on
+        files from the Linux repository.
+    \item \emph{An experience report}, on updating an existing proof of a \kl{buddy
+        allocator} (used in the \kl{pKVM} hypervisor) to work with (a)
         changes to the C implementation (b) an early version of CN-VIP and (c)
         a change to \kl{CN} to represent integers as bit-vectors. Ports
         for the first two succeeded, but, due to poor source location
         information, poor proof migration path and performance degradation,
         this port failed.
     \item \emph{A summary and discussion of valuable feedback}, from industry
-        partners.
+        partners Galois and BAE Systems.
     \item \emph{A discussion of major issues related to developer- and
         user-experience}, with reference to the their technical origin and if
         they exist, solutions.
