@@ -888,11 +888,11 @@ three-fold: \nameref{part:formalisation}, \nameref{part:mem-model},
 
 \kl{CN}'s \kl{proof mode} was initially developed by Christopher Pulte and
 Thomas Sewell with the goal of verifying of a \kl{buddy allocator} (used in the
-\kl{pKVM} hypervisor). Its code is challenging to verify due to its frequent
-use of aliasing (in fact, computed) pointers and random-acessed arrays.
-Features were added to \kl{CN} only if they aided in verifying the \kl{buddy
-allocator}. Though this was successful, it had the unintended consequence of
-over-fitting the implementation to the example.
+\kl{pKVM} hypervisor). The buddy allocator is challenging to verify due to its
+frequent use of aliasing (in fact, computed) pointers and random-acessed
+arrays. Features were added to \kl{CN} only if they aided in verifying the
+\kl{buddy allocator}. Though this was successful, it had the unintended
+consequence of over-fitting the implementation to the example.
 
 To address this, I formalised a cohesive view of \kl{CN}'s theory. The end
 result of this work was not only more confidence in the theoretical merits of
@@ -996,6 +996,98 @@ My contributions in this part include:
         user-experience}, with reference to the their technical origin and if
         they exist, solutions.
 \end{itemize}
+
+\subsection{Contributions in published papers}
+
+\sidetextcite{pulte2023cn} describes \kl{CN}'s proof mode, stating that the
+paper's contributions flow downstream from the two main design choices:
+building on an accurate ISO C semantics, and using separation-logic refinement
+types with an SMT backend, carefully restricted to guarantee decidable type
+inference. I summarise its stated contributions below, highlighting in
+\text{bold} my work.
+
+\begin{itemize}
+\item A design for a separation-logic refinement type system for C.
+\item A verification tool for an accurate ISO C semantics.
+\item An open-source implementation of the type system.
+\item A verification of the \kl{pKVM} hypervisor’s \kl{buddy allocator}.
+\item \textbf{A formalisation of the key parts of the type system.}
+\end{itemize}
+
+The formalisation proves soundness of type checking (not inference), and serves
+to increase confidence in the type system design and implementation. I wrote
+Section 4 (overview of definitions and key theorems), Appendix A (full
+definitions) and Appendix B (proof of all theorems). In this thesis, the
+respective sections are for these
+are~\cref{part:formalisation},~\cref{chap:defns}, and~\cref{chap:soundness}
+respectively.
+
+Also stated in the paper are several limitations \kl{CN} had then, many of
+which I have alleviated.
+
+\begin{itemize}
+    \item \emph{CN currently does not support recursive specification
+            functions; these are easily added, together with a mechanism for
+            users to manually unfold definitions.} This was added by Thomas
+            Sewell, but led to an inconsistent and confusing user-experience,
+            for which I propose a remedy in~\cref{sec:auto-unfold-functions}.
+    \item \emph{CN does not currently support unions; moreover, we use a
+            concrete memory object model, \ldots we plan to incorporate
+            \sidetextcite{lepigre2022vip}'s VIP memory object model.}
+            I discuss this in \nameref{part:mem-model}.
+    \item \emph{and we currently ignore the sequencing strengths of memory
+            actions (in C and Cerberus); \ldots we plan to \ldots strengthen CN
+            so that one can prove that code is not sensitive to C's loose
+            evaluation order.} Unexpectedly, this was easier in practice
+            than in theory: a prototype implementation by Thomas Sewell was
+            integrated, and then lost during a major
+            refactor.\sidenote{\href{https://github.com/rems-project/cerberus/issues/330}{Cerberus\#330}}
+            In~\cref{sec:weak-seq}, I clarify the theory and use it to sketch a
+            simpler implementation strategy for supporting this feature.
+    \item \emph{We focus to date only on sequential verification, but plan to
+            extend the CN separation-logic refinement type system with some of
+            the extensive research on separation-logic concurrency.} A simple
+            scheme for this would requires support for higher-order predicates,
+            which I discuss in~\cref{sec:higher-ord-pred}.
+    \item \emph{All these should be relatively straightforward extensions.}
+\end{itemize}
+
+\sidetextcite{banerjee2025fulminate} describes \kl{CN}'s specification testing
+mode, stating that the paper's contributions flows downstream from the
+observation that \kl{CN}'s restricted separation-logic specification language
+has a natural and readable computational interpretation. I summarise its stated
+contributions below, highlighting in \text{bold} my work.
+
+\begin{itemize}
+\item An explanation of why \kl{CN}'s restricted separation-logic specification
+    syntax is a good candidate for execution.
+\item A description of various design issues involved in making a practical
+    system based on the above.
+\item \textbf{A simple formalisation of the runtime ownership testing scheme.}
+    I do not discuss this further in this thesis.
+\item A description of \intro{Fulminate}, \kl{CN}'s specification testing mode, and
+    the host of additional issues and engineering required to make it work for a
+    substantial fragment of C.
+\item \textbf{A demonstration of the scheme on non-trivial examples, including
+    the \kl{CN} tutorial examples, a subset of the \kl{VeriFast} tutorial
+    examples, a simple hash-table from Verifiable C,} and the \kl{pKVM}
+    \kl{buddy allocator}. I do not discuss this further in this thesis.
+\end{itemize}
+
+The formalisation in this paper was used to show that the proposed reified
+ghost state scheme correctly captures ownership passing, in a semantics for a
+small C-like language with explicit resources. I wrote Sections 3.3 (dynamic
+semantics of the `\kl{MiniCN}' specification language), 3.4 (correspondence
+between resource passing and per-byte stack-depth tracking), 5.1 (an
+illustration of \kl{Fulminate} running on an integer queue with non-trivial
+ownership reasoning), 5.2 (a report of \kl{Fulminate} running on the other
+aforementioned examples excluding the \kl{buddy allocator}).
+
+Whilst I do not discuss any of this further in this thesis,
+in~\nameref{chap:kernel-alternative}, I present a static semantics to
+complement the dynamic semantics presented in the paper, to explore which
+complexities of a type system for C may be inherent, and which are specific to
+the approach I took.
 
 \chapter{Example: queues in CN}
 
