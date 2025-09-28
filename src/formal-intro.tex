@@ -145,39 +145,40 @@ is developing a \intro[pKVM]{protected KVM
 (pKVM)},\sidenote{\url{https://lpc.events/event/7/contributions/780/}} which
 runs \emph{underneath} the kernel,\sidenote{pKVM utilises the Armv8 exception
     levels (EL) feature, which defines four levels of increasing privilege. EL0
-    is used for Android applications, EL1 is used for the kernel, and EL2 is
-used for the hypervisor (EL3 is not used).} and ships \emph{as part} of the
+    is used for Android applications, EL1 is used for the kernel, EL2 is
+used for the hypervisor, and, EL3 is not used.} and ships \emph{as part} of the
 kernel image. This approach allows pKVM to commit to only handling implementing
 a select few functions such as virtual memory management and remain very small,
 and rely on the Linux kernel to manage the rest, such as scheduling, device
 drivers and power management.
 
 If successful, this could make the attack surface a lot smaller, but it could
-also make it one that is used very widely. It is in this context that Google
-sought assistance from the research community to see if verifying the kernel
-was feasible, \emph{on an ongoing basis}. A one-and-done verification of pKVM
-which takes an army of PhD students and postdocs a few years to verify and is
-years out of date by the time is developed is not worth the investment; a
-tool which C kernel programmers can understand, use and maintain proofs as they
-make changes to very important security critical code is.
+also make it one that is used very widely. It is in this context that we and
+Google saw the opportunity to verify a small hypervisor, \emph{on an ongoing
+basis}. A one-and-done verification which takes an army of PhD students and
+postdocs a few years to verify and is years out of date by the time is
+developed would not be worth the investment; a tool which C kernel programmers
+can understand, use and maintain proofs as they make changes to very important
+security critical code would be.
 
 So not only does this background explain \kl{CN}'s headline goal, it also
 clarifies some of the \emph{constraints} on its design:
 \begin{itemize}
     \item Because kernel programmers wrote the code, and are intending to use
-        conventional compilers to build and run it,\sidenote{Assuming the
-        binary can be verified as well, perhaps with input from \kl{CN}.} we
-        cannot rely on (hopefully sound) approximation to the semantics of C
+        conventional compilers to build and run it, we cannot rely on
+        (hopefully sound) approximation to the semantics of C
         \textemdash{} we want and need something that matches and can handle
         its real world behaviour as closely as possible.
     \item Because it will be used by kernel programmers, we want a story that is
-        is accessible and acceptable to them. These are very smart and
+        is accessible and acceptable to them. They are very smart and
         capable people, who do not have the time or support to get up to
-        speed with separation logics and interactive proof assistants, or be
-        amenable to change their (or more importantly, their organisations)
-        workflows substantially. A ``fancier type system'' which runs as part of
-        the \intro[CI]{continuous integration (CI)} pipeline is much more
-        likely to be used and adopted in this context.
+        speed with separation logics and interactive proof assistants.
+        Nor are they amenable to change their development or company's
+        product delivery workflows substantially, which would be the case
+        for using interactive proof assistants. I conjecture that a ``fancier
+        type system'' which runs as part of the \intro[CI]{continuous
+        integration (CI)} pipeline has a better chance of being adopted in this
+        context.
     \item Similarly, because the annotations will be read by kernel programmers,
         and upstreamed into Linux, we want them to be minimal and relatively
         easy to understand. Not only does this affect the design of the type
@@ -221,22 +222,22 @@ of \sidetextcite{memarian2022cerberus}, but for the purposes of \kl{CN},
 it suffices to say it captures real-world C.
 
 Where \kl{Cerberus} really shines with respect to \kl{CN}'s use case in
-\emph{how} it captures this executable semantics. In particular, it does so by
+\emph{how} it captures this executable semantics. Unusually, it does so by
 \emph{compositional elaboration} into a \emph{relatively simple first-order
-functional language}, unlike other semantics, which are defined over some
-desugared and consolidated grammar closely resembling C.
+functional language}.
 
 This approach drastically simplifies many tricky parts of C. For example,
-\cref{fig:perplexing-ub} is accepted by the frontend, complete with strange
-scoping and strange control flow which jumps \emph{into} a loop body. This
-program is illegal because of the subtle rules regarding block scopes, object
-lifetimes and initialisation (as explained in the caption). Whilst contrived,
-any C function which happens to have exception handling and retry behaviour,
-and be longer than a programmer's screen height, could make the same error.
-Cerberus handles C features such as mutable and potentially aliasing variables,
-and the myriad other \kl[UB]{undefined} or \kl{unspecified} behaviours, for
-example loose evaluation order and coercions respectively, by making them all
-\emph{explicit} in the syntax.
+\kl{Cerberus} parses, and statically checks \cref{fig:perplexing-ub}, despite
+the strange scoping and strange control flow which jumps \emph{into} a loop
+body. However, it declares the program illegal when executing it because of
+subtle rules regarding block scopes, object lifetimes and initialisation (as
+explained in the caption). Whilst contrived, any C function which happens to
+have exception handling and retry behaviour, and be longer than a programmer's
+screen height, could make the same error. Cerberus handles C features such as
+mutable and potentially aliasing variables, and the myriad other
+\kl[UB]{undefined} or \kl{unspecified} behaviours, for example loose evaluation
+order and coercions respectively, by making them all \emph{explicit} in the
+syntax.
 
 \begin{marginfigure}
     \cfile[breaklines]{code/perplexing-ub.c}
@@ -256,15 +257,15 @@ Instead of working directly over something similar to C and trying to express
 static and dynamic semantics over something so complex, \kl{Cerberus}
 elaborates C into \intro{Core}, a not-too-large calculus where each construct
 is designed to capture some peculiarity of C. It is split into two fragments, a
-pure (\cref{fig:pure-core-grammar}) and effectful
-(\cref{fig:effectful-core-grammar}) which embeds the pure one.
+pure fragment (\cref{fig:pure-core-grammar}) and an effectful on
+(\cref{fig:effectful-core-grammar}); the former is embedded into the latter.
 
 The pure fragment is pure in the sense that it allows no memory operations, but does
 include the effect of undefined behaviour explicitly with the
 \coreinline{undef()} operator. This aspect of the language handles % chktex 36
 things like implicit type conversions or bounded arithmetic. As visible from the
 grammar, the pure part is very much a first-order functional language with
-recursive functions with some constructs specific to C such as pointer
+recursive functions, with some constructs specific to C such as pointer
 arithmetic on arrays and struct fields, structs, unions and
 specified/unspecified/integer values.
 
@@ -310,8 +311,13 @@ specific memory object model.
 
 Next are the constructs related to evaluation order. A more precise treatment
 of evaluation order and footprints of memory actions and expressions is given
-later in \nameref{sec:weak-seq}.
+later in \nameref{sec:weak-seq}. As per \sidetextcite{memarian2022cerberus},
+\emph{Each use of an action is either ``positive'' (the default case) or
+``negative'' (if the action appears in the syntax as the operand of the
+$\cnkw{neg()}$ operator)}.
 \begin{itemize}
+    \item $\cnkw{neg}(\cnnt{action})$ marks which memory actions are side
+        effects (see text to note~\ref{sn:side-effect}).
     \item $\cnkw{unseq}(E_1, \ldots, E_n)$ is unsequenced evaluation of each
         sub-expression.
     \item $\cnkw{let}\ \cnkw{strong}\ \cnnt{pat}\ \cnkw{=}\ \cnnt{E}_1
@@ -325,35 +331,28 @@ later in \nameref{sec:weak-seq}.
         performed by $\cnnt{E}_2$. A race only occurs if unsequenced memory
         actions have overlapping footprints (\cref{sec:weak-seq}), and is
         deemed \kl{UB}.
-    \item $\cnkw{neg}(\cnnt{action})$ marks which memory actions are side
-        effects (see text to note~\ref{sn:side-effect}).
     \item $\cnkw{bound}(\cnnt{E})$ evaluates its argument $\cnnt{E}$ and
         then clears its footprint (\cref{sec:weak-seq}). It marks the
         boundary of a C expression as a statement.
 \end{itemize}
 
-These were supported in the implementation at one point,\sidenote{See
-note~\ref{sn:new-inf}.} but stopped working due to a change in the resource
-inference scheme, and not enough of a priority to re-enable. I did not attempt
-to formalise their complex operational behaviour; I considered supporting these
-constructs using fractional permissions, but decided to leave that for future
-work because of the noise and complexity it would add to the initial version of
-the formalisation. The \coreinline{par()} construct is for spawning % chktex 36
-threads. The \coreinline{nd()} construct models non-determinism as % chktex 36
-required or implied by aspects of the standard.
+The \coreinline{par()} construct is for spawning threads. The % chktex 36
+\coreinline{nd()} construct models non-determinism as required or % chktex 36
+implied by aspects of the standard.
 
 The \coreinline{ccall()} and \coreinline{pcall()} constructs for % chktex 36
-calling elaborate C functions and Core procedures (effectful functions)
+calling elaborated C functions and Core procedures (effectful functions)
 respectively. They differ only in how the name of the procedure to be called is
 found, with \coreinline{ccall()} using the memory interface to do so. % chktex 36
 
-The (thread-local) Core operational semantics is defined as a small-step
-transition from a configuration to either undefined behaviour or a new
-configuration. Formally, this is $\langle h, E, \kappa \rangle
-\rightarrow (\textsc{Undef} \mid{} \langle h', E', \kappa' \rangle)$, for a
-heap $h$, effectful expressions $E$ and stack $\kappa$ (list of evaluation
-contexts $C$). These steps rely on evaluating pure expressions (in a big-step
-style) to either undefined behaviour or a value $\cnnt{pce} \Downarrow
+The (thread-local) Core operational semantics is defined in
+\textcite{memarian2022cerberus} and I present key rules from it below.
+It is a small-step transition from a configuration to either undefined
+behaviour or a new configuration. Formally, this is $\langle h, E, \kappa
+\rangle \rightarrow (\textsc{Undef} \mid{} \langle h', E', \kappa' \rangle)$,
+for a heap $h$, effectful expression $E$, and stack $\kappa$ (list of
+evaluation contexts $C$). These steps rely on evaluating pure expressions (in a
+big-step style) to either undefined behaviour or a value $\cnnt{pce} \Downarrow
 (\textsc{Undef} \mid{} \cnnt{value})$.
 
 For example, procedure calls pop the enclosing evaluation context $C$ on
@@ -411,7 +410,7 @@ then they are instantiated with the default arguments.
 Formally, reaching a \coreinline{save()} expression via its enclosing % chktex 36
 expression evaluates its default arguments (pure expressions) into values and
 then substitutes those values into its expression.\sidenote{Since this does not
-manipulate the heap or the stack, it is phrased purely as is expression
+manipulate the heap or the stack, it is phrased purely as expression
 reduction, with a separate, omitted rule to lift expression reductions to
 thread-local reductions.}
 
@@ -456,11 +455,11 @@ local variables.
 \cfile[firstline=5, lastline=6]{code/append_plain.c}
 
 In Core, the pointer value passed into the function, and the mutable storage
-for it are separated syntactically. The parameters have type
+for it, are separated syntactically. The parameters have type
 \coreinline{loaded pointer}, where \coreinline{loaded t} is either a
 \coreinline{Specified(v:t)} or an \coreinline{Unspecified} value % chktex 36
 (an option monad for potentially uninitialised values read from memory). The
-result of the function has type \coreinline{eff loaded t} where
+result of the function has type \coreinline{eff (loaded t)} where
 \coreinline{eff t} is a value of type \coreinline{t} produced with effects
 (also a monad).
 
@@ -485,28 +484,36 @@ type without returning a value.
 
 The \coreinline{create()} and \coreinline{store()} operations are % chktex 36
 memory actions, and produce values of type \coreinline{eff pointer} and
-\coreinline{eff unit} respectively. Binding constructs \coreinline{let strong}
-and \coreinline{let weak} (monadically) bind effectful values, and sequence
-their effects. In this example, weak sequencing has no observable effect, and
-so is safe to read as \coreinline{let strong}.
+\coreinline{eff unit} respectively. The \coreinline{create()} action % chktex 36
+takes two arguments, an integer (for constraining the aligment of the
+resulting pointer), and a C type. \coreinline{Ivalignof(τ)} is an % chktex 36
+integer value constructor which takes as an argument a C type τ; in C, the
+alignnemnt of a type is an implementation-defined value and using an abstract
+constructor allows the elaboration to be agnostic of such choices.
+
+Binding constructs \coreinline{let strong} and \coreinline{let weak}
+(monadically) bind effectful values, and sequence their effects. In this
+example, weak sequencing has no observable effect, and so is safe to read as
+\coreinline{let strong}.
 
 \corefile[firstline=5, lastline=10]{code/append_plain.core}
 
-
-In C, the test to check if \cinline{x} is \cinline{NULL} looks like this.
+In C, the test to check if \cinline{x} is \cinline{NULL} looks like this. The
+standard defines the type of conditional and logical expressions to be an
+integer.
 
 \cfile[firstline=8, lastline=8]{code/append_plain.c}
 
 First this requires loading the \coreinline{xs} from memory, and then doing a
 \coreinline{PtrEq} memory operation to check if it is \coreinline{NULL}.
-Because booleans are represented by 0 and 1 in C, the result of this expression
-is a \coreinline{loaded integer}.
+The result of this expression is a \coreinline{loaded integer}.
 
 \corefile[firstline=15, lastline=25]{code/append_plain.core}
 
-That result is bound to \coreinline{a_432} and then converted (omitted) into a
-Core boolean, bound to \coreinline{a_431}, which is in turn used in a Core
-if-expression. Recall the true-branch of the C code.
+Elsewhere, lines 15\textemdash{}25 are bound to \coreinline{a_432}. That is
+then converted into a Core boolean bound to \coreinline{a_431}. The boolean
+variable is in a Core if-expression on line 48. Recall the true-branch of the C
+code.
 
 \cfile[firstline=9, lastline=9]{code/append_plain.c}
 
@@ -530,28 +537,30 @@ the local variable.
 
 \corefile[firstline=59, lastline=60]{code/append_plain.core}
 
-Next is getting the pointer for the C function to be called. This expression is
-bound to \coreinline{a_447}.
+Next is getting the pointer for the C function to be called; elsewhere, lines
+67\textemdash{}68 are bound to \coreinline{a_447} to be used in
+\coreinline{ccall()} later. % chktex 36
 
-\corefile[firstline=59, lastline=60]{code/append_plain.core}
+\corefile[firstline=67, lastline=68]{code/append_plain.core}
 
-The first argument is \cinline{xs->tail}; in Core that is represented by a
+The first argument is \cinline{xs->tail}. In Core, that is represented by a
 \coreinline{load()} of \cinline{&xs}, a case-split on the loaded value % chktex 36
 (UB if it is \coreinline{Unspecified}), a \coreinline{member_shift()}, % chktex 36
-and then another \coreinline{load()}. The whole expression is bound % chktex 36
-to \coreinline{a_454}.
+and then another \coreinline{load()}. Elsewhere, lines 71\textemdash{}81 % chktex 36
+are bound to \coreinline{a_454}.
 
 \corefile[firstline=71, lastline=81]{code/append_plain.core}
 
 The second argument is \cinline{ys}; in Core that is just a \coreinline{load()} % chktex 36
-of \cinline{&ys}. The whole expression is bound to \coreinline{a_461}.
+of \cinline{&ys}. Elsewhere, lines 83\textemdash{}84 bound to
+\coreinline{a_461}.
 
 \corefile[firstline=83, lastline=84]{code/append_plain.core}
 
 Finally, the elaboration of the function call itself performs a large amount of
 run-time type checking; in the general case this supports calling variadic
 functions via function pointers, but for this example, because the function is
-(a) known and compile time and (b) not variadic, it simplifies to the below.
+(a) known at compile time and (b) not variadic, it simplifies to the below.
 
 \begin{corecode}
 ccall("struct int_list* (*) (struct int_list*, struct int_list*)",
@@ -560,8 +569,9 @@ ccall("struct int_list* (*) (struct int_list*, struct int_list*)",
       a_461 (* ys *))
 \end{corecode}
 
-The result of this is in turn bound to \coreinline{a_445}, which is then
-stored in at \cinline{&new_tail} (in Core, just \coreinline{new_tail}).
+Elsewhere, the \coreinline{ccall()} is bound to \coreinline{a_445}, % chktex 36
+which is then stored in at \cinline{&new_tail} (in Core, just
+\coreinline{new_tail}).
 
 \corefile[firstline=105, lastline=107]{code/append_plain.core}
 
@@ -571,19 +581,20 @@ of the first list.
 \cfile[firstline=12, lastline=12]{code/append_plain.c}
 
 In Core, \cinline{xs->tail} is elaborated into a \coreinline{load()} % chktex 36
-and a member shift, whose result is bound to \coreinline{a_472}.
+and a member shift in lines 110\textemdash{}118. Elsewhere, those lines are
+are bound to \coreinline{a_472}.
 
 \corefile[firstline=110, lastline=118]{code/append_plain.core}
 
 The right-hand-side is just a \coreinline{load()} from \cinline{&new_tail} % chktex 36
-(which in Core, is just \coreinline{new_tail}), whose result is bound to
-\coreinline{a_479}.
+(which in Core, is just \coreinline{new_tail}) in lines 122\textemdash{}123.
+Elsewhere, those lines are bound to \coreinline{a_479}.
 
 \corefile[firstline=122, lastline=123]{code/append_plain.core}
 
 In C, assignments can be used as expressions. In the jargon of the standard,
 any loads used to evaluate the operands form a \emph{value computation}, but
-the stores do not: they are classed as \emph{side effects}.\sidenote{%
+the stores do not: they are classed as \intro{side effect}s.\sidenote{%
 §5.1.2.3\#2: [\ldots] Evaluation of an expression in general includes both
 value computations and initiation of side effects.}\label{sn:side-effect} As
 per~\textcite[p61, p66, p99]{memarian2022cerberus}, \emph{``intuitively, a Core action
@@ -641,19 +652,24 @@ In principle, the compositional mapping also ensures that errors in \kl{Core}
 elaboration can be related back to useful source locations in the original C
 program. However, in practice, though \emph{compositional}ity does
 \emph{enable} this, it requires a good amount of engineering effort to
-accomplish (\cref{sec:error-msgs}). Another challenge is that though
-elaboration simplifies greatly the checked language, it also increases the
-distance between the checked and the typed language, which is felt acutely when
-attempting to relate failures in SMT queries back to what users wrote,
-particularly when those SMT are part of an inference procedure, rather
-than checking C source assertions (\cref{sec:counter-ex}).
+\emph{accomplish} (\cref{sec:error-msgs}).
+
+Another challenge is that though elaboration simplifies greatly the checked
+language, it also increases the distance between the checked and the typed
+language. This becomes problemsome when attempting to relate failures in SMT
+queries back to what users wrote, particularly when those queries are part of
+an inference procedure, rather than checking C source assertions
+(\cref{sec:counter-ex}).
+
+This concludes the background related to \kl{Cerberus}; now I will discuss the
+background related to the \kl{CN} type system.
 
 \section{Decidable refinements for retrofitting and counter-examples}
 
 \kl{Core} already has a straightforward \kl{bidirectional} type system as a
-sanity check on the output of elaboration. It has not been used for a
-rudimentary proof of soundness with respect to the dynamic semantics, since
-such a theorem would be just another sanity check (on the dynamic semantics).
+sanity check on the output of elaboration. It has not been used for a proof of
+soundness with respect to the dynamic semantics, since such a theorem would be
+just another sanity check (on the dynamic semantics).
 
 \begin{marginfigure}
     \centering
@@ -1327,22 +1343,28 @@ form.
 
 \kl{CN} implements \intro{iterated separating conjunctions}, inspired by
 \sidetextcite{muller2016automatic}, but with restrictions to ensure only
-quantifier-free SMT queries. Specifically,
+quantifier-free SMT queries. They are introduced and eliminated as follows.
 \begin{itemize}
-    \item Iterations must take the form
-        \cninline[breaklines]|each (<type> i; <guard>) { <pred>( array_shift(p, i) ) }|, % chktex 36 chktex 37
-        where
-        \begin{itemize}
-            \item \cninline{i} is the iterating index being quantified over
-            \item \cninline{<guard>} is a boolean condition on \cninline{i}
-            \item \cninline{p} is a base pointer
-            \item \cninline{<pred>} is the name of a named predicate
-            \item \cninline{array_shift} is the specification language syntax
-                for C's \cinline{p + i}.
-        \end{itemize}
-    \item Indices which are intended to move into or out of an iterated separating
-        conjunction must be declared so explicitly with a \cninline{focus <idx>;}
-        statement.
+\item $ \cnkw{each}  \left(  \beta \,  \cnmv{x} \, ;  \cnnt{iguard}
+    \right)\, \left\{  { \alpha }  \left(  \cnkw{array\_shift} \, \langle
+    \tau  \rangle  \left(  { y_p }  \cnsym{,}  \cnmv{x}  \right)  \cnsym{,}
+    \cnnt{iargs}  \right)  \, \right\} $. % chktex 25
+\begin{itemize}
+    \item $\beta$ is the type of the quantifier (usually % chktex 25
+        \cninline{u64}).
+    \item $\cnmv{x}$ is the iterated variable. \item $\cnnt{iguard}$ is the index
+        guard, a boolean-valued logical/SMT expression on the iterated variable
+        $\cnmv{x}$.
+    \item ${ \alpha }$ is the name of a predicate.
+    \item $\cnkw{array\_shift} \, \langle  \tau  \rangle  \left(  { y_p }  \cnsym{,}  \cnmv{x}  \right)$ is \kl{CN} syntax for C % chktex 25
+        pointer-arithmetic ${ y_p } \,  \mathbin{ \symtt{+} }  \, \cnmv{x}$ where the base pointer ${ y_p }$
+        has C type $\tau  \cnsym{*}$. This requires the first argument of any
+        ${ \alpha }$ to be a pointer.
+    \item $\cnnt{iargs}$ are logical/SMT arguments.
+\end{itemize}
+\item Indices which are intended to move into or out of an iterated separating
+    conjunction must be declared so explicitly with a $\cnkw{focus}\ \cnnt{term}\cnkw{;}$
+    statement.
 \end{itemize}
 
 This enables a few convenient features.

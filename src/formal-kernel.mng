@@ -290,21 +290,29 @@ This makes the code more fragile but saves the need for maintaining another larg
 syntax tree which needs pretty-printers, debug printers, source location
 mappings and so on.
 
-Since it would require more complex fractional permissions, I left out
-let-normalising the constructs related to C's loose evaluation order.\sidenote{%
+I omitted the constructs related to C's loose evaluation order.\sidenote{%
 \coreinline{neg()}, \coreinline{unseq()}, \coreinline{let weak}, % chktex 36
-\coreinline{let strong}, \coreinline{bound()}.} % chktex 36
-However, this also means the formalisation glosses % chktex 36
-over the fact that those constructs can contain each other in a semantically
-meaningful way, such that flattening out that nesting seems impossible. A
-solution would be to require type annotations on any situation which requires
-statements to be nested inside one another.\sidenote{Nested (and therefore,
-annotated) statements are required only for proving type
-preservation for calls to pure Core functions, effectful Core
-procedures, and elaborated C functions.} I will demonstrate in
-\nameref{chap:kernel-alternative}, it seems very difficult to avoid some sort
-of normalisation (and associated control flow explosion) somewhere in the type
-system in the presence of join-points and early returns in sub-expressions.
+\coreinline{let strong}, \coreinline{bound()}.} for the following reasons. % chktex 36
+\begin{itemize}
+\item It is unclear how to let-normalise these constructs into statements
+    whilst preserving their intent; nesting order is significant.
+\item If the nesting order is preserved, then the bidirectional discipline
+    (expressions synthesise types and statements check against them) entails
+    nested statements must be annotated with their types. This means we need to
+    know how to infer those annotations, or obtain them from the user.
+\item Supporting the constructs would also require fractional permissions.
+    I conjectured this would be easier to add later, once I had understood a
+    non-fractional version of the type system first.
+\item The constructs are not supported by the implementation. They were
+    at one point, but stopped working due to a change in the resource inference
+    scheme,\sidenote{\href{https://github.com/rems-project/cerberus/commit/7c2c0a364a4373e4eb109f32d01cc9584f51e81f}{Commit
+    7c2c0a36.}} and fixing this was not a priority.
+\end{itemize}
+
+I will show in \nameref{chap:kernel-alternative} that the presence of
+join-points and early returns in sub-expressions seems to make it difficult to
+avoid some sort of normalisation (and associated control flow explosion) in the
+type system.
 
 Pure expressions include things such as pure values,
 datatype values, pointer arithmetic for arrays (in \kl{de facto}, not \kl{ISO})
@@ -340,7 +348,7 @@ of $[[ret_term]]$s/$[[spine_elem]]$s.
     \caption{Effectful expressions in ResCore.}\label{fig:kernel-expr}
 \end{figure}
 
-Effectful statements (\cref{fig:kernel-expr}) include \kl{return terms}, pure
+Effectful statements (\cref{fig:kernel-stmt}) include \kl{return terms}, pure
 statements, bound effectful expressions, standard conditional and
 pattern-matching constructs and the \coreinline{run} operator.
 
