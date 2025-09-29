@@ -20,20 +20,19 @@ features, adopting the conventional approach would quickly use up most of its
 complexity budget and make the other goal (of reducing the expertise required
 to do verification) unfeasible.
 
-Instead, \kl{CN} builds directly upon the
-\kl{Cerberus}~\sidecite{memarian2022cerberus} executable and empirically
-validated semantics for C. Not only does \kl{CN} benefit from the
-\emph{accurate} semantics for both \kl{ISO} and \kl{de facto} C, it benefits
-most from the \emph{usability} of it. This is because Cerberus is elaborated
-into a relatively small calculus \emph{\kl{Core}}, which translates all of C's
-complexity into a first-order functional language with a few special (but easy
-to understand and specify) constructs.
+Instead, \kl{CN} builds directly upon the \kl{Cerberus} executable and
+empirically validated semantics for C~\sidecite{memarian2022cerberus}. \kl{CN}
+benefits from both the \emph{accuracy} and the \emph{usability} of this
+semantics for both \kl{ISO} and \kl{de facto} C. This is because Cerberus is
+elaborated into a relatively small calculus \emph{\kl{Core}}, which translates
+all of C's complexity into a first-order functional language with a few special
+(but easy to understand and specify) constructs.
 
 Additionally, \kl{CN} is intended to be used more like a \emph{type system} in
-an IDE than a program logic inside a proof assistant. Ideally, instead of
-seeing intermediate goals in a sophisticated separation logic, and needing to
-be well versed with a range of inference rules and automation tactics, a user
-sees their C program, scattered with predictable and lightweight annotations in
+an IDE than a program logic in a proof assistant. Ideally, instead of seeing
+intermediate goals in a sophisticated separation logic, and needing to be well
+versed with a range of inference rules and automation tactics, a user sees
+their C program, scattered with predictable and lightweight annotations in
 comments, in an editor which either indicates success, or a clear and helpful
 error message.
 
@@ -45,7 +44,7 @@ existing languages.
 % This type system approach also leads to other desiderata and their
 % corresponding responses.
 
-Aiming to be a type systems means we want to minimise obvious annotations and
+Aiming to be a type system means we want to minimise obvious annotations and
 justify why the necessary ones are so. Thus, we need to be careful about
 tracking the flow of information in the type system, using a \kl{bidirectional}
 approach. We also need some sort of automation so as to not burden the
@@ -65,16 +64,56 @@ happen to know Haskell (or Rust).
 
 With this many constraints and design decisions, it is easy to be doubtful of the
 elegance and feasibility of this approach, let alone consider proving such a
-type system sound. As I will show in \nameref{chap:kernel-statics}, whilst the setup
-might be novel, multi-faceted and large, the definitions are relatively
-straightforward, and the proof of soundness can be done syntactically. Both the
-definitions and the proof are modular with respect to the heap, so that
-changing the memory object model does not require redoing the entire soundness
-proof. The formalisation is close enough to the surface syntax of \kl{CN} so
-that a correspondence between the two can be stated simply and precisely, and
-close enough to the implementation to offer actionable insights.
+type system sound.
 
-\chapter{Formalisation Background}%
+My contribution is this part is formalising and proving type safety for
+\kl{Kernel CN}: a formalism for \kl{CN} which assumes that universal
+quantifiers are explicitly instantiated, that all existential quantifiers have
+explicit witnesses, and all resource manipulations have proof terms with linear
+types. It does not require proof terms for the logical properties, since by
+construction all of the entailments fall into (decidable) SMT fragment.
+\kl{Kernel CN} is a bidirectional type system for \intro{ResCore}, a let-normal
+version of \kl{Cerberus}' \kl{Core} calculus.
+
+I also formalised an elaboration procedure to explain the principles of
+\kl{CN}'s resource inference scheme, though I have not embarked on any proofs
+about it.
+
+In~\fancyref{chap:formal-background}, I expand upon the aforementioned
+constraints and design decisions, highlight and explain the relevant features
+of \kl{Cerberus} and \kl{Core}, and cover the necessary type systems background
+to understand \kl{CN}'s syntax and \kl{Kernel CN}.
+
+In~\fancyref{chap:kernel-grammar}, I will explain the grammar of types in
+\kl{Kernel CN}, how they relate to the \kl{CN}'s syntax. I will also explain
+the grammar of \kl{ResCore} and how that relates to \kl{Cerberus}'s \kl{Core}
+by example.
+
+In~\fancyref{chap:kernel-statics}, I put the novel, multi-faceted and large
+setup presented so far to use, and explain the \kl{Kernel CN} typing rules for
+\kl{ResCore}. The lack of inference makes it a simpler language for which to
+prove type soundness, whilst still demonstrating all the key ingredients
+mentioned above. Since it handles the majority of C, the entire system is very
+large, and so I will only discuss the main features. I also show rules for
+inferring the quantifier instantiations assumed by \kl{Kernel CN}.
+
+In~\fancyref{chap:kernel-soundness}, I discuss the key definitions, lemmas and
+proof sketches used in a syntactic proof of type safety for \kl{Kernel CN}. Of
+note are the definition of substitution, the novel structure of the heap, and
+the interaction between resource terms and the heap.
+
+In~\fancyref{chap:inform-impl}, I discuss how the formalisation brings clarity
+to many questions around the implementation, centred around lifiting
+restrictions in the \kl{CN} implementation or adding new features.
+
+In~\fancyref{chap:kernel-alternative}, I conclude this part by sketching out an
+alternative presentation of the \kl{CN} type system, \kl{MiniCN}, which is
+closer to both C as a surface language and the \kl{CN} implementation. It will
+demonstrate the challenges of \emph{not} using \kl{ResCore}. It will also
+demonstrate the challenges which seem to be inherent to designing a type system
+for a C-like language.
+
+\chapter{Background: Cerberus and CN design}%
 \label{chap:formal-background}
 
 \margintoc{}
@@ -304,14 +343,14 @@ since both are elaborated into effectful expressions (for example,
 \coreinline{PtrEq} which tests for for pointer equality).
 
 I will discuss \coreinline{memop()} in more detail in % chktex 36
-\nameref{chap:mem-model-explained}. For now it suffices to say that the
+\fancyref{chap:mem-model-explained}. For now it suffices to say that the
 operations are effects, part of the memory interface \kl{Core} uses to abstract
 over choices of different handlers, implementations of those effects in a
 specific memory object model.
 
 Next are the constructs related to evaluation order. A more precise treatment
 of evaluation order and footprints of memory actions and expressions is given
-later in \nameref{sec:weak-seq}. As per \sidetextcite{memarian2022cerberus},
+later in \fancyref{sec:weak-seq}. As per \sidetextcite{memarian2022cerberus},
 \emph{Each use of an action is either ``positive'' (the default case) or
 ``negative'' (if the action appears in the syntax as the operand of the
 $\cnkw{neg()}$ operator)}.
@@ -545,7 +584,7 @@ Next is getting the pointer for the C function to be called; elsewhere, lines
 
 The first argument is \cinline{xs->tail}. In Core, that is represented by a
 \coreinline{load()} of \cinline{&xs}, a case-split on the loaded value % chktex 36
-(UB if it is \coreinline{Unspecified}), a \coreinline{member_shift()}, % chktex 36
+(UB if it is \coreinline{Unspecified}), a \coreinline[breaklines]{member_shift()}, % chktex 36
 and then another \coreinline{load()}. Elsewhere, lines 71\textemdash{}81 % chktex 36
 are bound to \coreinline{a_454}.
 
@@ -617,7 +656,7 @@ return label \coreinline{ret_430} mentioned earlier.
 
 \corefile[firstline=132, lastline=140]{code/append_plain.core}
 
-\section{Discussion}
+\subsection{Discussion}
 
 A few things are note-worthy about the Core elaboration:
 \begin{itemize}
@@ -656,7 +695,7 @@ program. However, in practice, though \emph{compositional}ity does
 
 Another challenge is that though elaboration simplifies greatly the checked
 language, it also increases the distance between the checked and the typed
-language. This becomes problemsome when attempting to relate failures in SMT
+language. This becomes problematic when attempting to relate failures in SMT
 queries back to what users wrote, particularly when those queries are part of
 an inference procedure, rather than checking C source assertions
 (\cref{sec:counter-ex}).
@@ -694,12 +733,12 @@ be inconsistent, i.e.\ able to prove false. To illustrate this point with
 a trivial example, consider the nested \mintinline{py}{if} statements in
 \cref{fig:dead-code}.
 
-\begin{marginfigure}
+\begin{figure}[h]
     \inputminted[breaklines,mathescape,fontsize=\small]{py}{code/dead_code.py}
     \caption{A contrived example on how tracking control flow assumptions
         within a program could be used to prove the impossibility of
         undesirable behaviour.}\label{fig:dead-code}
-\end{marginfigure}
+\end{figure}
 
 Since we know from the outer \mintinline{py}{if} that \mintinline{py}{x} is
 greater than or equal to 5, the check for \mintinline{py}{x} being strictly
@@ -710,29 +749,31 @@ context, from which we can prove $\mathsf{false}$.
 
 In general, to express and track these constraints in types, we need to be able
 to talk about computational variables and values \emph{at the type level},
-introducing a form of dependency. However, because we do not want to change the
-programming language whose type system we are enriching (such as in a
-\kl{dependent type} system) we are not adding the ability for computation to
-depend on types, so we retain the property of recovering the original program
-and dynamic semantics after erasing the expressive types we fit on top of them.
+introducing a form of dependency. However, we do not want to make programming
+language itself more expressive, merely its type system. For example, we do not
+wish to the ability for computation to depend on types (as in a \kl{dependent
+type} system). In fact, we would like to add richer types in a way such that we
+could erase them after type checking, and recover the original program and
+dynamic semantics.
 
 This approach of enriching the expressiveness of types on an existing language
 whilst retaining the erasure is known as \intro{refinement types}. There is a
 rich history of the origins, naming and development of these
-ideas,~\sidecite{jhala2021refinement} and so I will focus only on the strands
+ideas~\sidecite{jhala2021refinement}, and so I will focus only on the strands
 relevant to \kl{CN}.
 
 If our goal is to minimise annotations and not require proofs for obvious
-statements, then we need some sort of automation to dispatch proof
-obligations.\sidenote{Recall the examples shown in
-\cref{fig:call-incr}, where \kl{CN} deduces
+statements, then we need some sort of automation to dispatch proof obligations:
+recall the examples shown in \cref{fig:call-incr}, where \kl{CN} deduces
 \cinline[breaklines]{y <= MAXi32()} from the constraint \cinline[breaklines]{y
-<= 100i32}.} However, once we have rich constraints being tracked by the type
-system, we have a first-order logic with arithmetic, proving which is
-undecidable in general. There are type systems for real-world
-programming languages (such as Hack or F$^*$) which are undecidable, and so
-could just never terminate on some code, but have automation which works fine
-in practice, so why does this point require any special consideration?
+<= 100i32}.
+
+However, once we have rich constraints being tracked by the type system, we
+have a first-order logic with arithmetic, which is undecidable. There are type
+systems for real-world programming languages (such as Hack or F$^*$) which are
+undecidable, and so could just never terminate on some code, but have
+automation which works fine in practice, so why does this point require any
+special consideration?
 
 Aside from the pleasing theoretical property of having a decidable type system,
 or having to tell users ``just increase the timeout'',  there are a couple of
@@ -792,14 +833,15 @@ raise an exception.
 Working forwards, we start off with a type for $\{\, \mathsf{x} \mid \top \,\}$.
 Inside the function, we are checking both branches because we cannot statically
 rule one of them out. In the true case, we now \emph{refine} the type to $\{\,
-\mathsf{x} \mid \mathsf{x} \geq 5 \,\}$. Because we are not sure when to apply
-the subsumption rule, and we can apply it at any time, we apply it now, and
-have $\{\, \mathsf{x} \mid \mathsf{x} > 0 \,\}$, because $\mathsf{x} \geq 5
-\Rightarrow \mathsf{x} > 0$. At this point, we cannot statically rule out the
-\cinline{else}-branch of the condition, so we start checking the one with the
-exception, instead of skipping over it as dead code.
+\mathsf{x} \mid \mathsf{x} \geq 5 \,\}$.
 
-Whilst quite contrived, it illustrates the point that we would like some sort
+The subsumption rule is not syntax-directed, so we are free to apply it now.
+Doing so, we have have $\{\, \mathsf{x} \mid \mathsf{x} > 0 \,\}$, because
+$\mathsf{x} \geq 5 \Rightarrow \mathsf{x} > 0$. At this point, we cannot
+statically rule out the \cinline{else}-branch of the condition, so we start
+checking the one with the exception, instead of skipping over it as dead code.
+
+Whilst quite contrived, this illustrates the point that we would like some sort
 of principled scheme to know when to use the subsumption rule, and with which
 constraints. We could avoid this by requiring users annotate their code at
 every step, but though this would be a predictable annotation scheme, it would
@@ -825,10 +867,10 @@ would like to avoid is annotations on each statement of a C program.
 More concretely, in the presence of constraints due to refinement types, this
 means we would like \emph{check} types at function calls, function returns,
 before and after loops from the top down, and \emph{synthesise} types
-everywhere else from the bottom up. This is precisely the sort of problem a
-bidirectional type system can solve (see sections 4.4 and 4.6
-in~\sidetextcite{dunfield2021bidir}). Moreover, it gives a clear principle of
-when to use subsumption rule (call the SMT solver): at the boundary between
+everywhere else from the bottom up. As explained in sections 4.4 and 4.6
+in~\sidetextcite{dunfield2021bidir}, this is precisely the sort of problem a
+bidirectional type system can solve. Moreover, it gives a clear principle of
+when to apply the subsumption rule (call the SMT solver): at the boundary between
 synthesis and checking (\cref{fig:simple-bidir}).
 
 \begin{figure}
@@ -902,28 +944,33 @@ synthesis and checking (\cref{fig:simple-bidir}).
 
 \section{Linearity to manage (non-leaky) resources}
 
-Of course, if the aim is define a type system rich enough to prove the absence
-of \kl{UB}, we must acknowledge the fact that there are plenty of ways of
-getting \kl{UB} which do not rely on pure fragment evaluation rules of the
-\kl{standard} being violated, but based on effectful fragment, such as loose
-evaluation order or a myriad of subtle memory violations.
+Our aim is define a type system rich enough to prove the absence of \kl{UB},
+which can arise from both the pure and effectful fragments of \kl{Core}
+(\cref{sec:core-grammar}). Whilst decidable refinements and bidirectionality
+are suitable for preventing \kl{UB} from the former, we need more techniques to
+accomplish the same for the latter, ones capable of handling features such as
+such as loose evaluation order or a myriad of subtle memory violations.
 
-In \nameref{sec:sep-logic-intro}, I sketched out how separation logic can be
+In \fancyref{sec:sep-logic-intro}, I sketched out how separation logic can be
 used to reason about the behaviour of imperative programs which manipulate a
 heap and can have syntactically distinct terms \intro{alias} the same location
 in said heap. If we want to embed separation logic propositions into a type
 system, then we need to be able to precisely control how those propositions are
 handled.
 
-Whereas in a typical (intuitionistic) type system, duplicating an assumption in
-the context is perfectly acceptable, in a separation logic setting, this would
-mean that one could take $x \mapsto{} y \ast{} y = 5$, duplicate the points-to
-to get $x \mapsto{} y \ast{} x \mapsto{} y \ast y = 5 \vdash{} x \mapsto{} 0$,
-instead of $x \mapsto{} 5$ as we would like. This is because the semantics of
-$\ast{}$ means that the context entails $\mathsf{False}$. Such duplication is
-known as \intro{contraction} and we need to forbid this to reason soundly
-(whilst keeping other assumptions, such as the type of \kl{Core} program
-variables, and constraints, contractible).
+In a typical (intuitionistic) type system, assumptions in the context are
+duplicable, for example, the type of a variable in \kl{Core}, or constraints
+about pure values. This relies on the fact that $A \Rightarrow A \wedge A$ in
+intuitionistic logic. However, the same is not true for $\ast{}$ in separation
+logic: $A \nRightarrow A \ast{} A$. This is because assertions have their
+semantics defined with reference to a heap. For example, a heap satisfies $A_1
+\ast{} A_2$ iff it can be split into two disjoint sub-heaps which satisfy $A_1$
+and $A_2$ separately. If $A = (x \mapsto{} y)$, then there is one heap
+satisfying $A$, but none for $A \ast{} A$.
+
+Such duplication is known as \intro{contraction} and we need to forbid this to
+reason soundly (whilst keeping other assumptions, such as the type of \kl{Core}
+program variables, and constraints, contractible).
 
 \begin{marginfigure}
   \begin{mathpar}
@@ -1027,12 +1074,12 @@ reduce the burden of annotations.
 I should note that, for the purposes of the formalisation of \kl{Kernel CN}, I
 do use explicit linear resource terms, since that makes the system easier to
 state and prove sound. For clarity and convenience, the linear context in the
-system is used in a \intro{declarative} manner (\cref{fig:decl-alg}).
-Explicit linear resource terms also makes it easy to specify and explain the
-\kl{CN} \kl{resource inference} algorithms as an \emph{elaboration}, which I
-will also do.\sidenote{I have not embarked on any proofs about the properties of
-these inference algorithms.} Those rules use the linear context in
-an algorithmic manner.
+system is used in a \intro{declarative} manner (\cref{fig:decl-alg}). Explicit
+linear resource terms also make it easy to specify and explain the \kl{CN}
+\kl{resource inference} algorithms as an \emph{elaboration}, which I do in
+\fancyref{sec:elaboration}.\sidenote{I have not embarked on any proofs about
+the elaboration rules.} Those rules use the linear context in an algorithmic
+manner.
 
 \section{Precise assertions for inferring resources and quantifiers without
 backtracking}\label{sec:precise-assertion-inferring}
@@ -1050,11 +1097,11 @@ terms (by inferring them), we would also, as far as possible, like to
 infer how quantifiers are instantiated, based on what the user wrote.\sidenote{
 Note that this is not at all related to \emph{inferring specifications}, which
 is a large and challenging problem in its own right.} Unfortunately, such
-inference is undecidable~\sidecite{turing1936computable,church1936unsolvable}.
+inference is undecidable.
 
-Yet, we can still proceed and make the problem clearer by using a concrete
-example. Let us recall the separation logic proof sketch of linked integer list
-append from \cref{fig:append-annot,fig:list-pred}, reproduced in
+To better understand this problem, let us recall the separation logic proof
+sketch of linked integer list append from
+\cref{fig:append-annot,fig:list-pred}, reproduced in
 \cref{fig:append-annot-formal,fig:list-pred-formal} for convenience.
 
 \begin{marginfigure}
@@ -1073,22 +1120,20 @@ append from \cref{fig:append-annot,fig:list-pred}, reproduced in
         logic.}\label{fig:list-pred-formal}
 \end{marginfigure}
 
-\begin{figure}[tp]
-    \inputminted[breaklines,mathescape,fontsize=\small]{py}{code/append_annot.py}
-    \caption{A separation logic proof sketch of a linked integer list
-        append.}\label{fig:append-annot-formal}
-\end{figure}
-
 We see that in addition to the pointers $\mathsf{xs}$ and $\mathsf{ys}$, which
 can be thought of as a quantification over \intro{computational} variables, the
 specification for append also quantifies over \emph{logical} or ghost variables
 $l_1$ and $l_2$. Given that the ``computational terms'' are just code, the
 computational variables need not be inferred, since the user needs to provide
-them for the call to the function to be valid.\sidenote{For the rest of this
-section, I am only going to talk about quantifiers for function calls, but the
-exact same principle applies for dealing with both computational and logical
-return values too. I will discuss quantifiers related to array reasoning in
-\cref{sec:it-array}.}
+them for the call to the function to be valid.\sidenote{The same principle
+applies for instantiating existentials used in postconditions too. I will
+discuss quantifiers related to array reasoning in \cref{sec:it-array}.}
+
+\begin{figure}[h]
+    \inputminted[breaklines,mathescape,fontsize=\small]{py}{code/append_annot.py}
+    \caption{A separation logic proof sketch of a linked integer list
+        append.}\label{fig:append-annot-formal}
+\end{figure}
 
 However, it would be a shame if the user had to provide explicit instantiations
 for $l_1$ and $l_2$ at each call site, including the recursive call within the
@@ -1098,7 +1143,7 @@ variable, we need a way to bind the ghost values which were existentially
 quantified over in the $\mathrm{list}$ predicate of
 \cref{fig:list-pred-formal}, to names the user would have to choose.
 
-This seems even more of a tragedy because before the recursive function
+This is doubly irksome because prior to the recursive function
 call, we already know (a) $\mathrm{list}(\mathsf{xs}', l_1')$ and
 $\mathrm{list}(\mathsf{ys}', l_2')$ and (b) the precondition requires choices
 of $l_1$ and $l_2$ such that $\mathrm{list}(\mathsf{xs}', l_1)$ and
@@ -1129,8 +1174,8 @@ such an inference scheme would
     \item Repeat similarly for $\mathsf{ys}$ and $l_2'$.
 \end{enumerate}
 
-It is a cute idea, but it glosses over several details, such as
-\begin{itemize}
+This is a cute idea, but it glosses over several details, such as
+\begin{enumerate}
     \item Are such assertions characterisable, and if so, how?
     \item Can such a scheme handle disjunction, $ P \vee{} Q$?
     \item Are assertions where \kl{computational} arguments uniquely determine
@@ -1139,15 +1184,15 @@ It is a cute idea, but it glosses over several details, such as
     \item Can all assertions be decomposed into a context of such atomic
         predicates?
     \item Should it unfold recursive predicates, and if so, when?
-\end{itemize}
+\end{enumerate}
 
 I will tackle the first three questions here, and leave the latter three
-to be discussed in~\nameref{sec:heap-types}.
+to be discussed in~\fancyref{sec:heap-types}.
 
 For the first question, the answer is: in practice, \emph{yes}. If one assigns
 input and output \kl{modes} to the arguments of separation logic predicates,
 and ensures that predicates are \emph{mode-correct} via a syntactic check
-(\nameref{sec:monadic-syntax}), then that suffices to guarantee that the system
+(\fancyref{sec:monadic-syntax}), then that suffices to guarantee that the system
 can \emph{always infer quantifiers}.
 
 However, the theoretical justification for this unclear. Such assertions happen
@@ -1188,16 +1233,17 @@ production in the grammar for \kl{linear} \kl{resource types}
 \citeauthor{brotherston2016model}~\sidecite{brotherston2016model}~showed that
 precise assertions and an ordered-disjunction allow for efficient (polynomial time)
 model checking without backtracking (since a normal disjunction is enough to
-require backtracking and thus exponential); in~\nameref{sec:elaboration}, I
-show how the same allow for \kl{CN} to infer instantiations of quantifiers
-without backtracking. I do so by leaning on input and output \kl{modes} which
-(a) is intuitive, given that in C source a pointer is an ``input'' and
-dereferenced value an ``output'' and (b) happens to coincide.
+require backtracking and thus exponential).
+% in~\fancyref{sec:elaboration}, I
+% show how the same allow for \kl{CN} to infer instantiations of quantifiers
+% without backtracking. I do so by leaning on input and output \kl{modes} which
+% (a) is intuitive, given that in C source a pointer is an ``input'' and
+% dereferenced value an ``output'' and (b) happens to coincide.
 
 This brings us nicely to the second question about disjunctions. As visible
 from \cref{fig:imprecise}, we see that arbitrary disjunctions pose a problem.
 Yet, from \cref{fig:precise}, we see that the list predicate, and even a
-version of it which is existentially quantified over its ghost list fits the
+version of it which is existentially quantified over its ghost list, fits the
 definition of precise, despite including a disjunction in its definition
 (\cref{fig:list-pred-formal}).
 
@@ -1232,27 +1278,33 @@ predicate, $\mathsf{p\_tail}$ is \emph{uniquely} determined by its relation as
 the value in the location adjacent to $\mathsf{p}$.\sidenote{A proof of this is
 left as an exercise to the reader.} This can be operationalised with a \kl{mode}
 discipline for predicate arguments, which I shall discuss in
-\nameref{sec:monadic-syntax}.
+\fancyref{sec:monadic-syntax}.
 
-Finally, the third question is an empirical one, but our experience using
-\kl{CN} so far~\sidecite{pulte2023cn,pulte2024tutorial} suggests the answer is
-yes, it is sufficient for small to medium tutorial examples, all the way up to
-specifying the buddy allocator (\cref{chap:buddy}) used in pKVM\@.
+Finally, the third question, of whether precise assertions are expressive
+enough for realistic code is an empirical one. Our experience using \kl{CN} so
+far~\sidecite{pulte2023cn,pulte2024tutorial} suggests the answer is yes, it is
+sufficient for small to medium tutorial examples, all the way up to specifying
+the buddy allocator (\cref{chap:buddy}) used in pKVM\@.
 
-That being said, we have found that being able to abstract over, and supply
-quantifiers manually can sometimes be useful for ergonomics, even if not
-strictly necessary. An example came from the efforts of Cassia Torczon to
-verify a basic string manipulation library in \kl{CN}.%
+That being said, we have found that being able introduce and instantiate
+quantifiers manually can sometimes be useful for ergonomics. An example came
+from the efforts of Cassia Torczon to verify a basic string manipulation
+library in \kl{CN}.%
 \sidenote{\href{https://github.com/rems-project/cerberus/issues/540}{see
-Cerberus\#540}} The natural representation of null-terminated strings, as
-required by many of the library functions, is a recursive predicate. However,
-the implementation of such library functions use while-loops and
-array-indexing, for which it is convenient (but not neccessary) for proof (and
-library clients) to express the string as an array (represented by an iterated
-predicate), over a finite range. The end of that range is fixed, but not
-present before looping and indexing in the program code. Hence to refer to it
-in the specification, we need the ability to abstract over and supply
-quantifiers manually.
+Cerberus\#540}}
+
+The representation of strings in this library are null-terminated arrays of
+characters. Because the length is unknown, and the direction of traversal
+fixed, null-terminated strings are natural to describe using a recursive
+predicate. However, the library functions are implemented using while-loops and
+array-indexing, for which it is convenient (but not necessary) for proof (and
+library clients) to express strings as an array (represented by an iterated
+predicate), over a finite range. The end of that range is the string's length,
+which is not available in the code, especially before traversing the string.
+However, to prove all indexing is within bounds, we need to be able to refer to
+the string's length in the precondition and loop-invariants. Therefore, being
+able to introduce and instantiate the string's length manually makes the proof
+more convenient.
 
 \section{Monadic syntax for mode-correctness}\label{sec:monadic-syntax}
 
@@ -1329,7 +1381,7 @@ construct. Not only can all logical quantifiers now be \emph{inferred} without
 backtracking, branching assertions can be checked without backtracking too:
 check $e$ if you can can prove $t$ and check $e'$ if you can prove $\neg\;t$.
 
-\subsection{\kl[iterated]{Iterated} separating conjunctions to handle arrays}\label{sec:it-array}
+\section{\kl[iterated]{Iterated} separating conjunctions to handle arrays}\label{sec:it-array}
 
 C programmers use arrays a lot, particularly with computed index (i.e.\
 `random') access, rather than following a particular traversal pattern to get
@@ -1360,7 +1412,7 @@ quantifier-free SMT queries. They are introduced and eliminated as follows.
         pointer-arithmetic ${ y_p } \,  \mathbin{ \symtt{+} }  \, \cnmv{x}$ where the base pointer ${ y_p }$
         has C type $\tau  \cnsym{*}$. This requires the first argument of any
         ${ \alpha }$ to be a pointer.
-    \item $\cnnt{iargs}$ are logical/SMT arguments.
+    \item $\cnnt{iargs}$ is a list of logical/SMT arguments.
 \end{itemize}
 \item Indices which are intended to move into or out of an iterated separating
     conjunction must be declared so explicitly with a $\cnkw{focus}\ \cnnt{term}\cnkw{;}$
@@ -1396,7 +1448,7 @@ It also comes with a few limitations.
 \end{itemize}
 
 \kl{CN} did support the decidable array property
-fragment,~\sidecite{bradley2006whats}, but it was not expressive enough for
+fragment~\sidecite{bradley2006whats}, but it was not expressive enough for
 verifying pKVM's \kl{buddy allocator} (\cref{chap:buddy}) and so it was
 removed. \kl{CN} also supported a scheme for inferring indices (instead of
 requiring the movable ones to be declared up front), but this was removed

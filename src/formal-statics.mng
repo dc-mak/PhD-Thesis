@@ -14,20 +14,21 @@ kernel syntax for types, let-normalisation and explicit resource terms in
 \kl{kernel CN} that I will explain in this chapter. Some of the sections will
 based on my contributions to~\textcite{pulte2023cn}.%
 
-The \kl{Kernel CN} type system is ordinary \kl{CN}, defined over \kl{ResCore}
-instead of \kl{Core}, without any type or resource inference. In particular, it
-requires that that all universal quantifiers are explicitly instantiated, that
-all existential quantifiers have explicit witnesses, and all resource
-operations are embedded into the program itself as linearly typed proof terms.
-It does not require proof terms for the logical properties, since by
-construction all the entailments fall into the decidable SMT fragment; many
-rules rely on this. The lack of inference makes it a simpler language for which
-to prove type soundness, whilst still demonstrating all the key ingredients
-mentioned above. Since it handles the majority of C, the entire system is very
-large, and so I will only discuss the main features.
+\intro{Kernel CN} is a formalism for \kl{CN} which assumes that universal
+quantifiers are explicitly instantiated, that all existential quantifiers have
+explicit witnesses, and all resource manipulations have linearly typed proof
+terms embedded into the program itself. It does not require proof terms for the
+logical properties, since by construction all of the entailments fall into
+(decidable) SMT fragment. \kl{Kernel CN} is a bidirectional type system for
+\intro{ResCore}, a let-normal version of \kl{Cerberus}' \kl{Core} calculus.
+
+The lack of inference makes it a simpler language for which to prove type
+soundness, whilst still demonstrating all the key ingredients mentioned above.
+Since it handles the majority of C, the entire system is very large, and so I
+will only discuss the main features.
 
 There are some additional minor differences between the implementation and the
-formalisation. As I mentioned in \nameref{sec:desugaring}, the formalisation has a
+formalisation. As I mentioned in \fancyref{sec:desugaring}, the formalisation has a
 richer grammar of resources: this makes defining predicates to represent tagged
 unions more succinct, and allows for opening predicates in more cases. The
 formalisation assumes that the output arguments of iterated resources have type array
@@ -36,13 +37,15 @@ is purely a notational convenience so I could avoid inventing syntax for indexin
 over an arbitrary record of arrays.}
 
 Along with the type system, I briefly discuss a formalisation of two different
-elaboration algorithms: one for inferring instantiations of logical quantifiers,
-one for inferring indices for \kl{iterated} predicates. Because of a change
-to the inference scheme used by \kl{CN}, only the parts relating to inferring
-ghost arguments are used.\sidenote{The parts no longer used are (a) inferring
-indices for iterated predicates and (b) relating manual annotations for folding
-and unfolding into the resource term calculus. See \href{https://github.com/rems-project/cerberus/commit/7c2c0a364a4373e4eb109f32d01cc9584f51e81f}{commit
-7c2c0a36.}}\label{sn:new-inf-statics}
+elaboration algorithms: one for inferring instantiations of logical
+quantifiers, one for inferring indices for \kl{iterated} predicates. Note that
+precise inference scheme used by \kl{CN}'s implementation is frequently
+changing; \sidenote{See
+    \href{https://github.com/rems-project/cerberus/commit/7c2c0a364a4373e4eb109f32d01cc9584f51e81f}{Ceberus
+    \#7c2c0a36}
+    \href{https://github.com/rems-project/cn/commit/d9f0d4895c889af0cb680ca849715fca18b9b946}{CN
+\#d9f0d489}.}\label{sn:new-inf-statics}%
+the rules serve to highlight the core principles involved.
 
 \section{Contexts}
 
@@ -51,7 +54,7 @@ containing the computational variables from the Core program; (2) $[[ L ]]$
 containing purely logical variables mentioned in specifications; (3) $[[ N ]]$,
 the constraint context, containing a list of (non-quantified) SMT constraints;
 and (4) $[[R]]$ a \emph{linear} context containing the resources
-available at that point during type-checking. I assume a constraint context of
+available at that point during type checking. I assume a constraint context of
 only non-quantified constraints because users are required to manually
 instantiate quantified constraints to use them.
 
@@ -350,7 +353,7 @@ clarity.} an unconstrained logical (ghost) value for the pointee of the new
 allocation $x$, and finally the two resources it creates. The first is ownership
 of an uninitialised piece of memory, at address $y_p$, and the second is an
 allocation token $\mathsf{Alloc()}$ which is related to the memory object model
-in \nameref{chap:cn-vip}.
+in \fancyref{chap:cn-vip}.
 
 Loads consume ownership of an initialised piece of memory\sidenote{For further
 flexibility, loads of structs and unions could be partially or completely
@@ -395,7 +398,7 @@ resources.
         for typing a memory operation. I will explain the roles of $[[Alloc]]$
         in \ActionCreate{} and \ActionKillStatic{}, and the liveness and
         bounds checks used in \MemopRelBinop{}
-        in~\nameref{chap:cn-vip}.}\label{fig:typing-mem-action}
+        in~\fancyref{chap:cn-vip}.}\label{fig:typing-mem-action}
 \end{figure*}
 
 Rules for typing memory operations, i.e.\ `effectful' pointer operations which
@@ -559,7 +562,7 @@ definition of that predicate (with the arguments substituted).
 With pattern matching in hand, I can explain the typing rules for effectful
 statements (\cref{fig:typing-stmt}). I will focus only on
 \coreinline{let} and \coreinline{run()} statements,
-the remaining rules are as one would expect presented in the appendix.
+the remaining rules are as one would expect in~\cref{chap:defns}.
 
 Statements are all checked, but the bound expression in the
 \coreinline{let} is synthesised, so that the type can be used as part of
@@ -608,7 +611,7 @@ in the first place; it also clarifies a few points about \kl{CN}'s
 implementation (\cref{sec:restriction-branching}).
 
 I shall only present a small slice of the elaboration to highlight the key
-concepts, leaving the rest of the large system to the appendix. The main
+concepts; the rest of the rules are in~\cref{chap:defns}. The main
 judgement for synthesising a resource term and an instantiation for a logical
 quantifier is as below and in \cref{fig:elab-res-oarg}.
 {\small
@@ -677,7 +680,7 @@ update the rule to use a single one.} is just taking the right-hand-side of the
 equality. Synthesising a resource term and an output argument for an
 ordered-disjunction requires proving the condition or its negation, and then
 synthesising the appropriate branch. For under-determined conditions, as
-mentioned in~\nameref{subsec:checking-res-terms}, the term must be a variable
+mentioned in~\fancyref{subsec:checking-res-terms}, the term must be a variable
 from the resource context whose type matches syntactically, modulo SMT
 provability.
 
@@ -711,7 +714,7 @@ ordered-disjunction.} and a request for a predicate (iterated), synthesise the
 `difference' can be of four sorts: no difference, exact match, subset match,
 overlapping match and each requires slightly different handling (continue
 search, stop search, bind remainder and stop search, bind remainder and
-continue search respectively) from the lookup judgement (in appendix).
+continue search respectively) from the lookup judgement (\cref{chap:defns}).
 
 \begin{figure*}
     \small
@@ -794,7 +797,7 @@ terms) are the main things elaborated into the program.
 \label{chap:kernel-soundness}
 
 To ensure that \kl{Kernel CN} had served as a useful formalisation for \kl{CN},
-I proved that it was sound. The whole proof is large and in the appendix; in
+I proved that it was sound. The whole proof is in~\cref{chap:soundness}; in
 this chapter, I will discuss the key definitions, lemmas and proof sketches. I
 will first define an operational semantics for \kl{ResCore}, and then do a
 straightforward, if not slightly tedious, syntactic proof of type
@@ -840,10 +843,10 @@ $[[ R'2 ]]$.
     \caption{\kl{Kernel CN} substitution typing}\label{fig:soundness-sub}
 \end{figure*}
 
-In the appendix, I use this definition to prove lemmas such as the fact that substitution
-preserves SMT results and that substitutions can be split up (linearity means
-this property is not completely trivial). The key one is the substitution
-lemma stated below.
+In~\cref{sec:sub}, I use this definition to prove lemmas such as the
+fact that substitution preserves SMT results and that substitutions can be
+split up (linearity means this property is not completely trivial). The key one
+is the substitution lemma stated below.
 
 \begin{lemma}[Substitution lemma]
 If $[[ C' ; L' ; N ; R' ]] [[|-]] J$, then
@@ -868,7 +871,7 @@ $[[ exists ]] [[ N1 ]], [[ N2 ]] .\: [[ subs ( N1 , N2 ) ]] = [[ subs ( N1 ) , s
 \end{lemma}
 
 \begin{proof}
-Full proof in the appendix. Induction over the typing judgements. There are
+Full proof in~\cref{subsec:sub}. Induction over the typing judgements. There are
 four parts to this proof.
 \begin{itemize}
 \item \textbf{Variable rules.} Repeatedly invert the substitution typing
@@ -984,9 +987,9 @@ pattern-matching for the whole of ResCore.
 As with elaboration, using normalised resource contexts does not restrict the
 generality of progress and type preservations theorems. This is because of the
 following lemma: if a well-typed resource term is closed, then the context in
-which it is well-typed must be normalised (formal definition and proof in the
-appendix). We now have all the ingredients to state and sketch a proof for the
-progress and type preservation for resource terms.
+which it is well-typed must be normalised (\cref{subsec:res_ctx_closed_norm}). We
+now have all the ingredients to state and sketch a proof for the progress and
+type preservation for resource terms.
 
 \begin{theorem}[Progress and type preservation for resource terms]
 For all closed resource terms ($[[ res_term ]]$) which type check or
@@ -1000,7 +1003,7 @@ resource term reduces to the resource value without affecting the frame-heap
 \end{theorem}
 
 \begin{proof}
-Full proof in the appendix. Induction on the resource
+Full proof in~\cref{subsec:res_term_progress}. Induction on the resource
 term typing assumption. The type dictates the value and context, the latter of
 which dictates the shape of the heap; all of this relies heavily on a few
 inversion lemmas. The existential is necessary later for proving well-typed
@@ -1045,7 +1048,7 @@ in the operational semantics.
 \end{theorem}
 
 \begin{proof}
-Induction over the typing assumption. Full proof in appendix.
+Induction over the typing assumption. Full proof in~\cref{sec:progress}.
 \end{proof}
 
 For type preservation, a few things are noteworthy about its proof.
@@ -1053,7 +1056,7 @@ For type preservation, a few things are noteworthy about its proof.
 First is that a frame-heap has to be explicitly passed around.  Whilst this is
 inconvenient, it becomes necessary in the \textsc{Stmt\_Let} case.
 
-Second is in the lemma \nameref{subsec:wt_values_pat_match}.
+Second is in the lemma \fancyref{subsec:wt_values_pat_match}.
 There are two substitutions at play here. As an example, let
 the value being matched be $[[ Cons ( Unit , Nil unit ( ) ) , ret_terms ]]$ and
 the pattern be
@@ -1097,5 +1100,5 @@ and the statement too
 \end{theorem}
 
 \begin{proof}
-Induction over the typing assumption. Full proof in appendix.
+Induction over the typing assumption. Full proof in~\cref{sec:type_preservation}.
 \end{proof}
