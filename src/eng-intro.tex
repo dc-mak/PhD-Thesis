@@ -1,4 +1,4 @@
-So far I have discussed the formalisation of \kl{CN}, the formalistaion and
+So far I have discussed the formalisation of \kl{CN}, the formalisation and
 implementation of its memory model, \kl{CN-VIP}. In both those sections,
 guiding design choices and implementation decisions at each stage was the need
 to strike a balance of expressiveness, performance and ergonomics,
@@ -13,17 +13,16 @@ elegant as some of the material in the previous chapter, this is where just as
 much, if not more, of the difficulty lies in achieving \kl{CN}'s goal of being
 maintainable by kernel programmers (\cref{sec:cn-goals}).
 
-It start with the source repository for any mature C project, such ask
-\kl{pKVM}. It intentionally lives in the Linux kernel, indeed in many respects
-this is an advantage. It is an unignorable reminder that C in the real word
-however does not come neatly packaged up into isolated files of ISO grammar
-conforming translations units. Aside from the myriad extensions that it relies
-on, as well as non-ISO conforming C features, the inclusion chain of one file a
-few hundred lines long can stretch \emph{eleven} directories up and total
-around 65,000 lines of C after preprocessing. Mature industrial projects like
-GCC and Clang have spent years optimising their front-ends to deal with this
-complexity at speed, which creates a large gap between it, and robust,
-empirically validated, but ultimately academic tools such as \kl{Cerberus}.
+It starts with the source repository for any mature C project, such as
+\kl{pKVM}, which lives in the Linux kernel. Such respositories do not come in
+neatly packaged translation units conforming to the ISO grammar. Aside from the
+myriad, non-standard extensions that files in such repositories rely on, the
+inclusion chain of one file, up to a few hundred lines long, can stretch
+\emph{eleven} directories up and total around 65,000 lines of C after
+preprocessing. Mature industrial projects like GCC and Clang have spent years
+optimising their front-ends to deal with this complexity at speed, which
+creates a large gap between it, and robust, empirically validated, but
+ultimately academic tools such as \kl{Cerberus}.
 
 Thankfully, there is an alternative to simply adding features to the
 \kl{Cerberus} frontend until it can handle a substantial number of GCC and
@@ -39,12 +38,13 @@ step in the right direction, albeit no more practicable.
 Faced with this, and the awareness of tools such as clang-format, which can
 format complex projects of C++ code, including macros, and other Clang based
 tools for linting and refactoring, I developed a tool which could automate the
-aforemention drudgery. Analagous to tree-shaking for JIT-compiled interpreted
-languages, I call the method \intro{tree-carving}, which given a root file in a
-repository, extracts out the files in the transitive dependency of that root,
-and comments out anything not used.\sidenote{Such a strategy works for most
-sensibly formatted code with each top-level declaration on its own line. For
-code which does not fit this, input validation will reject the program rather
+aforementioned drudgery. Analogous to tree-shaking for JIT-compiled interpreted
+languages, I call the method \intro{tree-carving}, which given root functions
+in a file in a repository, carves out the files in the transitive dependency of
+those roots, and comments out any functions, types, struct/union fields and
+macros which are not used.\sidenote{Such a strategy works for most sensibly
+formatted code with each top-level declaration on its own line. For code
+which does not fit this, input validation will reject the program rather
 than produce erroneous output.} It comments out code to preserve line numbers,
 and works with macros too. Since \kl{CN} specifications are comments too, and
 could get lost inside other comments, I also wrote a comment simplifier to undo
