@@ -78,18 +78,20 @@ in~\cref{fig:func-pred-def}.
         the latter.}\label{fig:func-pred-def}
 \end{figure*}
 
-\cref{fig:func-pred-def} also shows the grammar of function types $[[ fon ]]$ which
-include both pre- and postconditions, and return types $[[ ret ]]$, which
+\cref{fig:func-pred-def} also shows the grammar of function types $[[ fon ]]$
+which include both pre- and postconditions, and return types $[[ ret ]]$, which
 represent postconditions. The structure of the types makes explicit the scoping
 implicit in the surface syntax. Function parameters $[[ct]] [[id]]$ are mapped
-to $[[ pi x : to_base ( ct ) .: fon ]]$. C return values are bound with
-$[[y]]$.\sidenote{In the implementation, this identifier is hardcoded to be the
-\cninline{return} keyword in postconditions.} For a C return type $[[ct']]$, the
-return value is represented by the type $[[sigma y : to_base ( ct' ) .: ret ]]$.
-Lastly, the placement of $[[ret]]$ inside $[[fon]]$, makes it clear that
-postconditions may also refer to variables bound in the precondition, and allows
-for symbolic or concrete function arguments to be substituted in
-(see~\fancyref{sec:spine-judgement}).
+to $[[ pi x : to_base ( ct ) .: fon ]]$.
+
+Whereas the implementation hardcodes the identifier \cninline{return} to bind
+the return value of the C function, in the formalisation I introduce an
+identifier $[[y]]$ explicitly after the keyword $\cnkw{ensures}$. For a C
+return type $[[ct']]$, the return value is represented by the type
+$[[sigma y : to_base ( ct' ) .: ret ]]$. Lastly, the placement of $[[ret]]$
+inside $[[fon]]$, makes it clear that postconditions may also refer to
+variables bound in the precondition, and allows for symbolic or concrete
+function arguments to be substituted in (see~\fancyref{sec:spine-judgement}).
 
 In order, both function $[[fon]]$ and return $[[ret]]$ types include:
 quantification over computational (program) values, quantification over logical
@@ -162,14 +164,61 @@ $[[ Owned < Uninit , ct > ]]$ respectively. \sidenote{Prior versions of this
 
 \section{Desugaring \kl{CN} types into \kl{kernel} types}\label{sec:desugaring}
 
+Before presenting the rules for desugaring \kl{CN} types into \kl{Kernel CN}
+types, I will first illustrate them informally with an example C function and
+its CN specification.
+
+\begin{figure}[h]
+\cfile[highlightlines={2-6}]{code/incr_pointer.c} % chktex 8
+\caption{Simple C increment function and its specification in \kl{CN}.}\label{fig:incr-pointer}
+\end{figure}
+
+The function takes a pointer to an integer as an argument, increments it, and
+then returns the result. Its specification requires read-write ownership of the
+argument pointers (line 2), asserts the pointee is strictly less than the
+maximum for signed integers (line 3), and ensures read-write ownership (line 4)
+where the return value is equal to the new pointee (line 5) and that the new
+pointee is equal to the old one incremented by one (line 6).
+
+That specification desugars into the following \kl{Kernel CN} type.
+
+{\small%
+\begin{gather*}
+    [[ pi yp : loc .: forall x : integer .: yp |- Init - int -> x --o x < max int -) ret ]] % chktex 9 chktex 35
+    \\ \text{ where } [[ret]] = [[ sigma r : integer .: exists x2 : integer .: yp |- Init - int -> x2 *o r = x2 /\  x2 = x + 1 /\ I ]]. % chktex 8 chktex 12 chktex 26
+\end{gather*}} % chktex 10
+
+\begin{itemize}
+    \item The C parameter \cinline{int* p} desugars to $\Pi y_p {:}
+        \cnkw{pointer}$ \\ (\UserFuncToFun).
+    \item The ghost binder \cninline{take x} desugars to $\forall x {:}
+        \cnkw{integer}$ \\ (\UserSpecToArgTake).
+    \item The resource \cninline{RW(p)} desugars to $[[yp |- Init - int -> x]]$ % chktex 36
+        \\ (\UserSpecToResPred).
+    \item The constraint \cninline{x < MAXi32()} desugars to $[[ x < max int ]]$ % chktex 35
+        \\ (\UserSpecToArgAssert).
+    \item The \cninline{return} variable, used to talk about the return value
+        of the C function in the postcondition, desugars to $\Sigma r {:}
+        \cnkw{integer}$ \\ (\UserFuncToFun).
+    \item The ghost binder \cninline{take x2} desugars to $\exists x_2 {:} \cnkw{integer}$
+        \\ (\UserSpecToRetTake).
+    \item The resource \cninline{RW(p)} desugars to $[[yp |- Init - int -> x2]]$ % chktex 36
+        \\ (\UserSpecToResPred).
+    \item The constraint \cninline{return == x2} desugars to $[[ r = x2 ]]$
+        \\ (\UserSpecToRetAssert).
+    \item The constraint \cninline{x2 == x + 1i32} desugars to $[[ x2 = x + 1 ]]$
+        \\ (\UserSpecToRetAssert).
+\end{itemize}
+
 All judgements in the formalisation which have a natural bidirectional
-interpretation have the information they are synthesising highlighted with
-\colorbox{pink!30}{light pink} background. The grammars presented below will
-refer to $[[term]]$, $[[iguard]]$, $[[ptrt]]$, $[[iarg]]$, $[[oarg]]$
-(and later, $[[alloct]]$). These are all simply aliases for pure (SMT) terms, used
-so that the roles of these terms in different productions, especially ones
-productions which refer to multiple instances of them, are clearer. \intro{Base
-types}, represented by $[[ base_type ]]$ are simply the types of such terms.
+(\cref{sec:bidir-subtyping}) interpretation have the information they are
+synthesising highlighted with \colorbox{pink!30}{light pink} background. The
+grammars presented below will refer to $[[term]]$, $[[iguard]]$, $[[ptrt]]$,
+$[[iarg]]$, $[[oarg]]$ (and later, $[[alloct]]$). These are all simply aliases
+for pure (SMT) terms, used so that the roles of these terms in different
+productions, especially ones productions which refer to multiple instances of
+them, are clearer. \intro{Base types}, represented by $[[ base_type ]]$ are
+simply the types of such terms.
 
 Desugaring \kl{CN} types into \kl{Kernel CN} starts with the C functions, which
 map their parameters into computational variables in function types, or with
@@ -252,7 +301,9 @@ Specifically, it syntactically stratifies values and
 expressions from which we would like to \emph{synthesise} type information, and
 statements against which we would like to \emph{check} a
 given type. This applies to both pure and effectful fragments, leading to a
-four-fold distinction in the let-normal form of the grammar.
+four-fold distinction in the let-normal form of the grammar. Pure expressions
+are subterms of both pure statements and effectful expressions; in turn, both
+of those are subterms of effectful expressions.
 
 This simplifies presenting and working with the type system in the following ways.
 \begin{itemize}
@@ -273,24 +324,33 @@ This simplifies presenting and working with the type system in the following way
         synthesise.
 \end{itemize}
 
-Initial implementations of \kl{CN} did a full A-normalisation of Core, but this resulted
-in far too many logical variables being created (one for each intermediate
-sub-expression) and these were very difficult to relate back to the source
-program in concrete counter-examples produced by the SMT
+Initial implementations of \kl{CN} did a full A-normalisation of Core, but this
+resulted in far too many logical variables being created (one for each
+intermediate sub-expression) and these were very difficult to relate back to
+the source program in concrete counter-examples produced by the SMT
 solver.\sidenote{Location information was not tracked properly either so this
 was doomed.} Hence, this was
 removed.\sidenote{\href{https://github.com/rems-project/cerberus/commit/21808139bda2ee320756c71eb22dbd57d0986f97}{Commit
 21808139.}}\label{sn:rm-anorm}
 
-The way that \kl{CN} currently manages the flow of information is by explicitly
-passing around continuations; when it comes across any expression which is
-treated as statement in \kl{ResCore}, it simply does the appropriate
-checks and then \emph{drops} the continuation.\sidenote{\href{https://github.com/rems-project/cerberus/commit/350fefc675626dcc69c7adc9edea30ff9687b752}{Commit 350fefc6.}}\label{sn:use-conts}
-This makes the code more fragile but saves the need for maintaining another large
-syntax tree which needs pretty-printers, debug printers, source location
-mappings and so on.
+These days, \kl{CN} takes a different approach. In the same way that one can
+traverse the transitive closure of a graph, in a depth-first manner, without
+computing the transitive closure of the graph in memory, \kl{CN} emulates an
+A-normal traversal of \kl{Core} without A-normalising the the syntax tree
+first.
 
-I omitted the constructs related to C's loose evaluation order.\sidenote{%
+It achieves this explicitly creating and passing around
+continuations.\sidenote{\href{https://github.com/rems-project/cerberus/commit/350fefc675626dcc69c7adc9edea30ff9687b752}{Commit
+350fefc6.}}\label{sn:use-conts} A continuation awaits the result of
+type-checking the current term, and uses it to type-check the rest of the
+(enclosing) expression. For example, type-checking an if-expression means
+duplicating the continuation for each branch, whereas type-checking
+undefined-behaviour involves proving false, and then dropping the continuation.
+This makes the code more fragile but saves the need for maintaining another
+large syntax tree and associated pretty-printers, debug printers, source
+location mappings and so on.
+
+I omitted the constructs related to C's loose evaluation order\sidenote{%
 \coreinline{neg()}, \coreinline{unseq()}, \coreinline{let weak}, % chktex 36
 \coreinline{let strong}, \coreinline{bound()}.} for the following reasons. % chktex 36
 \begin{itemize}
@@ -314,13 +374,12 @@ join-points and early returns in sub-expressions seems to make it difficult to
 avoid some sort of normalisation (and associated control flow explosion) in the
 type system.
 
-Pure expressions include things such as pure values,
-datatype values, pointer arithmetic for arrays (in \kl{de facto}, not \kl{ISO})
-and struct/union members, boolean negation, binary operations and relations, function
-calls and assertions. Pure statements are shown in
-\cref{fig:kernel-pstmt}. As mentioned earlier, constructs where control flow
-should not reach, such as \coreinline{undef()} must be in a checking % chktex 36
-judgement, so are part of pure statement.
+Pure expressions include things such as pure values, datatype values, pointer
+arithmetic for arrays (in \kl{de facto}, not \kl{ISO}) and struct/union
+members, boolean negation, binary operations and relations, function calls and
+assertions. Pure statements are shown in \cref{fig:kernel-pstmt}. They include
+pure expressions as subterms. They classify the pure constructs which must be
+checked, such as \coreinline{undef()}. % chktex 36
 
 \begin{figure}[htp]
     \small
@@ -334,7 +393,7 @@ Effectful expressions (\cref{fig:kernel-expr}), include memory actions, memory
 operations, C function calls and Core procedure calls.\sidenote{Explanation of
 \kl{Core} constructs, including \coreinline{run()}, and the distinction % chktex 36
 between \coreinline{pcall()} and \coreinline{ccall()}, is in % chktex 36
-\cref{sec:core-grammar}.} Arguments are $[[spine]]$s, which are lists
+\cref{sec:core-grammar}.} Argument lists are $[[spine]]$s, which are lists
 of $[[ret_term]]$s/$[[spine_elem]]$s.
 
 \begin{figure}[htp]
@@ -364,17 +423,15 @@ pattern-matching constructs and the \coreinline{run} operator.
 
 One of the key initial motivations for formalising (and ultimately
 implementing) a smaller kernel for \kl{CN} was to have a stronger safety net
-underneath its resource inference algorithm, both at the time and for all
-future inference algorithms. The hope was that this would allow us to iterate
-quickly and boldly on the algorithms, with much less worry about introducing
-unsoundness.
+underneath its resource inference algorithm. The hope was that this would allow
+us to iterate quickly and boldly on the algorithms, with much less worry about
+introducing unsoundness.
 
 This did not materialise because \kl{CN} moved away from A-normalising
-\kl{Core}, adopted a continuation-passing style, and changed its approach to
-resource inference.\sidenote{See notes~\ref{sn:rm-anorm},~\ref{sn:use-conts}
-and~\ref{sn:new-inf}} Another large hurdle was that it would have required
-significant engineering effort to refactor the internal \intro[AST]{abstract
-syntax trees} (ASTs).
+\kl{Core} and changed its approach to resource inference.\sidenote{See
+notes~\ref{sn:rm-anorm},~\ref{sn:use-conts} and~\ref{sn:new-inf}.} It would
+have also required a major refactor to the internal \intro[AST]{abstract syntax
+trees} (ASTs), for which there was little appetite.
 
 Yet, the effort was still fruitful since it brought extra clarity to questions
 around the implementation (\fancyref{chap:inform-impl}) and inspired ideas on
@@ -424,6 +481,115 @@ In \kl{Kernel CN}, these \intro{resource terms} serve many purposes:
         state to another.
 \end{itemize}
 
+\begin{figure*}[tbp]
+    \centering
+    \small
+    \grammartabularSTY{%
+        \cnresXXterm{}\cninterrule{}
+        \cnpredXXops{}\cninterrule{}
+        \cnresXXpat{}\cnafterlastrule{}
+    }
+    \caption{Explicit resource terms in \kl{ResCore}.}\label{fig:res-terms}
+\end{figure*}
+
+\cref{fig:res-terms} shows the resource terms of \kl{ResCore}. There are
+\emph{several} side conditions for each of the operations the terms represent,
+which I will show in \fancyref{sec:typing-res-terms}, but for now it suffices
+to explain just the intuition. Resource variables $[[ r ]]$ allow the
+formalisation to name and refer to resources in the context explicitly (unlike
+the implementation, where all manipulations and inference steps are indirect or
+implicit). Terms $[[ emp ]]$ and $[[ TERM ]]$ are introduction forms for the
+types $[[ emp ]]$ and pure assertions $[[ term ]]$, and they have corresponding
+forms for eliminating them too. Variables are also resource terms and patterns,
+for any resource type. Terms $[[pred_term]]$ and $[[ipred_term]]$ introduce
+$[[ pred ]]$ and $[[ ipred ]]$ types respectively (the only difference between the
+pairs is that the latter also carry their output arguments). Angle brackets
+$\langle \_ , \_ \rangle$ and $[[ pack ( _x , _rest ) ]]$ are introduction
+forms for the separating conjunction $\astRef{}$ and $\exists$ types
+respectively, and they have corresponding eliminators too.
+
+Notably, ordered-disjunction \emph{types} can be introduced by \emph{any}
+resource term, and eliminated by any resource pattern. This means introducing
+and eliminating that type requires statically proving which branch one is
+working with.
+
+The following terms are all operations on predicates.
+\begin{itemize}
+    \item $[[ fold _rest : pred ]]$. This supports folding the
+        definitions of a user-defined recursive predicate.
+    \item $[[ explode ( _rest ) ]]$ and $[[ implode ( _rest, tag ) ]]$.
+         These constructs split and combine ownership of a struct to and from
+        ownership of its members, respectively.
+    \item $[[ iterate ( _rest , n ) ]]$ and $[[ congeal ( _rest , n ) ]]$.
+        These constructs split and combine ownership of a fixed-size array from
+        and to each of its elements respectively.
+    \item $[[ select < _init , _member > ( _rest ) ]]$ and $[[ forget < _ct > ( _rest ) ]]$.
+        These constructs split and combine ownership of a union to and from
+        ownership of a member, respectively. They are related to the \kl{memory
+        object model}, and are explained further in
+        \fancyref{sec:unions-padding}.
+\end{itemize}
+
+The remaining terms are all operations on iterated predicates.
+\begin{itemize}
+    \item $[[ break ( _rest , _t ) ]]$. This indexes an iterated predicate
+        to move a predicate out of it.
+    \item $[[ glue ( _rest ) ]]$. This moves a predicate back into an
+        iterated one.
+    \item $[[ inj ( _rest , _t , ct , _x .: _iargs ) ]]$.
+        This introduces a singleton (non-empty) iterated predicate.\sidenote{I
+    chose a singleton introduction form rather than an empty one to enforce the
+    invariant that all iterated predicates in the typing context are guaranteed
+    to be non-empty. I do not believe this makes a material difference to
+    soundness, but it reduces redundant lookups in the resource context, and
+    avoids the need of inventing default values for empty arrays in the SMT
+    problem. However, due to the mismatch between finite arrays in C, and total
+    maps in SMT theories, the difference does seem to affect usability in the
+    implementation
+    (\href{https://github.com/rems-project/cerberus/issues/729}{Cerberus\#729}).}
+%TODO\@: allow empty arrays and require the array value to be put in the rather
+%term than assume default.
+    \item $[[ chop ( _rest , iguard ) ]]$. This splits an iterated
+        predicate along a given index guard $[[ iguard ]]$.
+    \item $[[ to_bytes ( _rest ) ]]$ and $[[ from_bytes < _init , _ct > ( _rest ) ]]$. These constructs
+        are for converting ownership of a C type to and from its byte
+        representation. This is related to the \kl{memory object model}, and is
+        explained further \fancyref{sec:convert-bytes}.
+\end{itemize}%
+As mentioned in \fancyref{sec:monadic-syntax}, to preserve decidability by not
+inferring quantified constraints, the type system does not support merging arrays.
+
+
+An example will help illustrate their role. Suppose we have a resource term
+
+\begin{align*}
+    r &{:} [[ *S x .: 0 =< x < n => ptrt1 |- Init - struct tag -> term ]], \text{ where }\\
+    [[ ptrt1 ]] &= [[ array_shift<struct tag> (ptrt, x) ]].
+\end{align*}
+
+This means that we have read-write ownership of an array of structs. Suppose
+further within which we wish to update one member at an index $i$. First we
+would use $[[ break ( r, i) ]]$ to obtain
+
+\begin{align*}
+    r_1 &{:} [[ *S x .: 0 =< x < n /\ x != i => ptrt1 |- Init - struct tag -> term ]], \\
+    r_2 &{:} [[ ptrt2 |- Init - struct tag -> term [ i ] ]], \text{ where }\\
+    [[ ptrt2 ]] &= [[ array_shift < struct tag > ( ptrt , i ) ]].
+\end{align*}
+
+From there, we would use $[[ explode ( r2 ) ]]$ to obtain read-write ownership
+of all the members. To keep this example simple, assume the struct only has one
+member called $[[ member ]]$ and no padding.
+
+\begin{align*}
+    r_3 &{:} [[ ptrt3 |- Init - ct -> term [ i ] . member ]], \text{ where }\\
+    [[ ptrt3 ]] &= [[ member_shift < struct tag > ( ptrt2 , member ) ]].
+\end{align*}
+
+After updating the location, we would obtain an $r_3' {:} [[ ptrt3 |- Init - ct
+-> term' ]]$. To recover a resource representing the array of structs with the
+value updated, we would use the term $[[ glue ( < r1 , implode ( r3' , tag ) > ) ]]$.
+
 Of course, as with logical (ghost) terms, resource terms must be added with
 care to the language to ensure erasure; they must not affect the control flow,
 the values computed, or the memory events executed. This is easy to see by the
@@ -433,10 +599,6 @@ pointers which require checks that pointers are live (\cref{fig:res-term-constru
 
 \begin{figure*}
     \small%
-    \grammartabularSTY{%
-        \cnaction{}\cninterrule{}
-        \cnmemop{}\cnafterlastrule{}
-    }
     \begingroup%
     \renewcommand{\cnrulehead}[3]{\begin{mathbreakcomma}#1\end{mathbreakcomma} \mathrel{{\Colon}{=}}}
     \renewcommand{\cnfirstprodline}[6]{#2}
@@ -446,6 +608,10 @@ pointers which require checks that pointers are live (\cref{fig:res-term-constru
         \cnkillXXkind{} & & \cnresXXaction{} & & \cnresXXmemop{}
     \end{align*}
     \endgroup%
+    \grammartabularSTY{%
+        \cnaction{}\cninterrule{}
+        \cnmemop{}\cnafterlastrule{}
+    }
     \caption{Constructs in \kl{ResCore} extended to accommodate
     explicit resource terms.}\label{fig:res-term-constructs}
 \end{figure*}
@@ -463,76 +629,11 @@ additional modularity, whilst a bit confusing at this stage, will be seen to
 pay off later when discussing the proof of soundness for the CN-VIP memory
 object model (\cref{sec:cn-vip-soundness}).
 
-\cref{fig:res-terms} shows the resource terms of \kl{ResCore}. There are
-\emph{several} side conditions for each of the operations the terms represent,
-which I will show in \fancyref{sec:typing-res-terms}, but for now it suffices to
-explain just the intuition. Terms $[[ emp ]]$ and
-$[[ TERM ]]$ are introduction forms for the types $[[ emp ]]$ and pure
-assertions $[[ term ]]$, and they have corresponding forms for eliminating
-them too. Variables are also resource terms and patterns, for any resource
-type. Terms $[[pred_term]]$ and $[[ipred_term]]$ introduce
-$[[ pred ]]$ and $[[ ipred ]]$ types respectively (the only difference
-between the pairs is that the latter also carry their output arguments). Angle
-brackets $\langle \_ , \_ \rangle$ and $[[ pack ( _x , _rest ) ]]$ are
-introduction forms for the separating conjunction $\astRef{}$ and $\exists$
-types respectively, and they have corresponding eliminators too.
-
-Ordered-disjunctions can be introduced by \emph{any} resource term, and
-eliminated by any resource pattern.
-
-The following terms are all operations on predicates.
-\begin{itemize}
-    \item $[[ fold _rest : pred ]]$. This supports folding the
-        definitions of a user-defined recursive predicate.
-    \item $[[ explode ( _rest ) ]]$ and $[[ implode ( _rest, tag ) ]]$.
-        These constructs split and combine ownership of a struct from and to
-        ownership of its members respectively.
-    \item $[[ iterate ( _rest , n ) ]]$ and $[[ congeal ( _rest , n ) ]]$.
-        These constructs split and combine ownership of a fixed-size array from
-        and to each of its elements respectively.
-\end{itemize}
-
-The remaining terms are all operations on iterated predicates.
-\begin{itemize}
-    \item $[[ break ( _rest , _t ) ]]$. This indexes an iterated predicate
-        to move a predicate out of it.
-    \item $[[ glue ( _rest ) ]]$. This moves a predicate back into an
-        iterated one.
-    \item $[[ inj ( _rest , _t , ct , _x .: _iargs ) ]]$
-        This introduces a singleton (non-empty) iterated predicate.\sidenote{I
-    chose a singleton introduction form rather than an empty one to enforce the
-    invariant that all iterated predicates in the typing context are guaranteed
-    to be non-empty. I do not believe this makes a material difference to
-    soundness, but it reduces redundant lookups in the resource context, and
-    avoids the need of inventing default values for empty arrays in the SMT
-    problem. However, due to the mismatch between finite arrays in C, and total
-    maps in SMT theories, the difference does seem to affect usability in the
-    implementation
-    (\href{https://github.com/rems-project/cerberus/issues/729}{Cerberus\#729}).}
-%TODO\@: allow empty arrays and require the array value to be put in the rather
-%term than assume default.
-    \item $[[ chop ( _rest , iguard ) ]]$. This splits an iterated
-        predicate along a given index guard $[[ iguard ]]$.
-\end{itemize}%
-As mentioned in \fancyref{sec:monadic-syntax}, to preserve decidability by not
-inferring quantified constraints, the type system does not support merging arrays.
-
-\begin{figure*}[tbp]
-    \centering
-    \small
-    \grammartabularSTY{%
-        \cnresXXterm{}\cninterrule{}
-        \cnpredXXops{}\cninterrule{}
-        \cnresXXpat{}\cnafterlastrule{}
-    }
-    \caption{Explicit resource terms in \kl{ResCore}.}\label{fig:res-terms}
-\end{figure*}
-
 \section{Core to ResCore example}\label{sec:core-to-rescore}
 
-To conclude, I will show how a simple C function and its specification are
-translated into \kl{Kernel CN} types and a \kl{ResCore} program, via a
-heavily simplified \kl{Core} program.\sidenote{Simplifications include:
+To conclude, I will show how the simple C function from \cref{fig:incr-pointer},
+and its specification translated into a \kl{ResCore} program, via a
+heavily simplified \kl{Core} program, below.\sidenote{Simplifications include:
 sequentialising \coreinline{unseq()} operations, replacing % chktex 36
 \coreinline{let weak} with \coreinline{let strong}, rewriting
 \coreinline{let strong} merely as \coreinline{let} for brevity, treating
@@ -542,23 +643,7 @@ rewriting \coreinline{Specified(x)} to \coreinline{x}, assuming % chktex 36
 \coreinline{PtrValidForDeref} always returns true, inlining \kl{Core}
 library functions, renaming auto-generated variables for clarity.}
 
-The C function takes a pointer to an integer as an argument, increments it, and
-then returns the result. Its specification requires read-write ownership of the
-argument pointers (line 2), asserts the pointee is strictly less than the
-maximum for signed integers (line 3), and ensures read-write ownership (line 4)
-where the return value is equal to the new pointee (line 5) and that the new
-pointee is equal to the old one incremented by one (line 6).
-
-\cfile[highlightlines={2-6}]{code/incr_pointer.c} % chktex 8
-
-As a \kl{Kernel CN} function type, the specification is represented as this:
-{\small%
-\begin{gather*}
-    [[ pi yp : loc .: forall x : integer .: yp |- Init - int -> x --o x < max int -) ret ]] % chktex 9 chktex 35
-    \\ \text{ where } [[ret]] = [[ sigma r : integer .: exists x2 : integer .: yp |- Init - int -> x2 *o r = x2 /\  x2 = x + 1 /\ I ]]. % chktex 8 chktex 12 chktex 26
-\end{gather*}} % chktex 10
-
-The corresponding \kl{Core} is as below. First, it allocates storage for the
+First, it allocates storage for the
 function's argument \coreinline{&p}, and initialises it (line 4). Then it loads
 from that storage for the lvalue of the assignment, \coreinline{p2}. After
 that, it loads from the argument storage twice (\coreinline{p3} and
@@ -655,7 +740,7 @@ returning only an empty-tuple of type unit.
 \corefile[firstline=23, lastline=23]{code/incr_pointer.rescore}
 
 Lastly for the true-branch, due to A-normalisation, all the labels (and their
-arguments) are inlined. This return value needs to satisfy the post-condition.
+arguments) are inlined. This return value needs to satisfy the postcondition.
 
 \begin{itemize}
     \item \coreinline{pure(ret_int)} satisfies $\Sigma r {:} \cnkw{integer}$. % chktex 36
