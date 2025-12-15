@@ -41,11 +41,75 @@ elaboration algorithms: one for inferring instantiations of logical
 quantifiers, one for inferring indices for \kl{iterated} predicates. Note that
 precise inference scheme used by \kl{CN}'s implementation is frequently
 changing; \sidenote{See
-    \href{https://github.com/rems-project/cerberus/commit/7c2c0a364a4373e4eb109f32d01cc9584f51e81f}{Ceberus
-    \#7c2c0a36}
-    \href{https://github.com/rems-project/cn/commit/d9f0d4895c889af0cb680ca849715fca18b9b946}{CN
-\#d9f0d489}.}\label{sn:new-inf-statics}%
+    \href{https://github.com/rems-project/cerberus/commit/7c2c0a364a4373e4eb109f32d01cc9584f51e81f}{Ceberus\#7c2c0a36},
+    \href{https://github.com/rems-project/cn/commit/d9f0d4895c889af0cb680ca849715fca18b9b946}{CN\#d9f0d489}.}\label{sn:new-inf-statics}%
 the rules serve to highlight the core principles involved.
+
+\begin{table*}
+\begin{tabular}{p{0.85\textwidth}cc}
+\toprule
+Judgement & Section & Figure\\
+\midrule
+$[[ C |- pval => base_type ]]$
+    &~\ref{sec:pure-val-expr}
+    &~\ref{fig:typing-pval-pexpr}
+\\
+$[[ C ; L ; N |- pexpr => pure_ret ]]$
+   &~\ref{sec:pure-val-expr}
+   &~\ref{fig:typing-pval-pexpr}
+\\
+$[[ C ; L ; N |- pstmt <= pure_ret ]]$
+   &~\ref{sec:pure-stmt}
+   &~\ref{fig:typing-pstmt}
+\\
+$[[ C ; L ; N ; R |- res_term => res ]]$
+   &~\ref{sec:typing-res-terms}
+   &~\ref{fig:typing-res-term-synth},~\ref{fig:typing-predops}
+\\
+$[[ C ; L ; N ; R |- res_term <= res ]]$
+   &~\ref{sec:typing-res-terms}
+   &~\ref{fig:typing-res-term-check},~\ref{fig:typing-res-term-switch}
+\\
+$[[ C ; L ; N ; R |- res_action => ret ]]$
+   &~\ref{sec:kernel-mem-action-ops}
+   &~\ref{fig:typing-mem-action}
+\\
+$[[ C ; L ; N ; R |- param_spine :: fon >> subs ; ret ]]$
+   &~\ref{sec:spine-judgement}
+   &~\ref{fig:typing-spine}
+\\
+$[[ C ; L ; N ; R |- expr => ret ]]$
+   &~\ref{sec:eff-val-expr}
+   &~\ref{fig:typing-ret-terms}
+\\
+$[[ C ; L ; N ; R |- < ret_terms > <= ret ]]$
+   &~\ref{sec:eff-val-expr}
+   &~\ref{fig:typing-ret-terms}
+\\
+$[[ C ; L ; N |- ret_pat : ret ~> C' ; L' ; N' ; R' ]]$
+   &~\ref{sec:pat-match}
+   &~\ref{fig:typing-ret-pat}
+\\
+$[[ L ; N |- res_pat : res ~> L' ; N' ; R' ]]$
+   &~\ref{sec:pat-match}
+   &~\ref{fig:typing-res-pat}
+\\
+$[[ C ; L ; N ; R |- stmt <= ret ]]$
+   &~\ref{sec:eff-stmt}
+   &~\ref{fig:typing-stmt}
+\\
+$[[ y ; N ; nR |- res ~> bind res_bind for res_term and oarg -| nR' ]]$
+   &~\ref{sec:elaboration}
+   &~\ref{fig:elab-res-oarg}
+\\
+$[[ N |- r : norm_res -? pred_ipred ~> res_diff ]]$
+   &~\ref{sec:elaboration}
+   &~\ref{fig:res-diff-break}
+\\
+\bottomrule
+\end{tabular}
+\caption{Summary of judgements presented and their sections.}\label{tab:judgements}
+\end{table*}
 
 \section{Contexts}
 
@@ -58,7 +122,7 @@ available at that point during type checking. I assume a constraint context of
 only non-quantified constraints because users are required to manually
 instantiate quantified constraints to use them.
 
-\section{Pure values and expressions}
+\section{Pure values and expressions}\label{sec:pure-val-expr}
 
 \kl{ResCore} programs have both computational and logical (ghost) terms.
 Every such term, computational or ghost, has a \kl{base type} $[[ base_type ]]$,
@@ -143,7 +207,7 @@ computation.
         expressions.}\label{fig:typing-pval-pexpr}
 \end{figure*}
 
-\section{Pure statements}
+\section{Pure statements}\label{sec:pure-stmt}
 
 Whilst the rules for typing pure \emph{statements}
 share the same context as typing pure values and expressions, they differ in
@@ -290,13 +354,24 @@ $\mathit{res\_term}$ it carries.
 As I mentioned earlier (\cref{sec:res-terms}), \emph{any} resource term can
 introduce an ordered-disjunction, and so any resource term can be checked by
 it. Furthermore, at most \emph{one} of the branches may be checked, and which
-one depends on whether the condition or its negation can be proven. If
-neither is possible, I call the condition (and the resource)
-\intro{under-determined} (with respect to a constraint context). In this case,
-the system may attempt to synthesise a type for the term and check that the
-synthesised type is equal to the ordered-disjunction. Only variables can
-synthesise an ordered-disjunction type, that too only if the condition is
-under-determined (otherwise simplification will reduce it to either branch).
+one depends on whether the condition or its negation can be proven. I
+intentionally avoid the more permissive rule below
+because that would lead to the same resource term being typed twice, incurring
+an exponential cost.
+
+\[
+  \inferrule{ [[ C ; L ; N , term ; R |- res_term <= res1 ]] \\ [[ C ; L ; N , neg term ; R |- res_term <= res2 ]] }
+            { [[ C ; L ; N , term ; R |- res_term <= if term then res1 else res2 ]] }
+\]
+
+If neither proving the condition nor its negation is possible, I call the
+condition (and the resource) \intro{under-determined} (with respect to a
+constraint context). In this case, the system may attempt to synthesise a type
+for the term and check that the synthesised type is equal to the
+ordered-disjunction. Only variables can synthesise an ordered-disjunction type,
+that too only if the condition is under-determined (otherwise simplification
+will reduce it to either branch).
+
 Separating conjunctions are also checked to allow for the case where an
 existential or an ordered-disjunction are in the sub-components.
 
@@ -363,8 +438,8 @@ and the address of the resource are symbolically equal (premise 3), and
 synthesise a return type mentioning the loaded value and ownership of the loaded
 location. Stores are similar, but with extra checks on the stored value (premise
 3). Note that the stored value is placed in the return type. Lastly, the rule
-for \coreinline{kill()} is the converse of the one for \coreinline{create()}, %
-chktex 36 in that it \emph{consumes} the ownership and allocation token for a
+for \coreinline{kill()} is the converse of the one for \coreinline{create()}, % chktex 36 
+in that it \emph{consumes} the ownership and allocation token for a
 location (premise 2), checks that the addresses and allocations being considered
 are the same (premises 3 and 4) and synthesises a return type with no
 resources.
@@ -455,7 +530,7 @@ term, and the other part to type the rest of the function type. Though these
 types are not dependent over resources, the terms are, so this rule extends the
 produced substitution with one for the resource too.
 
-\section{Effectful values and expressions}
+\section{Effectful values and expressions}\label{sec:eff-val-expr}
 
 The spine typing is used in the rules for calling elaborated C function
 \coreinline{ccall()}, and effectful Core procedures
@@ -482,10 +557,11 @@ function type before using the spine judgement.
     \onlyUseRules{\cndefnStmt{}}{
         \cndruleStmtXXRetT{}
     }
-    \caption{\kl{Kernel CN} typing rules for return-terms.}\label{fig:typing-ret-terms}
+    \caption{\kl{Kernel CN} typing rules for effectful expressions and
+        return-terms.}\label{fig:typing-ret-terms}
 \end{figure*}
 
-\section{Pattern matching}
+\section{Pattern matching}\label{sec:pat-match}
 
 \textbf{Pattern matching is an unusually important crux of \kl{kernel CN}'s type
 system because it is \emph{the} canal which directs the rich grammar of
@@ -509,9 +585,9 @@ have their own patterns (\cref{fig:typing-pstmt}).
 
 If both the head of the type and pattern are computational, the
 \textsc{Pat\_Ret\_Comp} rule first uses the heads to synthesise a computational
-context $[[ C1 ]]$ and a represenative $[[ term1 ]]$ of the expected
+context $[[ C1 ]]$ and a representative $[[ term1 ]]$ of the expected
 shape. The former extends the input context, and the latter is substituted into
-the the rest of the return type. After the remainder of the pattern is
+the rest of the return type. After the remainder of the pattern is
 converted into contexts, it is extended with $[[ C1 ]]$.\sidenote{Similar
 to what I mentioned in note~\ref{sn:tail-rec-sub} about substitution, I build
 the contexts this way, rather than `tail-recursively', to make it easier to
@@ -557,7 +633,7 @@ will match against the type. For the latter, the pattern only destructs when
 the type is a predicate type and the nested pattern destructs against the
 definition of that predicate (with the arguments substituted).
 
-\section{Effectful statements}
+\section{Effectful statements}\label{sec:eff-stmt}
 
 With pattern matching in hand, I can explain the typing rules for effectful
 statements (\cref{fig:typing-stmt}). I will focus only on
@@ -588,14 +664,13 @@ type.\sidenote{Need to update the rule.}
 \section{Elaboration}\label{sec:elaboration}
 
 Part of the \kl{Kernel CN} system also includes a specification for an
-\emph{elaboration} system. At the time it was formalised, \kl{CN}
-required users to manually fold and unfold predicates\sidenote{I should change
-    the formalised grammar to use fold and unfold even though the terms CN used
-we pack and unpack.}, but inferred indices for iterated predicates
-automatically. Now, CN automatically folds and unfolds predicates but requires
-users to state which indices are allowed to be moved in and out of any iterated
-predicates in the context.\sidenote{See note~\ref{sn:new-inf-statics}.}
-Instantiations for logical quantifiers were and continue to be inferred.
+\emph{elaboration} system. At the time it was formalised, \kl{CN} required
+users to manually fold and unfold predicates, but inferred indices for iterated
+predicates automatically. Now, CN automatically folds and unfolds predicates
+but requires users to state which indices are allowed to be moved in and out of
+any iterated predicates in the context.\sidenote{See
+note~\ref{sn:new-inf-statics}.} Instantiations for logical quantifiers were and
+continue to be inferred.
 
 The goal of an elaboration pass over \kl{Kernel CN} is to take as an input a
 well-formed program in \kl{ResCore} which has no explicit resources terms and
@@ -622,6 +697,11 @@ Given an output parameter $[[y]]$, constraint context $[[N]]$, a resource contex
 $[[nR]]$, and a resource type $[[res]]$, synthesise a series of bindings
 $[[res_bind]]$ for a resource term $[[res_term]]$ and output argument $[[oarg]]$
 which will result in the updated resource context $[[nR']]$.
+
+% Examples of how these judgements are used An example of how this judgement is
+% used is presented later in \cref{fig:kernel-elab-fold}: when folding a
+% predicate in \kl{CN}, the steps to an annotation to manually fold a predicate
+% in \kl{CN} would 
 
 \begin{figure*}
     \small
@@ -675,14 +755,15 @@ rigid surface syntax (\cref{sec:monadic-syntax}). Synthesising a term for
 $\mathsf{emp}$ is simple and does not change the context, and the synthesised
 output argument is just a dummy value.
 
-Synthesising an output argument from equality constraints\sidenote{Should
-update the rule to use a single one.} is just taking the right-hand-side of the
-equality. Synthesising a resource term and an output argument for an
-ordered-disjunction requires proving the condition or its negation, and then
-synthesising the appropriate branch. For under-determined conditions, as
-mentioned in~\fancyref{subsec:checking-res-terms}, the term must be a variable
-from the resource context whose type matches syntactically, modulo SMT
-provability.
+Synthesising an output argument from an equality constraint is just taking the
+right-hand-side of the equality.
+
+% Synthesising a resource term and an output argument for an
+% ordered-disjunction requires proving the condition or its negation, and then
+% synthesising the appropriate branch. For under-determined conditions, as
+% mentioned in~\fancyref{subsec:checking-res-terms}, the term must be a
+% variable from the resource context whose type matches syntactically, modulo
+% SMT provability.
 
 By construction, every existential quantifies over the output argument of
 (iterated) predicates, and so synthesising a resource term and an output
@@ -704,17 +785,16 @@ argument $p +_\mathrm{ptr} i * \mathit{step}$ where $\mathit{step}$ is some
 constant integer. Given these, inferring an index (for either
 \coreinline{break}ing or \emph{glue}ing) reduced to $i = (p' - p) /
 \mathit{step}$ where $p'$ is the pointer in the first argument of the request
-predicate. This is made precise in \cref{fig:res-diff-break}.\sidenote{TODO:\@
-This allows for empty iterated remainder: change it?}  The judgement
-$[[ N |- r : norm_res -? pred_ipred ~> res_diff ]]$
-says that given constraint context, a
-\kl{normalised} resource,\sidenote{Predicate (iterated) or an under-determined
-ordered-disjunction.} and a request for a predicate (iterated), synthesise the
-`difference' between the two. As shown in \cref{fig:res-diff-def}, the
-`difference' can be of four sorts: no difference, exact match, subset match,
-overlapping match and each requires slightly different handling (continue
-search, stop search, bind remainder and stop search, bind remainder and
-continue search respectively) from the lookup judgement (\cref{chap:defns}).
+predicate. This is made precise in \cref{fig:res-diff-break}. The judgement
+$[[ N |- r : norm_res -? pred_ipred ~> res_diff ]]$ says that given constraint
+context, a \kl{normalised} resource,\sidenote{Predicate (iterated) or an
+under-determined ordered-disjunction.} and a request for a predicate
+(iterated), synthesise the `difference' between the two. As shown in
+\cref{fig:res-diff-def}, the `difference' can be of four sorts: no difference,
+exact match, subset match, overlapping match and each requires slightly
+different handling (continue search, stop search, bind remainder and stop
+search, bind remainder and continue search respectively) from the lookup
+judgement (\cref{chap:defns}).
 
 \begin{figure*}
     \small
@@ -741,17 +821,16 @@ continue search respectively) from the lookup judgement (\cref{chap:defns}).
 
 \subsection{Using elaboration judgements}
 
-It is important to note that the \textsc{Oarg*} judgement synthesises a checking
-resource term, and so care must be taken for it to be used in a checking
-position. The main place this judgement is used however was for manually
-folding predicates (\cref{fig:kernel-elab-fold}), which by accident of \kl{CN}'s
-original implementation was in a synthesis position in the grammar rather than
-a checking one (hence the type annotation on folding resource
-terms,~\cref{subsec:synth-res-term}). The judgement is similar to a
-synthesising typing judgement, but in addition to synthesising a return type,
-it also synthesises a list of resource bindings to manipulate the context, and
-an elaborated expression containing the fold resource term with several type
-annotations to engineer into a synthesis form.
+It is important to note that the \textsc{Oarg*} judgement synthesises a
+checking resource term, and so care must be taken for it to be used in a
+checking position. The main place this judgement is used however was for
+manually folding predicates (\cref{fig:kernel-elab-fold}), which by accident of
+\kl{CN}'s original implementation was in a synthesis position (hence the type
+annotation on folding resource terms,~\cref{subsec:synth-res-term}). The
+judgement is similar to a synthesising typing judgement, but in addition to
+synthesising a return type, it also synthesises a list of resource bindings to
+manipulate the context, and an elaborated expression containing the fold
+resource term with several type annotations to engineer into a synthesis form.
 
 \begin{figure}[tp]
     \small
