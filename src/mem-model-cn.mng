@@ -227,7 +227,7 @@ allowed to be able to define \cinline{offsetof} as a macro.
 The effectful version of member shifting, is actually only used by its CHERI
 switch, and is not relevant to capturing the ISO rule.
 
-Instead, the \kl{Cerberus} frontend enforces the checks required by the ISO
+Instead, \kl{Cerberus} enforces the checks required by the ISO
 rule by using the elaboration: every member shift is either (1) an lvalue or
 (2) if strict pointer arithmetic is enabled, guarded by a call to the memory
 operation \coreinline{PtrValidForDeref}. This ensures the initial pointer is
@@ -704,8 +704,8 @@ worthwhile improvement. Although \kl{VIP} increases complexity and slows
 things down considerably, it did also provide a helpful equivalence which I
 exploited to improve execution time.
 
-However this does raise questions: why is a linear lookup in the resource
-context faster than proving a pure SMT constraint? One possibility is that most
+This does beg the question: why is a linear lookup in the resource context
+faster than proving a pure SMT constraint? One possibility is that most
 equalities tested in resource lookup can be resolved syntactically without
 appeal to the solver. This may just be an empirical fact about most C programs,
 and although not very theoretically elegant, still useful. Another possibility
@@ -716,7 +716,7 @@ It is possible to optimise further, for example, the \kl{Core} elaboration
 performs a \coreinline{PtrValidForDeref} check before every
 \coreinline{member_shift}, and so the checks on the \coreinline{member_shift}
 itself are technically redundant. Though perhaps a bit fragile, such facts
-could be exploited (maybe behind a switch) to improve performance of
+could be exploited (with a switch) to improve performance of
 \kl{CN-VIP} even more.
 
 \section{Updating existing code}
@@ -728,13 +728,12 @@ backwards-compatible manner. Where VIP added new expressiveness, I added new
 tests, separate from the existing regression suite. Importantly, the new ones
 included a mix of positive and negative tests.
 
-This makes it more difficult to quantify the impact of \kl{CN-VIP} on existing
-code. However, unlike the regression suite, I left the \kl{CN tutorial}
-examples until implementation was stable, and out of fear that I would have to
-spend weeks updating more than two hundred small tests to handle the stricter
-rules.
+To quantify the impact of \kl{CN-VIP} on existing code, I used the \kl{CN
+tutorial} examples. Unlike the regression suite, I left these untouched until
+the implementation was stable, out of fear of the tedium in updating more than
+two hundred small tests to handle the stricter rules.
 
-Thankfully, my fears did not materialise, as
+Thankfully, my fear did not materialise, as
 \href{https://github.com/rems-project/cn-tutorial/commit/9ee153e74d1b0fbdcb2802f2186d211ab6b2343b}{commit
 9ee153e7}, `Add support for VIP', demonstrates. Out of roughly 185 small,
 ``working'' test cases, only 7 had to be updated.\sidenote{A limitation of the
@@ -742,7 +741,7 @@ Thankfully, my fears did not materialise, as
     suite, is that it only checks returns codes, not the whole output. So there
     was no automated way of checking whether an already failing test starts
 failing for a different reason. I eventually fixed this
-\href{https://github.com/rems-project/cerberus/pull/703}{(cerberus/\#703)} by
+(\href{https://github.com/rems-project/cerberus/pull/703}{Cerberus/\#703}) by
 capturing all output and automatically diffing it.} Four of them were
 related to casting integers to pointers, of which one was a round-trip which
 was not supported initially. All of them were updated using
@@ -750,14 +749,14 @@ was not supported initially. All of them were updated using
 
 % \inputminted[fontsize=\footnotesize,breaklines,firstline=10,lastline=68]{diff}{code/add_support_for_vip.patch}
 
-\subsection{Catching \kl{UB}, as intended}
+%\subsection{Catching \kl{UB}, as intended}
 
 The other three were all related to \emph{decrementing} a pointer out of
-bounds, and technically \kl{UB}, and so assuming the intent was to test pointer
-decrementing rather than catching \kl{UB}, I adjusted the code to either not
-decrement the pointer, or increase the size of the allocations involved to allow it.
+bounds, and technically \kl{UB}. Assuming the intent was to test pointer
+decrementing rather than catching \kl{UB}, I amended the code to to sidestep
+\kl{UB}.
 
-\inputminted[fontsize=\footnotesize,breaklines,firstline=69,lastline=107]{diff}{code/add_support_for_vip.patch}
+% \inputminted[fontsize=\footnotesize,breaklines,firstline=69,lastline=107]{diff}{code/add_support_for_vip.patch}
 
 \subsection{Non-deterministic pointer equality}\label{subsec:update-non-det-ptr-eq}
 
@@ -769,12 +768,12 @@ annotations, of which 3 started to fail verification earlier because of
 \kl{VIP} related reasons (member shifting on a pointer not guaranteed to be
 non-\cinline{NULL}). Of the remaining 70 C files (103 including headers), only
 2 predicate definitions (in headers) and 2 lemmas needed updating. The latter
-followed from the former because the lemmas simply inlined the definitions of
+followed from the former because the lemmas inlined the definitions of
 the predicates.
 
-\inputminted[fontsize=\footnotesize,breaklines,firstline=108]{diff}{code/add_support_for_vip.patch}
+% \inputminted[fontsize=\footnotesize,breaklines,firstline=108]{diff}{code/add_support_for_vip.patch}
 
-As one can see, all the updates were related to excluding the non-deterministic
+All those updates were related to excluding the non-deterministic
 case in pointer equality in a queue example.\sidenote{A detailed walk-through
 is available online:
 \url{https://rems-project.github.io/cn-tutorial/getting-started/case-studies/imperative-queues/}.}
@@ -790,11 +789,11 @@ have equal addresses and differing provenances.
 
 \section{Lemma proofs within C}\label{sec:lemma-proof-c}
 
-As visible above, the queue example requires the use of lemmas to prove the
+The \kl{CN tutorial} queue example requires the use of lemmas to prove the
 appropriate facts for popping and pushing. I did not write the implementation
 for these examples, but I did verify them, including proofs of lemmas using C
-as a tactic language. The only caveat is that the proofs of C lemmas do not
-have or check a termination metric on the recursive C function.
+as a tactic language, with the caveat they do not have or check a termination
+metric on recursive C functions.
 
 The experience was humbling because I found it quite difficult; it took a few
 days work. This was mostly due to my lack of prior experience with separation
@@ -833,7 +832,7 @@ line 11, which turns out to be necessary to prove the constraint on line 14.
 
 \cfile[fontsize=\footnotesize,breaklines,firstline=3,lastline=29,highlightlines={7-18,22,26}]{code/queue_push_induction.c} % chktex 8
 
-The proof itself is simply a recursive C function, which follows the structure
+The proof itself is a recursive C function, which follows the structure
 of the \cinline{QueueAux} predicate (\cref{fig:queue-aux-def}). In particular,
 it can be seen as traversing the queue until the base case and adding the extra
 \cinline[breaklines]{struct queue_cell}.
@@ -906,7 +905,7 @@ losing too much fidelity to \kl{Core}. It is not clear to me exactly how this
 would work, or integrate into the current project. Another approach would be to
 do a pen-and-paper proof of soundness and build our own logic, but as \kl{CN}
 is extended with more features such as concurrency and fractional permissions,
-this would simply reduplicate the work of the \emph{Iris} project instead that
+this would reduplicate the work of the \emph{Iris} project instead that
 of \kl{Cerberus}.
 
 This impasse can be broken with a few observations:
