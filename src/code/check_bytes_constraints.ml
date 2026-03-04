@@ -4,7 +4,7 @@ let bytes_constraints
       ~(value : IT.t)
       ~(byte_arr : IT.t)
       (ct : Sctypes.t)
-  : IT.t t
+  : IT.t Typing.m
   =
   (* FIXME this hard codes big endianness but this should be switchable *)
   let here = Locations.other __LOC__ in
