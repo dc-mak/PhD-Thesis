@@ -1,5 +1,6 @@
-So far I have discussed the formalisation of \kl{CN}, the formalisation and
-implementation of its memory model, \kl{CN-VIP}. In both those sections,
+So far I have discussed the formalisation of \kl{CN}
+(\fancyref{part:formalisation}), the formalisation and implementation of its
+memory model (\fancyref{part:mem-model}), \kl{CN-VIP}. In both those sections,
 guiding design choices and implementation decisions at each stage was the need
 to strike a balance of expressiveness, performance and ergonomics,
 fundamentally motivated by designing a \emph{capable} verification tool. Not
@@ -7,102 +8,50 @@ only that, at several stages, the theory was able to inform or clarify
 implementation related issues, such as the complexity of adding new features,
 lifting existing restrictions, or substantially improving performance.
 
-In this part, I will take a step back and focus more on what it takes to build
+Now I will take a step back and focus more on what it takes to build
 a \emph{usable} verification tool. Though not as theoretically intruiging or
-elegant as some of the material in the previous chapter, this is where just as
+elegant as some of the material in prior parts, this is where just as
 much, if not more, of the difficulty lies in achieving \kl{CN}'s goal of being
 maintainable by kernel programmers (\cref{sec:cn-goals}).
 
-It starts with the source repository for any mature C project, such as
-\kl{pKVM}, which lives in the Linux kernel. Such respositories do not come in
-neatly packaged translation units conforming to the ISO grammar. Aside from the
-myriad, non-standard extensions that files in such repositories rely on, the
-inclusion chain of one file, up to a few hundred lines long, can stretch
-\emph{eleven} directories up and total around 65,000 lines of C after
-preprocessing. Mature industrial projects like GCC and Clang have spent years
-optimising their front-ends to deal with this complexity at speed, which
-creates a large gap between it, and robust, empirically validated, but
-ultimately academic tools such as \kl{Cerberus}.
+My contributions in this part are the following.
 
-Thankfully, there is an alternative to simply adding features to
-\kl{Cerberus} until it can handle a substantial number of GCC and
-Clang fragments. In our experience, the set of features used by a particular
-directory of files, such as the \kl{pKVM} project are relatively small, and can
-be manually extracted by copying files, commenting out unused features, and
-flattening directory hierarchies. Whilst this is possible, it is tedious, slow,
-error prone and extremely time consuming, taking days to perform by hand,
-making it very difficult to update once code is updated. Doing so trades-off
-implementation and intellectual effort for grunt work and drudgery, which is a
-step in the right direction, albeit no more practicable.
+In~\fancyref{chap:tree-carver}, I describe why and how I developed a tool to
+filter and carve out parts of a large C source tree, whilst preserving all
+comments, including \kl{CN} annotations.
 
-Faced with this, and the awareness of tools such as clang-format, which can
-format complex projects of C++ code, including macros, and other Clang based
-tools for linting and refactoring, I developed a tool which could automate the
-aforementioned drudgery. Analogous to tree-shaking for JIT-compiled interpreted
-languages, I call the method \intro{tree-carving}, which given root functions
-in a file in a repository, carves out the files in the transitive dependency of
-those roots, and comments out any functions, types, struct/union fields and
-macros which are not used.\sidenote{Such a strategy works for most sensibly
-formatted code with each top-level declaration on its own line. For code
-which does not fit this, input validation will reject the program rather
-than produce erroneous output.} It comments out code to preserve line numbers,
-and works with macros too. Since \kl{CN} specifications are comments too, and
-could get lost inside other comments, I also wrote a comment simplifier to undo
-such nested comments.
+In~\fancyref{chap:buddy}, I describe both the successes and failures of
+\emph{updating} an already completed \kl{CN} verification to handle
+improvements to the C implementation itself (real world C code does not stay
+frozen in time), and new \kl{CN} features.
 
-Even with reasonable input, the challenges continue. One of the early
-challenges \kl{CN} faced was that of allocation for function arguments. Though
-intuitively, a programmer might model allocations for parameters as being
-created by the \emph{callee}, early versions of \kl{CN} relied on
-\kl{Cerberus}' elaboration allocating storage for function arguments at the
-\emph{caller}, per callsite. This significantly degraded the experience of
-writing specifications and proofs because the programmer had to specify that
-functions did not mutate arguments at the callsite. Kayvan Memarinan fixed this
-by creating a parallel mode of elaboration to support the more intuitive model.
+In~\fancyref{chap:comparison-feedback}, I compare \kl{CN} to similar tools, and
+combine that with feedback from industry users to draw out lessons and
+potential future directions for \kl{CN}.
 
-Influenced by \kl{Cerberus}'s decision to model C integers as unbounded with
-constraints, \kl{CN} originally adopted a similar design, and used to verify
-the \kl{pKVM}'s \kl{buddy allocator}, as mentioned in \sidetextcite{pulte2023cn}.
-However, this soon became cumbersome due to the use for frequent bit
-manipualation idioms in \kl{pKVM}'s page table walker, because expressing these
-idioms on integers then required the frequent use of lemmas to handle the
-(undecidable) non-linear arithmetic. This prompted an overhaul of \kl{CN} to
-work with bit-vectors as its fundamental integer type.
+In~\fancyref{chap:expectations}, I discuss achievable standards of usability
+for \kl{CN}, with an emphasis on how new projects can avoid several pitfalls.
 
-My contributions to this thread began as I attempted to update the \kl{buddy
-allocator} to handle a very early version of \kl{VIP}, which coincided with the
-move to bit-vectors, \emph{and} a change in the inference scheme. Alongside
-this, this was my first serious use of \kl{CN} and separation logic, and I did
-not have the benefit of the helpful \kl{CN tutorial} to serve as less steep
-cliff to ascend. To top it all off, the underlying code of the \kl{buddy allocator}
-had been updated, unbeknownst to anyone at the time (we did not have
-performance benchmarking) \kl{CN} became dramatically slower, and at the time
-had no ability to track source location information across the majority of its
-pipeline. Whilst the attempt seems foolish and doomed from the start, it
-clarified a few things we needed to improve upon.
-\begin{itemize}
-    \item Source location information.
-    \item Regression testing.
-    \item Peformance benchmarking.
-    \item Switchable major transitions.
-    \item A tutorial and worked examples.
-    \item Upating proofs one aspect at a time.
-\end{itemize}
-
-As result of this failed attempt, I came to appreciate all the above. I ended
-up spending about one month plumbing through source location information
-throughout the core datatype in \kl{CN}, as well as fixing the lexer and
-parser to be more robust and have extensible error messages.
-
-I also identified a particularly difficult challenge which any verification
-tool based on an internal representation needs to deal with is relating errors
-back to the source code user wrote. This is particularly evident with SMT
-counter-examples which are not minimal, consistent, nor easy to translate back
-to the source. Aside from this, even in the absence of \kl{VIP} related
-performance issues, \kl{CN} is still about an order of magnitude slower than we
-would like it to be, though the causes of this are not clear, the plan of being
-able to rely on performant SMT solvers with decidable queries has not paid off
-quite as well as we would have liked.
+% My contributions to this thread began as I attempted to update the \kl{buddy
+% allocator} to handle a very early version of \kl{VIP}, which coincided with the
+% move to bit-vectors, \emph{and} a change in the inference scheme. Alongside
+% this, this was my first serious use of \kl{CN} and separation logic, and I did
+% not have the benefit of the helpful \kl{CN tutorial} to serve as less steep
+% cliff to ascend. To top it all off, the underlying code of the \kl{buddy allocator}
+% had been updated, unbeknownst to anyone at the time (we did not have
+% performance benchmarking) \kl{CN} became dramatically slower, and at the time
+% had no ability to track source location information across the majority of its
+% pipeline. Whilst the attempt seems foolish and doomed from the start, it
+% clarified a few things we needed to improve upon.
+% \begin{itemize}
+%     \item Source location information.
+%     \item Regression testing.
+%     \item Peformance benchmarking.
+%     \item Switchable major transitions.
+%     \item A tutorial and worked examples.
+%     \item Upating proofs one aspect at a time.
+% \end{itemize}
+%
 
 \chapter{Tree-carving: Taming C Respositories}\label{chap:tree-carver}
 
@@ -122,6 +71,43 @@ current approach (struct fields, cross-translation-unit carving), and ways this
 may be remedied in the future.
 
 \section{Need for tree-carving}
+
+% It starts with the source repository for any mature C project, such as
+% \kl{pKVM}, which lives in the Linux kernel. Such repositories do not come in
+% neatly packaged translation units conforming to the ISO grammar. Aside from the
+% myriad, non-standard extensions that files in such repositories rely on, the
+% inclusion chain of one file, up to a few hundred lines long, can stretch
+% \emph{eleven} directories up and total around 65,000 lines of C after
+% preprocessing. Mature industrial projects like GCC and Clang have spent years
+% optimising their front-ends to deal with this complexity at speed, which
+% creates a large gap between it, and robust, empirically validated, but
+% ultimately academic tools such as \kl{Cerberus}.
+%
+% Thankfully, there is an alternative to simply adding features to
+% \kl{Cerberus} until it can handle a substantial number of GCC and
+% Clang fragments. In our experience, the set of features used by a particular
+% directory of files, such as the \kl{pKVM} project are relatively small, and can
+% be manually extracted by copying files, commenting out unused features, and
+% flattening directory hierarchies. Whilst this is possible, it is tedious, slow,
+% error prone and extremely time consuming, taking days to perform by hand,
+% making it very difficult to update once code is updated. Doing so trades-off
+% implementation and intellectual effort for grunt work and drudgery, which is a
+% step in the right direction, albeit no more practicable.
+%
+% Faced with this, and the awareness of tools such as clang-format, which can
+% format complex projects of C++ code, including macros, and other Clang based
+% tools for linting and refactoring, I developed a tool which could automate the
+% aforementioned drudgery. Analogous to tree-shaking for JIT-compiled interpreted
+% languages, I call the method \intro{tree-carving}, which given root functions
+% in a file in a repository, carves out the files in the transitive dependency of
+% those roots, and comments out any functions, types, struct/union fields and
+% macros which are not used.\sidenote{Such a strategy works for most sensibly
+% formatted code with each top-level declaration on its own line. For code
+% which does not fit this, input validation will reject the program rather
+% than produce erroneous output.} It comments out code to preserve line numbers,
+% and works with macros too. Since \kl{CN} specifications are comments too, and
+% could get lost inside other comments, I also wrote a comment simplifier to undo
+% such nested comments.
 
 I will use the \kl{pKVM} page-table code as the motivation for the chapter.
 It lives in the folder arch/arm64/kvm/hyp/pgtable.c, and consists of some simple
@@ -344,8 +330,8 @@ the selected roots are used. There is also an optional debug flag which will
 trace out the declarations and macros traversed, with their source locations
 and their dependencies.
 
-With these options, tree carver sets up a ClangTool instance, which is
-essentially an invocation to clang as a user may given on the command line. The
+With these options, the tree-carver sets up a ClangTool instance, which is
+essentially an invocation to Clang as a user may given on the command line. The
 invocation is the combination of the command selected from the compilation
 database, plus an extra directive to Clang to store a detailed preprocessing
 record, which is necessary to analyse macro dependencies later. To run the
@@ -736,6 +722,15 @@ compatible: it passed both with and without the early \kl{VIP} rules enabled.
 
 \section{Failed update to support bit-vectors}\label{sec:buddy-failed-bv}
 
+% Influenced by \kl{Cerberus}'s decision to model C integers as unbounded with
+% constraints, \kl{CN} originally adopted a similar design, and used to verify
+% the \kl{pKVM}'s \kl{buddy allocator}, as mentioned in \sidetextcite{pulte2023cn}.
+% However, this soon became cumbersome due to the use for frequent bit
+% manipulation idioms in \kl{pKVM}'s page table walker, because expressing these
+% idioms on integers then required the frequent use of lemmas to handle the
+% (undecidable) non-linear arithmetic. This prompted an overhaul of \kl{CN} to
+% work with bit-vectors as its fundamental integer type.
+
 The \kl{VIP} update was intentionally small and early, so that I could iterate
 on it frequently and incrementally, whilst keeping the hero example of \kl{CN}
 functional at each step.
@@ -907,6 +902,12 @@ impact slightly. Whilst I changed the debug printing of index terms in failed
 constraints to annotate sub-terms with their values, and indent them properly,
 the best solution would be to annotate the original source with the
 counter-example model values.
+
+% I also identified a particularly difficult challenge which any verification
+% tool based on an internal representation needs to deal with is relating errors
+% back to the source code user wrote. This is particularly evident with SMT
+% counter-examples which are not minimal, consistent, nor easy to translate back
+% to the source.
 
 \paragraph{Counter-examples should be minimal and consistent.} Another source
 of confusion is that counter-examples are neither minimal, nor consistent: all
