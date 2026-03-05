@@ -203,6 +203,34 @@ features.
     \item \kl{UB} or unspecified values for uninitialised reads.
 \end{itemize}
 
+Reflecting more broadly, what lessons can we apply to \kl{CN} from this brief
+comparison? We see that separation logic, moded recursive predicates, lemmas,
+pre- and postconditions, loop invariants, proof annotations, even the use of a
+subset of C as a proof language, seem to come with the terrain of verifying C
+code. \kl{CN}'s monadic syntax sidesteps much of the confusion related to
+modes; the limited expressiveness of only allowing precise predicates has not
+affected substantial verifications, and in fact enabled runtime testing of
+separation-logic assertions. \kl{CN} will need to improve its speed, visibility
+into the proof state and interactive replay to make failed proofs less painful
+to debug.
+
+When compared to \kl{VeriFast} approach of working an ad-hoc, close-to-syntax,
+semantics of C, \kl{CN}'s design of working above \kl{Cerberus}' \kl{Core} is a
+mixed bag. The benefit is that many C features, including a long tail small but
+required ones for real-world code, are supported well. Related, I conjecture
+understanding and proving \kl{VeriFast} sound above its ad-hoc C semantics is
+more difficult than for \kl{CN}. The cost is that the we impair our ability to
+allow for some interesting, albeit confusing, heuristics such the array
+indexing example.
+
+\kl{CN}'s decision to support \kl{iterated} separating conjunctions reduces the
+need for lemmas and heuristics as \kl{VeriFast} often relies on, but does not
+eliminate it, especially when inferring indices can slow down verification.
+Automating the \emph{common cases} of indexing, predicate unfolding, and lemma
+applications, whilst retaining reasonable performance, and a fallback to a fast
+but verbose manual mode, would allow \kl{CN} to adopt some of the advantages of
+\kl{VeriFast}'s concision, without risking confusion in (novice) users.
+
 \subsection{Early allocator in Frama-C and RefinedC}
 
 Whereas \kl{VeriFast} is most similar to \kl{CN}, \kl{Frama-C} and
