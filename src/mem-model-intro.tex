@@ -64,33 +64,38 @@ have more \kl{UB}).
 defined operationally as a step relation between concrete (i.e.\ not symbolic)
 heavily structured heaps, and the steps have complex premises.
 
-In this part, I will detail the challenges and choices I faced in designing,
-formalising and implementing \kl{CN-VIP}, the memory model of \kl{CN} as a scheme
-within the formalised and implemented type systems.
-\begin{itemize}
-    \item \textbf{Expressiveness vs simplicity.} \kl{VIP} makes a particular
-        set of choices about its representation of pointers and integers, and
-        relatedly about the idioms it supports. I will explain it, and
-        alternatives which are simpler and more expressive. In particular,
-        I will explain important and subtle complexities around round-trip
-        casts, \cinline{memcpy} and \cinline{memcmp}, which are handled in
-        \kl{VIP}/\kl{PNVI-*} test-suite, but not discussed.
-    \item \textbf{Integration into \kl{Kernel CN}.} As I mentioned in
-        \cref{sec:res-terms}, the novel structure for heaps abstracts away
-        some aspects of its representation. I will explain how I adapted the
-        static and dynamic semantics to use \kl{VIP}, and proved the new system
-        sound with less repeated effort than typical.
-    \item \textbf{Implementation in \kl{CN}.} I will explain how I incrementally
-        developed, gated and deployed a complex change to memory model of \kl{CN}.
-        By the time I had designed and formalised \kl{CN-VIP}, \kl{CN} had
-        users, a tutorial, a test-suite and a continuous integration pipeline,
-        so I had to be careful in adding support for \kl{VIP}, and
-        incrementalise large changes to code and tests.
-    \item \textbf{Impact on annotations and performance.} Finally, I will explain
-        how switching over to \kl{CN-VIP} (without round-trip casts) impacted
-        the annotations and performance on existing \kl{CN} tests and tutorial
-        examples.
-\end{itemize}
+My contribution in this part is the design, fomalisation and implementation
+of \kl{CN-VIP}, the memory model of \kl{CN}.
+
+In \fancyref{chap:mem-model-explained}, I will provide some background to
+\kl{VIP}, and then explain the choices it makes regarding its representation of
+pointers and integers, and the idioms it supports. I will also explain
+important and subtle complexities around round-trip casts, \cinline{memcpy} and
+\cinline{memcmp}, which are handled in \kl{VIP}/\kl{PNVI-*} test-suite, but not
+discussed. Throughout this, I will explore other options for pointer and
+integer representations, and how they trade expressiveness and simplicity.
+Lastly, I will summarise the choices I made for \kl{CN-VIP} amongst those
+options.
+
+In \fancyref{chap:cn-vip}, I will explain how I integrated \kl{CN-VIP} into
+\kl{Kernel CN} by adapting the static and dynamic semantics, and proving the
+new system sound with less repeated effort than typical for a drastic change in
+the representation of pointers, integers and heaps. The key to this was the
+novel structure for heaps, which abstracted away some details, as mentioned in
+(\fancyref{sec:res-terms}).
+
+In the same chapter, I will also explain how I implemented \kl{CN-VIP} in
+\kl{CN}, by incrementally developing, gating and deploying the complex changes
+to the memory model. By the time I had designed and formalised \kl{CN-VIP},
+\kl{CN} had users, a tutorial, a test-suite and a continuous integration
+pipeline, so I had to be careful to ensure a smooth transition.
+
+In \fancyref{chap:epilogue-cn-vip}, I will explain how switching over to
+\kl{CN-VIP} (without round-trip casts) impacted the annotations and performance
+on existing \kl{CN} tests and tutorial examples. I will then conclude by
+discussing how \kl{CN} handles proofs of lemmas, which depend on the specifics
+of the memory object model, and discuss how this work unexpectedly sheds light
+on how we can improve the foundational correctness of \kl{CN} itself.
 
 \chapter{Memory object models, explained}\label{chap:mem-model-explained}
 
@@ -254,13 +259,13 @@ cast would then only examine those (\cref{fig:pnvi-ival-to-pval}).
   \inferrule[{[PNVI-ae-udi: $\textbf{ptrFromInt}\langle\tau\rangle(x) = (@i, x)$]}]{%
       \exists{} \, i.\ A (i) = (n, a, \mathsf{alive}, \mathsf{\color{blue}{exposed}}) \wedge{} x \in{} [a \ldots a + n - 1]
   }{%
-    (A, \color{violet}{S,} M) \rightarrow (A, \color{violet}{S,} M)}
+    (A, {\color{violet}S,} M) \rightarrow (A, {\color{violet}S,} M)}
   \\
   \inferrule[{[PNVI-ae-udi: $\textbf{ptrFromInt}\langle\tau\rangle(x) = (@\mathsf{empty}, x)$]}]{%
     \neg (\exists \, i.\ A(i) = (n, a, \mathsf{alive}, \mathsf{\color{blue}{exposed}}) \wedge x \in [a \ldots a + n - 1]) \\\\
     x \neq 0 \\ x \textrm{ is not the address of a function}%
   }{%
-    (A, \color{violet}{S,} M) \rightarrow (A, \color{violet}{S,} M)}
+    (A, {\color{violet}S,} M) \rightarrow (A, {\color{violet}S,} M)}
 \end{mathpar}\caption{Simplified PNVI-* rules for casting an integer to a
     pointer. Based
     on~\textcite{memarian2022cerberus}.}\label{fig:pnvi-ival-to-pval}
@@ -310,7 +315,7 @@ allocations' IDs (\cref{fig:pnvi-ival-to-pval-symbolic}).
     \exists \, i_2.\ A(i_2) = (n_2, a_2, \mathsf{alive}, \mathsf{\color{blue}{exposed}}) \wedge x \in [a_2 \ldots a_2 + n_2] \\\\
     {\color{violet}i_1 \neq i_2} \\ {\color{violet}\iota \notin \mathrm{dom}(S)}
   }{%
-    (A, \color{violet}{S,} M) \rightarrow (A, {\color{violet}S[\iota \mapsto \{ i_1 , i_2 \}],} M)}
+    (A, {\color{violet}S,} M) \rightarrow (A, {\color{violet}S[\iota \mapsto \{ i_1 , i_2 \}],} M)}
 \]\caption{Simplified PNVI-ae-udi rule for casting an integer to a
     pointer when the value is the address on the boundary between two live
     allocations. Based

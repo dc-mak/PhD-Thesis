@@ -190,9 +190,11 @@ issue with structs may be an intentional design choice to sidestep handling
 exploding and imploding structs, which does require extra inference and thus
 reduce performance.
 
-Stepping back, \kl{VeriFast} uses an ad-hoc semantics of C the developers
-believe to be sound. During this brief experiment, I noted a few missing
-features.
+Stepping back, \kl{VeriFast} uses an ad-hoc close-to-syntax semantics of C the
+developers believe to be sound. This has the advantage of allowing allow for
+some interesting, albeit confusing, heuristics such as the array indexing
+example. However, it has the downside of missing a long tail of features
+required for verifying real-world code, such as the following.
 \begin{itemize}
     \item Struct literals/initialisers.
     \item Implicit type promotions (e.g.\ from \cinline{long long} to
@@ -207,21 +209,13 @@ Reflecting more broadly, what lessons can we apply to \kl{CN} from this brief
 comparison? We see that separation logic, moded recursive predicates, lemmas,
 pre- and postconditions, loop invariants, proof annotations, even the use of a
 subset of C as a proof language, seem to come with the terrain of verifying C
-code. \kl{CN}'s monadic syntax sidesteps much of the confusion related to
-modes; the limited expressiveness of only allowing precise predicates has not
-affected substantial verifications, and in fact enabled runtime testing of
-separation-logic assertions. \kl{CN} will need to improve its speed, visibility
-into the proof state and interactive replay to make failed proofs less painful
-to debug.
-
-When compared to \kl{VeriFast} approach of working an ad-hoc, close-to-syntax,
-semantics of C, \kl{CN}'s design of working above \kl{Cerberus}' \kl{Core} is a
-mixed bag. The benefit is that many C features, including a long tail small but
-required ones for real-world code, are supported well. Related, I conjecture
-understanding and proving \kl{VeriFast} sound above its ad-hoc C semantics is
-more difficult than for \kl{CN}. The cost is that the we impair our ability to
-allow for some interesting, albeit confusing, heuristics such the array
-indexing example.
+code. \kl{CN}'s monadic syntax (\cref{sec:monadic-syntax}) sidesteps much of
+the confusion related to modes; the limited expressiveness of only allowing
+precise predicates (\cref{subsec:precise-assertion}) has
+not affected substantial verifications, and in fact enabled runtime testing of
+assertions with \kl{Fulminate}. \kl{CN} will need to improve its speed,
+visibility into the proof state and interactive replay to make failed proofs
+less painful to debug.
 
 \kl{CN}'s decision to support \kl{iterated} separating conjunctions reduces the
 need for lemmas and heuristics as \kl{VeriFast} often relies on, but does not
