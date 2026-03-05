@@ -67,7 +67,7 @@ However, this soon became cumbersome due to the use for frequent bit
 manipualation idioms in \kl{pKVM}'s page table walker, because expressing these
 idioms on integers then required the frequent use of lemmas to handle the
 (undecidable) non-linear arithmetic. This prompted an overhaul of \kl{CN} to
-work with bit vectors as its fundamental integer type.
+work with bit-vectors as its fundamental integer type.
 
 My contributions to this thread began as I attempted to update the \kl{buddy
 allocator} to handle a very early version of \kl{VIP}, which coincided with the
@@ -542,8 +542,8 @@ address.
 
 On top of this, ownership for the pages is sparse, based on conditions
 expressed in the metadata, hence, ownership of both are needed to perform any
-operations such as coalescing two buddy pages of the same order, adding or
-removing a page. In addition to the addresses computable from an index, the
+operations such as coalescing two buddy pages of the same order, adding a page
+or removing one. In addition to the addresses computable from an index, the
 free pages are also aliased via a per-order doubly-linked free list. This is
 where freed pages are added, and from whence allocated pages are removed.
 
@@ -617,8 +617,12 @@ transformations between them.
 
 The remedy to this was to go back and update the original proof to consistently
 use ownership via virtual addresses, in anticipation of the forthcoming
-changes. Fixing and then propogating these changes, alongside cosmetic changes,
-in the rebase took one month.
+changes. Additional \kl{CN} features might have made such an update easier. For
+example, better integration of function-like macros would name conversions
+between physical and virtual addresses (instead of using plain arithmetic). Or,
+numeric type-classes would make conflating physical and virtual address a base
+type error in specifications. Fixing and then rebasing these changes, alongside
+cosmetic changes, took one month.
 
 \subsection{Helper functions}
 
@@ -642,10 +646,10 @@ verification helpers needed an extra logical parameter, but since
 variables), the parameter was reified into the C code (but ignored in the
 body).
 
-\subsection{Indexing and signed bit vector division}
+\subsection{Indexing and signed bit-vector division}
 
 The main predicate of the \kl{buddy allocator} claims a contiguous iterated
-ownership of page metadata, and \emph{spare} iterated ownership of the pages
+ownership of page metadata, and \emph{sparse} iterated ownership of the pages
 themselves, specifically the free pages (determined by the metadata).
 
 As I mentioned before, the code assumes that it can dereference the contents of
@@ -659,26 +663,27 @@ and was the initial choice for expressing this.
 However, this quickly became unwieldy as logical expressions using the
 \emph{outputs} of these differently indexed arrays need to convert between the
 two consistently and correctly. Not only was this not the case, lurking beneath
-the conversion was a division of a signed bit vector in Z3, which folklore
+the conversion was a division of a signed bit-vector in Z3, which folklore
 suggests is ill-advised for performance.\sidenote{I thank Thomas Sewell for
 alerting me to this; though in this instance, it is not clear this was the
 bottleneck.} Hence, the penultimate step to verifying the code was
-standardising these indices and avoiding the possibility of signed bit vector
-division, which took about 1 week.
+standardising these indices and avoiding the possibility of signed bit-vector
+division (rerouting to avoid the bottom path in~\cref{fig:buddy-negative-div}),
+which took about 1 week.
 
-\begin{figure}[tp]
+\begin{figure}[h]
 % https://q.uiver.app/#q=WzAsNSxbMCwwLCJcXHRleHRzZnt2LiBhZGRyfSJdLFswLDIsIlxcdGV4dHNme3YuIGluZGV4fSJdLFsyLDIsIlxcdGV4dHNme3AuIGluZGV4fSJdLFsyLDAsIlxcdGV4dHNme3AuIGFkZHJ9Il0sWzQsMiwiXFx0ZXh0c2Z7bm9kZX0iXSxbMSwyLCJcXHRleHRzZnsrIG9mZnNldCAvIFBBR0VcXF9TSVpFfSIsMCx7ImNvbG91ciI6WzAsNjAsNjBdfSxbMCw2MCw2MCwxXV0sWzAsMSwiXFx0ZXh0c2Z7LyBQQUdFXFxfU0laRX0iXSxbMywyLCJcXHRleHRzZnsvIFBBR0VcXF9TSVpFfSIsMCx7ImNvbG91ciI6WzEyMCw2MCw2MF19LFsxMjAsNjAsNjAsMV1dLFswLDMsIlxcdGV4dHNmeysgb2Zmc2V0fSIsMix7ImNvbG91ciI6WzEyMCw2MCw2MF19LFsxMjAsNjAsNjAsMV1dLFsyLDQsIlxcdGV4dHNme25vZGUgLSB2bWVtbWFwfSIsMix7ImN1cnZlIjoxfV0sWzIsNCwiXFx0ZXh0c2Z7XFwmdm1lbW1hcFtcXF9dfSIsMCx7ImN1cnZlIjotMX1dXQ==
 \[
 \begin{tikzcd}
 	{\textsf{v. addr}} && {\textsf{p. addr}} \\
 	\\
 	{\textsf{v. index}} && {\textsf{p. index}} && {\textsf{node}}
-	\arrow["{\textsf{+ offset}}"', color=darkgreen, from=1-1, to=1-3]
-	\arrow["{\textsf{* PAGE\_SIZE}}"', color=darkgreen, from=3-1, to=1-1]
-	\arrow["{\textsf{/ PAGE\_SIZE}}", color=darkgreen, from=1-3, to=3-3]
-	\arrow["{\textsf{+ offset / PAGE\_SIZE}}", color=red, from=3-1, to=3-3]
-	\arrow["{\textsf{- vmemmap}}", bend left=10, from=3-5, to=3-3]
-	\arrow["{\textsf{\&vmemmap[\_]}}", bend left=10, from=3-3, to=3-5]
+	\arrow["{\textsf{+ offset}}"', color=darkgreen, from=1-1, to=1-3] % chktex 18
+	\arrow["{\textsf{* PAGE\_SIZE}}"', color=darkgreen, from=3-1, to=1-1] % chktex 18
+	\arrow["{\textsf{/ PAGE\_SIZE}}", color=darkgreen, from=1-3, to=3-3] % chktex 18
+	\arrow["{\textsf{+ offset / PAGE\_SIZE}}", color=red, from=3-1, to=3-3] % chktex 18
+	\arrow["{\textsf{- vmemmap}}", bend left=10, from=3-5, to=3-3] % chktex 18
+	\arrow["{\textsf{\&vmemmap[\_]}}", bend left=10, from=3-3, to=3-5] % chktex 18
 \end{tikzcd}
 \]
 \caption{Conversions between virtual (v) and physical (p) addresses (addr) and
@@ -695,11 +700,10 @@ predicate, as well as usability issues I will cover soon.\sidenote{I had also
 started work on the tree carver, which was much more tractable and appealing.}
 
 Thomas Sewell took over and completed the updated proofs at this stage. The key
-insight to enable this was the realisation that the main invariant needed to
-variants such that zero, one or two pages could be removed from it, but
-otherwise still hold, so that the ownership of a page and its buddy could be
-removed, coalesced, and returned in a way that preserved the original structure
-of the code, which took at most 2 weeks.
+insight was to generalise the main invariant so it could express the absence of
+zero, one or two pages. This means ownership of a page and its buddy can be
+removed, coalesced, and returned in a way that preserves the original structure
+of the code; this took 2 weeks.
 
 \section{Successful update to experimental VIP}
 
@@ -730,7 +734,7 @@ Given the pervasiveness of computed pointers in the code and specifications,
 the changes were extensive but straightforward. The updated proof was backwards
 compatible: it passed both with and without the early \kl{VIP} rules enabled.
 
-\section{Failed update to support bit vectors}\label{sec:buddy-failed-bv}
+\section{Failed update to support bit-vectors}\label{sec:buddy-failed-bv}
 
 The \kl{VIP} update was intentionally small and early, so that I could iterate
 on it frequently and incrementally, whilst keeping the hero example of \kl{CN}
@@ -750,59 +754,61 @@ for this will become clear in the following takeaways.
 
 \subsection{Features}\label{subesc:takeaway-features}
 
-\paragraph{Tutorials are indispensable.} The \kl{buddy allocator} verification is
-complex, and learning it without building up intuition for separation logic and
-how to operate \kl{CN} made the process unnecessarily difficult. This has been
-remedied with the introduction of the \kl{CN
+\paragraph{Tutorials are indispensable (completed).} The \kl{buddy allocator}
+verification is complex, and learning it without building up intuition for
+separation logic and how to operate \kl{CN} made the process unnecessarily
+difficult. This has been remedied with the introduction of the \kl{CN
 tutorial}~\sidecite{pulte2024tutorial}.
 
-\paragraph{Tree carving is indispensable.} Manually carving and grafting the
-code took a significant amount of time (3 weeks), once again demonstrating the
-need and usefulness of the tree carver as an integral part of any usable C
-verification tool.
+\paragraph{Tree carving is indispensable (completed).} Manually carving and
+grafting the code took a significant amount of time (3 weeks), once again
+demonstrating the need and usefulness of the tree carver as an integral part of
+any usable C verification tool.
 
-\paragraph{Functions should be checked in dependency order.} From the get go,
-the default order in which \kl{CN} checked its functions was unhelpful.
-Ideally, one would like it to start with leaf functions and then work its way
-up, but instead the user must figure out and maintain the dependency structure
-in their head when planning the proof effort, and manually select the functions
-to verify one at a time.
+\paragraph{Functions should be checked in dependency order.}
+From the get go, the default order in which \kl{CN} checked its functions was
+unhelpful. Ideally, one would like it to start with leaf functions and then
+work its way up, but instead the user must figure out and maintain the
+dependency structure in their head when planning the proof effort, and manually
+select the functions to verify one at a time.
 
-\paragraph{Function-like macros represent real abstractions.} The \kl{buddy
-allocator} code uses function-like macros heavily to convert between a pointer
-to metadata, an index into metadata, a physical address and a virtual address.
-Ideally there would be some way of automatically converting such macros into
-logical (ghost) functions, but this is difficult because macros can and do
-refer to global variables. Instead of converting macros to logical functions,
-it may be more fruitful to simply expand their use in specifications, but
-macros are not expanded in comments, where \kl{CN}'s annotations
-live.\sidenote{This is close to essential for maintaining compatibility with
-existing C tool chains.} \kl{CN} does have an experimental feature for lifting
-a C function into a logical one, with the idea being that writing a C function
-around a macro call is an option sometimes. All this being said, even if by
-hand, the benefit of defining logical equivalents of function-like macros is
-worthwhile for the readability, reliability and maintainability it brings.
+\paragraph{Function-like macros represent real abstractions (worked-around).}
+The \kl{buddy allocator} code uses function-like macros heavily to convert
+between a pointer to metadata, an index into metadata, a physical address and a
+virtual address. Ideally there would be some way of automatically converting
+such macros into logical (ghost) functions, but this is difficult because
+macros can and do refer to global variables. Instead of converting macros to
+logical functions, it may be more fruitful to simply expand their use in
+specifications, but macros are not expanded in comments, where \kl{CN}'s
+annotations live.\sidenote{This is close to essential for maintaining
+compatibility with existing C tool chains.} \kl{CN} does have an experimental
+feature for lifting a C function into a logical one, with the idea being that
+writing a C function around a macro call is an option sometimes. All this being
+said, even if by hand, the benefit of defining logical equivalents of
+function-like macros is worthwhile for the readability, reliability and
+maintainability it brings.
 
-\paragraph{Constant-like macros also represent real abstractions.} I spent a
-bit of time removing magic constants prevalent in the original proof. Part of
-this was just human inconsistency, part of this was two syntactic limitations
-of an earlier version of \kl{CN}. The first was that in that in top-level
-definitions, one could write \cninline{sizeof<struct hyp_page>}, but not in the
-specifications. The second was that step sizes in iterated predicates must be
-integer literals (rather than \cninline{sizeof<>} expressions). This was
-exacerbated by the fact that the size of \cinline{struct hyp_page} shrank
-between the versions from 32 to 4, and the size of its \cinline{.order} field
-shrank from \cinline{u32} to \cinline{u8}. Correspondingly, the constant
-\cinline{HYP_NO_ORDER} shrank from \cinline{UINT_MAX} (4294967295) to 255. All
-of these required several tedious updates to the code when a well-placed
-abstraction would have served well.
+\paragraph{Constant-like macros also represent real abstractions
+(worked-around).} I spent a bit of time removing magic constants prevalent in
+the original proof. Part of this was just human inconsistency, part of this was
+two syntactic limitations of an earlier version of \kl{CN}. The first was that
+in that in top-level definitions, one could write \cninline{sizeof<struct
+hyp_page>}, but not in the specifications. The second was that step sizes in
+iterated predicates must be integer literals (rather than \cninline{sizeof<>}
+expressions). This was exacerbated by the fact that the size of \cinline{struct
+hyp_page} shrank between the versions from 32 to 4, and the size of its
+\cinline{.order} field shrank from \cinline{u32} to \cinline{u8}.
+Correspondingly, the constant \cinline{HYP_NO_ORDER} shrank from
+\cinline{UINT_MAX} (4294967295) to 255. All of these required several tedious
+updates to the code when a well-placed abstraction would have served well.
 
 \paragraph{Multiple specifications/wrapper functions in annotations are
-necessary.} Adding wrapper functions is useful to break down the problem of
-relating complex global invariants down to more local ones required for
-manipulating fundamental data-structures. Whilst this was a useful verification
-strategy, to upstream such code would require the verification-only C functions
-to be removed, and replaced with annotation-only mechanisms.
+necessary (worked-around).} Adding wrapper functions is useful to break down
+the problem of relating complex global invariants down to more local ones
+required for manipulating fundamental data-structures. Whilst this was a useful
+verification strategy, to upstream such code would require the
+verification-only C functions to be removed, and replaced with annotation-only
+mechanisms.
 
 \paragraph{But also, allow wrapper functions to be inlined.} Requiring
 specifications for all top-level functions is useful in theory, but actually
@@ -810,7 +816,7 @@ increases the cost of using them when verifying code. Allowing functions to be
 verified by inlining at call site, rather than by specification, would
 alleviate this, although of course, this would be open to abuse too.
 
-\paragraph{Explicit ghost parameters and arguments are necessary.} Changing the
+\paragraph{Explicit ghost parameters and arguments are necessary (completed).} Changing the
 C code by adding unused parameters to support proof would not be acceptable in
 almost all large, real-world code bases. Reifying ghost parameters complicates
 specifications in tangible ways too: Adding a page to the free list requires
@@ -838,29 +844,36 @@ on the allocation pool of the hypervisor is sometimes broken at one or two
 indexes, and there is no simple way to express this in the current syntax. This
 not only causes duplication of top-level predicates, but it also causes many
 conditions to be inlined into annotations, such as loop invariants, making them
-less readable and less understandable.
+less readable and less understandable. For example, if a predicate \cninline{P}'s
+definition includes \cninline{take H = spec;}, then one can imagine writing
+\cninline|take V = { P(arg) with take H = spec'; }; | % chktex 26 chktex 36
+(reminiscent of OCaml's record-update syntax) to `override' the use of \cninline{H}
+in the definition of \cninline{P}, subject to appropriate static specification
+checks.
 
 \subsection{Handling large changes}\label{subsec:handling-large-changes}
 
 \paragraph{Substantial changes should be opt-in/gated underneath a flag.}
-\kl{CN}'s transition to bit vectors was to support reasoning about \kl{pKVM}'s
-page table code, which used bit manipulation extensively, without resorting to
-lemmas frequently. However, the change was compulsory, rather than optional,
-and it left updating the \kl{buddy allocator} high and dry, rather than turned
-on after understanding the specification and performance overhead.
+\kl{CN}'s transition to bit-vectors was to support reasoning about \kl{pKVM}'s
+page table code, which manipulated bits extensively, without resorting to
+lemmas everywhere. The changes required to the code were pervasive, and because
+we incorrectly assumed the \kl{buddy allocator} verification would be easy to
+port, there was no desire to deliver the feature piecemeal and opt-in. This was
+a costly error, not only for updating the \kl{buddy allocator} verification,
+but also for maintaining \kl{CN}'s speed.
 
 \paragraph{Syntax changes should be opt-in/gated underneath a flag.} The update
-to bit vectors changed the syntax of integer types too, and this was tedious to
+to bit-vectors changed the syntax of integer types too, and this was tedious to
 update manually. Either refactoring tools for specifications need to be
 developed to assist with this, or changes need to be brought in less abruptly.
 
-\paragraph{Constraints on bit vectors should exclude overflow.} With integers,
+\paragraph{Constraints on bit-vectors should exclude overflow.} With integers,
 it is possible to constraint $a$ by constraining $a \times{} 4096$, with bit
-vectors, it is not. Thus, by default, specifications on bit vectors parameters
+vectors, it is not. Thus, by default, specifications on bit-vectors parameters
 (including addresses of pointers) need to be phrased in terms of the original
 variables rather than on subsequent expressions which could overflow. This also
 hints a relatively simple scheme for translating specifications on integers
-into bit vectors.\sidenote{Refinement types for refinement types.}
+into bit-vectors (\cref{sec:integers-bitvectors}).
 
 \subsection{Error messages}
 
