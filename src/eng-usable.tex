@@ -1,4 +1,4 @@
-\chapter{\kl{CN} Comparison and Feedback}
+\chapter{\kl{CN} Comparison and Feedback}\label{chap:comparison-feedback}
 
 \margintoc{}
 
@@ -326,8 +326,8 @@ workflow.
 There are indications that \kl{CN} is on the right track, and these are the
 sorts of advantages that need to be trumpeted when pitching and evolving CN.\@
 Industry developers care about \emph{``specific security concerns''} such as
-\emph{input validation, memory safety on embedded systems, and maths-heavy
-algorithms}. Even for non-embedded systems, \kl{CN} would do well to develop
+\emph{``input validation, memory safety on embedded systems, and maths-heavy
+algorithms''}. Even for non-embedded systems, \kl{CN} would do well to develop
 tools and user interfaces which demonstrate the step-change advantage of
 exhaustive verification, above test-based memory safety tools such as Valgrind.
 
@@ -374,7 +374,7 @@ to the next chapter.
         input-validation, memory safety beyond current tools, and concurrency.
 \end{itemize}
 
-\chapter{Not-so-great expectations}
+\chapter{Not-so-great expectations}\label{chap:expectations}
 
 \margintoc{}
 
@@ -382,9 +382,9 @@ In the last chapter, I compared \kl{CN} to some relevant tools in the space. A
 notable omission was \kl{VST}, mostly due to lack of time and expertise for a
 fair comparison. I also presented industry feedback on \kl{CN}. Based on my
 experience of having worked on programming language tooling both in industry
-and in academia, I will synthesise the two and lay out what I believe are
-achievable standards of usability for \kl{CN}, with an emphasis on how new
-projects can avoid several pitfalls.
+and in academia, I will synthesise the two and lay out achievable standards of
+usability for \kl{CN}, with an emphasis on how new projects can avoid several
+pitfalls.
 
 \section{Work backwards from examples}
 
@@ -433,6 +433,16 @@ saved by inferring indices.}, or the switch to the monadic syntax
 would have benefited from scrutiny prior to implementation.
 
 \subsection{Calling conventions affect syntax}
+
+% Even with reasonable input, the challenges continue. One of the early
+% challenges \kl{CN} faced was that of allocation for function arguments. Though
+% intuitively, a programmer might model allocations for parameters as being
+% created by the \emph{callee}, early versions of \kl{CN} relied on
+% \kl{Cerberus}' elaboration allocating storage for function arguments at the
+% \emph{caller}, per callsite. This significantly degraded the experience of
+% writing specifications and proofs because the programmer had to specify that
+% functions did not mutate arguments at the callsite. Kayvan Memarinan fixed this
+% by creating a parallel mode of elaboration to support the more intuitive model.
 
 By default, \kl{Cerberus} elaborates calls to C functions by allocating and
 initialising parameters \emph{at the call site} and then \emph{passing
@@ -616,6 +626,12 @@ developer can apply \emph{across some or all of the affected files} if the
 change is expected.
 
 \subsection{Profile early and often, at the right level}\label{subsec:profile}
+
+% Aside from this, even in the absence of \kl{VIP} related performance issues,
+% \kl{CN} is still about an order of magnitude slower than we would like it to
+% be, though the causes of this are not clear, the plan of being able to rely
+% on performant SMT solvers with decidable queries has not paid off quite as
+% well as we would have liked.
 
 A slow heavily-automated verification tool is basically an unusable
 verification tool, and the lack of good performance measurement makes it
@@ -805,6 +821,11 @@ been useful regarding \kl{CN}'s development.
 \end{itemize}
 
 \section{Get source locations right}
+
+% As result of this failed attempt, I came to appreciate all the above. I ended
+% up spending about one month plumbing through source location information
+% throughout the core datatype in \kl{CN}, as well as fixing the lexer and
+% parser to be more robust and have extensible error messages.
 
 Source location information is the fundamental building block of a useful error
 message, without which an error is close to useless. Unfortunately, early
