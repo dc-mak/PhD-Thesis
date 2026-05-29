@@ -89,10 +89,11 @@ the root of the problem will remain to handle labels and \cinline{goto}s in C.
 Hence a prinicipled solution is desirable, and would be useful to ensure
 our handling of the common cases is sound.
 
-A \emph{potential} solution is to adjust the grammar and elaboration of
-\kl{Core} to borrow an idea from an inductive representation of SSA, based on
-work by~\sidetextcite{ghalayini2024denotational}: represent
-\emph{dominance-based scoping} as \emph{lexical scoping}.
+The solution\sidenote{Implemented in \href{https://github.com/rems-project/cerberus/pull/1005}{Cerberus\#1005}.}
+is to augment the grammar of \kl{Core} to borrow an idea from an
+inductive representation of SSA, based on work
+by~\sidetextcite{ghalayini2024denotational}: represent \emph{dominance-based
+scoping} as \emph{lexical scoping}.
 
 \begin{quote}
 \emph{%
@@ -373,9 +374,23 @@ Notably absent, $\cnkw{let}\ \cnkw{strong}$ or $\cnkw{bound}$ expressions
 delayed actions to be evaluated and any races to checked before proceeding.
 
 Though unusual, the constructs and rules are simple. One straightforward
-approach to typing could be to split resource types into positive and negative.
-Negative resources are not usable, and are converted into positive ones after a
-$\cnkw{let}\ \cnkw{strong}$ or a $\cnkw{bound}$ expression.
+approach to typing would be to take advantage of the fact that negative actions
+are only ever used for stores. Thus, in addition to indexing the points-to
+predicate $\cnkw{Owned}$ by the C type ($\tau$) and the initialisation status
+($✓$, $\uninitCross$), we track whether it is \emph{delayed} or an
+\emph{immediate}. Next, we annotate each resource in the context with a usage
+annoation (we need 0 and 1 at the very least). With that, the typing rules
+become:
+\begin{itemize}
+    \item Negative stores consume an immediate $\cnkw{Owned}$, but return a
+        delayed one (with usage 1).
+    \item $\cnkw{let}\ \cnkw{weak}$ marks all delayed, usage 1 $\cnkw{Owned}$s
+        returned by $E_1$ with usage 0 for checking $E_2$.
+    \item $\cnkw{let}\ \cnkw{strong}$ marks all delayed, usage 0 $\cnkw{Owned}$s
+        returned by $E_1$ with usage 1 for checking $E_2$.
+    \item A bound expression changes all delayed $\cnkw{Owned}$s returned by
+        its argument expression into immediate ones.
+\end{itemize}
 
 \section{Join-points}
 
@@ -537,6 +552,11 @@ Going from integers to bit-vectors is difficult because the process is
 fundamentally partial, i.e.\ it is only defined for a certain inputs under
 certain conditions, however SMT expressions must be total.
 
+To solve this, I am now going to define precise what I mean by `integer world',
+`bit-vector world', and then define a mapping from one expression in the
+former, to a pair of an in-bounds constraint and equivalent expression and in
+the latter.
+
 Let $\beta$ be the basetypes in the bounded bit-vector world. Let $\iota$ be
 the basetypes in the unbounded integer world. Let $\cnkw{num} \mathrel{{:}{=}}
 \cnkw{int} \mid \cnkw{bit}$ be a parameter for the following. Let
@@ -560,9 +580,9 @@ Let $\mathrm{Decls}$ be a context with declaration types of pure SMT functions
 (in CN, defined with the $\cnkw{function}$ keyword). The judgement
 $\mathrm{Decls} ; \Gamma \vdash t_{\cnkw{int}} \Rightarrow \iota$  means that
 under declarations $\mathrm{Decls}$ and context $\Gamma$, expression in the
-integer world $t_{\cnkw{int}}$ has type $\iota$. $\mathrm{Decls}$ is a map from
-function names to function types, $\Gamma$ is a map from parameters and local
-variables to types.
+source integer world $t_{\cnkw{int}}$ has type $\iota$. $\mathrm{Decls}$ is a
+map from function names to function types, $\Gamma$ is a map from parameters
+and local variables to types.
 
 {\small%
 \[
@@ -571,8 +591,8 @@ variables to types.
   { \mathrm{Decls} ; \cdot \vdash \cnkw{function}\ (\iota)\ f(\iota_1 x_n, \ldots, \iota_n x_n) \, \{ \, t_{\cnkw{int}} \,\} \Rightarrow \iota_1 \times \cdots \times \iota_n \rightarrow \iota }
 \]}
 
-For bit-vectors, the setup is similar, except recursive functions, have named
-recursive constraints, named $f_b$.
+For the target bit-vector world, the setup is similar, except recursive
+functions, also have named recursive constraints, named $f_b$.
 
 Note that the bottom-rule has \emph{two} function definitions: the first one is
 the precondition, assuming which, the second gives the same result as the
@@ -599,8 +619,9 @@ original (integer-world) function.
 \]}
 
 I will use $\rightsquigarrow$ to define a mapping from the integer world to the
-bit-vector world. For example, the mapping between types, from $\iota$ to
-$\beta$, would be along the lines of the below.
+pair of bound-constraint and expression in the bit-vector world. For example,
+the mapping between types, from $\iota$ to $\beta$, would be along the lines of
+the below.
 
 {\small
 \begin{align*}
@@ -894,7 +915,10 @@ discuss the remaining aspects here.
         variables and expressions, akin to the \kl{LLVM} memory-to-register
         pass (mem2reg), would reduce the amount of resource inference,
         bounds-checking, disjointness reasonsing required of the \kl{SMT}
-        solver.
+        solver.\sidenote{Implemented in \href{https://github.com/rems-project/cerberus/pull/1003}{Cerberus\#1003}.
+            Preliminary experiments show improvement but not by a large amount,
+            perhaps due to pre-existing, syntactic fast path in the resource
+            context lookup code. It remains useful usability.}
     \item \textbf{Use ownership typing.} Whilst low-level systems C code relies
         on aliasing pointers, most code and most pointers are not aliasing. Hence,
         a more restrictive discipline handled quickly for those common
