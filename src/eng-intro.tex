@@ -14,13 +14,24 @@ elegant as some of the material in prior parts, this is where just as
 much, if not more, of the difficulty lies in achieving \kl{CN}'s goal of being
 maintainable by kernel programmers (\cref{sec:cn-goals}).
 
-My contributions in this part are the following.
-
 In~\fancyref{chap:tree-carver}, I describe why and how I developed a tool to
 filter and carve out parts of a large C source tree, whilst preserving all
 comments, including \kl{CN} annotations.
 
-In~\fancyref{chap:buddy}, I describe both the successes and failures of
+% In this chapter, I will explain why we need a tree-carver for C repositories;
+% I will recount the mounting challenges we faced scaling \kl{Cerberus} to
+% handle large repositories. After that, I will explain the features of C which
+% make this a particularly challenging endeavour, mostly centred on macros and
+% the C preprocessor. I will also explain the downsides of inputting preprocessed
+% C code into verification tools such as \kl{CN}. Lastly, I will show how,
+% extending prior work significantly, I built a Clang-based tool which meets
+% almost all the requirements we sought, enough to not be the primary bottleneck
+% to verifying code in large projects anymore. Lastly, I will explain the
+% limitations of the current approach (struct fields, cross-translation-unit
+% carving), and ways this may be remedied in the future.
+
+
+In~\fancyref{chap:buddy}, I describe both my successes and failures of
 \emph{updating} an already completed \kl{CN} verification to handle
 improvements to the C implementation itself (real world C code does not stay
 frozen in time), and new \kl{CN} features.
@@ -57,18 +68,17 @@ for \kl{CN}, with an emphasis on how new projects can avoid several pitfalls.
 
 \margintoc{}
 
-In this chapter, I will explain why we need a tree-carver for C repositories,
-by referring to the mounting challenges we were facing scaling \kl{Cerberus} to
+In this chapter, I will explain why we need a tree-carver for C repositories;
+I will recount the mounting challenges we faced scaling \kl{Cerberus} to
 handle large repositories. After that, I will explain the features of C which
 make this a particularly challenging endeavour, mostly centred on macros and
-the C preprocessor. I will also explain why it is very desirable to \emph{not}
-input preprocessed C code into verification tools such as \kl{CN} (constants,
-and column information). Lastly, I will show how, extending prior work
-significantly, I built a Clang-based tool which meets almost all the
-requirements we sought, enough to not be the primary bottleneck to verifying
-code in large projects anymore. Lastly, I will explain the limitations of the
-current approach (struct fields, cross-translation-unit carving), and ways this
-may be remedied in the future.
+the C preprocessor. I will also explain the downsides of inputting preprocessed
+C code into verification tools such as \kl{CN}. Lastly, I will show how,
+extending prior work significantly, I built a Clang-based tool which meets
+almost all the requirements we sought, enough to not be the primary bottleneck
+to verifying code in large projects anymore. Lastly, I will explain the
+limitations of the current approach (struct fields, cross-translation-unit
+carving), and ways this may be remedied in the future.
 
 \section{Need for tree-carving}
 
