@@ -1,27 +1,28 @@
 % vim: ft=tex
 \chapter{Introduction}\label{chap:intro}
 
+\margintoc%
+
 \emph{“Our goal as computer scientist today, is to design the legacy systems of tomorrow.”}
 \vspace{-1.5em}
 \begin{flushright}
 \cite[][Timothy G.\ Griffin]{griffin2017legacy} % chktex 2
 \end{flushright}
 
-\margintoc%
-
 \section{Context}
 
 On the 1\nth{9} of July, 2024, 8.5 million Windows computers inside banks, airlines, TV
 broadcasters, supermarkets and many other businesses suffered the infamous `Blue Screen of
 Death' after (ironically) a faulty security update from cybersecurity
-provider CrowdStrike was released~\cite{verge2024crowdstrike}.
+provider CrowdStrike was released.
 
 Even though it took only 78 minutes between when the issue was identified and
 rectified, the ensuing chaos and disruption lasted hours if not days, as getting
-the fix on affected machines and restarting complex systems was very difficult.
+the fix on affected machines and restarting complex systems was very
+difficult~\sidecite{verge2024crowdstrike}.
 Although not as important as the human cost, the total financial cost in terms
 of downtime for businesses was estimated by one insurer to be between 5 and 9
-billion USD~\cite{fitch2024crowdstrike}.
+billion USD~\sidecite{fitch2024crowdstrike}.
 
 To explain what went wrong, I need to outline some key concepts. An
 \intro[OS]{operating system} (OS), such as iOS, macOS, Windows or Ubuntu, is
@@ -50,7 +51,7 @@ this did not pose a multi-million computer, multi-billion dollar risk: both
 hardware and software were much rarer, simpler and more trusted.
 
 Cyber-security providers like CrowdStrike are written in \kl{systems
-programming languages} and run at the kernel level\sidenote{A technically
+programming languages} and run at a kernel level\sidenote{A technically
 questionable design choice, likely motivated by other factors.} to scan and
 protect computers at a fundamental level, but this great power comes with great
 responsibility, since, as we witnessed, the risks of an error is magnified
@@ -168,7 +169,7 @@ why?  What will it print?
 If one is under the impression that C pointers and integers are interchangeable,
 one may be surprised to learn (a) the program has undefined behaviour, because
 the pointer \cinline{p} is not constructed in a ``reasonable'' way
-(\fancyref{chap:mem-model-explained}) (b) it can print 5, because the compiler
+(\fancyref{chap:mem-model-explained}), (b) it can print 5, because the compiler
 may assume that \cninline{p} cannot alias the local variable \cinline{i}, and
 thus perform constant propagation over the assignment.
 
@@ -243,7 +244,7 @@ result as \cinline{xs}.
 \subsection{Verification with Separation Logic}\label{sec:sep-logic-intro}
 
 To prove properties about imperative programs, \kl{CN} tugs on a thread of
-ideas woven in the late 1960s courtesy of~\sidetextcite{hoare1969axiomatic}
+ideas spun in the late 1960s by~\sidetextcite{hoare1969axiomatic}
 and~\sidetextcite{floyd1993assigning}.
 
 The basic setup is a triple of $\{A\} \; C \; \{A'\}$, where $A$ is a
@@ -291,17 +292,17 @@ terms, and so I will abuse notation and write $E_1 \mapsto E_2$.
 \cncom{predicates}    & $P$ & $\mathrel{{\Colon}{=}}$ & $ t = t' \mid{} t \mapsto{} t' \mid{} p(t_1, \ldots, t_n)$ \\ % chktex 36
 \cncom{assertions}    & $A$ & $\mathrel{{\Colon}{=}}$ & $ \bot{} \mid{} \top{} \mid{} P \mid{} A \wedge{} A' \mid{} A \vee{} A' \mid{} A \Rightarrow{} A'$ \\
                       &     &                         & $ \forall{} x.\ A \mid{} \exists{} x.\ A$ \\
+\\
 \end{tabular}%
 \caption{Grammar for $\textsc{Cmd}_p$ language and assertions. It has
-    sequencing ($C; C'$) for control-flow, a class of boolean expressions
-    $B$ for conditions, and a class of arithmetic expressions $E$ as data,
-    and mutable, stack-based variables $X$. It also includes constructs for
-    allocating and initialising contiguous memory cells ($\cnkw{alloc}(E_1,
-    \ldots, E_n)$), as well as loading ($X \coloneq{} [E]$), storing ($[E]
-    \coloneq{} E'$), and deallocating ($\cnkw{free}(E)$) them. Assertions
-    are first-order logic extended with mathematical terms and predicates.
-    The predicate $t \mapsto{} t'$ states that the location $t$ holds value
-    $t'$.}\label{fig:cmdp-grammar}
+    sequencing ($C; C'$), boolean expressions $B$, and expressions $E$, and
+    stack-based (mutable) variables $X$.
+    It supports manipulating memory cells via allocation and
+    initialisation ($\cnkw{alloc}(E_1, \ldots, E_n)$), loading ($X \coloneq{}
+    [E]$), storing ($[E] \coloneq{} E'$), and deallocating ($\cnkw{free}(E)$)
+    them. Assertions are first-order logic extended with mathematical terms and
+    predicates. The predicate $t \mapsto{} t'$ states that the location $t$
+    holds value $t'$.}\label{fig:cmdp-grammar}
 \end{figure}
 
 Semantically, arithmetic expressions denote values in $\mathbb{N}$, and boolean
@@ -336,6 +337,7 @@ constancy.
 \inferrule[{[Consequence]}]
     { \vdash{} A_1 \Rightarrow A_2 \\ \vdash{} \{\, A_2 \,\} \; C \; \{\, A'_2 \,\} \vdash{} A'_2 \Rightarrow A'_1 }
     { \vdash{} \{\, A_1 \,\} \; C \; \{\, A'_1 \,\}}
+\\
 \end{mathpar}
 \caption{Some inference rules for the $\textsc{Cmd}_p$ language. The
     \textsc{Skip} rule says that any assertion which holds before a
@@ -614,19 +616,18 @@ of the absence of three things.
 \begin{enumerate}
     \item An \emph{accurate} mathematical model of C, including all its
         subtleties.
-    \item An \emph{expressive} separation logic, to support complex reasoning
-        patterns.
-    \item An mechanisation of the two, with an emphasis on \emph{automation}.
+    \item An \emph{expressive} separation logic, to support complex reasoning.
+    \item A mechanisation of the two, with an emphasis on \emph{automation}.
         Keeping precise track of the above in their entirety would be tedious
         and error-prone, and so a mechanisation enables creating re-usable
         tools.
 \end{enumerate}
 
 Though contemporary mechanised frameworks for separation
-logic~\sidecite{appelSF5,sammler2021refinedc,jacobs2011verifast} satisfy the
-second and third criteria to varying degrees, they fall short on the first
-because they use an ad-hoc implicit model of C, rather than an explicit,
-\emph{empirically validated} one.
+logic~\sidecite{appelSF5,sammler2021refinedc,jacobs2011verifast,maksimovic2021gillian,divincenzo2025gradual}
+satisfy the second and third criteria to varying degrees, they fall short on
+the first because they use an ad-hoc implicit model of C, rather than an
+explicit, \emph{empirically validated} one.
 
 \subsection{CN:\ C, No bugs!}\label{sec:cn-intro}
 
@@ -636,8 +637,8 @@ Elizabeth Austell.} in its \intro{proof mode}\sidenote{There are other modes to
 \kl{CN}, most notably instrumentation and test generation, which I will mostly
 ignore.} is a verification tool whose aspirational goal is to lower the prerequisites
 for C verification from a Rocq~\sidecite{CDT2024} programmer who knows separation
-logic to a systems programmer who knows
-Haskell~\sidecite{haskell}.\sidenote{This pithy wording is courtesy of Neel
+logic to a systems programmer who is proficient with
+functional programming.\sidenote{This pithy wording is courtesy of Neel
 Krishnaswami.} It is designed to be used on pre-existing C programs (so they are
 not written or structured in a way to be verified beforehand). Before I explain
 how it \emph{works}, I will first explain how it is \emph{used}.
@@ -671,7 +672,7 @@ acceptable (\cref{fig:un-incr}).
 The wording of the error message is inherited from \kl{Cerberus}, and shows its
 origins as a formal, executable specification for \kl{ISO} and \kl{de facto}
 \kl{C}. In particular, it points to the relevant section of the standard which
-has been violated, and uses jargon (``exceptional condition'') to indicate that
+has been violated, and uses its terminology (``exceptional condition'') to indicate that
 there are values of \cinline{x} for which executing this function would result
 in \kl{UB}. Because of the \intro{per function} checking, the violation is not
 guaranteed, but \emph{possible}. Specifically, it is considered an error
@@ -878,18 +879,19 @@ based on the assertions in its context at a particular program point.
 \kl{CN} is a large project, incorporating
 \kl{Cerberus}~\sidecite{memarian2022cerberus}, proof~\sidecite{pulte2023cn},
 specification testing~\sidecite{banerjee2025fulminate} and
-fuzzing~\sidecite{amer2025bennet}. Contributors span the universities of the
-Cambridge, Pennsylvania, and Oxford, with prior support and use from industry
-partners at Galois and BAE Systems. Within this, my contributions are
-three-fold: \fancyref{part:formalisation}, \fancyref{part:mem-model},
-\fancyref{part:engineering}.
+fuzzing~\sidecite{amer2025bennet}, all of which enable integrating
+specification and proof into existing workflows\sidecite{aamer2026code}.
+Contributors span the universities of the Cambridge, Pennsylvania, and Oxford,
+with prior support and use from industry partners at Galois and BAE Systems.
+Within this, my contributions are three-fold: \fancyref{part:formalisation},
+\fancyref{part:mem-model}, \fancyref{part:engineering}.
 
 \subsection{Formalisation of \kl{CN}}
 
-\kl{CN}'s \kl{proof mode} was initially developed by Christopher Pulte and
-Thomas Sewell with the goal of verifying of a \kl{buddy allocator} (used in the
-\kl{pKVM} hypervisor). The buddy allocator is challenging to verify due to its
-frequent use of aliasing (in fact, computed) pointers and random-acessed
+\kl{CN}'s \kl{proof mode} was primarily developed by Christopher Pulte and
+Thomas Sewell, using a \kl{buddy allocator} (used in the \kl{pKVM} hypervisor)
+as its only guiding test. The buddy allocator is challenging to verify due to
+its frequent use of aliasing (in fact, computed) pointers and random-acessed
 arrays. Features were added to \kl{CN} only if they aided in verifying the
 \kl{buddy allocator}. Though this was successful, it had the unintended
 consequence of over-fitting the implementation to the example.
@@ -904,22 +906,20 @@ unfolding for logical functions (\cref{chap:inform-impl}).
 My contributions in this part include:
 \begin{itemize}
     \item A formalisation of the link between the surface syntax of \kl{CN} and
-        the formal presentation in this thesis.
-    \item A grammar of resource terms for bookkeeping resource operations.
-    \item \kl{ResCore}: A let-normal form of \kl{Cerberus}' \kl{Core} with
-        reified resources.
-    \item A novel, modular heap definition in a dynamic semantics for \kl{ResCore}.
+        the formal presentation in this thesis (\cref{chap:formal-background}).
+    \item \kl{ResCore}: a let-normal form of \kl{Cerberus}' \kl{Core} with
+        reified resources and book-keeping (\cref{chap:kernel-grammar}).
     \item \kl{Kernel CN}: A formal definition of a bidirectional,
-        \kl{separation logic}, \kl{refinement type} system for \kl{ResCore}.
+        \kl{separation logic}, \kl{refinement type} system for \kl{ResCore}
+        (\cref{chap:kernel-statics}).
     \item A formalisation of two inference algorithms used by \kl{CN}, one for inferring
         instantiations of logical (ghost) quantifiers and one for inferring
-        indices for \kl{iterated} predicates.
-    \item A proof of soundness of \kl{Kernel CN} with respect to the
-        \kl{ResCore} dynamic semantics.
-    \item An experience report on (a) iterating on the design of a very large type
-        system using Ott~\sidecite{sewell2010ott} and (b) feeding back insights
-        from the theory to the implementation, on which features to implement
-        and how.
+        indices for \kl{iterated} predicates (\cref{sec:elaboration}).
+    \item A proof of soundness of \kl{Kernel CN}, including a novel, modular
+        heap definition in the \kl{ResCore} dynamic semantics
+        (\cref{chap:kernel-soundness}).
+    \item Insights fed back from the theory to the implementation, on which
+        features to implement and how (\cref{chap:inform-impl}).
 \end{itemize}
 
 \subsection{Memory object model: design, formalisation and implementation}
@@ -939,20 +939,22 @@ cost of \kl{CN} becoming harder and slower to use.
 
 My contributions in this part include:
 \begin{itemize}
-    \item An exploration of the design space and trade-offs when designing a
-        type system for real-world memory object models.
-    \item An in-depth discussion about soundly supporting pointer equality in
-        the presence of observed, non-deterministic pointer equality.
-    \item The formalisation of \kl{CN-VIP}, focusing on its modular integration into
-        \kl{Kernel CN} and \kl{ResCore}.
-    \item A proof of soundness of \kl{CN-VIP}, with respect to the VIP dynamic semantics.
+    \item An exploration of the design space and trade-offs of a
+        type system for a real-world memory object
+        model (\cref{chap:mem-model-explained}).
+    \item An in-depth discussion about soundly supporting non-deterministic
+        pointer equality (\cref{subsec:non-det-ptr-eq}).
+    \item A discussion on the difficulty of supporting byte-level provenance
+        and round-trip casts in \kl{CN} (\cref{subsec:prov-int-bytes}).
+    \item The formalisation of \kl{CN-VIP}, focusing on its modular integration
+        into \kl{Kernel CN} and \kl{ResCore} (\cref{chap:cn-vip}).
+    \item A proof of soundness of \kl{CN-VIP}, with respect to the VIP dynamic
+        semantics (\cref{sec:cn-vip-soundness}).
     \item A walk-through of the implementation of \kl{CN-VIP}, along with the
-        approach required to integrate it without causing pain to myself, other
-        developers or users.
-    \item A discussion on the problems with supporting byte-level provenance
-        and round-trip casts in \kl{CN}, potential resolutions and trade-offs.
+        approach required to integrate it smoothly (\cref{chap:impl-cnvip}).
     \item A roadmap on the integration of mechanised, sound resourceful lemmas
-        into \kl{CN} inspired by the design of \kl{CN-VIP}.
+        into \kl{CN} inspired by the design of \kl{CN-VIP}
+        (\cref{sec:better-foundations}).
 \end{itemize}
 
 \subsection{Engineering: will the real world C, please stand up?}
@@ -982,19 +984,17 @@ My contributions in this part include:
         to be applied to \emph{parts} of a large code-base without manually
         removing them, even if the whole uses features that \kl{Cerberus} does
         not support. For example, we have used it to run \kl{CN} directly on
-        files from the Linux repository.
-    \item \emph{An experience report}, on updating an existing proof of a \kl{buddy
-        allocator} (used in the \kl{pKVM} hypervisor) to work with (a)
-        changes to the C implementation (b) an early version of CN-VIP and (c)
-        a change to \kl{CN} to represent integers as bit-vectors. Ports
-        for the first two succeeded, but, due to poor source location
-        information, poor proof migration path and performance degradation,
-        this port failed.
-    \item \emph{A summary and discussion of valuable feedback}, from industry
-        partners Galois and BAE Systems.
-    \item \emph{A discussion of major issues related to developer- and
-        user-experience}, with reference to the their technical origin and if
-        they exist, solutions.
+        files from the Linux repository (\cref{chap:tree-carver}).
+    \item Updates to an existing proof of a \kl{buddy allocator} (used in the
+        \kl{pKVM} hypervisor) to work with (a) changes to the C implementation
+        (b) an early version of CN-VIP and (c) a change to \kl{CN} to represent
+        integers as bit-vectors. The first two updates succeeded, but for
+        multiple reasons the last one failed (\cref{chap:buddy}).
+    \item A summary and discussion of valuable feedback from industry
+        partners Galois and BAE Systems (\cref{sec:industry-feedback}).
+    \item A discussion of major issues related to developer- and
+        user-experience, with reference to the their technical origin and if
+        they exist, solutions (\cref{chap:expectations,chap:future-directions}).
 \end{itemize}
 
 \subsection{Contributions in published papers}
@@ -1122,8 +1122,9 @@ carrying an integer value and a pointer to the next node, or \cinline{NULL}.
         \cnpredXXname{}\cninterrule{}
         \cninit{}\cnafterlastrule{}
     }
-    \caption{Idealised syntax of CN, modified for presentation and later discussion.
-    Modifications include: writing {\footnotesize$[[Owned<Init,ct>]]$} and
+    \caption{Idealised syntax of CN, modified (with respect to the
+    implementation) for presentation. Modifications include: writing
+    {\footnotesize$[[Owned<Init,ct>]]$} and
     {\footnotesize$[[Owned<Uninit,ct>]]$} instead of \cninline{RW<τ>} and
     \cninline{W<τ>} respectively; explicitly binding the return value in the
     \cninline{ensures} clause, with an identifier $y$, rather than assuming it
@@ -1179,8 +1180,8 @@ $[[ each (base_type x; iguard) { a ( array_shift <ct>(yp , x) , iargs ) }]]$. % 
     \item $[[ iargs ]]$ are logical/SMT arguments.
 \end{itemize}
 
-Predicate names $[[a]]$ are either: \cninline{RW<τ>}/\cninline{W<τ>} (encoded as
-$[[Owned<Init,ct>]]$/$[[Owned<Uninit,ct>]]$ in the grammar
+Predicate names $[[a]]$ are either: \cninline{RW<τ>} / \cninline{W<τ>} (encoded
+as $[[Owned<Init,ct>]]$ / $[[Owned<Uninit,ct>]]$ in the grammar
 in~\cref{fig:cn-grammar}) representing the ability to read-and-write/write an
 initialised/uninitialised location on the heap; an \cninline{Alloc} representing
 (permission to free) an allocation; or a user-defined predicate.
@@ -1394,7 +1395,7 @@ Under the hood, \kl{CN} begins to check a function by placing the resources
 from the precondition into an ambient \emph{context}. Inside a function, a
 pointer \cninline{q} may only be dereferenced if there is a \cninline{RW(q)} % chktex 36
 in the context. However, the context at the beginning of \cninline{pop_queue}
-does not have that exactly; \cninline{QueuePtr_At(q)} is defined as a % chktex 36
+has \cninline{QueuePtr_At(q)}, which is defined as a % chktex 36
 \emph{conditional} resource, branching on whether \cninline{q->front} is
 \cinline{NULL} or not.
 
