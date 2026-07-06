@@ -157,7 +157,7 @@ It is not `natural' code one would expect programmers to write; rather, it
 illustrates aliasing rules a compiler may assume. It guesses that
 \cinline{ADDRESS_PFI_1I} is the address of a variable local to function
 \cinline{f}, and passes that guess in as an argument \cinline{f(j)}.% chktex 36
-Inside the function, it declares a local variable \cinline{i} and then creates
+ Inside the function, it declares a local variable \cinline{i} and then creates
 a pointer \cninline{p} from the argument. If this new pointer is equal to the
 address of the local variable, it writes to that location (\cinline{if (p ==
 &i) *p=7;}).  The value of the local variable is then printed.
@@ -1089,6 +1089,37 @@ complement the dynamic semantics presented in the paper, to explore which
 complexities of a type system for C may be inherent, and which are specific to
 the approach I took.
 
+Lastly,~\sidetextcite{aamer2026code} demonstrates how one might extend
+conventional C software development practice by using \kl{CN}'s rich
+specification language for runtime assertion checking, property-based testing,
+and for formal machine-checked proof, with each of these complementing and
+supporting the others. They demonstrate all this on a component of a production
+hypervisor. I summarise its stated contributions below, highlighting in
+\text{bold} my work.
+
+\begin{itemize}
+    \item Numerous improvements to Fulminate: support for partial
+        specifications, runtime checking for loop invariants and CN lemmas,
+        greater coverage of C features, and improved performance.
+    \item Support for ghost arguments to the \kl{CN} specification language,
+        Fulminate runtime testing, and \kl{CN} proof.
+    \item Improvements to \kl{CN} proof performance.
+    \item A new property-based testing tool, Darcy, that uses SMT solvers to
+        generate test inputs for complex \kl{CN} specifications, helpful for
+        finding mismatches between specification and code.
+    \item \textbf{Tree-carver tooling to suppress unused parts of the large
+        Linux header files recursively included by the code.} I discuss this in
+        \fancyref{chap:tree-carver}.
+    \item A demonstration of the test-driven specification's ability to find
+        many specification bugs, and four bugs in the production hypervisor
+        implementation.
+    \item A \kl{CN} correctness proof of the hypervisor's allocator, which they
+        clai was eased by the fact that well-tested specifications do not
+        contain few trivial incorrect specifications, allowing the user to
+        focus on the essential difficulties of the proof, such as proving
+        (well-tested) inductive lemmas.
+\end{itemize}
+
 \chapter{Example: queues in CN}
 
 \margintoc{}
@@ -1192,7 +1223,7 @@ where $[[spec]]$ must terminate with a $[[return term]]$. First is a
 return \intro{base type} $[[base_type]]$, then a name $[[id]]$, and a list of % chktex 25
 parameters $[[base_type1]]\, [[id1]] , {.}{.} , [[base_typek]]\, [[idk]]$. % chktex 25
 The implementation restricts $[[spec]]$ to have no nesting beyond a single top-level
-\cninline{if}.\sidenote{\url{https://github.com/rems-project/cerberus/issues/266}}
+\cninline{if}.\sidenote{\href{https://github.com/rems-project/cerberus/issues/266}{Cerberus\#266}}
 
 \section{Queue definitions}
 

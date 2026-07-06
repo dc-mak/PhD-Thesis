@@ -11,7 +11,7 @@ I have covered a large amount of background to the type system so far:
 separation logic assertions, monadic syntax for the latter and its relation to
 kernel syntax for types, let-normalisation and explicit resource terms in
 \kl{ResCore}. I use all of these ingredients in defining the type system for
-\kl{kernel CN} that I will explain in this chapter. Some of the sections will
+\kl{Kernel CN} that I will explain in this chapter. Some of the sections are
 based on my contributions to~\textcite{pulte2023cn}.%
 
 \intro{Kernel CN} is a formalism for \kl{CN} which assumes that universal
@@ -38,8 +38,8 @@ elaboration algorithms: one for inferring instantiations of logical
 quantifiers, one for inferring indices for \kl{iterated} predicates. Note that
 precise inference scheme used by \kl{CN}'s implementation is frequently
 changing; \sidenote{See
-    \href{https://github.com/rems-project/cerberus/commit/7c2c0a364a4373e4eb109f32d01cc9584f51e81f}{Ceberus\#7c2c0a36},
-    \href{https://github.com/rems-project/cn/commit/d9f0d4895c889af0cb680ca849715fca18b9b946}{CN\#d9f0d489}.}\label{sn:new-inf-statics}%
+    \href{https://github.com/rems-project/cerberus/commit/7c2c0a364a4373e4eb109f32d01cc9584f51e81f}{Ceberus 7c2c0a36},
+    \href{https://github.com/rems-project/cn/commit/d9f0d4895c889af0cb680ca849715fca18b9b946}{CN d9f0d489}.}\label{sn:new-inf-statics}%
 the rules serve to highlight the core principles involved.
 
 \begin{table}
@@ -138,7 +138,7 @@ allocation history).
 As seen in \cref{fig:typing-pval-pexpr}, the rules for pure
 values\sidenote{Because \kl{Core} factors out the memory object model, it also
 factors out the precise representation of memory objects such as integers,
-pointers, arrays and structs, so I have followed a similar factorising in
+pointers, arrays and structs, so I have followed a similar factorisation in
 the structure of the typing judgements, and left the representation of these
 values abstract.} are very simple pure value synthesis judgements of the form
 $[[ C |- pval => base_type ]]$;  given computational context and
@@ -282,8 +282,8 @@ output will be the initialisation status and the value stored at that location:
 the program terms are not required to know what is in the heap.
 
 Only user-defined predicates can be folded, so
-$\cnkw{Owned}\langle\_\rangle$, $\cnkw{Alloc}$ and
-$\cnkw{Padding}\langle\_,\_\rangle$ are excluded.
+$\cnkw{Owned}$, $\cnkw{Alloc}$ and
+$\cnkw{Padding}$ are excluded.
 % A term to be folded is simply the (partially-evaluated) body of some predicate,
 % so it does not have the information required to know which predicate it could
 % belong to, especially because resources can be moved between predicates.
@@ -314,13 +314,11 @@ For space, I only present the rules for turning ownership of fixed-length array
 into an iterated separating conjunction and back (\cref{fig:typing-predops}).
 
 The first rule says that if $\mathit{res\_term}$ synthesises ownership of a
-fixed-length array, then the iteration of that synthesises an iterated separating
-conjunction for ownership over the indices of that array ($0$ to
-$n-1$).\sidenote{The notational hacks in this rule are a bit too cute and
-difficult to explain, should probably change them.} The second rule does the
-inverse, but includes some additional checks to prevent two adjacent locations
-of the same type but belonging to different allocations, being indexable from
-a single base pointer.
+fixed-length array, then the iteration of that synthesises an iterated
+separating conjunction for ownership over the indices of that array ($0$ to
+$n-1$). The second rule does the inverse, but includes some additional checks
+to prevent two adjacent locations of the same type but belonging to different
+allocations, being indexable from a single base pointer.
 
 \begin{figure*}[tp]
     \small
@@ -487,7 +485,7 @@ pointers, plus any resources consumed to prove the pointer is live.
 There are two parts of the grammar which use spines (lists of values). The first
 is its typical use in calls to pure Core functions, elaborated C functions, and
 effectful Core procedures, as well as to the \coreinline{run()}
-operator. Second is the less typical one, in as values for statements corresponding to 
+operator. Second is the less typical one, as values for statements corresponding to 
 return types $[[ ret ]]$, written $[[ < ret_terms > ]]$.  I showed
 how expressions have return types, now I will how to type the corresponding
 values to which those expressions reduce.
@@ -528,19 +526,18 @@ produced substitution with one for the resource too.
 \section{Effectful values and expressions}\label{sec:eff-val-expr}
 
 The spine typing is used in the rules for calling elaborated C function
-\coreinline{ccall()}, and effectful Core procedures
-\coreinline{pcall()}, in \cref{fig:typing-ret-terms}. Both are
-syntactically effectful sequenced expressions, typed with a judgement of the
-form $[[ C ; L ; N ; R |- expr => ret ]]$, 
-which says that given the contexts and an effectful
-sequenced expression, synthesise a return type. Both lookup a function type for
-the called function/procedure,\sidenote{\kl{CN} does not support
-computed/indirect function calls, so I assume the callee has already been
-resolved.} and produce the return type synthesised by the spine
-judgement. This is also identical to how  $[[< ret_terms > ]]$ are typed, with
-the main difference that (a) the judgement $[[ C ; L ; N ; R |- < ret_terms > <= ret ]]$
-is checking and (b) the return type must be mapped to its dual
-function type before using the spine judgement.
+\coreinline{ccall()}, and effectful Core procedures \coreinline{pcall()}, in
+\cref{fig:typing-ret-terms}. Both are syntactically effectful sequenced
+expressions, typed with a judgement of the form $[[ C ; L ; N ; R |- expr =>
+ret ]]$, which says that given the contexts and an effectful sequenced
+expression, synthesise a return type. Both lookup a function type for the
+called function/procedure,\sidenote{\kl{CN} only supports indirect function
+calls when the possible callees are explicitly enumerated in the precondition,
+so I assume the callee has already been resolved.} and produce the return type
+synthesised by the spine judgement. This is also identical to how
+$[[< ret_terms > ]]$ are typed, with the main difference that (a) the judgement
+$[[ C ; L ; N ; R |- < ret_terms > <= ret ]]$ is checking and (b) the return type
+must be mapped to its dual function type before using the spine judgement.
 
 \begin{figure*}[tp]
     \small
@@ -559,8 +556,8 @@ function type before using the spine judgement.
 \section{Pattern matching}\label{sec:pat-match}
 
 \textbf{Pattern matching is an unusually important crux of \kl{kernel CN}'s type
-system because it is \emph{the} canal which directs the rich grammar of
-resource and return types into contexts.} The judgement for this is
+system because it is \emph{the} funnel through which the rich grammar of
+resource and return types enters contexts.} The judgement for this is
 $[[ C ; L ; N |- ret_pat : ret ~> C' ; L' ; N' ; R' ]]$,
 which says that given the contexts, a return pattern and a return type,
 synthesise computational, logical, constraint and resource contexts.
@@ -639,12 +636,13 @@ Statements are all checked, but the bound expression in the
 \coreinline{let} is synthesised, so that the type can be used as part of
 destructing the pattern it is bound against to synthesise extra contexts. Those
 contexts are then appended to the existing one to check the body of the
-\coreinline{let}. As for the \coreinline{run()} operator, the rule
-looks up the function type belonging to the label being run, and then checks
-that the spine satisfies that function type. Unlike the previous function call
-operators, control flow does not return from a \coreinline{run()}
-and so the type synthesised is expected to be false, and it checks against any
-type.\sidenote{Need to update the rule.}
+\coreinline{let}.
+
+As for the \coreinline{run()} operator, the rule looks up the function type
+belonging to the label being run, and then checks that the spine satisfies that
+function type. Unlike the previous function call operators, control flow does
+not return from a \coreinline{run()} and so the type synthesised is expected to
+be false, and it checks against any type.
 
 \begin{figure*}[tp]
     \small
@@ -664,7 +662,7 @@ users to manually fold and unfold predicates, but inferred indices for iterated
 predicates automatically. Now, CN automatically folds and unfolds predicates
 but requires users to state which indices are allowed to be moved in and out of
 any iterated predicates in the context.\sidenote{See
-note~\ref{sn:new-inf-statics}.} Instantiations for logical quantifiers were and
+    \href{https://github.com/rems-project/cerberus/commit/7c2c0a364a4373e4eb109f32d01cc9584f51e81f}{Ceberus 7c2c0a36}.} Instantiations for logical quantifiers were and
 continue to be inferred.
 
 The goal of an elaboration pass over \kl{Kernel CN} is to take as an input a
@@ -927,12 +925,12 @@ To ensure that \kl{Kernel CN} had served as a useful formalisation for \kl{CN},
 I proved that it was sound. The whole proof is in~\cref{chap:soundness}; in
 this chapter, I will discuss the key definitions, lemmas and proof sketches. I
 will first define an operational semantics for \kl{ResCore}, and then do a
-straightforward, if not slightly tedious, syntactic proof of type
+tedious, straightforward, syntactic proof of type
 safety.\sidenote{The continuation-like behaviour of the \coreinline{run()}
 and \coreinline{save()} operators make it more challenging to prove
 soundness in a denotational manner.} This suffices because \kl{ResCore} is a
 first-order language, and all functions and labels are annotated with the
-correct type,  despite the presence of linear types, which usually require
+correct type, despite the presence of linear types, which usually require
 logical relation methods.
 
 The proof is split up into three smaller proofs: a joint
@@ -940,9 +938,9 @@ progress-and-type-preservation proof for resource term reduction, a progress
 theorem, and a type-preservation theorem.
 
 The definitions and lemmas of note in this proof are (a) the careful definition
-of substitution, and its accompanying substitution lemma (b) the novel
+of substitution, and its accompanying substitution lemma, (b) the novel
 structure of the heap, which is unusual in that is essentially just separation
-logic predicate and (c) the interaction between the resource terms and heaps.
+logic predicate and, (c) the interaction between the resource terms and heaps.
 
 \section{Substitution and contexts}\label{sec:sub-ctxts}
 

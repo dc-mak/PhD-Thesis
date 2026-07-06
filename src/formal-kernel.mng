@@ -98,10 +98,10 @@ quantification over computational (program) values, quantification over logical
 heap, and logical implication/conjunction for pure assertions (in a linear
 context, about an empty heap).
 
-Though this seems like a large departure from the syntax given in
-\cref{fig:cn-grammar}, the mapping into this is straightforward, and helps
-clarify what each \kl{CN} surface construct represents in more familiar,
-type-theoretic terms.
+Though these function and return types seem like a large departure from the
+syntax given in \cref{fig:cn-grammar}, mapping from the latter to the former is
+straightforward, and helps clarify what each \kl{CN} surface construct
+represents in more familiar, type-theoretic terms.
 
 Before I explain this mapping, there is one more key component to discuss:
 \emph{resource types}. As seen in~\cref{fig:kernel-res}, they are separation
@@ -311,7 +311,7 @@ turn, both of those are subterms of effectful expressions.
 
 This simplifies presenting and working with the type system in the following ways.
 \begin{itemize}
-    \item \coreinline{undef()}. In typing this, it is necessary to give is a % chktex 36
+    \item \coreinline{undef()}. In typing this, it is necessary to use a % chktex 36
         checking rule, since control flow is required to not reach that point
         (\cref{fig:core-ub-typing}).
     \item \textbf{Control flow}. Here too, we would also very much like to use
@@ -334,7 +334,7 @@ intermediate sub-expression) and these were very difficult to relate back to
 the source program in concrete counter-examples produced by the SMT
 solver.\sidenote{Location information was not tracked properly either so this
 was doomed.} Hence, this was
-removed.\sidenote{\href{https://github.com/rems-project/cerberus/commit/21808139bda2ee320756c71eb22dbd57d0986f97}{Commit
+removed.\sidenote{\href{https://github.com/rems-project/cerberus/commit/21808139bda2ee320756c71eb22dbd57d0986f97}{Cerberus
 21808139.}}\label{sn:rm-anorm}
 
 These days, \kl{CN} takes a different approach. In the same way that one can
@@ -342,16 +342,24 @@ traverse the transitive closure of a graph, in a depth-first manner, without
 computing the transitive closure of the graph in memory, \kl{CN} emulates an
 A-normal traversal of \kl{Core} without A-normalising the syntax tree first.
 
-It achieves this explicitly creating and passing around
-continuations.\sidenote{\href{https://github.com/rems-project/cerberus/commit/350fefc675626dcc69c7adc9edea30ff9687b752}{Commit
+It achieves this by explicitly creating and passing around
+continuations.\sidenote{\href{https://github.com/rems-project/cerberus/commit/350fefc675626dcc69c7adc9edea30ff9687b752}{Cerberus
 350fefc6.}}\label{sn:use-conts} A continuation awaits the result of
 type-checking the current expression, and uses it to type-check the rest of the
 (enclosing) expression. For example, type-checking an if-expression means
 duplicating the continuation for each branch, whereas type-checking
 undefined-behaviour involves proving false, and then dropping the continuation.
-This makes the code more fragile but saves the need for maintaining another
-large syntax tree and associated pretty-printers, debug printers, source
-location mappings and so on.
+
+This makes the code much more fragile but saves the need for maintaining
+another large syntax tree and associated pretty-printers, debug printers,
+source location mappings and so on.
+
+My preference would be to have the type system's symbolic evaluation return
+values inside a non-determinism (i.e.\ list) monad. Straight line code produces
+a single value, branches produce multiple values, expressions which do not
+return produce no
+values.\sidenote{\href{https://github.com/rems-project/cerberus/issues/730}{Cerberus\#730}.}.
+The monadic bind would handle control-flow explosion automatically.
 
 I omitted the constructs related to C's loose evaluation order\sidenote{%
 \coreinline{neg()}, \coreinline{unseq()}, \coreinline{let weak}, % chktex 36
@@ -368,7 +376,7 @@ I omitted the constructs related to C's loose evaluation order\sidenote{%
     non-fractional version of the type system first.
 \item The constructs are not supported by the implementation. They were
     at one point, but stopped working due to a change in the resource inference
-    scheme,\sidenote{\href{https://github.com/rems-project/cerberus/commit/7c2c0a364a4373e4eb109f32d01cc9584f51e81f}{Commit
+    scheme,\sidenote{\href{https://github.com/rems-project/cerberus/commit/7c2c0a364a4373e4eb109f32d01cc9584f51e81f}{Cerberus
     7c2c0a36.}} and fixing this was not a priority.
 \end{itemize}
 
@@ -450,7 +458,7 @@ concept~\sidecite{xi1999dependent,cui2005ats,ahmed2007l3}, its application in a
 separation logic settings appears to be so, because these sorts of
 manipulations are usually done manually in an interactive proof-assistant and
 recorded as tactics in a proof script \emph{external} to the program being
-verified. To aid the read familiar with the latter, I give a loose, imprecise
+verified. To aid the reader familiar with the latter, I give a loose, imprecise
 analogy between the two below.
 
 \begin{center}

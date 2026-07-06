@@ -1,11 +1,9 @@
 % vim: ft=tex
 \chapter{Informing implementation discussions}\label{chap:inform-impl}
 
-In the early stages, \kl{CN} was implemented by Christopher Pulte and Thomas
-Sewell, based on sketches by Neel Krishnaswami. I started formalising
-\kl{Kernel CN} much later, and benefited by the clarity of having an
-implementation and implementers I could consult in moments of
-confusion.
+I started formalising \kl{Kernel CN} long after implementation had begun, and
+benefited by the clarity of having an implementation and implementers I could
+consult in moments of confusion.
 
 However, this mode of development means that there were \emph{many} design
 decisions made in a rather conservative context, because the programming was
@@ -27,21 +25,27 @@ implementation.
 \section{Supporting partially initialised reads of structs/unions}\label{sec:partial-init-structs}
 
 So far in working on verifying the \kl{buddy allocator}, writing a tutorial and
-working with our industry partners, no code has needed the ability to read a
-partially (including completely) uninitialised struct/union, and any valid code
-which does this would have to simply ignore that result. The \kl{UB} only comes
-when one tries to read an uninitialised primitive type member of the
-struct/union from that earlier read.
+working with our industry partners, no code has needed the ability to load a
+partially (including completely) uninitialised struct/union as a whole (loads
+of initialised members from a struct which has other members uninitialised are
+fine). Similar to uninitialised integer types, any \kl{UB} only comes when one
+tries to use an uninitialised primitive type member of the struct/union in
+certain ways. Such loads would happen when whole structs/unions are used as an
+rvalue in assignments, function call arguments, function return values, as well
+as a dereference of a pointer.
 
 Because we can decompose ownership of a struct into its fields, and track the
 initialised status of those individually (perhaps verbosely for large structs),
-it does not seems like we lose much in expressiveness in forbidding this. The
-only valid code that would be additionally rejected if this was forbidden in
-the type system would be a read of a partially initialised struct followed by a
-call to a function which reads only the initialised fields. And in such
-instances, it seems likely that the code could be refactored to only pass the
-initialised fields, or a pointer with the appropriate precondition to only read
-the initialised fields.
+we do not lose expressiveness by not supporting this idiom. The only valid code
+forbidden by this omitting support for it would be passing a loaded partially
+initialised struct as an argument to a function which reads only the
+initialised fields. This is because the value would cross a function boundary,
+\kl{CN} checks each function against its own pre- and postconditions and the
+specification language has no syntax or semantics to express that the struct
+value itself (not the memory it resides in) is a special uninitialised value.
+In such instances, the code could be refactored to only pass the initialised
+fields, or a pointer to the struct with the appropriate precondition to only
+read the initialised fields.
 
 Although we wish to verify C code as is, because programmers need to change the
 ``code'' to write annotations anyway, such small, rare and easy to explain
@@ -85,8 +89,8 @@ the general approach of ``unfold until you reach a condition for which neither
 it nor its negation can be proven'' would work for logical functions too.
 
 It is important to note that with automatic constraint-based unfolding, it is
-possible for users to write constraints (including via control flow) which make
-\kl{CN} diverge.\sidenote{\href{https://github.com/rems-project/cerberus/issues/451}{Cerberus\#451}.}
+possible for users to define predicates which make \kl{CN}
+diverge.\sidenote{\href{https://github.com/rems-project/cerberus/issues/451}{Cerberus\#451}.}
 I propose a solution to this in~\fancyref{sec:pred-defn-checks}.
 
 \section{Higher-order resources}
@@ -137,9 +141,9 @@ will be quicker but the second produces less technical debt.
 
 Another awkward restriction in working with \kl{CN} is that the first argument
 to a predicate must always be a pointer. This is usually fine because it would
-be strange to speak of ownership without a pointer, but the pointer is derived
-from elsewhere (a fixed base pointer, but a given index), or sometimes the
-pointer is in a record and that is the easiest thing to pass
+be strange to speak of ownership without a pointer, but sometimes the pointer
+is derived from elsewhere (a fixed base pointer, but a given index), or
+sometimes the pointer is in a record and that is the easiest thing to pass
 in.\sidenote{\href{https://github.com/rems-project/cerberus/issues/303}{Cerberus\#303}.}
 
 With the formalisation, we can estimate the impact of removing this restriction
