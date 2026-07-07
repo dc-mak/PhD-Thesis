@@ -13,7 +13,7 @@ converting to and from byte representations (including support for unions),
 copying and comparing arrays of bytes, and lastly allocation liveness and
 bounds-checks.
 
-Along the way, I will also explain how I proved those rules sounds with respect
+Along the way, I will also explain how I proved those rules sound with respect
 to an updated model of \kl{ResCore} heaps. I do not prove that these rules are
 a sound abstraction above \kl{VIP}, though I will gesture towards why I believe
 this to be the case (\fancyref{sec:linking}).
@@ -622,9 +622,10 @@ model on more foundational and trustworthy footing.
 
 \section{Performance}\label{sec:vip-perf}
 
-\kl{CN-VIP} causes a significant hit to performance. The benchmarks below show
-a 2\textendash{}3x slowdown, though this is imperfect because some tests are intended to
-fail in early stages such as parsing, desugaring or well-formedness checks.
+\kl{CN-VIP} causes a significant hit to performance. The benchmarks on the
+\kl{CN} testsuite below show a 2\textendash{}3x slowdown, though this is
+imperfect because some tests are intended to fail in early stages such as
+parsing, desugaring or well-formedness checks.
 
 \begin{figure}[h]
     \centering
@@ -684,7 +685,7 @@ passing) and so what remains is the bounds checks.
 
 The bounds checks are easy to disable, but this does not lead to a fair
 comparison: of course we expect the version which checks less and unsoundly to
-go faster. Furthermore, any slow down for bounds checks will be some mixture of
+go faster. Furthermore, any slowdown for bounds checks will be some mixture of
 the effect of derived constraints, and the complexity of the check itself.
 
 The above two facts combined\sidenote{And a few hours of experimentation}
@@ -738,7 +739,7 @@ Thankfully, my fear did not materialise, as
 9ee153e7}, `Add support for VIP', demonstrates. Out of roughly 185 small,
 ``working'' test cases, only 7 had to be updated.\sidenote{A limitation of the
     testing framework for the tutorial, and at the time, the \kl{CN} regression
-    suite, is that it only checks returns codes, not the whole output. So there
+    suite, is that it only checks return codes, not the whole output. So there
     was no automated way of checking whether an already failing test starts
 failing for a different reason. I eventually fixed this
 (\href{https://github.com/rems-project/cerberus/pull/703}{Cerberus/\#703}) by
@@ -855,7 +856,7 @@ model.
 \section{Lemma proofs in a proof-assistant}\label{sec:lemma-prover}
 
 There are however, lemmas which need to be proved outside of even the fragment
-expressible by C programs. Some of these work-around limitations of using the
+expressible by C programs. Some of these work around limitations of using the
 decidable fragment of SMT theories, such as the mismatch between the intended
 finite arrays represented by resources, and the total maps used in decidable
 SMT theories (\cref{fig:byte-array-eq-lemma}). Using that, it would be possible
@@ -879,11 +880,12 @@ At the same time, we would like the logic used for proving lemmas to be sound,
 so that we have assurance that users cannot use it subvert the rules enforced
 by the OCaml implementation. An obvious candidate for this is the
 Iris~\sidecite{jung2018iris} framework in Rocq, which allows users to define a
-separation logic and inherit many powerful proof rules based on that. However,
-the fundamental way that Iris works means that it requires an operational
-semantics over which to prove the basic primitives sound, on top of which other
-rules are defined. Note that the current resource lemma export and proof
-mechanism sidesteps this issue and focuses on translating function and
+separation logic and inherit many powerful proof rules based on that.
+
+However, the fundamental way that Iris works means that it requires an
+operational semantics over which to prove the basic primitives sound, on top of
+which other rules are defined. Note that the current resource lemma export and
+proof mechanism sidesteps this issue and focuses on translating function and
 predicate definitions and lemma statements.
 
 Another impediment is that Iris is an \kl{affine} separation logic, whereas we
@@ -892,12 +894,13 @@ claims to have addressed this mismatch~\sidecite{bizjak2019iron}, it remains to
 be seen if it can be scaled for this use case.
 
 However, the idea of putting all of \kl{Core} and its dynamic semantics inside
-Rocq, would be a substantial reduplication of work (it is already
-implemented in \kl{Cerberus}) and difficult (in particular the rules for
-handling weak evaluation order). This makes it a high-effort, high-risk and at
-best medium-reward endeavour. It seems as if supporting resource terms in
-lemmas pulls on a thread which drags with it all of \kl{Cerberus}, making the
-feature desirable but difficult to implement. Is there an alternative?
+Rocq, would be a significant duplication of work (it is already implemented in
+\kl{Cerberus}) and difficult (in particular the highly non-compositional rules
+for $\cnkw{run}$/$\cnkw{save}$ and weak sequencing). The effort and risk is
+large and clear, and so far the the reward has not outweighed it. It seems as
+if supporting resource terms in lemmas pulls on a thread which drags with it
+all of \kl{Cerberus}, making the feature desirable but difficult to implement.
+Is there an alternative?
 
 One approach that we discussed would be to make up a subset of the language
 which has enough features we care about to make the project feasible, without
@@ -928,9 +931,9 @@ pleasing, it does raise an uncomfortable question: if \kl{CN} \emph{users}
 should be prevented from introducing unsoundness via lemmas, should \kl{CN}
 \emph{implementers} be treated similarly?
 
-As before, putting all of \kl{Core} and its dynamic semantics inside Rocq is
-out of the question. Besides, that is not where most critical bugs are likely
-to occur \textemdash{} most of Core is a relatively simple first order
+Putting all of \kl{Core} and its dynamic semantics inside Rocq would be
+sufficient, but is it necessary? That is not where most critical bugs are
+likely to occur \textemdash{} most of Core is a relatively simple first order
 language, and the SMT solvers we use are well tested pieces of software. Hence
 while it is certainly possible the symbolic evaluation of sub-expressions and
 the constraint solving could be incorrect, it is not the most subtle and
@@ -980,7 +983,11 @@ for each path through the tree of events. The traces would need to record any
 logical facts proved using the solver, since those would turn into assumptions
 or proof obligations in Rocq.
 
-At this point, the boundary of trust has been shifted away from the
+Indeed, the feasiblity of this approach has already been partly demonstrated
+by~\sidetextcite{zaliva2025bridging}, which (as a first step) records and
+verifies all resource lookups and predicate unfolds in Rocq.
+
+Once traces are verified, the boundary of trust would shift away from the
 pen-and-paper proofs discussed in this thesis, and towards trust in how well
 the OCaml implementation implements the theory. The next step would be to
 refactor the implementation so that it becomes impossible to manipulate the
