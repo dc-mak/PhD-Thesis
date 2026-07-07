@@ -31,15 +31,14 @@ initialise, get the number of pages allocated, and allocate new zeroed pages.
 \subsection{Early allocator in CN}
 
 The proof for the early allocator was not part of CI for \kl{CN}, and so is
-considerably out-of-date.\sidenote{TODO Update this, add to CI, check how much
-slower it is with bit-vectors?} Nevertheless, I will show and discuss a sample
-of the code and specifications, because I expect updated specifications
-to look recognisably similar.
+considerably out-of-date. Nevertheless, I will show and discuss a sample of the
+code and specifications, because I expect updated specifications to look
+recognisably similar.
 
-The first function is one to zero all the bytes in a page. This is implemented
+The first function is for zeroing all the bytes in a page. This is implemented
 in assembly in \kl{pKVM}, but for the purposes of comparison, I implemented a
 version in C. The precondition specifies that the function expects an array of
-\cninline{Bytes}, (not to be confused with memory bytes from
+\cninline{Bytes} (not to be confused with memory bytes from
 \cref{sec:mem-bytes-use}), which is defined as a wrapper around
 \cninline{RW<char>}. The postcondition specifies the function returns an
 array of bytes with value zero, expressed this way to avoid the use of the byte
@@ -52,7 +51,7 @@ annotations to do the former.
 
 \cfile[fontsize=\footnotesize,breaklines,lastline=18,highlightlines={2-4,7-11,13,15}]{code/cn_early_alloc.c} % chktex 8
 
-The second version is to allocate a zeroed page. It accesses two global
+The second function allocates a zeroed page. It accesses two global
 variables, \cinline{cur} which marks the current pointer of the allocator, and
 \cinline{end} which marks the exclusive end of the allocator. It requires there
 is at least a page size difference between the two, and of ownership of the
@@ -235,9 +234,9 @@ not separation, whereas in \kl{RefinedC}, the logic is an \kl{Iris} instance.
 Frama-C has a smaller annotation overhead, though its lack of support for
 separation logic means the end guarantee is weaker than with the other tools.
 It works by translating C programs into CIL~\sidecite{necula2002cil}. Its Hoare
-logic verifier, WP, uses a custom semantics CIL, which is parametric in the
+logic verifier, WP, uses CIL as a front-end, and is parametric in the
 memory model, allowing the user to select trade-off increased performance for
-pointer manipulation expressiveness. Its includes support for multiple
+pointer manipulation expressiveness. It includes support for multiple
 specifications per function, ghost parameters, arguments and code, and runtime
 assertion checks, which amongst other things, can be used to error on
 uninitialised reads. \kl{Frama-C} was noticeably slower than \kl{CN} for the
@@ -262,10 +261,14 @@ Haskell programmer that knows C''. This simultaneously ambitious from a
 research stand-point, but timid from an industry stand-point, even for systems
 programmers who are willing to walk-the-talk with regards to correctness.
 
-This is borne about by feedback from BAE Systems and Galois. The former in
-particular raised several points of feedback on seeing CN in its current state,
-which sharpen the need to keep a holistic view of usability in mind for tools
-like this.
+This is borne about by feedback from BAE Systems and Galois, industry partners
+we were collaborating with on a DARPA project to verify `a fictitious airborne
+unmanned platform that represents a notional high-consequence national security
+system' using \kl{CN} (amongst other
+tools).\sidenote{\url{https://github.com/GaloisInc/VERSE-OpenSUT}} Galois in
+particular raised several points of feedback on seeing \kl{CN} in its current
+state, which sharpen the need to keep a holistic view of usability in mind for
+tools like this.
 
 For example, they said they were \emph{``skeptical that a developer that wrote
 bad code would be capable of writing specs that get the code right''}. For
@@ -321,7 +324,7 @@ this line, and currently out of scope for this project, is the \emph{``need for
 a supporting tool for making suggestions for  specifications''}, though we also
 suspect that the Fulminate effort to have specifications be executable will
 provide a gentler gradient for integrating specifications into a developer
-workflow.
+workflow~\sidecite{aamer2026code}.
 
 There are indications that \kl{CN} is on the right track, and these are the
 sorts of advantages that need to be trumpeted when pitching and evolving CN.\@

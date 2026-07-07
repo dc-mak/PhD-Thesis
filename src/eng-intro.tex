@@ -9,14 +9,16 @@ implementation related issues, such as the complexity of adding new features,
 lifting existing restrictions, or substantially improving performance.
 
 Now I will take a step back and focus more on what it takes to build
-a \emph{usable} verification tool. Though not as theoretically intruiging or
+a \emph{usable} verification tool. Though not as theoretically intriguing or
 elegant as some of the material in prior parts, this is where just as
-much, if not more, of the difficulty lies in achieving \kl{CN}'s goal of being
-maintainable by kernel programmers (\cref{sec:cn-goals}).
+much, if not more, of the difficulty lies in achieving \kl{CN}'s goal of
+enabling kernel programmers to maintain proofs on implementations
+(\cref{sec:cn-goals}).
 
 In~\fancyref{chap:tree-carver}, I describe why and how I developed a tool to
-filter and carve out parts of a large C source tree, whilst preserving all
-comments, including \kl{CN} annotations.
+filter unused parts of a large C source tree and suppress unused parts
+of the large header files recursively included by Linux code, whilst
+preserving all comments, including \kl{CN} annotations.
 
 % In this chapter, I will explain why we need a tree-carver for C repositories;
 % I will recount the mounting challenges we faced scaling \kl{Cerberus} to
@@ -57,14 +59,14 @@ for \kl{CN}, with an emphasis on how new projects can avoid several pitfalls.
 % \begin{itemize}
 %     \item Source location information.
 %     \item Regression testing.
-%     \item Peformance benchmarking.
+%     \item Performance benchmarking.
 %     \item Switchable major transitions.
 %     \item A tutorial and worked examples.
-%     \item Upating proofs one aspect at a time.
+%     \item Updating proofs one aspect at a time.
 % \end{itemize}
 %
 
-\chapter{Tree-carving: Taming C Respositories}\label{chap:tree-carver}
+\chapter{Tree-carving: Taming C Repositories}\label{chap:tree-carver}
 
 \margintoc{}
 
@@ -75,12 +77,20 @@ make this a particularly challenging endeavour, mostly centred on macros and
 the C preprocessor. I will also explain the downsides of inputting preprocessed
 C code into verification tools such as \kl{CN}. Lastly, I will show how,
 extending prior work significantly, I built a Clang-based tool which meets
-almost all the requirements we sought, enough to not be the primary bottleneck
-to verifying code in large projects anymore. Lastly, I will explain the
+almost all the requirements we sought, enough to no longer be the primary bottleneck
+to verifying code in large projects. Lastly, I will explain the
 limitations of the current approach (struct fields, cross-translation-unit
 carving), and ways this may be remedied in the future.
 
 \section{Need for tree-carving}
+
+Tree-carving is inspired by the idea of tree-shaking in dynamic languages.
+Given some root functions in a C file specified by the user, a tree-carver (a)
+copies the directory structure of all its transitive dependencies, excluding
+any unused files, and (b) within each remaining file, comments out all
+functions, types, and struct/union fields not depended upon by the root
+functions. It leaves pre-existing comments, including CN specifications,
+untouched.
 
 % It starts with the source repository for any mature C project, such as
 % \kl{pKVM}, which lives in the Linux kernel. Such repositories do not come in
@@ -120,7 +130,7 @@ carving), and ways this may be remedied in the future.
 % such nested comments.
 
 I will use the \kl{pKVM} page-table code as the motivation for the chapter.
-It lives in the folder arch/arm64/kvm/hyp/pgtable.c, and consists of some simple
+It lives in the folder \href{https://github.com/rems-project/linux/blob/pkvm-core-6.4/arch/arm64/kvm/hyp/pgtable.c}{arch/arm64/kvm/hyp/pgtable.c}, and consists of some simple
 functions like the one below, for converting a page-table entry to a physical
 address.
 
@@ -134,8 +144,8 @@ which to call a parametric page-table walking function.
 
 \cfile[fontsize=\footnotesize,breaklines,firstline=9]{code/pgtable.c}
 
-This code is not suitable to be input to \kl{Cerberus} because of the fact
-is uses features it does not support. However, these features are not at
+This code cannot be processed by \kl{Cerberus} because it uses features that
+Cerberus does not support. However, these features are not at
 all obvious from just looking at the code; one would expect the only features
 used are macro constants, and regular C declarations for types and functions.
 
@@ -165,7 +175,7 @@ its argument. Such built-ins require editing the parser and elaboration to
 support, and cannot be abstracted easily.
 
 Lastly, \cinline{BUILD_BUG_ON_ZERO} uses the expression to try to construct an
-anonymous struct with a bit-field of that size, since 0-width bit-fields are
+anonymous struct with a bit-field of that size; since 0-width bit-fields are
 not allowed, this will trigger a build error. Bit-fields are not supported by
 \kl{Cerberus} either.
 
@@ -186,21 +196,21 @@ particular feature is unavoidable and worth implementing in \kl{Cerberus}, or
 just an incidental block to parsing, but otherwise safely ignored.
 
 In other words, \emph{if parsing fails on a file, we are forced to implement
-the construct in the parser, regardless of whether or not is is used later,}
+the construct in the parser, regardless of whether or not is used later,}
 which is not an efficient use of engineering capacity. As seen above, Linux
 headers and macros frequently contain such constructs, so the issue persists
 even after preprocessing.
 
 \section{Challenging preprocessor and C features}
 
-One may think that preprocessing will sidestep this issue, because unused
+One may think that preprocessing would sidestep this issue, because unused
 macros (and accompanying unsupported features) will not be pasted into the
 code.
 
 Unfortunately, whilst this does avoid the myriad problems of doing dependency
 analysis on macros, it comes with trade-offs. Take the \cinline{GENMASK} macro
 above. If expanded fully into each use site, the code to verify would be
-littered with unsupported features. The structure of the macros and its
+littered with unsupported features. The structure of the macro and its
 dependency, (the fact that there is one part which is a compile-time check, and
 another which computes the expression we care about) would be lost, making it
 harder to spot what to redefine and where for the purposes of proof.
@@ -217,7 +227,7 @@ repository, making it more difficult to relate any output back to the code it
 came from. Initially, we assumed that this sort of dependency analysis would be
 quite expensive, so the idea was that a user would run the carving once,
 annotate the carved code, and then merge the changes back into the source
-repository, for which point preserving file structure may be
+repository, for which preserving file structure may be
 helpful.\sidenote{The alternative would be to create patches based on the line
 directives in the single preprocessed files.}
 
@@ -378,7 +388,7 @@ increased readability and maintainability has been worth the separation.
 %\inputminted[breaklines,fontsize=\footnotesize,firstline=37]{cpp}{code/reachability_analyzer.cpp}
 
 I shall now describe, at a high level, how I analysed dependencies for macros.
-As far as I am aware, this aspect of the tool is especially novel and difficult
+As far as I am aware, this aspect of the tool is novel and difficult
 to reproduce with other approaches short of implementing a custom preprocessor.
 The first step is to accurately capture the source range for macro definitions,
 because these can space multiple lines, and the default source ranges for macro
@@ -520,7 +530,7 @@ only on my experience in updating the code.
 The major code change is easy to describe. The \intro{buddy allocator} maintains a
 doubly-linked list of free pages (per order). Initially, the pointers for these
 were stored externally to the free pages, but an update to the code changed it
-so that the pointers were stored intrusively, on the free pages themselves.
+so that the pointers were stored intrusively, in the free pages themselves.
 
 I found updating the proof for this to be challenging, mostly due to \kl{CN}'s
 error reporting, which I will explain later, but also partly due to a lack
@@ -574,9 +584,9 @@ in approximately 1 week.
 This change was straightforward to propagate in specifications because CN
 reliably showed errors where non-existent fields were accessed. It was less
 clear, as someone new to the code and its invariants, what the required
-adjustments to the invariants needed to be. Surprsingly, I could leave this
+adjustments to the invariants needed to be. Surprisingly, I could leave this
 until later \textemdash{} the changes were close to dependency leaf nodes, and
-the original design \& use of the resource and logical predicate definitions
+the original design and use of the resource and logical predicate definitions
 (on the non-leaf functions) did a good job of encapsulating their details.
 
 \subsection{Adding new fields}
@@ -821,7 +831,8 @@ increases the cost of using them when verifying code. Allowing functions to be
 verified by inlining at call site, rather than by specification, would
 alleviate this, although of course, this would be open to abuse too.
 
-\paragraph{Explicit ghost parameters and arguments are necessary (completed).} Changing the
+\paragraph{Explicit ghost parameters and arguments are necessary
+(completed).}\sidenote{Implemented by Dimitrios Economou.} Changing the
 C code by adding unused parameters to support proof would not be acceptable in
 almost all large, real-world code bases. Reifying ghost parameters complicates
 specifications in tangible ways too: Adding a page to the free list requires
@@ -884,14 +895,14 @@ into bit-vectors (\cref{sec:integers-bitvectors}).
 
 \paragraph{Accurate source location information is paramount, especially in the
 presence of elaboration and auto-generated variables.} Though \kl{Cerberus}'
-elaboration is compositional, this does not mean the accurate and helpful error
+elaboration is compositional, this does not mean that accurate and helpful error
 messages come for free. For example, it is very helpful to relate source
 location of generated variables to that of the expressions they are
 binding.\sidenote{\href{https://github.com/rems-project/cerberus/issues/270}{Cerberus\#270}.}
 Aside from that, in earlier versions of \kl{CN}, the main datatype
 for representing SMT terms did not carry source location information. Which
 made it very difficult to track down which part of a pre- or postcondition was
-failing, or which subterm in a large expression was not well-formed. This also
+failing, or which sub-term in a large expression was not well-formed. This also
 fed into making counter-examples much less useful.
 
 \paragraph{Aliasing, and conditionally aliasing variables need to be presented
@@ -927,11 +938,11 @@ determine which variables are relevant, and which may be safely ignored.
 
 \paragraph{Counter-examples should be easy to understand.} Values in
 counter-examples can be quite large and thus difficult to parser and check
-mentally. A trick I learned from Thomas Sewell was to add requirements to a
-function failing to verify which assert that, for instance, the
-physical/virtual offset is 0 and the pool is limited to a tiny range of small
-memory addresses. Constraining values to be small reduces makes
-counter-examples more manageable, and this should be automated.
+mentally. A trick I learned from Thomas Sewell was to constrain integer values
+to be small in the precondition of functions failing to verify. For instance,
+set the physical/virtual offset to 0 and limit the pool to a tiny range of
+small memory addresses. This makes counter-examples more manageable and should
+be automated.
 
 \paragraph{Counter-examples should be interactive.} With small values, minimal
 models and good relatability to the source, it should be possible to make
