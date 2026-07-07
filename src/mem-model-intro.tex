@@ -39,15 +39,18 @@ trade-offs between this and other choices.
 
 Any set of choices must nagivate the tension between allowing low-level idioms
 relied upon by existing code, allowing opportunities for optimisations
-exhibited by existing compilers, and limiting the scope of both. The cost of
-doing so (in a consistent manner\sidenote{None of the memory models discussed
-are consistent with all observed behaviour, and it is not clear that there is a
-consistent one which would be.}) is that \kl{PNVI-ae-udi}\sidenote{Provenance
-    not tracked via integers, for addresses which are exposed and provenances
-user-disambiguated. I will explain this imminently.} (the provenance-aware
-memory object model for C17, as detailed in technical standard ISO/IEC TS
-6010:2025), is a complex minefield of \kl{UB} no human should be expected to
-abide by unassisted.
+exhibited by existing compilers, and limiting the scope of both.
+\kl{PNVI-ae-udi},\sidenote{Provenance not tracked via integers, for addresses
+which are exposed and provenances user-disambiguated. I will explain this
+imminently.} the provenance-aware memory object model for
+C17,\sidenote{Detailed in technical standard ISO/IEC TS 6010:2025,
+and~\textcite{gustedt2022provenance}.}, manages to navigate this admirably.
+Despite the fact that none of the memory models discussed are consistent with
+all observed behaviour (and it is not clear that there is a consistent one
+which would be), \kl{PNVI-ae-udi} allows for many extant low-level idioms and
+compiler optimisations. However, it does so by sacrificing
+programmer-friendliness: following its rules unassisted would stretch the
+cognitive capacity of any human.
 
 \kl{PVNI-ae-udi} is complex enough that even implementing it in a C
 verification tool is undesirable, especially because in that context, it is
@@ -102,63 +105,57 @@ on how we can improve the foundational correctness of \kl{CN} itself.
 \margintoc%
 
 From the perspective of \kl{Core} and \kl{ResCore}, the representation of
-pointers, integers and memory itself are left abstract, and memory operations
-and memory actions are defined by an interface (\cref{fig:mem-model-intf}).
+pointers, integers and memory itself are left abstract, and memory actions
+(\cref{fig:mem-action-intf}) and operations (\cref{fig:mem-op-intf}) are
+defined by an interface.
 
-\begin{figure}[tbhp]
+\begin{figure}
+    \ContinuedFloat*%
     \small%
     \raggedright%
-    \cngrammarcompressed{\textwidth}{%
+    \cngrammarcompressed{.8\textwidth}{%
         \cnkillXXkind{}\cnafterlastrule{}
     }
     \begingroup%
     %\renewcommand{\cnprodline}[6]{\cnprodlinecomment{#1}{#2}{#3}{}{#5}{#6}}
     \renewcommand{\cnprodline}{\cnprodlinecomment}
     \grammartabularSTY{%
-        \cnaction{}\cninterrule{}
+        \cnaction{}\cnafterlastrule{}
+    }
+    \endgroup%
+    \caption{\kl{ResCore} memory action interface, a simplified subset of the
+        \kl{Core} memory action interface.}\label{fig:mem-action-intf}
+\end{figure}
+
+\begin{figure}
+    \ContinuedFloat%
+    \small%
+    \raggedright%
+    \begingroup%
+    %\renewcommand{\cnprodline}[6]{\cnprodlinecomment{#1}{#2}{#3}{}{#5}{#6}}
+    \renewcommand{\cnprodline}{\cnprodlinecomment}
+    \grammartabularSTY{%
         \cnmemop{}\cnafterlastrule{}
     }
     \endgroup%
-    \caption{\kl{ResCore} memory interface, a simplified subset of the \kl{Core}
-        memory interface. I omit constructs for handling variable-length
-        arguments and loose expression evaluation order.}\label{fig:mem-model-intf}
+    \caption{\kl{ResCore} memory operation interface, a simplified subset of
+        the \kl{Core} memory operation interface.}\label{fig:mem-op-intf}
 \end{figure}
 
-The key concept which begins this brief overview of memory object models is
-that of provenance. To optimise our code, compilers would like to assume that a
-programmer may only create pointers in a ``reasonable'' ways, and that certain
-basic assumptions about those pointers are always true: (a) function
-arguments may not alias local variables and (b) pointers created in a function
-may not alias the local variables of any caller (c) pointers created by
-guessing concrete addresses are always invalid.
+We start by discussing \kl{provenance}. To optimise our code, compilers would
+like to assume that a programmer may only create pointers in ``reasonable''
+ways, and that (a) function arguments may not alias local variables; (b)
+pointers created in a function may not alias the local variables of any caller;
+(c) pointers created by guessing concrete addresses are always invalid.
 
-Let us revisit the example from \cref{fig:ptr-from-int-ub}, reproduced in
-\cref{fig:mem-model-ptr-from-int} for convenience.  It guesses that
-\cinline{ADDRESS_PFI_1I} is the address of a variable local to function
-\cinline{f}, and passes that guess in as an argument \cinline{f(j)}. Inside the  % chktex 36
-function, it declares a local variable \cinline{i} and then creates a pointer
-\cninline{p} from the argument. If this new pointer is equal to the address of
-the local variable, it writes to that location (\cinline{if (p == &i) *p=7;}).
-The value of the local variable is then printed.
-
-Assuming the address is guessed correctly, this program raises two questions:
-Does this program have undefined behaviour, and if so, where and why?  What will
-it print?
-
-Indeed, it does have undefined behaviour, because the pointer \cinline{p} is not
-constructed in a ``reasonable'' way and it can print 5, because the compiler may
-assume that \cninline{p} cannot alias the local variable \cinline{i}, and thus
-perform constant propagation over the assignment.
-
-To optimise pointer code, compilers assume that pointers in C are \emph{not}
-completely concrete, and are only constructed in ``reasonable'' ways. However,
-to support low-level idioms of \emph{computing} with pointers (incrementing,
-offsetting, casting to and from integers), compilers also assume that pointers
-are \emph{not} completely abstract.  Compilers must also be conservative in
-such assumptions. \emph{Despite a lack of dataflow between} \cinline{k} and
-\cinline{j}, uncommenting line 6 would make the program defined and print 7. I
-will explain the precise rules justifying this surprising fact
-in~\cref{subsec:address-exposed}.
+Consider the example from \cref{fig:ptr-from-int-ub}, reproduced in
+\cref{fig:mem-model-ptr-from-int}.  It guesses that \cinline{ADDRESS_PFI_1I} is
+the address of \cinline{j}, a variable local to function \cinline{f}, and
+passes that guess in as an argument \cinline{f(j)}. Inside the % chktex 36
+function, it declares a local integer \cinline{i} and then creates a pointer
+\cninline{p} from the argument \cinline{j}. If this new pointer is equal to the
+address of \cinline{i}, it writes to that location (\cinline{if (p == &i)
+*p=7;}). It then prints the value of \cinline{i}.
 
 \begin{marginfigure}
     \raggedright%
@@ -167,6 +164,27 @@ in~\cref{subsec:address-exposed}.
         pointer\_from\_integer\_1ie.c
         from~\textcite{memarian2019exploring}.}\label{fig:mem-model-ptr-from-int}
 \end{marginfigure}%
+
+Assuming the address is guessed correctly, this program raises two questions:
+Does this program have \kl[UB]{undefined behaviour}, and if so, where and why? If it is
+compiled and executed, what will it print?
+
+Indeed, it does, at the store on line 8. Stores require non-$@\mathsf{empty}$
+provenance but line 7 triggers the second rule in~\cref{fig:pnvi-ival-to-pval},
+resulting in \cinline{p} having $@\mathsf{empty}$ provenance. It can print 5,
+because the compiler may assume that \cninline{p} cannot alias the local
+variable \cinline{i}, and thus perform constant propagation over the
+assignment.
+
+To optimise pointer manipulations, compilers assume that pointers in C are
+\emph{not} completely concrete, and are only constructed in ``reasonable''
+ways. However, to support low-level idioms of \emph{computing} with pointers
+(incrementing, offsetting, casting to and from integers), compilers also assume
+that pointers are \emph{not} completely abstract.  Compilers must also be
+conservative in such assumptions. \emph{Despite a lack of dataflow between}
+\cinline{k} and \cinline{j}, uncommenting line 6 would make the program defined
+and print 7. I will explain the precise rules justifying this surprising fact
+in~\cref{subsec:address-exposed}.
 
 \section{PNVI-ae-udi}
 
@@ -187,28 +205,32 @@ as the ghost part of a pointer, but it does play an integral part of the model
 of memory I will outline next.
 
 Provenances are either $@\mathsf{empty}$, or allocation IDs $@i$ for integer
-$i$. Allocation IDs are allocated fresh
-globally\sidenote{PNVI-ae-udi does not support concurrency.} for every new
-allocation, and thus guaranteed to be unique. An \intro{allocation history}
-$\mathit{A}$ is a partial map indexed by allocation IDs, which tracks their
-base address, size, and liveness. The pointer
-resulting from successfully creating a fresh allocation is a pair of base
-address and the allocation ID\@. When an allocation is destroyed, the entry is
-not removed, but merely updated to record the allocation as dead. The
-allocation history includes other information too, which I will ignore because
-it is not relevant to the key concepts.
+$i$. Allocation IDs are allocated fresh globally for every new allocation, and
+thus guaranteed to be unique. An \intro{allocation history} $\mathit{A}$ is a
+partial map indexed by allocation IDs, which tracks their base address, size,
+and liveness. The pointer resulting from successfully creating a fresh
+allocation is a pair of base address and the allocation ID\@. When an
+allocation is destroyed, the entry is not removed, but merely updated to record
+the allocation as dead. The allocation history includes other information too,
+which I will ignore because it is not relevant to the key concepts.
 
 The \kl{allocation history} merely tracks information about the allocation as a
 whole; to track values of what resides in those allocations, \kl{PNVI-ae-udi}
 also uses a memory $M$ as part of the abstract state. This is not just a map
-from addresses to bytes, but pairs of a (potentially empty) provenance and a
+from addresses to bytes, but to pairs of a (potentially empty) provenance and a
 concrete 8-bit byte or $\mathsf{unspec}$ value for uninitialised or padding
 bytes.\sidenote{There is an additional component, an optional \intro{pointer
     index} (an integer $j$ or $\mathsf{none}$) which stores which part of a
     pointer a byte came from. This is only relevant if either (a) pointers are
     not uniform, i.e.\ different pointers types can have different sizes or (b)
     provenance is tracked via integers (PVI) and bytes of those pointers have
-    been overwritten.}\label{sn:ignore-ptr-index}
+    been overwritten. Condition (a) relies on the rule for stores forbidding
+    unaligned writes for pointers. Condition (b) relies integers being stored
+    with $@\mathsf{empty}$ provenance at the memory byte level. The latter
+    includes \cinline{memcpy} for parts of pointers, which the standard
+    specifies that as a copy of characters (which are integer values). This
+    means a (non-$@\mathsf{empty}$) provenance mismatch in the bytes of
+    pointers is impossible.}\label{sn:ignore-ptr-index}
 
 Reading from and writing to memory is done via the \coreinline{load} and
 \coreinline{store} actions, at a specific C type, and these actions handle
@@ -220,7 +242,7 @@ $@i$.\sidenote{There is also an optional \kl{pointer index} for each byte's
 position in the pointer, see note~\ref{sn:ignore-ptr-index}.}
 
 One of the idioms existing code relies upon frequently is casting a pointer to
-an integer and back again, and this \intro{round-trip} property is in fact
+an integer and back again, and this \intro{round-trip} property is
 guaranteed by the ISO standard.\sidenote{§6.3.2.3\#5: An integer may be
     converted to any pointer type. Except as previously specified, the result
 is implementation-defined, might not be correctly aligned, might not point to
@@ -228,7 +250,7 @@ an entity of the referenced type, and might be a trap representation.}. A
 straightforward way to model the round-trip property is to ensure casts from
 pointers to integers do not lose any information, by augmenting the model of
 integer values to also carry (as ghost information) provenance. This is called
-\intro{PVI} for \emph{provenance-via-integers}. However, the updates to the
+\intro{PVI} for \emph{provenance-via-integers}. However, updating
 integer operations to preserve their provenances would break the algebraic
 properties of integers relied upon for optimisations by compilers.
 
@@ -356,20 +378,21 @@ PNVI-ae-udi program, and every \kl{UB} in \kl{PNVI-ae-udi} is also \kl{UB} in
 \kl{VIP} (though \kl{VIP} itself may have more \kl{UB} than \kl{PNVI-ae-udi},
 achieving its simplicity by increasing its restrictiveness).
 
-\kl{VIP} achieves this by adding a single simplifying restriction on the
-round-trip property: only integer values which were cast from pointers, with no
-intervening operations, can be round-trip cast back to pointers. Any
-intervening operation on that integer (including adding 0) will result in an
-$\mathsf{@empty}$ provenance when cast to a pointer.
+The basic idea behind \kl{VIP} is to require all integer-to-pointer casts to be
+annotated with the pointer whose provenenace it must recover. This relaxed to
+support a limited form of the round-trip property: only integer values which
+were cast from pointers, with no intervening operations, can be round-trip cast
+back to pointers. Any intervening operation on that integer (including adding
+0) will result in an $\mathsf{@empty}$ provenance when cast to a pointer.
 
 This restriction is sufficient to remove both \kl{exposure tracking} and
 consequently \kl{symbolic provenances} and from the memory model of
-\kl{PNVI-ae-udi}. This is because fundamentally VIP tracks exposure of specific
-\emph{pointer values} rather than of whole allocations. Disallowing intervening
-operations (even if the integer value remains within the bounds of the same
-allocation) removes the need to do a search and bounds check of all live
-allocation when casting back (I will discuss how \kl{VIP} recovers allocation
-IDs in such cases soon). This also means that a boundary pointer is
+\kl{PNVI-ae-udi}. This is because fundamentally \kl{VIP} tracks exposure of
+specific \emph{pointer values} rather than of whole allocations. Disallowing
+intervening operations (even if the integer value remains within the bounds of
+the same allocation) removes the need to do a search and bounds check of all
+live allocation when casting back (I will discuss how \kl{VIP} recovers
+allocation IDs in such cases soon). This also means that a boundary pointer is
 disambiguated as soon as it is cast back, based on what it was cast from.
 
 This restriction, particularly the `no intervening operation', forbids too
@@ -444,7 +467,7 @@ pointer value $(@\mathsf{empty}, x)$. Uncommenting line 11 would mean
 \end{marginfigure}%
 
 The VIP \cinline{copy_alloc_id} primitive needs to be expressible in
-PNVI-ae-udi for it to be a sound abstraction, the way this is done is by
+PNVI-ae-udi for it to be a sound abstraction; this is achieved by
 essentially implementing it as a C function
 (\cref{fig:vip-copy-alloc-id-impl}). The implementation triggers two events in
 \kl{PNVI-ae-udi}, the composition of which have the same effect as
@@ -483,7 +506,7 @@ because of \intro{demonic allocation address non-determinism}. This is
 orthogonal to \kl{PNVI-ae-udi} and \kl{VIP}, which are defined with respect to
 a trace on a specific choice of addresses. It means that a program is deemed to
 have \kl{UB} if there exists at least one choice of addresses for allocations
-for which the memory object would signal \kl{UB}. In practise, this means that
+for which the memory object would signal \kl{UB}. In practice, this means that
 the C program should not rely on objects being located at pre-determined
 addresses or laid out with particular adjacencies, since both of those can be
 changed with a different choice of addresses for allocations.
@@ -496,7 +519,10 @@ Another serious problem is that the disambiguation of a provenance is a
 \emph{relevant}\sidenote{See~\fancyref{sec:linearity-manage-resources} for the
 definitions of \kl{relevant}, \kl{linear}, and \kl{intuitionistic}.} fact:
 forgetting this would enable disambiguating the pointer in inconsistent ways.
-This means that the disambiguation would need to be tracked in the
+If the symbolic provenance of a boundary pointer is disambiguated with a memory
+operation (a load, store, array offset, pointer differences, or kills), then
+subsequent operations must not assume the provenance is unambiguated or
+resolved the other way. Hence, disambiguation would need to be tracked in the
 (\kl{linear}) resource context, not the (\kl{intuitionistic}) constraint
 context.
 
@@ -544,7 +570,7 @@ That being said, tracking exposure has the following disadvantages.
         the address of its previous and next pointers, allowing a list to be
         traversed in forwards and reverse direction, whilst saving the space
         for an additional pointer per node, and ``opinions differ as to whether
-        that idiom matters for modern code''~\sidecite{gustedt2021provenance}.
+        that idiom matters for modern code''~\sidecite{gustedt2022provenance}.
     \item \textbf{Unclear correspondence with existing compiler analyses},
         especially across functions boundaries. Address exposure seems to be a
         syntactic over-approximation to pointer capture and escape
@@ -559,7 +585,7 @@ That being said, tracking exposure has the following disadvantages.
 So whilst tracking allocation address exposure would be a reasonable choice,
 especially given the implementation advantages, and would likely be sound with
 respect to \kl{PNVI-ae-udi}, I ultimately decided that to outline its
-its design and defer implementation until it was necessary.
+design and defer implementation until it was necessary.
 
 \subsection{Provenance in integers and bytes}\label{subsec:prov-int-bytes}
 
@@ -637,7 +663,7 @@ that must also preserve provenance, and that calls to such code may validly be
 replaced by a call to the library \cinline{memcpy} as a compiler
 optimisation.\sidenote{\cinline{memcpy} does not expose allocations, but a
     user-defined one will, so justifying this optimisation is still an open
-    question~\cite{gustedt2021provenance}. Additionally, the value of padding
+    question~\cite{gustedt2022provenance}. Additionally, the value of padding
     bits are unspecified (§6.2.6.2\#3).}
 
 In both \kl{VIP} and \kl{PNVI-ae-udi}, all these use-cases are supported by
@@ -708,10 +734,14 @@ of provenance in integers.
 
 Considering this, and the options outlined above, I chose to restrict having
 provenance in bytes to a different, new C type. Aside from making any
-complexity and performance penalties opt-in, it also follows the convention set
-out in C++17 with the introduction \mintinline{cpp}{std::byte}, which is
-specifically intended to be used to access byte representation of objects. As I
-mentioned before, I deferred exposure tracking until it was required.
+complexity and performance penalties opt-in, it also (independently) matches
+the convention set out in C++17 with the introduction
+\mintinline{cpp}{std::byte}, which is specifically intended to be used to
+access byte representation of objects. C++'s \mintinline{cpp}{std::byte} also
+inspired a plan to introduce a \cinline{byte} type to LLVM
+IR~\sidetextcite{lobo2026towards}, to represent uninitalised memory, and copy
+and compare raw data. Lastly, as mentioned before, I deferred exposure tracking
+until it was required.
 
 \subsection{Non-deterministic pointer equality}\label{subsec:non-det-ptr-eq}
 
@@ -906,7 +936,7 @@ rather than requiring a datatype with two separate constructors.
 It is worth noting that ISO/IEC TS 6010:2025, the technical standard for a
 provenance aware memory object model for C (specifically, C17), eschews
 non-deterministic pointer equality and opts to use only address
-equality~\sidecite{gustedt2021provenance}.
+equality~\sidecite{gustedt2022provenance}.
 
 \subsection{Allocation history}\label{subsec:alloc-history}
 
@@ -917,14 +947,15 @@ entry (which is marked true when it is created) is set to false.
 
 An allocation being live is important for some pointer operations, such as
 relational ones, which require the operand pointers to be in bounds of the same
-live allocation for the operation to not have \kl{UB}. However, for other
-operations (such as member shifting), it must still satisfy a bounds check, but
-whether an allocation is live is irrelevant. There is no operation which
-requires knowing that an allocation is dead.
+live allocation for the operation to not have \kl{UB}. For other operations, it
+must still satisfy a bounds check, but whether an allocation is live is
+irrelevant. There is no operation which requires knowing that an allocation is
+dead.
 
-So bounds checks do not require live allocation, some operations require
-live allocations but do not change that, and \coreinline{kill} requires
-a live allocation but changes this.
+In summary: bounds checks, some pointer operations and \coreinline{kill} all
+require allocation information. Additionally, pointer operations and
+\coreinline{kill} require the allocation be live (bounds checks do not). Only
+\coreinline{kill} mutates existing entries allocation history (in \kl{VIP}).
 
 As such, in \kl{CN}, I chose to represent the bounds check information as
 \emph{constraints}, whereas I chose to represent liveness itself as an
