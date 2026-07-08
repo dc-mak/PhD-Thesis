@@ -386,42 +386,42 @@ notable omission was \kl{VST}, mostly due to lack of time and expertise for a
 fair comparison. I also presented industry feedback on \kl{CN}. Based on my
 experience of having worked on programming language tooling both in industry
 and in academia, I will synthesise the two and lay out achievable standards of
-usability for \kl{CN}, with an emphasis on how new projects can avoid several
-pitfalls.
+usability for \kl{CN} \emph{going forward}, with an emphasis on how \emph{new
+projects} can avoid several pitfalls. Only where I explicitly state it are
+the suggestions intended to be retrospective.
 
 \section{Work backwards from examples}
 
-\kl{CN}'s guiding star during its development was the \kl{pKVM} \kl{buddy
-allocator}. Whilst this was understandable, and indeed its unique selling
-point, this \emph{also} guided its design to a large degree. Features were only
-considered and implemented insofar as they got \kl{CN} closer to verifying the
-entire allocator.
+Prior to~\textcite{pulte2023cn}, \kl{CN}'s North Star during its development
+was the \kl{pKVM} \kl{buddy allocator}. Due to its pervasive aliasing and
+computed pointer accesses, verifying the allocator made a for a novel and
+substantial research contribution. However, it \emph{also} limited \kl{CN}'s
+design: features were only considered and implemented insofar as they got
+\kl{CN} closer to verifying the entire allocator.
 
-Whilst this produced a successful paper, this over-fitted \kl{CN} to the example.
-More concretely, it meant that we had accrued significant technical and design
-debt, which became more obvious by the time it came to specifying and verifying
-more pedestrian examples, such as those now in the \kl{CN
-tutorial}~\cite{pulte2024tutorial}.
+Whilst this approach produced a successful paper, it also over-fitted \kl{CN}.
+More concretely, it meant that we had accrued significant technical (see below)
+and design debt (see~\cref{chap:inform-impl}), which hindered specifying and
+verifying simpler and more conventional examples, such as those now in the
+\kl{CN tutorial}~\cite{pulte2024tutorial}.
 
-Many of the features mentioned in \cref{chap:inform-impl} might have been
-incorporated earlier. An obvious candidate is unifying the syntax for
-functions, predicates and specifications: these features were built separately
-over time and as a result have ended up similar but incompatible. For example,
-one of the many incompatibilities is the separate scopes for predicates and
-functions: this results in a confusing error message when a predicate and a
-function are mixed up. Unifying the scopes at this point would require a major
-refactor to symbol resolution during
-desugaring.\sidenote{\href{https://github.com/rems-project/cerberus/issues/288}{Cerberus\#288}}
-Had we worked through enough examples and designs concretely, we might have
-noticed the emerging similarities and reworked the approach.
+% Many of the features mentioned in \cref{chap:inform-impl} might have been
+% anticipated earlier, for example, unifying the syntax for
+% functions, predicates and specifications. These features were built separately
+% over time and as a result have ended up similar but incompatible. For example,
+% one of the many incompatibilities is the separate scopes for predicates and
+% functions: this results in a confusing error message when a predicate and a
+% function are mixed up. Unifying the scopes at this point would require a major
+% refactor to symbol resolution during
+% desugaring.\sidenote{\href{https://github.com/rems-project/cerberus/issues/288}{Cerberus\#288}}
 
 With only slight irony, my point is that \emph{test-driven development is
 exceptionally useful when implementing a verification tool}. This bore out in
-my personal experience in implementing \kl{VIP}: writing examples and
-informally but rigorously working through how they ought to be specified and
-helped enormously in guiding my intuitions and highlighting problems early on,
-and I conjecture a broader range of smaller examples escalating to the
-\kl{buddy allocator} would have been similarly helpful.
+my experience in implementing \kl{VIP}: writing examples and informally but
+rigorously working through how they ought to be specified and helped enormously
+in guiding my intuitions and highlighting problems early on, and I conjecture a
+broader range of smaller examples escalating to the \kl{buddy allocator} would
+have been similarly helpful.
 
 \section{Design with a formalism}
 
@@ -432,8 +432,8 @@ scheme,\sidenote{\href{https://github.com/rems-project/cerberus/commit/7c2c0a364
 7c2c0a36.} This was motivated by reducing the annotation burden for folding
 and unfolding predicates, which turned out to be heavier than annotation
 saved by inferring indices.}, or the switch to the monadic syntax
-(\cref{sec:monadic-syntax}), there are few design decisions I conjecture would
-would have benefited from scrutiny prior to implementation.
+(\cref{sec:monadic-syntax}), there are a few design decisions which might
+have benefited from some scrutiny prior to implementation.
 
 \subsection{Calling conventions affect syntax}
 
@@ -449,10 +449,11 @@ would have benefited from scrutiny prior to implementation.
 
 By default, \kl{Cerberus} elaborates calls to C functions by allocating and
 initialising parameters \emph{at the call site} and then \emph{passing
-pointers} to the temporary objects to the callee. This leads to very verbose
-and awkward specifications, where functions had to (a) claim ownership of their
-parameters and (b) promise they did not modify them so that the objects at the
-call-site remained unaffected.
+pointers} to the temporary objects to the callee. This %
+% closely follows the standard, but % check with Kayvan
+leads to very verbose and awkward specifications, where functions had to (a)
+claim ownership of their parameters and (b) promise they did not modify them so
+that the objects at the call-site remained unaffected.
 
 This eventually became intolerable enough to realise that what needed to change
 was not the specifications but the
@@ -519,29 +520,37 @@ time they are willing to spend on it.
     \item Update the rest of the stage to handle this hole.
     \item If the subsequent stage supports holes, consider joining them up.
 \end{itemize}
-If, like in \kl{CN} proof mode, the last (semantic analysis) stage backwards is
+If, like in \kl{CN} proof mode, the last (semantic analysis) stage is
 the most interesting and expensive one, this suggests working backwards through
 each stage.
 
-To be clear, I am not talking about \emph{incrementalising} the entire type
-checker, though support for holes could make this easier.
+To be clear, I am not talking about \emph{incrementalising} \kl{CN}, though
+support for holes could make this easier. And I am not saying that \kl{CN}
+should have been formalised or implemented with an elegant system for
+the maximum amount of error recovery and collection.
 
-What I am saying is that for every \kl{CN} annotation, there is the opportunity
-to support multiple errors through multiple stages. Take the example of failed
-the bit-vector update for the \kl{buddy allocator} (\cref{sec:buddy-failed-bv}). One
-of the major pain points of this update was (tediously) ensuring that
-\emph{every datatype, function, predicate, and pre/postcondition} was updated
-to switch from integer to bit-vector types; without this, \kl{CN} would refuse
-to move on to checking any functions. As a result, I was forced to manually
-figure out the dependency structure, start at the leaves, and comment out
-everything else that was irrelevant. This also made it difficult to
-incrementally check my progress into a CI pipeline. Though gating the switch to
-integers behind a flag would have helped, I believe multiple error propagation
-would have been helpful too, \emph{especially when type checking is slow}.
+What I am saying is that for every \kl{CN} annotation, there is an opportunity
+to support multiple errors through multiple stages (and dependency analysis,
+and feature gating), and there are concrete benefits to writing code to with
+this in mind from the start.
+
+Consider failed the bit-vector update for the \kl{buddy allocator}
+(\cref{sec:buddy-failed-bv}). One of its major pain points was (tediously)
+switching \emph{every integer in every datatype, function,
+predicate, and pre/postcondition} to a bit-vector; without this, despite
+being designed for \emph{per-function} checking, \kl{CN} would stop at the
+first integer/bit-vector mismatch. On just this update, a few extra weeks of
+implementation effort early on would have saved \emph{months} of scarce time:
+\begin{itemize}
+    \item manually calculating the dependency structure, starting at the
+        leaves, and commenting out everything else,
+    \item manually testing for regressions, and
+    \item noticing the slow-down in verification.
+\end{itemize}
 
 I conjecture inspiration from the below two papers will prove fruitful
 to investigating and guiding the theory and implementation of multiple
-errors for \kl{CN}.
+errors for \kl{CN} in the future.
 \begin{itemize}
     \item \citetitle{zhao2024total}~\sidecite{zhao2024total}.
         This paper defines a bidirectional gradual
@@ -597,7 +606,7 @@ system such as OCaml's or Haskell's.
 
 \section{Software engineering}
 
-\kl{CN} has been developed for around 4 years at the time of writing. It has
+\kl{CN} has been developed for around 5 years at the time of writing. It has
 had multiple contributors, some of whom have left the project now. As such,
 it benefits from good software engineering practices like any other project.
 There are many such things, so I will focus on the important ones.
@@ -606,7 +615,7 @@ There are many such things, so I will focus on the important ones.
 
 For a long time, \kl{CN} did not have any regression testing and so features
 which were implemented, but accidentally broke later, went unnoticed.
-Another substantial benefit to regression testing is that it enables assists
+Another substantial benefit to regression testing is that it enables and assists
 with fairly large-scale refactors. Regression testing is also very helpful when
 multiple people are working on overlapping parts of the project, so that
 changes which accidentally break other things are picked up \emph{before} being
@@ -641,8 +650,8 @@ verification tool, and the lack of good performance measurement makes it
 difficult to understand why \kl{CN} is slow and how to fix it.
 
 Prior measurements were ad hoc but revealed that most of the time is spent in
-the solver, which we believe to still be the case. Whilst this is useful
-information, we need better granularity on the subject, to answer the following.
+the solver, which we believe to still be the case. However, we need better
+granularity on the subject, to answer the following.
 \begin{itemize}
     \item What is the distribution of times per call to the solver?
     \item What part of \kl{CN} generates the slowest problems?
@@ -651,8 +660,8 @@ information, we need better granularity on the subject, to answer the following.
 We have some performance benchmarking now, enough to demonstrate that enabling
 \kl{VIP} is slow and soundly reducing bounds checks\sidenote{By replacing them
 with liveness checks.} reduces execution time (\cref{sec:vip-perf}). However, we
-do not have good insight into explaining these observations. The measurements
-are very noisy and coarse \textemdash{} the script measures the total execution
+do not have good insight into why this is the case. The measurements
+are noisy and coarse \textemdash{} the script measures the total execution
 time for running each regression test once, when what we need are answers to
 the aforementioned questions.
 
