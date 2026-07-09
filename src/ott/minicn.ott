@@ -80,7 +80,7 @@ grammar
 
 defns
 
-  mini :: 'Mini_' ::=
+  mini_res :: 'Mini_' ::=
 
   defn Vc , Rc , Phi |- expand ( cond_res ) ~> Vc' , Rc' , Phi' :: :: CondRes_ :: CondRes_
   {{ tex [[Vc]] ; [[Phi]] ; [[Rc]] [[|-]] [[expand]] [[(]] [[cond_res]] [[)]] [[~>]] [[Vc']] ; [[Phi']] ; [[Rc']] }}
@@ -135,9 +135,9 @@ defns
     Vc , Rc , Phi |- simplify ( cond ( term , cond_res1 , cond_res2 ) *  Rc' ) ~> done_or_rerun , Vc'' ,  Rc3 , Phi''
 
 
- defn Vc , Rc , Phi |- simplify ( Vc' , Rc' , Phi' ) ~> Vc'' , Rc'' , Phi'' :: :: SimpRes_ :: SimpRes_
- {{ tex [[Vc]] ; [[Phi]] ; [[Rc]] [[|-]] [[simplify]] [[(]] [[Vc']] , [[Phi']] , [[Rc']] [[)]] [[~>]] [[Vc'']] ; [[Phi'']] ; [[Rc'']] }}
- {{ com given variables $[[Vc]]$, resources $[[Rc]]$ and constraints $[[Phi]]$, repeatedly simplify $[[Vc']], [[Phi']], [[Rc']]$ until no change, and produce contexts $[[Vc'']] , [[Rc'']] , [[Phi'']]$ }} by
+  defn Vc , Rc , Phi |- simplify ( Vc' , Rc' , Phi' ) ~> Vc'' , Rc'' , Phi'' :: :: SimpRes_ :: SimpRes_
+  {{ tex [[Vc]] ; [[Phi]] ; [[Rc]] [[|-]] [[simplify]] [[(]] [[Vc']] , [[Phi']] , [[Rc']] [[)]] [[~>]] [[Vc'']] ; [[Phi'']] ; [[Rc'']] }}
+  {{ com given variables $[[Vc]]$, resources $[[Rc]]$ and constraints $[[Phi]]$, repeatedly simplify $[[Vc']], [[Phi']], [[Rc']]$ until no change, and produce contexts $[[Vc'']] , [[Rc'']] , [[Phi'']]$ }} by
 
 
     [ Vc , Vc' ] , Rc * Rc' , Phi /\ Phi' |- simplify ( Rc * Rc' ) ~> done , cdot , Rc * Rc' , cdot
@@ -150,6 +150,10 @@ defns
     ---------------------------------------------------------------------- :: Rerun
     Vc , Rc , Phi |- simplify ( Vc' , Rc' , Phi' ) ~> Vc'' , Rc'' , Phi''
 
+
+defns
+
+  mini_spec :: 'Mini_' ::=
 
   defn  Vc , Rc , Phi |- Vc' , Rc' , Phi' | spec -| sval , Vc'' , used ( Rc1 ) * Rc2 , Phi'' :: :: Prove :: Prove_
   {{ tex [[Vc]] ; [[Phi]] ; [[Rc]] [[|-]] [[Vc']] ; [[Phi']] ; [[Rc']] [[|]] [[spec]] [[-|]] [[sval]] ; [[Vc'']] ; [[Phi'']] ; [[used]] [[(]] [[Rc1]] [[)]] [[*]] [[Rc2]] }}
@@ -284,9 +288,13 @@ defns
     Vc , Rc , Phi |- Vc' , Phi' | if ( term ) { spec1 } else { spec2 } ~> cdot , [ Vc1 , Vc' ] , Rc1 * mres , Phi1 /\ Phi'
 
 
- defn Vc , Rc , Phi |-lv lve -| id inEnv Vc' ,  Rc' , Phi' :: :: Lve_ :: Lve_
- {{ tex [[Vc]] ; [[Phi]] ; [[Rc]] [[|-lv]] [[lve]] [[-|]] [[id]] [[inEnv]] [[Vc']] ; [[Phi']] ; [[Rc']] }}
- {{ com given variables $[[Vc]]$, constraints $[[Phi]]$ and resources $[[Rc]]$, symbolically evaluate lvalue-expressions $[[lve]]$ to $[[id]]$ and new context $[[Vc']], [[Phi']], [[Rc']]$ }} by
+defns
+
+  mini_expr :: 'Mini_' ::=
+
+  defn Vc , Rc , Phi |-lv lve -| id inEnv Vc' ,  Rc' , Phi' :: :: Lve_ :: Lve_
+  {{ tex [[Vc]] ; [[Phi]] ; [[Rc]] [[|-lv]] [[lve]] [[-|]] [[id]] [[inEnv]] [[Vc']] ; [[Phi']] ; [[Rc']] }}
+  {{ com given variables $[[Vc]]$, constraints $[[Phi]]$ and resources $[[Rc]]$, symbolically evaluate lvalue-expressions $[[lve]]$ to $[[id]]$ and new context $[[Vc']], [[Phi']], [[Rc']]$ }} by
 
     ---------------------------------------------------- :: Const
     Vc , Rc , Phi |-lv n -| id inEnv [ id ] , Rc , ( id = n )
