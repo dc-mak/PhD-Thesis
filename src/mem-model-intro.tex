@@ -113,15 +113,20 @@ defined by an interface.
     \ContinuedFloat*%
     \small%
     \raggedright%
-    \cngrammarcompressed{.8\textwidth}{%
-        \cnkillXXkind{}\cnafterlastrule{}
-    }
     \begingroup%
     %\renewcommand{\cnprodline}[6]{\cnprodlinecomment{#1}{#2}{#3}{}{#5}{#6}}
     \renewcommand{\cnprodline}{\cnprodlinecomment}
     \grammartabularSTY{%
         \cnaction{}\cnafterlastrule{}
     }
+    \endgroup%
+
+    \begingroup%
+    \renewcommand{\cnrulehead}[3]{\begin{mathbreakcomma}#1\end{mathbreakcomma} \mathrel{{\Colon}{=}}}
+    \renewcommand{\cnfirstprodline}[6]{#2}
+    \renewcommand{\cnprodline}[6]{\StrIfInTF{#3}{M}{}{\StrIfInTF{#5}{P}{}{\ #1\ #2}}}{}
+    \renewcommand{\cnprodnewline}{}
+    $\cnkillXXkind{}$
     \endgroup%
     \caption{\kl{ResCore} memory action interface, a simplified subset of the
         \kl{Core} memory action interface.}\label{fig:mem-action-intf}
@@ -221,16 +226,15 @@ from addresses to bytes, but to pairs of a (potentially empty) provenance and a
 concrete 8-bit byte or $\mathsf{unspec}$ value for uninitialised or padding
 bytes.\sidenote{There is an additional component, an optional \intro{pointer
     index} (an integer $j$ or $\mathsf{none}$) which stores which part of a
-    pointer a byte came from. This is only relevant if either (a) pointers are
-    not uniform, i.e.\ different pointers types can have different sizes or (b)
-    provenance is tracked via integers (PVI) and bytes of those pointers have
-    been overwritten. Condition (a) relies on the rule for stores forbidding
-    unaligned writes for pointers. Condition (b) relies integers being stored
-    with $@\mathsf{empty}$ provenance at the memory byte level. The latter
-    includes \cinline{memcpy} for parts of pointers, which the standard
-    specifies that as a copy of characters (which are integer values). This
-    means a (non-$@\mathsf{empty}$) provenance mismatch in the bytes of
-    pointers is impossible.}\label{sn:ignore-ptr-index}
+    pointer a byte came from, to forbid a (non-$@\mathsf{empty}$) provenance
+    mismatch in the bytes of pointers. I ignore it because I assume (a)
+    different pointers types all have the same size and (b) provenance is
+    \emph{not} tracked via integers. Condition (a) relies on the rule for
+    stores forbidding unaligned writes for pointers (which it does). Condition
+    (b) relies on integers being stored with $@\mathsf{empty}$ provenance at
+    the memory byte level. The latter covers \cinline{memcpy} for parts of
+    pointers, which the standard (§7.23.2.1\#2) specifies as a copy of characters (which
+    are integer values).}\label{sn:ignore-ptr-index}
 
 Reading from and writing to memory is done via the \coreinline{load} and
 \coreinline{store} actions, at a specific C type, and these actions handle
@@ -1050,11 +1054,32 @@ of pointers I chose was guided by that given in \kl{VIP} and \kl{PNVI-ae-udi}:
 a special constructor for the \cinline{NULL} pointer, or a pair of a
 provenance and an address. I omit support for function pointers;
 they would need care to be integrated ergonomically. For example, in defining
-predicates which take pointer arguments, almost all the time a pointer will be
+predicates which take pointer arguments, almost always time a pointer will be
 intended to be either \cinline{NULL} or pointing to an object, so
 the default should opt out of the function pointer case.
 
 \paragraph{\cinline{NULL} pointer.}%
+% Peter says "ISO has NULL quite distinct to 0 (though I forget the details)"
+%
+% §6.3.2.3 Pointers
+% -----------------
+% #3 An integer constant expression with the value 0, or such an expression cast
+%   to type % void *, is called a null pointer constant.66) If a null pointer
+%   constant is converted to a pointer type, the resulting pointer, called a
+%   null pointer, is guaranteed to compare unequal to a pointer to any object
+%   or function.
+% #4 Conversion of a null pointer to another pointer type yields a null pointer
+%   of that type. Any two null pointers shall compare equal
+%
+% So it's only required to be an isomorphism but the language (e.g. in 6.5.9#{5,6})
+% always handles it as a specific/separate case. ISO/IEC TS 6010:2025 (and
+% draft N3005) are a little clearer.
+%
+% §6.2.4 Storage durations and object lifetimes
+% ---------------------------------------------
+% #8 Pointers additionally may have a special value null that is different from the
+%    address of any storage instance and has no provenance (for object pointers),
+%
 Though I do not know why \cinline{NULL} is not represented as
 $(@\mathsf{empty}, 0)$ in the memory model,\sidenote{My conjecture is that it
     was a historical accident where PVI was developed first and in that model,
