@@ -387,7 +387,7 @@ fair comparison. I also presented industry feedback on \kl{CN}. Based on my
 experience of having worked on programming language tooling both in industry
 and in academia, I will synthesise the two and lay out achievable standards of
 usability for \kl{CN} \emph{going forward}, with an emphasis on how \emph{new
-projects} can avoid several pitfalls. Only where I explicitly state it are
+projects} can avoid several pitfalls. Only where I explicitly say so are
 the suggestions intended to be retrospective.
 
 \section{Work backwards from examples}
@@ -437,20 +437,19 @@ have benefited from some scrutiny prior to implementation.
 
 \subsection{Calling conventions affect syntax}
 
-% Even with reasonable input, the challenges continue. One of the early
-% challenges \kl{CN} faced was that of allocation for function arguments. Though
-% intuitively, a programmer might model allocations for parameters as being
-% created by the \emph{callee}, early versions of \kl{CN} relied on
-% \kl{Cerberus}' elaboration allocating storage for function arguments at the
-% \emph{caller}, per callsite. This significantly degraded the experience of
-% writing specifications and proofs because the programmer had to specify that
-% functions did not mutate arguments at the callsite. Kayvan Memarinan fixed this
-% by creating a parallel mode of elaboration to support the more intuitive model.
+% Kayvan: There is no text in the standard explicitly saying whether to
+% allocate at call site or in the body. there is ISO C11 §6.5.2.2#4 that says:
+%
+%   An argument may be an expression of any complete object type. In preparing
+%   for the call to a function, the arguments are evaluated, and each parameter
+%   is assigned the value of the corresponding argument.
+%
+% I suspect the wording "in preparing" is why I elaborated everything in the
+% call site.
 
 By default, \kl{Cerberus} elaborates calls to C functions by allocating and
 initialising parameters \emph{at the call site} and then \emph{passing
 pointers} to the temporary objects to the callee. This %
-% closely follows the standard, but % check with Kayvan
 leads to very verbose and awkward specifications, where functions had to (a)
 claim ownership of their parameters and (b) promise they did not modify them so
 that the objects at the call-site remained unaffected.
@@ -1014,9 +1013,12 @@ outputs.\sidenote{\url{https://github.com/dspinellis/cscout/tree/master/src/test
 There is even expertise within the programming language research community on
 the algorithm, since it was recently discussed as being closely related to the
 strategy for checking termination for expanding type definitions in type
-expressions in OCaml~\sidecite{chataing2024unboxed}. This is not to say that it
-will be easy, but at this stage such an effort seems more likely to succeed
-than the tree-carver was when I embarked on implementing it.
+expressions in OCaml~\sidecite{chataing2024unboxed}. Based on this, I used
+Claude Code to implement a working proof-of-concept within three
+days.~\sidenote{\url{https://github.com/dc-mak/cerberus/tree/internal-cpp-plan}}
+The biggest challenge was not correct macro expansion (including inside magic
+comments), but for supporting good, Clang-like error messages (when an
+error occurs inside a chain of expansions), due to a limitation of \kl{Menhir}.
 
 \section{Process counter-examples smartly}\label{sec:counter-ex}
 
