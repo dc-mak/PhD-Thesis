@@ -46,9 +46,9 @@ $(BUILD)/main.pdf: $(THESIS_FILTERED) \
     $(PREFIX)_override.$(GEN).tex \
     $(PREFIX)_drulenames.$(GEN).tex | $(BUILD)
 ifeq ($(CAT_ON_FAIL),y)
-	latexmk $(FLAGS) || (cat $(BUILD)/main.log; exit 1)
+	latexmk -jobname=$(basename $(notdir $@)) $(FLAGS) || (cat $(BUILD)/main.log; exit 1)
 else
-	latexmk $(FLAGS)
+	latexmk -jobname=$(basename $(notdir $@)) $(FLAGS)
 endif
 
 $(THESIS_FILTERED):%.$(GEN).tex: %.mng $(CACHE) | check_rule_diff

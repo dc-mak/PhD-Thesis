@@ -55,6 +55,170 @@ grammar
 defns
   inf_res :: '' ::=
 
+  defn N |- cmp_min ( iguard , iguard' ) ~> out_opt_cmp_term :: :: IG_Cmp :: IG_Cmp_
+  {{ com given constraints $[[N]]$ , $[[iguard]]$ is potentially included in $[[iguard']]$ (or vice-versa) with ordering and minimum $[[out_opt_cmp_term]]$ }} by
+
+
+    smt ( N => each ( integer x ; _t ) { iguard <-> iguard' } )
+    ------------------------------------------------------------ :: Eq
+    N |- cmp_min ( iguard , iguard' ) ~> Eq , iguard
+
+
+    smt ( N => each (integer x; _t) { iguard -> iguard' } )
+    ------------------------------------------------------------ :: Lt
+    N |- cmp_min ( iguard , iguard' ) ~> Lt , iguard
+
+
+    smt ( N => each ( integer x; _t) { iguard' -> iguard } )
+    ------------------------------------------------------------ :: Gt
+    N |- cmp_min ( iguard , iguard' ) ~> Gt , iguard'
+
+
+    -------------------------------------------------- :: None
+    N |- cmp_min ( iguard , iguard' ) ~> None
+
+
+  defn N |- ipred_term [=? ipred_term' ~> out_opt_cmp :: :: I_Cmp :: I_Cmp_
+  {{ com given constraints $[[N]]$ , $[[ipred_term]]$ is potentially included in $[[ipred_term']]$ (or vice-versa) with ordering $[[out_opt_cmp]]$ }} by
+
+
+    a1 != a2
+    ---------------------------------------------------------------------------------------------- :: Name_Neq
+    N |- each ( integer _x ; _t ) { a1 ( _iargs ) } [=? each ( integer _x ; _t ) { a2 ( _iargs ) } ~> None
+
+
+    N |- cmp_min ( iguard , iguard' ) ~> None
+    --------------------------------------------------------------------------------------- :: IG_Neq
+    N |- each (integer x; iguard) { a ( _iargs ) } [=? each (integer x ; iguard') { a ( _iargs ) } ~> None
+
+
+    N |- cmp_min ( iguard , iguard' ) ~> cmp , iguard''
+    smt ( N => neg < each (integer x; iguard'') { ( iargs ) = ( iargs' ) } > )
+    --------------------------------------------------------------------------------------- :: IArg_Neq
+    N |- each (integer x; iguard) { a ( iargs ) } [=? each (integer x ; iguard') { a ( iargs' ) } ~> None
+
+
+    N |- cmp_min ( iguard , iguard' ) ~> cmp , iguard''
+    smt ( N => each (integer x; iguard'') { ( iargs ) = ( iargs' ) } )
+    --------------------------------------------------------------------------------------- :: Comparable
+    N |- each (integer x; iguard) { a ( iargs ) } [=? each (integer x ; iguard') { a ( iargs' ) } ~> cmp
+
+
+  defn N |- pred_ipred = pred_ipred' ~> ty_bool :: :: Req_Eq :: Req_Eq_
+  {{ com resource equality: given constraints $[[N]]$, $[[pred_ipred]]$ and $[[pred_ipred']]$ are equal according to $[[ty_bool]]$ }} by
+
+
+    a1 != a2
+    ------------------------------------------------------ :: PP_Name_Neq
+    N |- a1 ( _iargs ) = a2 ( _iargs ) ~> false
+
+
+    smt ( N => neg ( ( iargs ) = ( iargs' ) ) )
+    ------------------------------------------------------------------ :: PP_IArg_Neq
+    N |- a ( iargs ) = a ( iargs' ) ~> false
+
+
+    smt ( N => ( iargs ) = ( iargs' ) )
+    --------------------------------------------------------------- :: PP_Eq
+    N |- a ( iargs ) = a ( iargs' ) ~> true
+
+
+    N |- ipred_term [=? ipred_term' ~> Eq
+    -------------------------------------- :: II_Eq
+    N |- ipred_term = ipred_term' ~> true
+
+
+    N |- ipred_term [=? ipred_term' ~> opt_cmp
+    ------------------------------------------ :: II_Neq
+    N |- ipred_term = ipred_term' ~> false
+
+
+  defn N |- res = res' :: :: Res_Eq :: Res_Eq_
+  {{ com resource equality: given constraints $[[N]]$, $[[res]]$ is equal to $[[res']]$ }} by
+
+    -------------------- :: Emp
+    N |- emp = emp
+
+
+    % DEFER weaken this to allow imp / subtyping e.g. Annot can be stronger than what is required
+    smt ( N => term <-> term' )
+    ----------------------------------- :: Phi
+    N |- term = term'
+
+
+    N |- pred_term = pred_term' ~> true
+    --------------------------------------- :: Pred
+    N |- pred_term ( _t ) = pred_term' ( _t )
+
+
+    N |- ipred_term = ipred_term' ~> true
+    --------------------------------------- :: IPred
+    N |- ipred_term ( _t ) = ipred_term' ( _t )
+
+
+    N |- res1 = res'1
+    N |- res2 = res'2
+    ------------------------------------ :: SepConj
+    N |- res1 * res2 = res'1 * res'2
+
+
+    N |- res = res'
+    -------------------------------------------------------------------------------- :: Exists
+    N |- exists x : base_type .: res = exists x : base_type .: res'
+
+
+    smt ( N => term1 <-> term2 )
+    N , term1   |- res11 = res21
+    N , neg term1 |- res21 = res22
+    ----------------------------------------------------------------------------- :: OrdDisj
+    N |- if term1 then res11 else res12 = if term2 then res21 else res22
+
+
+  defn N |- simp_rec ( res ) ~> out_res' , out_ty_bool :: :: Res_SimpRec :: Res_SimpRec_
+  {{ com partial-simplification of resources: given constraints $[[N]]$, $[[res]]$ partially simplifies (strips ifs) to $[[out_res']]$ }} by
+
+
+    smt ( N => term )
+    N |- simp_rec ( res1 ) ~> res1' , ty_bool
+    -------------------------------------------------------------- :: If_True
+    N |- simp_rec ( if term then res1 else res2 ) ~> res1' , true
+
+
+    smt ( N => neg term )
+    N |- simp_rec ( res2 ) ~> res2' , ty_bool
+    ------------------------------------------------------------- :: If_False
+    N |- simp_rec ( if term then res1 else res2 ) ~> res2' , true
+
+
+    N |- simp_rec ( res1 ) ~> res1' , ty_bool1
+    N |- simp_rec ( res2 ) ~> res2' , ty_bool2
+    ------------------------------------------------------------------ :: SepConj
+    N |- simp_rec ( res1 * res2 ) ~> res1' * res2' , ty_bool1 || ty_bool2
+
+
+    N |- simp_rec ( res ) ~> res' , ty_bool
+    ---------------------------------------------------------------------------------- :: Exists
+    N |- simp_rec ( exists y : base_type .: res ) ~> exists y : base_type .: res' , ty_bool
+
+
+    ---------------------------------- :: NoChange
+    N |- simp_rec ( res ) ~> res , false
+
+
+  defn N |- simp ( res ) ~> opt_out_res :: :: Simp :: Simp_
+  {{ com partial-simplification of resources: given constraints $[[N]]$, $[[res]]$ attempts a partial simplification (strips ifs) to $[[opt_out_res]]$ }} by
+
+
+    N |- simp_rec ( res ) ~> res , false
+    ------------------------------------- :: NoSimp
+    N |- simp ( res ) ~> None
+
+
+    N |- simp_rec ( res ) ~> res' , true
+    -------------------------------------- :: Simp
+    N |- simp ( res ) ~> res'
+
+
   defn N |- pred_term in? ipred_term ~> out_opt_term :: :: PinI :: PinI_
   {{ com given constraints $[[N]]$, $[[pred_term]]$ is potentially a part of $[[ipred_term]]$ at index $[[out_opt_term]]$ }} by
 
