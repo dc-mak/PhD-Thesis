@@ -14,7 +14,10 @@ developers~\cite{sammler2021refinedc}. Part of this comparison was featured
 in~\textcite{pulte2023cn}, including the annotation overhead and execution
 times.
 
-After that, I will discuss some feedback given by some industry partners on
+After that, I will compare \kl{CN} in more general terms to \kl{symbolic
+execution} tools which have some connection to C.
+
+Lastly, I will discuss some feedback given by some industry partners on
 \kl{CN}. As an academic, these seem borderline unreasonable, especially when
 compared to the aforementioned state-of-the-art research tools, but as an
 ex-industry professional, it is much easier to concede. Given our goal of
@@ -22,8 +25,7 @@ targeting kernel programmers, we as academics want industry adoption for these
 tools, in which case taking industry feedback seriously is crucial.
 
 
-
-\section{Comparison}
+\section{Early allocator}
 
 The early allocator in \kl{pKVM} during intialisation, before switching over to
 the aforementioned \kl{buddy allocator}. It is a simple allocator which just bumps a
@@ -191,7 +193,7 @@ issue with structs may be an intentional design choice to sidestep handling
 exploding and imploding structs, which does require extra inference and thus
 reduce performance.
 
-Stepping back, \kl{VeriFast} uses an ad-hoc close-to-syntax semantics of C the
+Stepping back, \kl{VeriFast} uses an ad hoc close-to-syntax semantics of C the
 developers believe to be sound. This has the advantage of allowing allow for
 some interesting, albeit confusing, heuristics such as the array indexing
 example. However, it has the downside of missing a long tail of features
@@ -246,12 +248,152 @@ early allocator (3.5s).
 
 \kl{RefinedC} is implemented inside \kl{Rocq} atop \kl{Iris}, making its
 \kl[TCB]{trusted computing base} (TCB) the smallest out of all the tools
-mentioned so far. This trust is undercut by its custom ad hoc semantics for C
+mentioned so far. This trust is undercut by its ad hoc semantics for C
 based on the \emph{Caesium} kernel over which its typing and automation
 framework \emph{Lithium} operates. The rules are intended to be heuristic
 rather than decidable, with the main mode of operation inside a \kl{Rocq}
 session. Its annotation overhead is similar to \kl{CN}, but the performance is
 much slower (16.7s).
+
+\section{Other symbolic execution verifiers}
+
+In this thesis, I have framed \kl{CN} as a refinement typing system, but it is
+equally valid to think of it as a compositional symbolic execution (CSE) tool.
+CSE traces its origins back to Smallfoot~\sidecite{berdine2006smallfoot}, which
+inspired many verification tools, but for the purposes of this section, I shall
+focus only on tools which have some relation to \emph{verifying} C.
+
+Almost all of the tools I discuss have some proof of soundness associated with
+its approach, as well as some link to testing or inferring assertions. The
+former is necessary for increasing expressiveness and reducing the TCB, and the
+latter is necessary for improving usability and usefulness (by providing
+incremental benefit for incomplete specifications).
+
+\subsection{Gillian-C}
+
+\kl{Gillian}~\sidecite{santos2020gillian}, is a symbolic execution library
+which supports both bounded whole-program execution (by inlining functions
+calls to a certain depth) and compositional execution (with specifications of
+pre- and postconditions on function). It supports reasoning in both
+over-approximate (OX) and under-approximate (UX) styles for proof and
+bug-finding respectively~\sidecite{loow2024compositional}. The assertion
+language is parametric: library-users provide `core predicates', and Gillian
+provides predicate transformers, existential quantification and separating
+conjunction. Predicate transformers allow support for an Iris-style
+construction of state, with exclusive ownership, fractional permissions,
+freeing resources partial maps and user-defined recursive predicates. For OX,
+there are no restrictions on predicates, but for UX, to support specification
+\emph{inference} using bi-abduction, the `core predicates' provided must be
+\emph{strictly exact} (and the transformers used on them must preserve this),
+and the approach has been proven sound~\sidecite{loow2025compositional}.
+
+% Caveat: folding (strictly exact) predicates in UX reasoning is unsound.
+
+Note that, in \kl{CN}, the syntax guides the instantiation of existential
+variables and output arguments, because variable scoping ensures
+mode-correctness; the syntax also guides the order of consuming resources from
+the context. Gillian instead opts for a more traditional separation-logic
+syntax, and infers the order of the aforementioned items
+automatically~\sidecite{loow2024matching}.
+
+To use Gillian, one must translate programs from a source language (such as C,
+Rust, or JavaScript) into the Gillian Intermediate Language (GIL). Its syntax
+features mostly standard values, expressions and commands for
+\emph{unstructured} control-flow. GIL's syntax is \emph{parametric} on a set of
+actions for manipulating a symbolic state, both of which must be specified by
+the user, with the help of several (optimised) building blocks provided by the
+library. This approach has been used to support front-ends for C, Rust and
+JavaScript. Henceforth, I shall only discuss the C front-end, Gillian-C.
+
+Gillian-C uses CompCert~\sidecite{leroy2016compcert}, to compile C code down to
+C\#minor, the latter's second IL (after Clight), and then translates C\#minor
+into GIL.\@ It also adopts CompCert's memory object model as the foundation for
+its symbolic state, but innovates on it with the introduction of \emph{symbolic
+block trees}. Both C and its memory object model are ad hoc.
+Symbolic block trees seem to both automate and speed-up much of the
+memory-related reasoning, especially with respect to byte-level manipulations
+which require explicit annotations (\cref{sec:convert-bytes}) within \kl{CN}.
+
+Gillian and its C front-end are well optimised, and I believe are likely an
+order of magnitude faster than \kl{CN} on average. GIL would need to be
+extended to support unsequenced and weakly-sequenced evaluation; the former is
+conceptually straightforward but the latter is quite unclear. Gillian-C works
+with real world C:\@ its whole-program symbolic testing and UX specification
+synthesis found bugs in the Collections-C library, an open-source library of
+generic data-structure for C programs; its OX specification checking was used
+to verify encryption header parsing in the AWS Encryption SDK for C, and found
+bugs along the way. However, its emphasis on automation entails a surprising
+property: it is possible to slow down verification by adding more annotations.
+
+\subsection{Viper-based: VerCors and Gradual C0}
+
+% https://dardinier.me/slides/tutorial_POPL25.pdf
+
+Viper~\sidecite{muller2016viper}, uses a similar IL based approach for symbolic
+execution, but uses a variant of separation logic, implicit dynamic frames
+(IDF)~\sidecite{smans2012implicit}, designed for \emph{object-based} languages.
+The heap-model is fixed: it maps object-field pairs to values. Objects are
+accessed via references which can be read and updated; it does not have
+explicit de-allocation (conceptually, objects could remain allocated). Its
+expressive logic supports user-defined recursive predicates, fractional
+permissions, magic wands, and quantified permissions (which inspired the
+initial scheme for iterated predicates in \kl{CN}). Like Gillian, the core
+approach behind Viper has been proven sound~\sidecite{dardinier2025formal}.
+
+Memory arrays and pointers with offsets can be encoded, but pointer arithmetic
+and byte-level reasoning is not directly supported. IDF separates out
+\emph{accessibility} predicates \textemdash{} used to specify the shape of the
+heap (permissions) \textemdash{} from \emph{heap-dependent functions}
+\textemdash{} used to specify the contents of the heap (values). Like \kl{CN},
+this separates input arguments as parameters and output arguments as the result
+(of the functions). However, most of the time assertions must be self-framing
+(include all permissions to evaluate the heap accesses in the assertion).
+
+Viper has the VerCors~\sidecite{blom2017vercors} front-end which supports
+annotations on OpenCL/OpenMP/C code. \sidetextcite{blom2017vercors} says
+`Support for basic features of the C and C++ languages works similar to the
+verification of those features in Java'. Programs are annotated with
+specifications and are then `encoded into the internal format of VerCors,
+called COL, which is transformed in several steps into the input language of
+Viper'~\sidecite{oorschot2024first}. VerCors models pointer using a
+block-offset scheme~\sidecite{haak2026verifying}.
+
+Viper is also forked to support \emph{gradual} verification with
+C0~\sidecite{divincenzo2025gradual} (a safe subset of C designed for
+education). The idea behind gradual verification is to soundly and efficiently
+support incomplete specifications by proving as much as is possible statically,
+and then inserting run-time checks for the remainder.
+\sidetextcite{zimmerman2024sound} note that `IDF is particularly well-suited
+for gradual specifications [because it] allows specification of heap values
+while leaving more complex accessibility assertions unspecified'. They also
+prove their core approach sound.
+
+\subsection{Soteria-C}
+
+Eschewing the IL approach, Soteria~\sidecite{ayoun2026soteria} is another
+symbolic execution library. It demonstrates its feasibility with front-ends for
+C (twice as fast as Gillian-C) and Rust, and, at the time of writing, an
+experimental proof-of-concept one for \kl{CN}. Soteria-\kl{CN} uses
+\kl{MuCore}, and can be up to 50x faster than \kl{CN} on small tests cases for
+singly- and doubly-linked lists. The speed-up seems to \emph{increase} with the
+size of the program, though iterated predicates, inductive datatype and pure
+functions are unsupported, so bigger and more representative examples may not
+be so impressive.
+
+The C front-end uses Cerberus' Ail rather than Core, because Ail retains more
+of the original program structure and thus makes it easier to spot and apply
+heuristics as optimisations.\sidenote{Though of course, it keeps implicit much
+subtlety, for example, integer promotions and evaluation order.} For example,
+Cerberus will elaborate the \cinline{&&} operator (in Ail) to an if-expression
+(in Core) to capture the fact that it is short-circuiting and may have
+side-effects. To handle this possibility soundly, the system will fork the
+symbolic execution path, even though this would be unnecessary for most code.
+Another example is local variables: Cerberus models variables as heap-allocated
+in case their address is taken. As is, this precludes the possibility of
+modelling locals (more efficiently) outside the heap \emph{until} their address
+is taken. Both of these are fixable with more annotations on the \kl{Core}
+program during elaboration (or an analysis afterwards), but show that without
+care, the explicitness of \kl{Core} can be a downside.
 
 \section{Industry feedback}\label{sec:industry-feedback}
 
