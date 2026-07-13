@@ -690,11 +690,11 @@ Name & Judgement & Figure (Section) \\
 \\
 \textsc{Req*}
    & $[[ N ; nR |- pred_ipred ~> bind res_bind for res_term and oarg -| nR' ]]$
-   &~(\ref{sec:elab-system})
+   &~(\ref{subsec:app-synth-indices})
 \\
 \textsc{If*}
    & $[[ N ; nR |- if term then res1 else res2 ~> r -| nR' ]]$
-   &~(\ref{sec:elab-system})
+   &~(\ref{subsec:app-synth-oargs})
 \\
 \textsc{Elab\_Expr*}
    & $[[ C ; L ; N ; nR |- expr ~> bind res_bind for expr' : ret -| nR' ]]$
@@ -735,9 +735,8 @@ and so just return it instead.
 this judgement is used (by accident of \kl{CN}'s original implementation) is in
 a synthesis position, for manually folding predicates
 (\cref{fig:elab-fold}). As mentioned earlier
-(\cref{subsec:synth-res-term}), this is why $\cnkw{fold}$, though morally a
-checking term, is in fact a synthesising term which carries a resource type as
-an annotation.
+(\cref{subsec:synth-res-term}), this is why $\cnkw{fold}$ is an annotated
+synthesising term, when morally it is a checking term.
 
 \textsc{Oarg*} is used in \ElabExprFold, in~\cref{fig:elab-fold}. The
 \textsc{Elab\_Expr*} judgement is similar to the \textsc{Oarg*} judgement, but
@@ -760,7 +759,7 @@ series of bindings $[[res_bind]]$ for a resource term $[[res_term]]$ and output
 argument $[[oarg]]$ which will result in the updated resource context
 $[[nR']]$.
 
-\textsc{Req*}'s rules (\cref{sec:elab-system}) encode a linear search of the
+\textsc{Req*}'s rules (\cref{subsec:app-synth-indices}) encode a linear search of the
 resource context, synthesising predicate operations (\cref{sec:synth-predops})
 on (iterated) predicates in the context to construct the requested
 $[[pred_ipred]]$.
@@ -807,10 +806,9 @@ in the context: if I need $b \astRef{} c$ but the context has $\{\; x {:} (a
 \astRef b) , y {:} (c \astRef{} d) \}$ then how should I proceed? Do I lookup $b$
 and $c$ individually? Together? Swapped? How do I handle the case where one is
 a sub-resource of a resource in the context? I avoid these questions and simply
-require that other judgements which use resource lookup (all of them) simply
-preserve normality as an invariant. This requires constructing rebindings of
-existing terms (\cref{fig:res-bind-def}) to manipulate the context, carefully
-retaining `leftover' resources from a lookup.
+require that all rules which use resource lookup preserve normality as an
+invariant. This requires binding existing terms (\cref{fig:res-bind-def}) to
+manipulate the context, carefully retaining `leftover' resources from a lookup.
 
 \begin{figure}[h]
     \small
@@ -886,14 +884,14 @@ the first argument of the request predicate. This is made precise in
 \cref{fig:res-diff-break}.
 
 The judgement $[[ N |- r : norm_res -? pred_ipred ~> res_diff ]]$ says that
-given constraint context, a \kl{normalised} resource,\sidenote{Predicate
+given a constraint context, a \kl{normalised} resource,\sidenote{Predicate
 (iterated) or an under-determined ordered-disjunction.} and a request for a
 predicate (iterated), synthesise the `difference' between the two. As shown in
 \cref{fig:res-diff-def}, the `difference' can be of four sorts: no difference,
-exact match, subset match, overlapping match and each requires slightly
+exact match, subset match, overlapping match; each requires slightly
 different handling (continue search, stop search, bind remainder and stop
 search, bind remainder and continue search respectively) from the lookup
-judgement (\cref{sec:elab-system}).
+judgement (\cref{subsec:app-synth-indices}).
 
 \begin{figure*}
     \small

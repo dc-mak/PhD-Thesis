@@ -53,7 +53,7 @@ grammar
     | opt_cmp_term :: :: opt_cmp_term {{ tex \outpol{ [[opt_cmp_term]] } }}
 
 defns
-  inf_res :: '' ::=
+  cmp_res :: '' ::=
 
   defn N |- cmp_min ( iguard , iguard' ) ~> out_opt_cmp_term :: :: IG_Cmp :: IG_Cmp_
   {{ com given constraints $[[N]]$ , $[[iguard]]$ is potentially included in $[[iguard']]$ (or vice-versa) with ordering and minimum $[[out_opt_cmp_term]]$ }} by
@@ -173,51 +173,8 @@ defns
     ----------------------------------------------------------------------------- :: OrdDisj
     N |- if term1 then res11 else res12 = if term2 then res21 else res22
 
-
-  defn N |- simp_rec ( res ) ~> out_res' , out_ty_bool :: :: Res_SimpRec :: Res_SimpRec_
-  {{ com partial-simplification of resources: given constraints $[[N]]$, $[[res]]$ partially simplifies (strips ifs) to $[[out_res']]$ }} by
-
-
-    smt ( N => term )
-    N |- simp_rec ( res1 ) ~> res1' , ty_bool
-    -------------------------------------------------------------- :: If_True
-    N |- simp_rec ( if term then res1 else res2 ) ~> res1' , true
-
-
-    smt ( N => neg term )
-    N |- simp_rec ( res2 ) ~> res2' , ty_bool
-    ------------------------------------------------------------- :: If_False
-    N |- simp_rec ( if term then res1 else res2 ) ~> res2' , true
-
-
-    N |- simp_rec ( res1 ) ~> res1' , ty_bool1
-    N |- simp_rec ( res2 ) ~> res2' , ty_bool2
-    ------------------------------------------------------------------ :: SepConj
-    N |- simp_rec ( res1 * res2 ) ~> res1' * res2' , ty_bool1 || ty_bool2
-
-
-    N |- simp_rec ( res ) ~> res' , ty_bool
-    ---------------------------------------------------------------------------------- :: Exists
-    N |- simp_rec ( exists y : base_type .: res ) ~> exists y : base_type .: res' , ty_bool
-
-
-    ---------------------------------- :: NoChange
-    N |- simp_rec ( res ) ~> res , false
-
-
-  defn N |- simp ( res ) ~> opt_out_res :: :: Simp :: Simp_
-  {{ com partial-simplification of resources: given constraints $[[N]]$, $[[res]]$ attempts a partial simplification (strips ifs) to $[[opt_out_res]]$ }} by
-
-
-    N |- simp_rec ( res ) ~> res , false
-    ------------------------------------- :: NoSimp
-    N |- simp ( res ) ~> None
-
-
-    N |- simp_rec ( res ) ~> res' , true
-    -------------------------------------- :: Simp
-    N |- simp ( res ) ~> res'
-
+defns
+  inf_index :: '' ::=
 
   defn N |- pred_term in? ipred_term ~> out_opt_term :: :: PinI :: PinI_
   {{ com given constraints $[[N]]$, $[[pred_term]]$ is potentially a part of $[[ipred_term]]$ at index $[[out_opt_term]]$ }} by
@@ -363,6 +320,9 @@ defns
     N ; nR , r : norm_res |- pred_ipred1 ~> bind res_bind for res_term3 and oarg3 -| nR2
 
 
+defns
+  inf_oarg :: '' ::=
+
   defn N ; nR |- if term then res1 else res2 ~> out_x -| out_nRp :: :: If :: If_
   {{ com constraint $[[N]]$ and resource $[[nR]]$ contexts fulfil request for $[[if]]$ $[[term]]$ $[[then]]$ $[[res1]]$ $[[else]]$ $[[res2]]$ with \textbf{synthesising} $[[out_x]]$ and $[[out_nRp]]$ leftover }} by
 
@@ -375,7 +335,6 @@ defns
     N ; nR |- if term then res1 else res2 ~> x -| nR
     ----------------------------------------------------------------------------------- :: Rej
     N ; nR , x : norm_res |- if term then res1 else res2 ~> x -| nR , x : norm_res
-
 
   defn y ; N ; nR |- res ~> bind out_res_bind for out_res_term and out_oarg -| out_nRp :: :: Oarg :: Oarg_
   {{ com constraint $[[N]]$ and resource $[[nR]]$ contexts fulfil request for output argument $[[y]]$ of resource $[[res]]$ (via $[[out_res_bind]]$) with \textbf{checking} $[[out_res_term]]$ and $[[out_oarg]]$, leaving resources $[[out_nRp]]$}} by
@@ -726,6 +685,53 @@ defns
     ------------------------------------------------------------------------------------------------ :: Unfold
     C ; L ; N ; nR |- unfold a ( </ pvali // i /> ) ~> bind res_bind , fold ( r ) : a ( </ inj pvali // i /> ) ( oarg ) = res_term for r : res' *o I -| nR'
 
+
+defns
+  simp_res :: '' ::=
+
+  defn N |- simp_rec ( res ) ~> out_res' , out_ty_bool :: :: Res_SimpRec :: Res_SimpRec_
+  {{ com partial-simplification of resources: given constraints $[[N]]$, $[[res]]$ partially simplifies (strips ifs) to $[[out_res']]$ }} by
+
+
+    smt ( N => term )
+    N |- simp_rec ( res1 ) ~> res1' , ty_bool
+    -------------------------------------------------------------- :: If_True
+    N |- simp_rec ( if term then res1 else res2 ) ~> res1' , true
+
+
+    smt ( N => neg term )
+    N |- simp_rec ( res2 ) ~> res2' , ty_bool
+    ------------------------------------------------------------- :: If_False
+    N |- simp_rec ( if term then res1 else res2 ) ~> res2' , true
+
+
+    N |- simp_rec ( res1 ) ~> res1' , ty_bool1
+    N |- simp_rec ( res2 ) ~> res2' , ty_bool2
+    ------------------------------------------------------------------ :: SepConj
+    N |- simp_rec ( res1 * res2 ) ~> res1' * res2' , ty_bool1 || ty_bool2
+
+
+    N |- simp_rec ( res ) ~> res' , ty_bool
+    ---------------------------------------------------------------------------------- :: Exists
+    N |- simp_rec ( exists y : base_type .: res ) ~> exists y : base_type .: res' , ty_bool
+
+
+    ---------------------------------- :: NoChange
+    N |- simp_rec ( res ) ~> res , false
+
+
+  defn N |- simp ( res ) ~> opt_out_res :: :: Simp :: Simp_
+  {{ com partial-simplification of resources: given constraints $[[N]]$, $[[res]]$ attempts a partial simplification (strips ifs) to $[[opt_out_res]]$ }} by
+
+
+    N |- simp_rec ( res ) ~> res , false
+    ------------------------------------- :: NoSimp
+    N |- simp ( res ) ~> None
+
+
+    N |- simp_rec ( res ) ~> res' , true
+    -------------------------------------- :: Simp
+    N |- simp ( res ) ~> res'
 
 defns
   elab :: 'Elab_' ::=
