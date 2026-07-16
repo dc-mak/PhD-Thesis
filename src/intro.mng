@@ -3,10 +3,10 @@
 
 \margintoc%
 
-\emph{“Our goal as computer scientist today, is to design the legacy systems of tomorrow.”}
+\emph{“Our goal as computer scientists today,\\is to design the legacy systems of tomorrow.”}
 \vspace{-1.5em}
 \begin{flushright}
-\cite[][Timothy G.\ Griffin]{griffin2017legacy} % chktex 2
+\textcite{griffin2017legacy}
 \end{flushright}
 
 \section{Context}
@@ -32,14 +32,14 @@ browser or a spreadsheet editor. It provides services to software, in a way
 that abstracts from the details of the particular kind of hardware, for
 example, the ability to respond to click from a mouse, or a tap from a touch
 screen, or to play a sound via headphones or speakers. At the heart of the
-operating system is the \intro[OS]{kernel} (for example Linux, or Darwin for
+operating system is the \intro{kernel} (for example Linux, or Darwin for
 Apple systems); it is the lowest level of abstraction within the operating
 system. It uses the hardware via \emph{drivers} to provide key services like
 deciding what gets to run (scheduling), and how much of the hardware it gets to
 use (resource management), and protecting itself and other code from each other
 (isolation).
 
-As such, kernels are critical bits of a sometimes precarious tower of
+As such, kernels are critical bits of a precarious tower of
 abstractions, since they need to be both \emph{fast} \textemdash{} since any
 latency here compounds throughout the whole computer \textemdash{} and
 \emph{secure} \textemdash{} since any vulnerability here could crash or leak
@@ -141,7 +141,7 @@ As time went on, hardware became faster, by becoming more complex and so C's
 proximity to it waned~\sidecite{chisnall2018c}. However, it continued to be
 used in performance critical code such as the Linux \kl{kernel}.
 \kl[UB]{Undefined behaviours}, originally to support portability, were
-repurposed as avenues avenues for aggressive optimisations. Under pressure for
+repurposed as avenues for aggressive optimisations. Under pressure for
 faster code, simplicity of compilation gave way to complex alias analysis and
 pointer provenance reasoning to optimise code.
 
@@ -409,7 +409,7 @@ it~\sidecite{popek1977notes}.
 
 The key breakthrough came with the arrival of separation logic by
 Reynolds, O'Hearn, Yang and Ishtiaq~\sidecite{reynolds2002separation,ishtiaq2001BI,o2001local}.
-Specifically, the introduction of the \intro{separating conjunction}, $\astRef$, allows us to
+Specifically, the introduction of the \intro{separating conjunction}, $\ast$, allows us to
 state a version of the rule of constancy which is sound, known as the
 \intro{frame rule} (\cref{fig:simple-sep-logic}).
 
@@ -479,7 +479,7 @@ important one: \textsc{Frame}.\sidenote{The name comes from the \emph{frame
     problem} in artificial intelligence~\cite{mccarthy1981some}, where using
     first-order logic to represent the world requires many axioms to state that
 things do not change arbitrarily.} It is a \emph{structural} rule, allowing any
-framing assertion $A_F$ to be separating-conjoined ($\astRef$) with a triple,
+framing assertion $A_F$ to be separating-conjoined ($\ast$) with a triple,
 enabling compositional program verification for commands that touch distinct
 parts of the heap, so long as they do not modify the same stack variables
 ($\mod{(C)} \cap{} \mathrm{FV}(R) = \emptyset{}$).
@@ -562,12 +562,12 @@ runtime.
 \centering
 \begin{align*}
     \mathrm{list} (\mathsf{p}, l) \mathrel{{=}^\mathrm{def}}\ &
-        \mathsf{emp} \astRef{} (\mathsf{p} = \mathsf{NULL} \wedge{} l = []) \\
+        \mathsf{emp} \ast{} (\mathsf{p} = \mathsf{NULL} \wedge{} l = []) \\
         &\vee{} \exists{} \; {head}, \; {tl}, \mathsf{p\_tail}.\\
         &\qquad (\mathsf{p} \mapsto{} {head})
-            \astRef{} (\mathsf{p} + 1 \mapsto{} \mathsf{p\_tail})\\
-        &\qquad \astRef{} \mathrm{list} (\mathsf{p\_tail}, {tl})
-            \astRef{} l = {head} \Colon{} {tl}
+            \ast{} (\mathsf{p} + 1 \mapsto{} \mathsf{p\_tail})\\
+        &\qquad \ast{} \mathrm{list} (\mathsf{p\_tail}, {tl})
+            \ast{} l = {head} \Colon{} {tl}
 \end{align*}
 \caption{Definition of a recursive list predicate in a simple separation
     logic. It says that expression $\mathsf{p}$ is either $\mathsf{NULL}$
@@ -598,7 +598,7 @@ assume we can unroll the definition of $\mathrm{list}$, before calling
 \mintinline{text}{append} recursively on the smaller
 $\mathrm{list}(\mathsf{xs}', l_1')$, which allows us to conclude
 $\mathrm{list}(\mathsf{new\_tail}, l_1' @ l2)$. Using the frame rule, the
-$\mathsf{xs} \mapsto v \astRef (\mathsf{xs} + 1) \mapsto \mathsf{xs}'$ remains
+$\mathsf{xs} \mapsto v \ast (\mathsf{xs} + 1) \mapsto \mathsf{xs}'$ remains
 unchanged and so we can fold these components into $\mathrm{list}(\mathsf{xs},
 l_1 @ l_2)$.
 
@@ -728,7 +728,7 @@ meet that constraint, and so \kl{CN} raises an error.
 \end{figure}
 
 However, if we try to decrement the result of the successful call, \kl{CN}
-raises an error (\cref{fig:decr-broken}). This is because that \kl{CN} has no
+raises an error (\cref{fig:decr-broken}). This is because \kl{CN} has no
 indication on the constraints of the return value (other than those deduced
 from its C type, namely that it fits within a signed 32-bit integer). To fix
 this, we need to provide a postcondition for the function which
