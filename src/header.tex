@@ -3,12 +3,11 @@
 %----------------------------------------------------------------------------------------
 
 % \titlehead{Document Template}
-\title[Working Title: Why did JT release the 20/20 experience in 2013?]{Working Title: Why did JT release the 20/20 experience in 2013?}
-\subtitle{Doctoral Thesis}
-\author[D. C. Makwana]{Dhruv C. Makwana}%
-\date{\today \\[\baselineskip] \includegraphics[width=.8\textwidth]{figures/working-title.png}
-}
-% \publishers{An Awesome Publisher}
+\title[CN:\ Theory and Engineering for Verifying C]{CN:\ Theory and Engineering for Verifying C}
+% \subtitle{}
+\author[Dhruv Makwana]{Dhruv Makwana}%
+\date{August 2026}
+\publishers{This dissertation is submitted for the degree of Doctor of Philosophy}
 
 %----------------------------------------------------------------------------------------
 
@@ -49,8 +48,7 @@
 %	DEDICATION
 %----------------------------------------------------------------------------------------
 
-\dedication{\raggedleft\emph{To \_,\\
-Something short and sweeet.}}
+\dedication{\raggedleft\emph{To all those who supported and believed in me.}}
 
 % \dedication{
 % 	% The harmony of the world is made manifest in Form and Number, and the heart and soul and all the poetry of Natural Philosophy are embodied in the concept of mathematical beauty.\\
@@ -72,32 +70,129 @@ Something short and sweeet.}}
 
 \begingroup
 
-  %in the header, chapters start on any page to avoid too many blank pages
+  % in the header, chapters start on any page to avoid too many blank pages
   \let\cleardoublepage\clearpage
-  \pagelayout{margin}
+
+\addchap{Declaration}
+
+This thesis is the result of my own work and includes nothing which is the
+outcome of work done in collaboration except as declared in the Preface and
+specified in the text. I further state that no substantial part of my thesis
+has already been submitted, or, is being concurrently submitted for any such
+degree, diploma or other qualification at the University of Cambridge or any
+other University or similar institution except as declared in the Preface and
+specified in the text.
+
+It does not exceed 66,000 words including tables, footnotes and equations, but
+excluding appendices, bibliography, photographs and diagrams.
+
+Previous publications and collaborations are detailed in the Introduction.
 
 \addchap{Abstract}
 
-\addchap{Acknowledgments}
+More than fifty years after its introduction, \kl{C} remains in common use,
+especially for low-level software such as \kl{operating system} \kl{kernel}s.
+\kl{Kernel}s need to be both \emph{fast} and \emph{secure}, thus need to
+be written in languages which expose lots of control. However, more human
+control means more chance for human error. Historically, both hardware and
+software were much rarer, simpler and more trusted, but these days errors pose
+a multi-million computer, multi-billion dollar risk.
 
+The advent of separation logic enabled the pen-and-paper verification of
+low-level programs in an idealised imperative language; its mechanisation in
+proof tools enabled machine-checked proofs of the same. With the advent of
+\kl{Cerberus}, an executable and empirically validated semantics for C, we now
+have the opportunity to drop the idealisation
+
+In this thesis, I show how to build a verification tool for C, called \kl{CN},
+suitable for handling low-level systems programming idioms, and argue that
+doing so requires some theory and lots of engineering.
+
+In the first part, I describe \kl{CN}'s design goals and constraints, and how
+these informed the theory required. I discuss the challenges I faced in
+applying that theory to the \kl{Cerberus} semantics,  and how I solved them. I
+also discuss how the theory fed back insights to engineering questions which
+arose during the development of \kl{CN}.
+
+In the second part, I describe how to handle the \kl{memory object model} for
+C, which is necessary to match existing compiler behaviour, and support
+low-level programming idioms. I explain the difficulty in needing to balance
+simplicity and usability of \kl{CN} with expressiveness. Here too, the theory
+fed back insights on how to improve performance and add new features.
+
+In the last part, I describe how to tame some of the complexity of large
+repositories and non-standard features of real-world C. Then, I explain why,
+despite being on track to make proofs of low-level C code \emph{feasible},
+\kl{CN} still has some way to go before to become more \emph{usable}, and its
+proofs more maintainable. After that, I compare \kl{CN} to other C verification
+tools, and discuss feedback on \kl{CN} by partners in industry. I conclude by
+sketching out longer-term lines of research on such tools.
+
+With this work, I show that building a verification tool for C, which can
+handle low-level systems programming idioms is tractable, and that there are
+still plenty of avenues for substantial improvement.
+
+\addchap{Acknowledgements}
+
+These past six years have reoriented my life dramatically, academically,
+professionally and personally. This would not have happened without the support
+of many people in my life.
+
+First I thank my supervisor, Neel Krishnaswami, for his support from
+essentially the day he arrived at the University of Cambridge. He nurtured and
+directed my interest in linear types while I was a mere undergraduate, and has
+supported me in ways too numerous to list here since. I would also like to
+thank my co-supervisor, Peter Sewell, for his hands-on guidance and high
+standards. I am extra grateful to both for supporting my impromptu move to
+Wellington, and multiple long meditation retreats once I came back.
+
+\k{CN} has been collaborative from the start, and so I must also thank my
+colleagues, Christopher, Thomas Sewell, Kayvan, Rini, Hiro, and everyone else
+in the REMS group, especially Nils, who extended their friendship and kindness,
+livened up the weekly meetings, and shared my love of Indian mangoes. I also
+thank my office mates for their company and life-lessons.
+
+Next, I want to thank all those who made my time in Wellington, New Zealand, at
+the start of my PhD, so dear and memorable. All of you helped transform what
+could have been the worst time in my life to the best: my housemates Dylan,
+Dan, and Laura, my friends from the animal activist, Bhakti Lounge, effective
+Altruism, Bodhinyanarama, James Noble, my colleagues at the most scenic
+graduate building in the world, and Latin dance communities. I miss you all
+frequently.
+
+I similarly wish to thank my friends in the rest of the world for the ongoing
+support and variety they brought to my life: from school, undergrad, Bollywood
+Dance Troupe, Plant-based Cambridge, local animal activism groups, Aurelius
+Foundation, Effective Altruism, Buddhist Society, Cambridge Interbeing Sangha,
+Amaravati, and all my meditation retreats.
+
+Lastly, and most importantly, I wish to thank my family: my parents, my sister,
+my cousins, nieces, nephew, uncles, aunts and grandparents. The older I get the
+more I appreciate what it means to have people who are happy to see you and
+ready to welcome you.
+
+\pagelayout{margin}%
 \addchap{How to Read This Thesis}
 
-Use some words to talk about
-\begin{itemize}
-    \item lots of hyperlinking
-    \item but not visible for readability
-    \item example of \kl{bidirectional}
-    \item in \cref{chap:formal-background}
-    \item and emphasis like the following \intro{example}
-    \item and even $\astRef$.
-\end{itemize}
+I anticipate that most of my readers will read this thesis on a device rather
+than in print. As such, I make frequent use of hyperlinking, though without
+visual cues to keep the text readable. For example, the word `bidirectional'
+links to the place in~\fancyref{chap:formal-background} where it is defined,
+and the definition itself is emphasised like this \intro{example}.
 
-Don't be confused, just click!
+I also use large margins in the main text for notes, small figures, and
+references. This is to reduce the need to teleport between the main text and
+information that is far away.\sidenote{It is also is useful for including
+supplementary information, whilst not breaking the flow of the text.}
+For medium and large figures, I have done my best to keep them as near as
+possible to their explanations. To achieve this, I have occasionally split a
+figure into multiple parts, such as in
+\cref{fig:minicn-return,fig:minicn-bop,fig:minicn-if}. In such instances, you
+can interpret the figures as different parts of a whole, one rule or
+non-terminal at a time.
 
-And also talk about the large margins, and fragments of the same figure like
-\cref{fig:call-incr}.
-
-But still printable \textemdash{} colours are only (mostly?) used to aid readability.
+Lastly, though I use colour to ease readability, for accessibility (and
+printing), it should not be used to convey information.
 
 \endgroup
 
