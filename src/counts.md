@@ -6,9 +6,9 @@ Counts are `text + headers + captions`. **Own** is the prose directly under a he
 
 | Chapter | Total | Own |
 | :-- | --: | --: |
-| Introduction | **6969** | 16 |
+| Introduction | **6456** | 16 |
 | Example: queues in CN | **3388** | 100 |
-| Background: Cerberus and CN design | **8276** | 57 |
+| Background: Cerberus and CN design | **8273** | 57 |
 | Kernel CN: Grammar | **4298** | 167 |
 | Kernel CN: Static semantics | **4677** | 351 |
 | Kernel CN: Proof of soundness | **1642** | 188 |
@@ -24,20 +24,20 @@ Counts are `text + headers + captions`. **Own** is the prose directly under a he
 | Future Directions | **3277** | 22 |
 | Conclusion | **1334** | 545 |
 
-| **Document total** | **67368** | |
+| **Document total** | **66852** | |
 
 ## Introduction
 
-**Chapter total: 6969** (own 16)
+**Chapter total: 6456** (own 16)
 
 | Section | Subsection | Total | Own |
 | :-- | :-- | --: | --: |
-| Context |  |  | 751 |
-| Thesis statement |  |  | 97 |
-| Background |  | 4247 | 1 |
-|  | The C programming language |  | 981 |
-|  | Verification with Separation Logic |  | 1711 |
-|  | CN: C, No bugs! |  | 1554 |
+| Context |  |  | 620 |
+| Thesis statement |  |  | 87 |
+| Background |  | 3875 | 1 |
+|  | The C programming language |  | 856 |
+|  | Verification with Separation Logic |  | 1612 |
+|  | CN: C, No bugs! |  | 1406 |
 | Contributions of this thesis |  | 1858 | 67 |
 |  | Formalisation of CN |  | 268 |
 |  | Memory object model: design, formalisation and implementation |  | 240 |
@@ -57,7 +57,7 @@ Counts are `text + headers + captions`. **Own** is the prose directly under a he
 
 ## Background: Cerberus and CN design
 
-**Chapter total: 8276** (own 57)
+**Chapter total: 8273** (own 57)
 
 | Section | Subsection | Total | Own |
 | :-- | :-- | --: | --: |
@@ -66,7 +66,7 @@ Counts are `text + headers + captions`. **Own** is the prose directly under a he
 | Core grammar |  |  | 914 |
 | Elaboration example: list append |  | 1369 | 1020 |
 |  | Discussion |  | 349 |
-| Decidable refinements for retrofitting and counter-examples |  |  | 785 |
+| Decidable refinements for retrofitting and counter-examples |  |  | 782 |
 | Bidirectionality for taming subtyping |  |  | 673 |
 | Linearity to manage (non-leaky) resources |  |  | 887 |
 | Section |  | 1346 | 694 |
