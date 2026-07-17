@@ -529,7 +529,7 @@ can be split up to recover the frame heap and the changed sub-heap $h_1' \in
 
 To conclude this section, I will return to the example of appending to a list,
 this time in a simple imperative language, annotated with separation logic
-assertions. To do so, we need a predicate to relates the contents of linked
+assertions. To do so, we need a predicate to relate the contents of linked
 heap cells at runtime, laid out in a particular format, to a mathematical list
 \intro{ghost} value, which exists only in the specification.
 
@@ -674,15 +674,14 @@ being verified, they must be \emph{proven} when calling it.
 
 %% RESUME here
 
-This is demonstrated in \cref{fig:call-incr}. In
-the first, we see that from the constraint \cinline{y <=
-100i32},\sidenote{Integer literals are currently written with a type
-annotation, similar to Rust.} \kl{CN} deduces that \cinline[breaklines]{y <=
-MAXi32()}\sidenote{As I shall discuss in \cref{sec:bidir-subtyping,%
-chap:kernel-statics}, this is a \kl{subtyping} relation, and integrating it smoothly
-relies on \kl{bidirectional} type checking.} and permits the call to
-\cinline{increment}. Conversely, for the second, \cinline{INT_MAX} does not
-meet that constraint, and so \kl{CN} raises an error.
+We see this in \cref{fig:call-incr}. In
+the first function, from \cinline{y <= 100i32},\sidenote{Integer literals are
+written with a type annotation.} \kl{CN} deduces \cinline[breaklines]{y <=
+MAXi32()}\sidenote{This is a \kl{subtyping} relation, and integrating it
+smoothly relies on \kl{bidirectional} type checking (\cref{sec:bidir-subtyping,%
+chap:kernel-statics}).} which permits the call to \cinline{increment};
+In the second function, \kl{CN} raises an error because \cinline[mathescape]{INT_MAX
+$\nless$ MAXi32()}.
 
 \begin{figure}[h]
     \centering
@@ -692,10 +691,9 @@ meet that constraint, and so \kl{CN} raises an error.
 
 However, if we try to decrement the result of the successful call, \kl{CN}
 raises an error (\cref{fig:decr-broken}). This is because \kl{CN} has no
-indication on the constraints of the return value (other than those deduced
-from its C type, namely that it fits within a signed 32-bit integer). To fix
-this, we need to provide a postcondition for the function which
-expresses additional constraints on the returned value (\cref{fig:decr}).
+constraints of the return value (other than its size, deduced from its C type).
+To fix this, we need a \kl{postcondition} to constrain the returned value
+(\cref{fig:decr}).
 
 \begin{figure}[h]
     \centering
@@ -711,17 +709,14 @@ expresses additional constraints on the returned value (\cref{fig:decr}).
         in CN.}\label{fig:decr}
 \end{figure}
 
-To specify pointer manipulating programs, such as~\cref{fig:owned-incr}, we
-need to be able to express constraints of the form $\exists{} v.\ p \mapsto v$,
-for a pointer $p$ and value $v$. Introducing quantifiers in pre- and
-postconditions requires instantiating them at call and return sites
-respectively. Arbitrary quantifier instantiation is undecideable, so this
-leaves \kl{CN} with two choices: embrace a heuristic scheme which hopefully
-works well in practice, or enforce syntactic restrictions on the shape of
-assertions to ensure such quantifiers are always inferrable. These restrictions
-(motivated and explained further
-in~\cref{sec:precise-assertion-inferring,sec:monadic-syntax}),
-inform the syntax \cninline{take v = RW(p);}. % chktex 36
+For working with pointers, as in~\cref{fig:owned-incr}, we need to
+write $\exists{} v.\ p \mapsto v$, for a pointer $p$ and value $v$, in pre- and
+\kl{postconditions}. Such quantifiers would need to be instantiated at call and
+return sites. Doing so automatically is undecidable in general; manual
+instantiation is tedious, and heuristic-based instantiation can be
+unpredictable. So, \kl{CN} restricts the syntax of assertions with
+\cninline{take v = RW(p);} to make it decidable (motivated and % chktex 36
+explained in~\cref{sec:precise-assertion-inferring,sec:monadic-syntax}).
 
 \begin{figure}[h]
     \centering
@@ -729,18 +724,18 @@ inform the syntax \cninline{take v = RW(p);}. % chktex 36
     \caption{Increment a signed integer via a pointer in CN.}\label{fig:owned-incr}
 \end{figure}
 
-For working with arrays using \intro{quantified} or \intro{iterated} resources, we write
+For working with arrays, we write \intro{iterated} predicates as
 \cninline{take arr = each (u64 i; .. ) { RW(p) };}. % chktex 26 chktex 37 chktex 36
 
-\kl{CN} can also handle (in a limited fashion to preserve decidability)
-\intro{quantified constraints}, such as the one in line 7 of the postcondition
+\kl{CN} can also handle (in a limited fashion, see~\cref{sec:decidable-refinements})
+\intro{quantified constraints}, such as the one in line 7
 of \cref{fig:owned-array}, to express constraints
-about the elements of an array. Within the \cninline{RW}, we express the
-location with \cninline{array_shift(p,i)}, which is the specification language % chktex 36
-equivalent of pointer arithmetic in \cinline{&p[i]}. Within the body of the
-function, we use a \intro{CN statement}, \cninline{extract RW<int>, 0u64;},
-which acts a proof hint to \kl{CN} to tell which index of the \kl{iterated}
-resource we wish to read or write from.
+about the elements of an array. Within the \cninline{RW},
+\cninline{array_shift(p,i)} is the specification language % chktex 36
+equivalent of pointer arithmetic \cinline{&p[i]}. Within the function body,
+a \intro{CN statement}, \cninline{focus RW<int>, 0u64;},
+is a proof hint which tells \kl{CN} which index of the \kl{iterated}
+\cninline{RW} we wish to read or write.
 
 \begin{figure}[h]
     \centering
@@ -749,21 +744,20 @@ resource we wish to read or write from.
         CN.}\label{fig:owned-array}
 \end{figure}
 
-\kl{Iterated} resources are powerful because they supports random access
-(unlike a recursive predicate over an array, which would fix the order of
-traversal).~\cref{fig:init-arr-rev} shows how \kl{CN} can transform an array of
-uninitialised values (\cninline{W}s) from the precondition, into an array
-of initialised values (\cninline{RW}s) in the postcondition, by looping over
-it \emph{in reverse}. All loops in \kl{CN} must be annotated with \intro{loop
-invariants}, which are mostly as expected with exception of the verbose and
-confusing \cninline|{_} unchanged|
-syntax,\sidenote{\href{https://github.com/rems-project/cerberus/issues/443}{Cerberus\#443}.}
-which tells CN that the loop does not mutate the function arguments.
+\kl{Iterated} predicates are powerful because they support random access
+(recursive predicates fix the order of traversal).~\cref{fig:init-arr-rev}
+shows how \kl{CN} can transform an array of uninitialised values
+(\cninline{W}s) from the \kl{precondition}, into an array of initialised values
+(\cninline{RW}s) in the \kl{postcondition}, \emph{in reverse}. All loops in
+\kl{CN} must be annotated with \intro{loop invariants}; the verbose and
+confusing \cninline|{_} unchanged| syntax tells \kl{CN} that the loop does not
+mutate the function arguments.\sidenote{We need this because of difficulty with
+\fancyref{sec:inferring-frames}.}
 
-Within the loop, writing to a \cninline{W} (or an \cninline{RW}) transforms
-it into a new \cninline{RW}. We need two \cninline{extract}s to tell CN we
-wish to first take a \cninline{W} out of \cinline{Uninit} and then move
-it into the \cninline{Init}.
+Within the loop, writing to a \cninline{W}/\cninline{RW} transforms it into a
+\cninline{RW}. We need two \cninline{focus}es: one to tell \kl{CN} take a
+\cninline{W} out of \cinline{Uninit}, and one to move a \cninline{RW} into
+\cninline{Init}.
 
 \begin{figure}
     \centering
@@ -772,29 +766,18 @@ it into the \cninline{Init}.
         CN.}\label{fig:init-arr-rev}
 \end{figure}
 
-Lastly, in the same way that separation logic predicates use $\mapsto$ as a
-building block to express more complex relations between heaps and \kl{ghost}
-values, \kl{CN} allows users to write \intro{resource predicate} to express
-more complex relations between heaps and \kl{ghost} values.
+\kl{CN} allows users to define \kl{datatypes}, such as \cninline{i32} lists, and
+recursive \kl{functions}, such as \cninline{i32} list \cninline{append}, using the
+syntax \cninline{function [rec]}. Note that arguments of constructors are
+named, not positional.
 
-Continuing our running example of appending two linked lists of integers, I
-will now show how one might annotate and prove such an example in \kl{CN}.
-Firstly, it declares the datatype for \cninline{i32} lists, since these are not
-part of \kl{CN}'s base logic. Notably, arguments to constructors are named, not
-positional.
+\cfile[breaklines,firstline=6,lastline=15,highlightlines={6-8,10-15}]{code/append_annot.c} % chktex 8
 
-\cfile[breaklines,firstline=6,lastline=8,highlightlines={6-8}]{code/append_annot.c} % chktex 8
-
-After that, it declares a recursive \cninline{[rec]} mathematical function
-\cninline{function} which defines what it means to append two lists, serving
-the same function that $@$ did in \cref{fig:append-annot}.
-
-\cfile[breaklines,firstline=10,lastline=15,highlightlines={10-15}]{code/append_annot.c} % chktex 8
-
-The final \kl{CN} declaration is for the equivalent of the recursive list
-predicate in~\cref{fig:list-pred}. Curiously, the syntax looks like a procedure
-definition for traversing the list (tracing the heaplet in which it resides),
-and constructing the ghost value it represents.
+Lastly, \kl{CN} allows users to define \intro{predicates}, such as the list
+predicate of~\cref{fig:list-pred}, using \cninline{RW} predicates as building
+blocks. Curiously, the syntax looks like a procedure definition for traversing
+the list (tracing the heaplet in which it resides), and constructing the ghost
+value it represents.
 
 \cfile[breaklines,firstline=17,lastline=23,highlightlines={17-23}]{code/append_annot.c} % chktex 8
 
@@ -814,26 +797,21 @@ Compared to~\cref{fig:list-pred}, there are many differences:
         fields, rather than using pointer arithmetic $\mathsf{p} + 1$.
 \end{itemize}
 
-Now let us see how these definitions are used in the \kl{annotations} on the
-implementation. The precondition can be read as saying
-``\emph{\cinline{IntList_append} requires \cninline{L1} to be the ghost list
-constructed using \cninline{IntList} with \cinline{xs}, and similarly for
-\cninline{L2} and \cinline{ys}}''. The postcondition can be read as saying
-``\emph{\cinline{IntList_append} ensures that \cninline{L3} is a ghost list
-constructed using \cninline{IntList} with the return value
-\cninline{return}, and \cninline{L3} is equal to \cninline{L2} appended to
-\cninline{L1}}''.
+Using these definitions, we can revisit \cref{fig:append-annot}'s proof of
+integer list append, but this time in \kl{CN}. \cinline{IntList_append}
+\cninline{requires} pointers \cinline{xs} and \cinline{ys} to trace
+\cninline{IntList}s, which are bound to \cninline{L1} and \cninline{L2}, and
+\cninline{ensures} that the \cninline{return} value traces an
+\cninline{IntList}, bound to \cninline{L3}, where \cninline{L3} is equal to
+\cninline{append(L1, L2)}. % chktex 36
 
 \cfile[breaklines,firstline=26,lastline=31,highlightlines={28-31}]{code/append_annot.c}% chktex 8
 
-Within the body of the function, in both branches of the \cinline{if}, there is
-a \kl{CN statement}, this time to instruct CN to manually unfold the definition
-of the recursive function at that point to aid proving the postcondition.
-Conveniently, albeit
-inconsistently,\sidenote{\url{https://github.com/rems-project/cerberus/issues/483}}
-\kl{CN} auto-unfolds branching predicate definitions, including recursive ones,
-when it is able to prove or disprove the branch conditions of that predicate,
-based on the assertions in its context at a particular program point.
+In the function body, in both branches of the \cinline{if}, there is a \kl{CN
+statement}, to tell \kl{CN} to unfold the definition of \cninline{append}.
+Conveniently, albeit inconsistently (\cref{sec:auto-unfold-functions}), \kl{CN}
+has a flag to enable auto-unfolding predicates, when it can prove or disprove
+its branch conditions.
 
 \cfile[breaklines,firstline=32,lastline=41,highlightlines={33,36}]{code/append_annot.c}% chktex 8
 
@@ -842,7 +820,7 @@ based on the assertions in its context at a particular program point.
 \kl{CN} is a large project, incorporating
 \kl{Cerberus}~\sidecite{memarian2022cerberus}, proof~\sidecite{pulte2023cn},
 specification testing~\sidecite{banerjee2025fulminate} and
-fuzzing~\sidecite{amer2025bennet}, all of which enable integrating
+fuzzing~\sidecite{amer2025bennet}, all of which integrate
 specification and proof into existing workflows\sidecite{aamer2026code}.
 Contributors span the universities of the Cambridge, Pennsylvania, and Oxford,
 with prior support and use from industry partners at Galois and BAE Systems.
@@ -852,26 +830,24 @@ Within this, my contributions are three-fold: \fancyref{part:formalisation},
 \subsection{Formalisation of \kl{CN}}
 
 \kl{CN}'s \kl{proof mode} was primarily developed by Christopher Pulte and
-Thomas Sewell, using a \kl{buddy allocator} (used in the \kl{pKVM} hypervisor)
-as its only guiding test. The buddy allocator is challenging to verify due to
-its frequent use of aliasing (in fact, computed) pointers and random-acessed
+Thomas Sewell, using the \kl{pKVM} hypervisor's \kl{buddy allocator}
+as its guiding test. The \kl{buddy allocator} is challenging to verify due to
+its frequent use of aliasing computed pointers and random-accessed
 arrays. Features were added to \kl{CN} only if they aided in verifying the
-\kl{buddy allocator}. Though this was successful, it had the unintended
-consequence of over-fitting the implementation to the example.
+\kl{buddy allocator}. Though this was successful, the resulting tool was
+over-fitted to the \kl{buddy allocator}.
 
-To address this, I formalised a cohesive view of \kl{CN}'s theory. The end
-result of this work was not only more confidence in the theoretical merits of
-the approach of \kl{CN}, but also clarifying its principles, and feeding back
-to the implementation which features to add and how. Examples include reading
-partially-initialised structs, lifting syntax restrictions, and automatic
-unfolding for logical functions (\cref{chap:inform-impl}).
+To address this, I formalised a cohesive view of \kl{CN}'s theory. This
+increased confidence in the theoretical merits of \kl{CN}'s approach, clarified
+its principles, and fed back which features to implement and how
+(\fancyref{chap:inform-impl}).
 
 My contributions in this part include:
 \begin{itemize}
     \item A formalisation of the link between the surface syntax of \kl{CN} and
-        the formal presentation in this thesis (\cref{chap:formal-background}).
-    \item \kl{ResCore}: a let-normal form of \kl{Cerberus}' \kl{Core} with
-        reified resources and book-keeping (\cref{chap:kernel-grammar}).
+        the more traditional presentation used in this thesis (\cref{chap:formal-background}).
+    \item \kl{ResCore}: a let-normal form of as subset of \kl{Cerberus}' \kl{Core}
+        with reified resources and book-keeping (\cref{chap:kernel-grammar}).
     \item \kl{Kernel CN}: A formal definition of a bidirectional,
         \kl{separation logic}, \kl{refinement type} system for \kl{ResCore}
         (\cref{chap:kernel-statics}).
@@ -887,10 +863,10 @@ My contributions in this part include:
 
 \subsection{Memory object model: design, formalisation and implementation}
 
-In its initial version, to simplify matters, \kl{CN} was built on top of a
-simple concrete \kl{memory object model}, where pointers were treated as
-interchangeable with integers. However, as I briefly alluded to in
-\cref{sec:c-lang}, this is not faithful to how the standard and
+\kl{CN} was initially built on top of a
+simple concrete \kl{memory object model}, where pointers and integers
+were interchangeable. However, as I briefly alluded to in
+\cref{sec:c-lang}, this is not faithful to how the \kl{standard} and
 modern compilers treat pointers.
 
 To address this, building on the work of \sidetextcite{memarian2019exploring}
@@ -898,7 +874,7 @@ and \sidetextcite{lepigre2022vip}, I designed, formalised and implemented,
 \kl{CN-VIP}, a memory model based on (and sound with respect to) prior work.
 \kl{CN} now automatically checks and enforces a large number of subtle rules on
 the creation, modification and destruction of pointers and allocations, at the
-cost of \kl{CN} becoming harder and slower to use.
+cost of becoming harder and slower to use.
 
 My contributions in this part include:
 \begin{itemize}
@@ -922,26 +898,23 @@ My contributions in this part include:
 
 \subsection{Engineering: will the real world C, please stand up?}
 
-Though \kl{CN} originates in academia, its job is not to advance cool theory
-for its own sake. Fundamentally, it is intended to be a software tool, used to
-bring a new level of assurance to \emph{existing, real-world} \kl{systems} C
-code. Three things prevented it from graduating from an academic prototype, to
-a tool which is usable and extendable by outsiders. It needed to work on files
-inside large repositories; it needed to avoid major feature or performance
-regressions; it needed better documentation on its use and development to
-enable external contributions.
+As well as being a research project, \kl{CN} is a software tool, designed to
+bring greater assurance to \emph{existing, real-world} \kl{systems} C code. To
+be usable by industry, it needs to work on files inside large repositories; it
+needs to avoid major feature or performance regressions; it needs better
+documentation on its use and development.
 
 To address the first, I developed a tool to enable \kl{CN} to do just that. To
 address the second and third, I worked on three major proof updates (of which
-two were successful) and improved source location information, improved
-continous-integration, wrote onboarding documentation, triaged issues, and
-reviewed code. All of these things allowed partners in industy (Galois and BAE
-Systems) to use \kl{CN} and provide valueable feedback.
+two were successful). I also improved source location information and
+continuous-integration, wrote onboarding documentation, triaged issues, and
+reviewed code. This allowed partners in industry (Galois and BAE Systems) to
+use \kl{CN} and provide valuable feedback.
 
 My contributions in this part include:
 \begin{itemize}
     \item \kl[tree-carver]{A tree carver for C}. This is a Clang-based tool
-        which, given some root functions in a C file specified by the user, (a)
+        which, given some root functions in a specified C file, (a)
         copies the directory structure of all its transitive dependencies,
         excluding any unused files, and (b) within each remaining file,
         comments out all functions, types, and struct/union fields not
@@ -950,30 +923,31 @@ My contributions in this part include:
         removing them, even if the whole uses features that \kl{Cerberus} does
         not support. For example, we have used it to run \kl{CN} directly on
         files from the Linux repository (\cref{chap:tree-carver}).
-    \item Updates to an existing proof of a \kl{buddy allocator} (used in the
-        \kl{pKVM} hypervisor) to work with (a) changes to the C implementation
-        (b) an early version of CN-VIP and (c) a change to \kl{CN} to represent
+    \item Updates to an existing proof of the \kl{pKVM} \kl{buddy allocator}
+        to work with (a) changes to the C implementation
+        (b) an early version of \kl{CN-VIP} and (c) a change to \kl{CN} to represent
         integers as bit-vectors. The first two updates succeeded, but for
         multiple reasons the last one failed (\cref{chap:buddy}).
     \item A summary and discussion of valuable feedback from industry
         partners Galois and BAE Systems (\cref{sec:industry-feedback}).
     \item A discussion of major issues related to developer- and
-        user-experience, with reference to the their technical origin and if
-        they exist, solutions (\cref{chap:expectations,chap:future-directions}).
+        user-experience, with reference to the their technical origin and
+        potential solutions (\cref{chap:expectations,chap:future-directions}).
 \end{itemize}
 
 \subsection{Contributions in published papers}
 
-\sidetextcite{pulte2023cn} describes \kl{CN}'s proof mode, stating that the
-paper's contributions flow downstream from the two main design choices:
-building on an accurate ISO C semantics, and using separation-logic refinement
-types with an SMT backend, carefully restricted to guarantee decidable type
-inference. I summarise its stated contributions below, highlighting in
-\text{bold} my work.
+With each paper, I will summarise their contributions, and \textbf{highlight my
+work in bold}.
+
+\sidetextcite{pulte2023cn} describe \kl{CN}'s proof mode; they state that their
+contributions flow downstream from two design choices: building on an accurate
+\kl{ISO} C semantics, and using \kl{separation logic} \kl{refinement types}
+with an SMT backend, restricted to ensure decidable type inference.
 
 \begin{itemize}
-\item A design for a separation-logic refinement type system for C.
-\item A verification tool for an accurate ISO C semantics.
+\item A design for a \kl{separation logic} \kl{refinement type} system for C.
+\item A verification tool for an accurate \kl{ISO} C semantics.
 \item An open-source implementation of the type system.
 \item A verification of the \kl{pKVM} hypervisor’s \kl{buddy allocator}.
 \item \textbf{A formalisation of the key parts of the type system.}
@@ -1009,24 +983,21 @@ which I have alleviated.
             refactor.\sidenote{\href{https://github.com/rems-project/cerberus/issues/330}{Cerberus\#330}}
             In~\cref{sec:weak-seq}, I clarify the theory and use it to sketch a
             simpler implementation strategy for supporting this feature.
-    \item \emph{We focus to date only on sequential verification, but plan to
-            extend the CN separation-logic refinement type system with some of
-            the extensive research on separation-logic concurrency.} A simple
+    \item \emph{We focus \ldots on sequential verification, but plan to
+            extend the \ldots system with \ldots concurrency.} A simple
             scheme for this would requires support for higher-order predicates,
             which I discuss in~\cref{sec:higher-ord-pred}.
-    \item \emph{All these should be relatively straightforward extensions.}
 \end{itemize}
 
-\sidetextcite{banerjee2025fulminate} describes \kl{CN}'s specification testing
-mode, stating that the paper's contributions flows downstream from the
-observation that \kl{CN}'s restricted separation-logic specification language
-has a natural and readable computational interpretation. I summarise its stated
-contributions below, highlighting in \text{bold} my work.
+\sidetextcite{banerjee2025fulminate} describe \kl{CN}'s specification testing
+mode; they state that their contributions flow downstream from \kl{CN}'s
+restricted \kl{separation logic} syntax having a natural and readable
+computational interpretation.
 
 \begin{itemize}
-\item An explanation of why \kl{CN}'s restricted separation-logic specification
-    syntax is a good candidate for execution.
-\item A description of various design issues involved in making a practical
+\item An explanation of why \kl{CN}'s restricted separation logic syntax is a
+    good candidate for execution.
+\item A description of the various design issues involved in making a practical
     system based on the above.
 \item \textbf{A simple formalisation of the runtime ownership testing scheme.}
     I do not discuss this further in this thesis.
@@ -1039,7 +1010,7 @@ contributions below, highlighting in \text{bold} my work.
     \kl{buddy allocator}. I do not discuss this further in this thesis.
 \end{itemize}
 
-The formalisation in this paper was used to show that the proposed reified
+I used the formalisation in this paper to show that the reified
 ghost state scheme correctly captures ownership passing, in a semantics for a
 small C-like language with explicit resources. I wrote Sections 3.3 (dynamic
 semantics of the `\kl{MiniCN}' specification language), 3.4 (correspondence
@@ -1048,30 +1019,23 @@ illustration of \kl{Fulminate} running on an integer queue with non-trivial
 ownership reasoning), 5.2 (a report of \kl{Fulminate} running on the other
 aforementioned examples excluding the \kl{buddy allocator}).
 
-Whilst I do not discuss any of this further in this thesis,
-in~\fancyref{chap:kernel-alternative}, I present a static semantics to
-complement the dynamic semantics presented in the paper, to explore which
-complexities of a type system for C may be inherent, and which are specific to
-the approach I took.
+In \fancyref{chap:kernel-alternative}, I present a static semantics for the
+same language, to explore which complexities of a type system for C might be
+inherent, and which are specific to the approach I took.
 
-Lastly,~\sidetextcite{aamer2026code} demonstrates how one might extend
-conventional C software development practice by using \kl{CN}'s rich
+Lastly,~\sidetextcite{aamer2026code} demonstrate how one might extend
+conventional software development practice by using \kl{CN}'s rich
 specification language for runtime assertion checking, property-based testing,
-and for formal machine-checked proof, with each of these complementing and
-supporting the others. They demonstrate all this on a component of a production
-hypervisor. I summarise its stated contributions below, highlighting in
-\text{bold} my work.
+and for formal machine-checked proof. They demonstrate all this on the
+\kl{pKVM} hyp allocator.
 
 \begin{itemize}
-    \item Numerous improvements to Fulminate: support for partial
-        specifications, runtime checking for loop invariants and CN lemmas,
-        greater coverage of C features, and improved performance.
+    \item Numerous improvements to \kl{Fulminate}.
     \item Support for ghost arguments to the \kl{CN} specification language,
         Fulminate runtime testing, and \kl{CN} proof.
     \item Improvements to \kl{CN} proof performance.
     \item A new property-based testing tool, Darcy, that uses SMT solvers to
-        generate test inputs for complex \kl{CN} specifications, helpful for
-        finding mismatches between specification and code.
+        generate test inputs for complex \kl{CN} specifications.
     \item \textbf{Tree-carver tooling to filter unused parts of the large C
         source tree and suppress unused parts of the large header files
         recursively included by Linux code.} I discuss this in
@@ -1079,26 +1043,20 @@ hypervisor. I summarise its stated contributions below, highlighting in
     \item A demonstration of the test-driven specification's ability to find
         many specification bugs, and four bugs in the production hypervisor
         implementation.
-    \item A \kl{CN} correctness proof of the hypervisor's allocator, which they
-        clai was eased by the fact that well-tested specifications do not
-        contain few trivial incorrect specifications, allowing the user to
-        focus on the essential difficulties of the proof, such as proving
-        (well-tested) inductive lemmas.
+    \item A \kl{CN} correctness proof of the hypervisor's allocator, which
+        was made easier by incrementally writing and testing specifications
+        beforehand.
 \end{itemize}
 
 \chapter{Example: queues in CN}
 
 \margintoc{}
 
-In this chapter, I will first present an extended introduction to \kl{CN} and
-its features, via a worked example of a full proof in \kl{CN}. This will serve
-as an accessible foundation to the key ideas, which I will explain more
-precisely in~\fancyref{part:formalisation}.
-
-Fist, I will show the syntax of \kl{CN}. After that, I will present an
-extended example of a verified implementation of a queue (first-in, first-out)
-of integers in \kl{CN}\@. The data structure is simple linked list, each node
-carrying an integer value and a pointer to the next node, or \cinline{NULL}.
+In this chapter, I will lay an accessible foundation to the key ideas of
+\kl{CN}, which I build upon in~\fancyref{part:formalisation}. To do so, I will
+detail \kl{CN}'s annotation syntax (excluding intra-function \kl{CN
+statement}s). Then, I will present a verified implementation of an integer
+queue.
 
 \section{CN Syntax}%
 
@@ -1119,30 +1077,27 @@ carrying an integer value and a pointer to the next node, or \cinline{NULL}.
         \cnpredXXname{}\cninterrule{}
         \cninit{}\cnafterlastrule{}
     }
-    \caption{Idealised syntax of CN, modified (with respect to the
-    implementation) for presentation. Modifications include: writing
-    {\footnotesize$[[Owned<Init,ct>]]$} and
-    {\footnotesize$[[Owned<Uninit,ct>]]$} instead of \cninline{RW<τ>} and
-    \cninline{W<τ>} respectively; explicitly binding the return value in the
-    \cninline{ensures} clause, with an identifier $y$, rather than assuming it
-    is the keyword \cninline{return}; allowing arbitrary nesting of
-    specifications under \cninline{take}, instead of just predicates and
-    iterated predicates; allowing \cninline{if}s at places other than the
-    outermost level of a predicate definition.}\label{fig:cn-grammar}
+    \caption{Idealised syntax of CN, modified (from the implementation) for
+        presentation: I use {\footnotesize$[[Owned<Init,ct>]]$} and
+        {\footnotesize$[[Owned<Uninit,ct>]]$} instead of \cninline{RW<τ>} and
+        \cninline{W<τ>} respectively; after \cninline{ensures}, I use the
+        identifier $y$ to bind \cninline{return} value; I bind arbitrary
+        {\footnotesize $[[spec]]$} with \cninline{take}, instead of just
+        (\kl{iterated}) predicates; and I allow \cninline{if}s anywhere,
+        instead of just the outermost level of a \kl{predicate}
+        definition.}\label{fig:cn-grammar}
 \end{figure*}
 
 An idealised syntax for \kl{CN} is shown in~\cref{fig:cn-grammar}.
 
-A file for \kl{CN} is a C file that consists of series of top-level
-declarations of annotated C functions, (separation logic) predicate
-definitions, (purely logical) function definitions, and datatype
-declarations.
+A file for \kl{CN} is a C file with top-level definitions of annotated C
+functions, (separation logic) \kl{predicate} definitions, (mathematical)
+\kl{function} definitions, and \kl{datatype} definitions.
 
-In a C file with \kl{CN} \kl{annotations}, a C function definition introduces the
-identifiers for its arguments into the scope of any CN preconditions (preceded
-by requires), and postconditions (preceded by ensures) for that function. Pre-
-and postconditions are $[[spec]]$s, with no explicit terminator (represented in
-the grammar in with a $[[cdot]]$).
+In such a file, a C \kl{function} definition introduces the identifiers for its
+arguments into the scope of its \kl{precondition} (preceded by
+\cninline{requires}), and postcondition (preceded by \cninline{ensures}). Pre- and
+postconditions are $[[spec]]$s, with an explicit terminator `$[[cdot]]$'.
 
 \begin{itemize}
     \item $[[let id = term; spec]]$ binds the logical/SMT expression $[[term]]$
@@ -1150,7 +1105,7 @@ the grammar in with a $[[cdot]]$).
     \item $[[assert (qterm); spec ]]$ starts with a pure assertion. It carries
         a boolean-valued logical/SMT expression (perhaps quantified by a single
         variable) $[[qterm]]$. If a quantified constraint is assumed, any
-        quantifiers must be manually provided by the user.
+        instantiations must be manually provided by the user.
     \item $[[take id = spec; spec']]$ is an assertion about the heap. It is
         structured as a \kl{monadic} bind, to bind the return value of
         $[[spec]]$ to the identifier $[[id]]$, in the scope of of $[[spec']]$.
@@ -1193,54 +1148,48 @@ The implementation restricts $[[spec]]$ to have no nesting beyond a single top-l
 
 \section{Queue definitions}
 
-Now, I will present an extended example of a verified implementation of a queue
-(first-in, first-out) of integers in \kl{CN}\@. The data structure is simple
-linked list, each node carrying an integer value and a pointer to the next
-node, or \cinline{NULL}.
-
-This list is wrapped up in a \cinline{struct} with pointers to the front and
-back for constant time pushing to the back of the queue, and popping from the
-front of the queue. The operations are proved to not only be memory safe, but
-also functionally correct via a user-defined datatype and predicate.
+Now, I will present a verified implementation of an integer queue (first-in,
+first-out). It uses an integer linked list, like the one presented in
+\cref{sec:cn-intro}. This list is wrapped accessed via a \cinline{struct} with
+pointers to the front and back for constant time push and pop operations. I
+verify memory safety and functional correctness.
 
 I owe the idea, C implementation and initial proof structure for this example
-to Benjamin Pierce; the final proofs and lemmas involved are my work. As
-presented, the queue has two limitations, reflecting the earlier version of
-\kl{CN} against which it was verified. First, \cinline{malloc} and
-\cinline{free} were not supported directly, so were added as trusted functions.
-Second, the syntax for predicates did not allow for non-top-level-ifs, and so
-it defines a new predicate each time any branching is required.
+to Benjamin Pierce; the final proofs and lemmas involved are my work. The
+example has two limitations. First, \cinline{malloc} and \cinline{free} are not
+supported, and so are stubbed as trusted functions. Second, the syntax for
+predicates does not allow for non-top-level-ifs, so it defines a new predicate
+each time branching is required.
 
-I will present the code in file order, because the definitons build on each
-other sequentially, culminating in the annotated C functions at the end.
+We start with the \kl{CN} \kl{datatype} and \kl{function} definitions.
+\cninline{List} is defined to be a (recursive) datatype with two constructors,
+\cninline|Nil{}| and \cninline|Cons {head, tail}|. Note, that arguments of
+constructors are named, not positional.
 
-First, we have some \kl{CN} definitions of datatypes and logical (ghost)
-functions. The first declaration declares \cninline{List} to be a recursive
-datatype with two constructors, \cninline|Nil{}| and \cninline|Cons {head,
-tail}|. The arguments to constructors are named, not positional.
-
-The next definitions are functions for computing the head and tail of a list,
+We then define functions for computing the head of a list, the tail of a list,
 and adding an element to the end of the list. All are defined with
 pattern-matching, and the last one is marked with \cninline{[rec]} to allow it
-to be recursive. The first two non-recursive definitions can and will be
-unfolded, but the last recursive one requires manual \kl{annotation} from the user.
-All functions must be total, so the \cninline{hd} function returns
-\cninline{0i32} in the empty list case.
+to be recursive. \kl{CN} will unfold the first two automatically, but require
+manual \kl{annotation} for the last one. All functions must be total, hence the
+\cninline{hd} and \cninline{tl} return \cninline{0i32} and \cninline|Nil{}|
+respectively for the \cninline|Nil{}| case.
 
 \cfile[breaklines,lastline=26,highlightlines={2-25}]{code/queue_headers.h} % chktex 8
 
-Next, we have the definitions for the C structs used to represent the queue.
-The first struct contains a pointer to the front and the back of a linked list
-of \cinline{struct queue_cell} nodes, with payload \cinline{int first} and
-pointer to next node \cinline{struct queue_cell *next}.
+Next, we define the C structs used for the queue. The first, \cinline{struct
+queue}, contains pointers \cinline{front} and \cinline{back}, to the second,
+\cinline{struct queue_cell}, which contains an integer payload \cinline{first}
+and pointer to \cinline{next} node.
 
 \cfile[breaklines,firstline=28,lastline=36]{code/queue_headers.h}
 
-We now define \kl{CN} predicates that relate such queues in the C heap to the
-logical \kl{CN} values that they represent, and that capture the invariants we
-expect to hold of the C data-structure at all times. A diagram of the shape of
-the heap, the C types, and the structure of the predicates, is shown in
-\cref{fig:queue-heap-shape}.
+After that, we define \kl{CN} \kl{predicates} to relate the shape of the queues
+in the C heap to the logical \kl{CN} values that they represent. Henceforth, I
+shall abuse terminology by speaking of values `returned' by \kl{CN}
+\kl{predicates}; these are just implicit output arguments
+(\cref{sec:monadic-syntax}). The \kl{predicates} also capture the invariants of
+the queue. In \cref{fig:queue-heap-shape} is a diagram of the shape of the
+heap, the C types, and the structure of the predicates.
 
 \begin{figure}[htp]
 \begin{center}
@@ -1300,77 +1249,68 @@ the heap, the C types, and the structure of the predicates, is shown in
 
 \end{tikzpicture}
 \end{center}
-\caption{Pointer diagram for the queue-related predicates. Nodes represent
+\caption{Pointer diagram for the queue \kl{predicates}. Nodes represent
     values, and arrows represent \emph{owned} pointer links. It starts with
     \cinline{struct queue*} value `queue' at the top (in light blue),
     representing the QueuePtr\_At predicate. From there are two cases, as in the
     QueueFB predicate. On the left is the empty case shown by a \cinline{struct
-    queue} where both \cinline{.front} and \cinline{.back} values are
+    queue} where both \cinline{front} and \cinline{back} are
     \cinline{NULL} (in light green). On the right, is the non-empty case, where
     both \cinline{front} and \cinline{back} point to \cinline{struct
     queue_cell}s (in light grey). The chain of grey boxes represents the
     recursive QueueAux predicate.}\label{fig:queue-heap-shape}
 \end{figure}
 
-The first is the top-level predicate \cninline{QueuePtr_At(p)} for % chktex 36
-a pointer \cninline{p}, which `returns' a logical list of \kl{CN} type
-\cninline{datatype List}.\sidenote{If the notion of predicates returning values
-    seems strange, think of a returned value as an additional implicit output
-argument. See~\cref{sec:monadic-syntax} for further details.} It takes
-read-write ownership of a \cinline{struct queue} at that pointer. Each C type
-is automatically lifted to a corresponding logical \kl{CN} type, and with such
-ownership, C values are lifted to a corresponding logical \kl{CN} value. The
-struct at that location in memory lifted to a logical value, and then bound to
-\cninline{Q}. It then asserts the key invariant that either both front and back
-pointers are \cninline{NULL} or both are non-\cninline{NULL}. It then binds the
-return value of \cninline{QueueFB(Q.front, Q.back)} to \cninline{L}, % chktex 36
-and returns it.
+We start with \cninline{QueuePtr_At(p)}, which takes a pointer % chktex 36
+\cninline{p}, and returns a \cninline{datatype List}. Line 40 takes read-write
+ownership of the \cinline{struct queue} that \cinline{p} points to. \kl{CN}
+lifts C types to corresponding \kl{CN} types, and with such ownership, lifts
+the owned C values similarly. The lifted struct value is bound to \cninline{Q}.
+Lines 41\textendash{}42 assert both front and back pointers are \cninline{NULL}
+or both are non-\cninline{NULL}. It then binds the value returned by
+\cninline{QueueFB(Q.front, Q.back)} to \cninline{L}, and returns it. % chktex 36
 
 \cfile[breaklines,firstline=38,lastline=46,highlightlines={39-45}]{code/queue_headers.h} % chktex 8
 
-The predicate \cninline{QueueFB} takes two pointers as its argument, a front
-and back, and also returns a list of integers. If the front is \cninline{NULL},
-then the list returned is empty. If not, it claims ownership of the back, binds
-the value of that cell to \cninline{B}, and asserts the \cninline{B.next}
-pointer is \cninline{NULL} (the last cell). It also adds a constraint about
-front and back pointers which is required to avoid non-deterministic pointer
-equality within the memory object model
-(see~\cref{subsec:non-det-ptr-eq,subsec:update-non-det-ptr-eq}). After that, it
-binds the value returned from the \cninline{QueueAux} predicate to
-\cninline{L}, and then returns \cninline{snoc(L, B.first)}. % chktex 36
+\cninline{QueueFB} takes two pointers, \cninline{front} and \cninline{back},
+and also returns a \cninline{datatype List}. If the \cninline{front} is
+\cninline{NULL}, then it returns \cninline|Nil{}|. If not, it takes ownership
+of \cninline{back} (the last cell), binds its lifted value to \cninline{B}, and
+asserts the \cninline{B.next} is \cninline{NULL}. Line 55 constrains
+\cninline{front} and \cninline{back} pointers as required by a quirk of the
+\kl{memory object model} (see~\cref{subsec:non-det-ptr-eq,subsec:update-non-det-ptr-eq}).
+After that, it binds the return value of \cninline{QueueAux(front, back)} to % chktex 36
+\cninline{L}, and returns \cninline{snoc(L, B.first)}. % chktex 36
 
 \cfile[breaklines,firstline=48,lastline=60,highlightlines={49-59}]{code/queue_headers.h} % chktex 8
 
-The predicate \cninline{QueueAux} is recursive. It takes two pointers,
-\cninline{front} and \cninline{back}, and returns a list of integers.
-Intuitively, it represents ownership of a segment of a list from
-\cninline{front} inclusive to \cninline{back} exclusive. The \cninline{back}
-being exclusive is important because the ownership for that was already claimed
-in \cninline{QueueFB}. The base case of this predicate is when the two pointers
-are equal, in which case the returned list is empty. In the inductive case, it
-claims ownership of a \cninline{struct queue_cell} at \cninline{f}, binds the
-value at that location to \cninline{F} and then asserts that \cninline{F.next}
-is not \cinline{NULL}. It then recurses with that value, and the same back
-pointer, and binds the resulting list to \cninline{B}. The result returned is a
+\cninline{QueueAux} is recursive; it takes two pointers, \cninline{front} and
+\cninline{back}, and returns a \cninline{datatype List}. Intuitively, it
+represents ownership of a segment of a list from \cninline{front} inclusive to
+\cninline{back} exclusive. Importantly, ownership of \cninline{back} is
+excluded because it was already taken in \cninline{QueueFB}. The base case is
+when the two pointers are equal, for which \cninline{QueueAux} returns
+\cninline|Nil{}|. In the inductive case, it takes ownership of a
+\cninline{struct queue_cell} at \cninline{front}, binds the value there to
+\cninline{F} and asserts that \cninline{F.next} is not \cinline{NULL}. Line 69
+serves the same purpose as line 55. It then recurses with \cninline{F.next} and
+\cninline{back}, binds the returned list to \cninline{B}, and then returns a
 list with head \cinline{F.first} and tail \cinline{B}.
 
 \cfile[breaklines,firstline=62,lastline=74,highlightlines={63-73}]{code/queue_headers.h} % chktex 8
 
-As mentioned earlier, this proof has limitations due to the version of
-\kl{CN} against which it was verified; one of them is that \cinline{malloc} and
-\cinline{free} were not supported directly. They are added as trusted functions
-below, monomorphized to the two struct types; allocations are modelled as
-always succeeding to keep the example simple.
+As mentioned earlier, \cinline{malloc} and \cinline{free} are not supported
+directly, so they are added as trusted monomorphized functions; to keep the
+example simple, allocations are modelled as always succeeding.
 
 \cfile[breaklines,firstline=76,highlightlines={77-79,82-84,87-89,92-94}]{code/queue_headers.h} % chktex 8
 
 \section{Queue implementation}
 
-Let us start with the C function which creates an empty queue satisfying the
-invariants described above. Its specification has no precondition, only a
-postcondition, which specifies not only that the return value represents a
-queue according to the layout described by \cninline{QueuePtr_At}, but also
-that the logical (ghost) value it outputs is the empty list \cninline|Nil{}|.
+We start with a C function to create an empty queue. Its specification has no
+\kl{precondition}, only a \kl{postcondition}, which specifies that the returned
+pointer is a queue as per \cninline{QueuePtr_At}, and that the logical (ghost)
+value returned by the same is \cninline|Nil{}|.
 
 In the C code, it allocates memory for a new \cinline{struct queue}, sets the
 front and back pointers to \cinline{NULL}, and returns a pointer to the new
@@ -1378,27 +1318,25 @@ allocation.
 
 \cfile[breaklines,highlightlines={2-3}]{code/queue_empty.c} % chktex 8
 
-The specification for popping from a queue has as its precondition that
-pointer \cinline{q} points to a queue in memory, and binds its logical (ghost)
-value to \cninline{Q}. It then requires that Q is non-\cinline|Nil{}|. It
-postcondition similarly states that pointer \cinline{q}, points to a queue
-in memory, and binds its logical value to \cninline{Q_post}. It then requires
-\cninline{Q_post} is the tail of \cninline{Q}, the value before, and the
-\cninline{return} value is an integer which was at the head of \cninline{Q}.
+Next, is the C function for popping from a queue. It requires that \cinline{q}
+points to a queue in memory, whose logical (ghost) value is bound to
+\cninline{Q}, and must be non-\cinline|Nil{}|. Its postcondition ensures that
+\cinline{q} points to a queue in memory, whose logical (ghost) value is bound
+to \cninline{Q_post}. It further ensures that \cninline{Q_post} is the tail of
+\cninline{Q} and that the \cninline{return} value is the head of \cninline{Q}.
 
 \cfile[breaklines,firstline=15,highlightlines={16-20,22,29,33}]{code/queue_pop.c} % chktex 8
 
-Under the hood, \kl{CN} begins to check a function by placing the resources
-from the precondition into an ambient \emph{context}. Inside a function, a
-pointer \cninline{q} may only be dereferenced if there is a \cninline{RW(q)} % chktex 36
-in the context. However, the context at the beginning of \cninline{pop_queue}
-has \cninline{QueuePtr_At(q)}, which is defined as a % chktex 36
-\emph{conditional} resource, branching on whether \cninline{q->front} is
-\cinline{NULL} or not.
+\kl{CN} checks a function by placing its precondition into an ambient
+\emph{context}. Inside a function, a pointer \cninline{q} may only be
+dereferenced if there is a \cninline{RW(q)} in the context. % chktex 36
+However, the context at the beginning of \cninline{pop_queue} has
+\cninline{QueuePtr_At(q)}, which is a \emph{conditional} resource, % chktex 36
+branching on whether \cninline{q->front} is \cinline{NULL} or not.
 
 To access the resources and return value underneath the condition, \kl{CN}
-needs to prove statically that it is in one of the branches. In this instance,
-there is not enough information a priori to do so, so the user instead provides
+needs to statically prove that it is in one of the branches. In this instance,
+there is not enough information to do so, so the user instead provides
 a \cninline{split_case} \kl{annotation} to tell \kl{CN} to type check the rest of
 the function \kl{twice}, once assuming the given condition, and once assuming
 its negation. The true branch reveals a contradiction between the return value
@@ -1408,65 +1346,62 @@ the false branch contains the ownership of \cinline{q} required to read
 \cinline{q->front}.
 
 Next, control flow bifurcates again, but this time in the C program. If the
-front and back pointers are equal, then that signals we are in the singleton
-queue case, which must be handled separately to the non-singleton case. In both
-cases, the head value must be read and then head \cinline{struct queue_cell}
-freed.
+front and back pointers are equal, then we are in the singleton queue case,
+which must be handled separately to the non-singleton case. In both cases, the
+head value must be read and then freed.
 
 In the singleton case, both queue front and back pointers must be set to
-\cninline{NULL} to maintain the invariant in \cninline{QueuePtr_At}. So far,
-this is enough to establish the resource predicate, but not the constraint that
-\cninline{Q}, which is equal to \cninline[breaklines]|Cons {head:x, tail:
-Nil{}}| is equal to \cninline|snoc(Nil{}, x)|. The reason for this % chktex 36
-is that \cninline{snoc} is a recursive function, and thus must be unfolded
-manually by the user.
+\cninline{NULL} as per \cninline{QueuePtr_At}. So far, this is enough to
+establish the resource predicate, but not the constraint that \cninline{Q},
+which is equal to \cninline[breaklines]|Cons {head:x, tail: Nil{}}| is equal to
+\cninline|snoc(Nil{}, x)|. This is because \cninline{snoc} is a % chktex 36
+a recursive function, and thus must be unfolded manually.
 
-In the non-singleton case, we need to apply a similar lemma, one which says
+In the non-singleton case, we need to manually apply a lemma, one which says
 \cninline{snoc} commutes with \cninline{cons}. At the time, \kl{CN} could only
-pass around logical (ghost) values by passing a resource and then binding the
-values returned from a resource. Hence, even though the goal of the lemma is a
-pure fact, to state it, we must mention resources in its precondition. The
-lemma required to make the proof pass is shown below; the resources are
-preserved exactly, only the pure constraints on line 10\textemdash{}12 are
-meaningful.
+pass logical (ghost) values by passing a resource and then binding its return
+values.  So, even though the lemma is a pure fact, to state it, we must thread
+through resources, as shown below. The resources are preserved exactly, only
+the pure constraints on line 10\textendash{}12 are meaningful.
 
 \cfile[breaklines,lastline=13,highlightlines={2-12}]{code/queue_pop.c} % chktex 8
 
-The case for pushing onto a queue is more interesting, because of the resource
-reasoning required for it. The queue stores a pointer to the back of the list
-for constant time pushing, but this same pointer can be accessed by traversing
-the list, meaning there can be two aliases to the same location.
+Finally, we have the C function for popping from a queue, which requires
+non-trivial resource reasoning. The queue stores a pointer to the back of the
+list for constant time pushing, but this same pointer can be accessed by
+traversing the list, meaning there are two aliases to the same location.
 
-Upon entry to the function, it allocates a new cell and stores the new values.
-It then conditionally branches on whether or not the queue is empty or not, by
-checking the back pointer. As a result of the invariant on queues, in both
-cases we learn that the front pointer is correspondingly (not) \cninline{NULL}.
-In the true branch, both front and back pointers are set to the newly allocated
-cell. This is enough to establish the singleton case of the queue predicates.
+Upon entry, the function allocates a new cell and stores the new values. It
+then conditionally branches on whether or not the queue is empty, by checking
+the back pointer. By lines 41\textendash{}42, in both cases we learn whether
+front is \cninline{NULL}. In the true branch, both front and back pointers are
+set to the newly allocated cell. This is enough to establish the singleton case
+of the queue predicates.
 
-In the false branch, it adds the cell to the back of the list, and then updates
-the queue's back pointer to point to it. The reason it is able to do so is that
-ownership of the back of the list is taken by \cninline{QueueFB}, rather than
-at the end of a recursive chain of \cninline{QueueAux}. But now there are two
-such \cninline{RW<struct queue_cell>}, and, like the famous Highlander,
+In the false branch, the function adds the cell to the back of the list, and
+then sets the queue's back pointer to point to the new cell. The ownership of
+the new back of the list is taken directly by \cninline{QueueFB}, but the old
+one is unclaimed by the \cninline{QueueAux} list segment. There are two
+\cninline{RW<struct queue_cell>}, old and new, but, like the famous Highlander,
 there can only be one. So the old cell must be moved, not in the C code, but in
-the resource, to the end of the \cninline{QueueAux} recursion chain.
+the resource, to the end of a new, longer \cninline{QueueAux} list segment.
 
 \cfile[breaklines,firstline=13,highlightlines={14-16,29}]{code/queue_push.c} % chktex 8
 
-It is precisely this fact which \cninline{push_lemma} (omitted) represents: if one has
-ownership of a segment of a list from  \cninline{front} to \cninline{p}
-(exclusive), and ownership of a cell at \cninline{p}, then that is the same as
-ownership of a longer segment from \cninline{front} to \cninline{p->next}
-(exclusive). Furthermore, the value of this longer segment, is the
-\cninline{snoc} of the first two values.
+It is precisely this fact which \cninline{push_lemma}
+(\cref{sec:lemma-proof-c}) represents: if one has ownership of a segment of a
+list from  \cninline{front} to \cninline{p} (exclusive), and ownership of a
+cell at \cninline{p}, then that is the same as ownership of a longer segment
+from \cninline{front} to \cninline{p->next} (exclusive). Furthermore, the value
+of this longer segment, is the \cninline{snoc} of the first two values.
 
 % \cfile[breaklines,lastline=11,highlightlines={2-10}]{code/queue_push.c} % chktex 8
 
 \section{Proofs of lemmas}
 
-\kl{CN} has in-progress support for export and proofs of lemmas which mention
-resources, which may be combined with in-progress support for ghost arguments
-and returns for lemmas which merely state pure fact (\cref{sec:lemma-prover}).
-However, as it turns out, for some lemmas, such as the ones shown here, it is
-possible to give a proof in terms of a C function (\cref{sec:lemma-proof-c}).
+\kl{CN} has in-progress support for export and proofs of resourceful lemmas,
+which could be combined with recently added support for ghost arguments and
+planned support for ghost returns, to support lemmas which state pure facts
+(\cref{sec:lemma-prover}). However, as it turns out, for some lemmas, such as
+the ones shown here, it is possible to give a proof in terms of a C function
+(\cref{sec:lemma-proof-c}).
