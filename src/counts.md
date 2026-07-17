@@ -6,13 +6,13 @@ Counts are `text + headers + captions`. **Own** is the prose directly under a he
 
 | Chapter | Total | Own |
 | :-- | --: | --: |
-| Introduction | **6456** | 16 |
-| Example: queues in CN | **3388** | 100 |
+| Introduction | **5996** | 16 |
+| Example: queues in CN | **3036** | 52 |
 | Background: Cerberus and CN design | **8273** | 57 |
 | Kernel CN: Grammar | **4298** | 167 |
 | Kernel CN: Static semantics | **4677** | 351 |
 | Kernel CN: Proof of soundness | **1642** | 188 |
-| Informing implementation discussions | **1454** | 156 |
+| Informing implementation discussions | **1458** | 156 |
 | An alternative presentation | **2241** | 91 |
 | Memory object models, explained | **7245** | 394 |
 | CN-VIP | **3292** | 118 |
@@ -21,39 +21,39 @@ Counts are `text + headers + captions`. **Own** is the prose directly under a he
 | Proof maintenance for pKVM buddy allocator | **3438** | 82 |
 | CN Comparison and Feedback | **4203** | 177 |
 | Not-so-great expectations | **5234** | 97 |
-| Future Directions | **3277** | 22 |
+| Future Directions | **3285** | 22 |
 | Conclusion | **1334** | 545 |
 
-| **Document total** | **66852** | |
+| **Document total** | **66052** | |
 
 ## Introduction
 
-**Chapter total: 6456** (own 16)
+**Chapter total: 5996** (own 16)
 
 | Section | Subsection | Total | Own |
 | :-- | :-- | --: | --: |
 | Context |  |  | 620 |
 | Thesis statement |  |  | 87 |
-| Background |  | 3875 | 1 |
+| Background |  | 3630 | 1 |
 |  | The C programming language |  | 856 |
 |  | Verification with Separation Logic |  | 1612 |
-|  | CN: C, No bugs! |  | 1406 |
-| Contributions of this thesis |  | 1858 | 67 |
-|  | Formalisation of CN |  | 268 |
-|  | Memory object model: design, formalisation and implementation |  | 240 |
-|  | Engineering: will the real world C, please stand up? |  | 374 |
-|  | Contributions in published papers |  | 909 |
+|  | CN: C, No bugs! |  | 1161 |
+| Contributions of this thesis |  | 1643 | 66 |
+|  | Formalisation of CN |  | 236 |
+|  | Memory object model: design, formalisation and implementation |  | 231 |
+|  | Engineering: will the real world C, please stand up? |  | 327 |
+|  | Contributions in published papers |  | 783 |
 
 ## Example: queues in CN
 
-**Chapter total: 3388** (own 100)
+**Chapter total: 3036** (own 52)
 
 | Section | Subsection | Total | Own |
 | :-- | :-- | --: | --: |
-| CN Syntax |  |  | 404 |
-| Queue definitions |  |  | 969 |
-| Queue implementation |  |  | 880 |
-| Proofs of lemmas |  |  | 1035 |
+| CN Syntax |  |  | 370 |
+| Queue definitions |  |  | 779 |
+| Queue implementation |  |  | 797 |
+| Proofs of lemmas |  |  | 1038 |
 
 ## Background: Cerberus and CN design
 
@@ -121,12 +121,12 @@ Counts are `text + headers + captions`. **Own** is the prose directly under a he
 
 ## Informing implementation discussions
 
-**Chapter total: 1454** (own 156)
+**Chapter total: 1458** (own 156)
 
 | Section | Subsection | Total | Own |
 | :-- | :-- | --: | --: |
 | Supporting partially initialised reads of structs/unions |  |  | 332 |
-| Automatic unfolding scheme for logical functions |  |  | 238 |
+| Automatic unfolding scheme for logical functions |  |  | 242 |
 | Higher-order resources |  |  | 124 |
 | Restrictions on branching |  |  | 238 |
 | Removing the pointer first restriction on predicates |  |  | 172 |
@@ -272,11 +272,11 @@ Counts are `text + headers + captions`. **Own** is the prose directly under a he
 
 ## Future Directions
 
-**Chapter total: 3277** (own 22)
+**Chapter total: 3285** (own 22)
 
 | Section | Subsection | Total | Own |
 | :-- | :-- | --: | --: |
-| Inferring frames |  |  | 954 |
+| Inferring frames |  |  | 962 |
 | Weak sequencing |  |  | 613 |
 | Join-points |  |  | 491 |
 | Integers and bit-vectors |  |  | 484 |
