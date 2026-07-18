@@ -84,7 +84,18 @@ jobs:
         mv main.tex old_minted.tex && tail -n +2 old_minted.tex > main.tex # hack to build with newer version of minted
         sed -i 's~% \\sloppy~\\sloppy~g' kaobook/kaobook.cls # better breaking for long lines
         eval $(opam env --switch=${{ matrix.version }})
+        echo "::group::DIAGNOSTIC: OCaml lexer patch state at build time"
+        which python3
+        python3 --version
+        python3 -c "from pygments.lexers import find_lexer_class_by_name; print(find_lexer_class_by_name('ocaml').keyopts)"
+        which latexminted || true
+        head -1 "$(which latexminted)" || true
+        which pygmentize || true
+        echo "::endgroup::"
         make || (cat _build/*.log; exit 1)
+        echo "::group::DIAGNOSTIC: generated minted cache content for FUNCTION"
+        grep -rl "FUNCTION" _build/ 2>/dev/null | while read -r f; do echo "--- $f ---"; cat "$f"; done
+        echo "::endgroup::"
         texcount -inc main.tex | tee _build/wordcount.tex
 
     - name: Release
