@@ -84,20 +84,16 @@ jobs:
         mv main.tex old_minted.tex && tail -n +2 old_minted.tex > main.tex # hack to build with newer version of minted
         sed -i 's~% \\sloppy~\\sloppy~g' kaobook/kaobook.cls # better breaking for long lines
         eval $(opam env --switch=${{ matrix.version }})
-        echo "::group::DIAGNOSTIC: OCaml lexer patch state at build time"
-        which python3
-        python3 --version
-        python3 -c "from pygments.lexers import find_lexer_class_by_name; print(find_lexer_class_by_name('ocaml').keyopts)"
-        echo "PATH=$PATH"
-        echo "--- latexminted resolution ---"
-        which -a latexminted || true
-        cat "$(which latexminted)" || true
-        echo "--- any pygments/lexers/ml.py on disk ---"
-        find / -path '*/pygments/lexers/ml.py' 2>/dev/null | while read -r f; do
-          echo "=== $f ==="
-          grep -n "'_', '\`'\|_(?!" "$f" || echo "(no keyopts match found)"
-        done
-        echo "::endgroup::"
+        # TeX Live's setup-texlive-action ships its own latexminted executable
+        # bundled with its own vendored Pygments wheel, on PATH ahead of the
+        # one `pip install --user latexminted` provides, so the patch to
+        # site-packages/pygments above is otherwise silently ignored. Put the
+        # pip-installed one first; this is the mechanism latexminted's own
+        # entry-point script documents for using a separately customized
+        # Pygments (see its docstring: "it is possible to modify PATH so that
+        # the desired latexminted executable is first").
+        export PATH="$HOME/.local/bin:$PATH"
+        which latexminted
         make || (cat _build/*.log; exit 1)
         echo "::group::DIAGNOSTIC: generated minted cache content for FUNCTION"
         grep -rl "FUNCTION" _build/ 2>/dev/null | while read -r f; do echo "--- $f ---"; cat "$f"; done
