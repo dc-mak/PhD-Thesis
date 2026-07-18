@@ -88,9 +88,15 @@ jobs:
         which python3
         python3 --version
         python3 -c "from pygments.lexers import find_lexer_class_by_name; print(find_lexer_class_by_name('ocaml').keyopts)"
-        which latexminted || true
-        head -1 "$(which latexminted)" || true
-        which pygmentize || true
+        echo "PATH=$PATH"
+        echo "--- latexminted resolution ---"
+        which -a latexminted || true
+        cat "$(which latexminted)" || true
+        echo "--- any pygments/lexers/ml.py on disk ---"
+        find / -path '*/pygments/lexers/ml.py' 2>/dev/null | while read -r f; do
+          echo "=== $f ==="
+          grep -n "'_', '\`'\|_(?!" "$f" || echo "(no keyopts match found)"
+        done
         echo "::endgroup::"
         make || (cat _build/*.log; exit 1)
         echo "::group::DIAGNOSTIC: generated minted cache content for FUNCTION"
