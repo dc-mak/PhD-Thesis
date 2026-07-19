@@ -39,9 +39,13 @@ jobs:
       run: |
         sudo apt-get update
         sudo apt-get install fonts-firacode fonts-liberation fonts-lmodern opam -y
-        pip install pygments latexminted
-        python3 .github/scripts/patch_ocaml_lexer.py
+        # No separate `pip install pygments latexminted` needed: TeX Live's own
+        # bundled latexminted (with its own pygments-*.whl) is self-sufficient,
+        # including for cn_lexer's runtime `import pygments` below.
         pip install -e src/cn_lexer
+        # Patches the pygments-*.whl that TeX Live's own latexminted executable
+        # bundles next to itself. See the script for why.
+        python3 .github/scripts/patch_ocaml_lexer.py
 
     - name: Download Libertinus Fonts
       uses: robinraju/release-downloader@v1
