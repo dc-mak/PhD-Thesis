@@ -6,17 +6,17 @@ Counts are `text + headers + captions`. **Own** is the prose directly under a he
 
 | Chapter | Total | Own |
 | :-- | --: | --: |
-| Introduction | **5996** | 16 |
-| Example: queues in CN | **3036** | 52 |
-| Background: Cerberus and CN design | **8273** | 57 |
+| Introduction | **5993** | 16 |
+| Example: queues in CN | **2797** | 52 |
+| Background: Cerberus and CN design | **7875** | 32 |
 | Kernel CN: Grammar | **4298** | 167 |
-| Kernel CN: Static semantics | **4677** | 351 |
+| Kernel CN: Static semantics | **4675** | 349 |
 | Kernel CN: Proof of soundness | **1642** | 188 |
 | Informing implementation discussions | **1458** | 156 |
 | An alternative presentation | **2241** | 91 |
 | Memory object models, explained | **7245** | 394 |
 | CN-VIP | **3292** | 118 |
-| Epilogue on CN-VIP | **3479** | 61 |
+| Epilogue on CN-VIP | **3478** | 61 |
 | Tree-carving: Taming C Repositories | **2921** | 132 |
 | Proof maintenance for pKVM buddy allocator | **3438** | 82 |
 | CN Comparison and Feedback | **4203** | 177 |
@@ -24,48 +24,48 @@ Counts are `text + headers + captions`. **Own** is the prose directly under a he
 | Future Directions | **3285** | 22 |
 | Conclusion | **1334** | 545 |
 
-| **Document total** | **66052** | |
+| **Document total** | **65409** | |
 
 ## Introduction
 
-**Chapter total: 5996** (own 16)
+**Chapter total: 5993** (own 16)
 
 | Section | Subsection | Total | Own |
 | :-- | :-- | --: | --: |
 | Context |  |  | 620 |
 | Thesis statement |  |  | 87 |
-| Background |  | 3630 | 1 |
-|  | The C programming language |  | 856 |
+| Background |  | 3628 | 1 |
+|  | The C programming language |  | 854 |
 |  | Verification with Separation Logic |  | 1612 |
 |  | CN: C, No bugs! |  | 1161 |
-| Contributions of this thesis |  | 1643 | 66 |
+| Contributions of this thesis |  | 1642 | 66 |
 |  | Formalisation of CN |  | 236 |
 |  | Memory object model: design, formalisation and implementation |  | 231 |
-|  | Engineering: will the real world C, please stand up? |  | 327 |
+|  | Engineering: will the real-world C, please stand up? |  | 326 |
 |  | Contributions in published papers |  | 783 |
 
 ## Example: queues in CN
 
-**Chapter total: 3036** (own 52)
+**Chapter total: 2797** (own 52)
 
 | Section | Subsection | Total | Own |
 | :-- | :-- | --: | --: |
 | CN Syntax |  |  | 370 |
 | Queue definitions |  |  | 779 |
 | Queue implementation |  |  | 797 |
-| Proofs of lemmas |  |  | 1038 |
+| Proofs of lemmas |  |  | 799 |
 
 ## Background: Cerberus and CN design
 
-**Chapter total: 8273** (own 57)
+**Chapter total: 7875** (own 32)
 
 | Section | Subsection | Total | Own |
 | :-- | :-- | --: | --: |
-| CN design goals and constraints |  |  | 1132 |
-| Cerberus and Core for a usable and accurate C semantics |  |  | 284 |
-| Core grammar |  |  | 914 |
-| Elaboration example: list append |  | 1369 | 1020 |
-|  | Discussion |  | 349 |
+| CN design goals and constraints |  |  | 980 |
+| Cerberus and Core for a usable and accurate C semantics |  |  | 266 |
+| Core grammar |  |  | 822 |
+| Elaboration example: list append |  | 1258 | 997 |
+|  | Discussion |  | 261 |
 | Decidable refinements for retrofitting and counter-examples |  |  | 782 |
 | Bidirectionality for taming subtyping |  |  | 673 |
 | Linearity to manage (non-leaky) resources |  |  | 887 |
@@ -88,7 +88,7 @@ Counts are `text + headers + captions`. **Own** is the prose directly under a he
 
 ## Kernel CN: Static semantics
 
-**Chapter total: 4677** (own 351)
+**Chapter total: 4675** (own 349)
 
 | Section | Subsection | Total | Own |
 | :-- | :-- | --: | --: |
@@ -184,7 +184,7 @@ Counts are `text + headers + captions`. **Own** is the prose directly under a he
 
 ## Epilogue on CN-VIP
 
-**Chapter total: 3479** (own 61)
+**Chapter total: 3478** (own 61)
 
 | Section | Subsection | Total | Own |
 | :-- | :-- | --: | --: |
@@ -193,7 +193,7 @@ Counts are `text + headers + captions`. **Own** is the prose directly under a he
 |  | Non-deterministic pointer equality |  | 240 |
 | Lemma proofs within C |  |  | 555 |
 | Lemma proofs in a proof-assistant |  |  | 644 |
-| Better foundations for CN |  |  | 1215 |
+| Better foundations for CN |  |  | 1214 |
 
 ## Tree-carving: Taming C Repositories
 
