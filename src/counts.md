@@ -6,9 +6,9 @@ Counts are `text + headers + captions`. **Own** is the prose directly under a he
 
 | Chapter | Total | Own |
 | :-- | --: | --: |
-| Introduction | **5993** | 16 |
+| Introduction | **5995** | 16 |
 | Example: queues in CN | **2797** | 52 |
-| Background: Cerberus and CN design | **7875** | 32 |
+| Background: Cerberus and CN design | **7446** | 32 |
 | Kernel CN: Grammar | **4298** | 167 |
 | Kernel CN: Static semantics | **4675** | 349 |
 | Kernel CN: Proof of soundness | **1642** | 188 |
@@ -24,20 +24,20 @@ Counts are `text + headers + captions`. **Own** is the prose directly under a he
 | Future Directions | **3285** | 22 |
 | Conclusion | **1334** | 545 |
 
-| **Document total** | **65409** | |
+| **Document total** | **64982** | |
 
 ## Introduction
 
-**Chapter total: 5993** (own 16)
+**Chapter total: 5995** (own 16)
 
 | Section | Subsection | Total | Own |
 | :-- | :-- | --: | --: |
 | Context |  |  | 620 |
 | Thesis statement |  |  | 87 |
-| Background |  | 3628 | 1 |
+| Background |  | 3630 | 1 |
 |  | The C programming language |  | 854 |
 |  | Verification with Separation Logic |  | 1612 |
-|  | CN: C, No bugs! |  | 1161 |
+|  | CN: C, No bugs! |  | 1163 |
 | Contributions of this thesis |  | 1642 | 66 |
 |  | Formalisation of CN |  | 236 |
 |  | Memory object model: design, formalisation and implementation |  | 231 |
@@ -57,7 +57,7 @@ Counts are `text + headers + captions`. **Own** is the prose directly under a he
 
 ## Background: Cerberus and CN design
 
-**Chapter total: 7875** (own 32)
+**Chapter total: 7446** (own 32)
 
 | Section | Subsection | Total | Own |
 | :-- | :-- | --: | --: |
@@ -66,8 +66,8 @@ Counts are `text + headers + captions`. **Own** is the prose directly under a he
 | Core grammar |  |  | 822 |
 | Elaboration example: list append |  | 1258 | 997 |
 |  | Discussion |  | 261 |
-| Decidable refinements for retrofitting and counter-examples |  |  | 782 |
-| Bidirectionality for taming subtyping |  |  | 673 |
+| Decidable refinements for retrofitting and counter-examples |  |  | 528 |
+| Bidirectionality for taming subtyping |  |  | 498 |
 | Linearity to manage (non-leaky) resources |  |  | 887 |
 | Section |  | 1346 | 694 |
 |  | Precise assertions |  | 652 |

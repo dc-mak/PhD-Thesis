@@ -659,10 +659,10 @@ background related to the \kl{CN} type system.
 
 \section{Decidable refinements for retrofitting and counter-examples}\label{sec:decidable-refinements}
 
-\kl{Core} already has a straightforward \kl{bidirectional} type system as a
-sanity check on the output of elaboration. It has not been used for a proof of
-soundness with respect to the dynamic semantics, since such a theorem would be
-just another sanity check (on the dynamic semantics).
+\kl{Core} already has a straightforward \kl{bidirectional} type system which
+\kl{Cerberus} uses as a sanity check for the \kl{elaboration}. It has not been
+used for a proof of soundness, which would just be a sanity check on the
+dynamic semantics.
 
 \begin{marginfigure}
     \centering
@@ -673,98 +673,73 @@ just another sanity check (on the dynamic semantics).
         mentioned in \textcite{memarian2022cerberus}.}\label{fig:core-ub-typing}
 \end{marginfigure}
 
-This is evidenced by the typing rule for \coreinline{undef()} % chktex 36
-(\cref{fig:core-ub-typing}). Since \kl{UB} is by definition, assumed to be
-absent in a valid C program, the type system must accept any type as validly
-checking against \coreinline{undef()}. % chktex 36
+For example, \coreinline{undef()} checks against any type % chktex 36
+(\cref{fig:core-ub-typing}). This is because \kl{UB} terminates the dynamic
+semantics; it does not return control. Remember, a valid C program is one which
+has no \kl{UB}, but such a type system cannot guarantee its absence.
 
-At a minimum, to prove C programs safe, what we would like is a type system
-expressive enough to \emph{prove} the absence of \kl{UB}. If the type checking
-context is enriched to track the control flow path to reach this point in the
-program, for example by tracking conditions (or their negations), then the
-typing rule for \coreinline{undef()} would simply require that the context % chktex 36
-be inconsistent, i.e.\ able to prove false. To illustrate this point with
-a trivial example, consider the nested \mintinline{py}{if} statements in
-\cref{fig:dead-code}.
+To do that, we need to enrich the context to track the (control flow) path
+conditions. Then, the typing rule for \coreinline{undef()} would % chktex 36
+require that the context be inconsistent (able to prove false), meaning
+the expression is unreachable. To illustrate this, consider a trivial example
+of nested \mintinline{py}{if} statements in \cref{fig:dead-code}.
 
 \begin{figure}[h]
-    \inputminted[breaklines,mathescape,fontsize=\small]{py}{code/dead_code.py}
+    \inputminted[linenos,numbersep=6pt,mathescape,fontsize=\small]{py}{code/dead_code.py}
     \caption{A contrived example on how tracking control flow assumptions
         within a program could be used to prove the impossibility of
         undesirable behaviour.}\label{fig:dead-code}
 \end{figure}
 
-Since we know from the outer \mintinline{py}{if} that \mintinline{py}{x} is
-greater than or equal to 5, the check for \mintinline{py}{x} being strictly
-less than 4 is always going to evaluate to \mintinline{py}{False} and so go to
-the \mintinline{py}{else} branch rather than raise the exception. When tracking
-constraints, this unreachability or dead code is represented by an inconsistent
-context, from which we can prove $\mathsf{false}$.
+From the outer \mintinline{py}{if}, we know that \mintinline{py}{x >= 5}, so
+the check \mintinline{py}{x < 4} will always evaluate to \mintinline{py}{False}.
+Thus control will always flow to line 12 (and return) instead of line 9 (and
+raise the exception). Tracking path conditions in a constraint context during
+type checking means that the context is inconsistent at line 9.
 
-In general, to express and track these constraints in types, we need to be able
-to talk about computational variables and values \emph{at the type level},
-introducing a form of dependency. However, we do not want to make programming
-language itself more expressive, merely its type system. For example, we do not
-wish to the ability for computation to depend on types (as in a \kl{dependent
-type} system). In fact, we would like to add richer types in a way such that we
-could erase them after type checking, and recover the original program and
-dynamic semantics.
+To track such constraints in a typing context, we need to talk about program
+variables and values \emph{at the type level}. This requires richer types which
+can depend on program terms. However, we \emph{do not} want the converse; we
+should be able to recover the original program and dynamic semantics by erasing
+the types after type checking. Enriching the type of an existing language
+whilst retaining erasure is known as \intro{refinement
+types}~\sidecite{jhala2021refinement}.
 
-This approach of enriching the expressiveness of types on an existing language
-whilst retaining the erasure is known as \intro{refinement types}. There is a
-rich history of the origins, naming and development of these
-ideas~\sidecite{jhala2021refinement}, and so I will focus only on the strands
-relevant to \kl{CN}.
+When using such types, we do not want the user to provide proofs for obvious
+deductions, such as $x \geq 5 \wedge x < 4 \Rightarrow \bot$. Unfortunately,
+first-order logic with arithmetic is undecidable: type checking may not
+terminate on certain programs. Given that there are real-world programming
+languages\sidenote{\href{https://hacklang.org/}{Hack},
+\href{https://forums.swift.org/t/swift-type-checking-is-undecidable/39024/34}{Swift},
+and F$^*$~\cite{swamy2016dependent}.} which have undecidable type systems, but
+work fine in practice, is this a problem?
 
-If our goal is to minimise annotations and not require proofs for obvious
-statements, then we need some sort of automation to dispatch proof obligations:
-recall the examples shown in \cref{fig:call-incr}, where \kl{CN} deduces
-\cinline[breaklines]{y <= MAXi32()} from the constraint \cinline[breaklines]{y
-<= 100i32}.
+Whilst `decidable' does include exponential or NP-complete time complexity, we
+conjecture that such SMT theories are faster, and more \emph{stable}: the
+performance is consistent across irrelevant or small changes to a proof. We
+also conjecture that problems generated by type checking will be limited by
+human cognitive capacity and thus be reasonably small, especially compared to the
+typical uses of SMT solvers. Thus \kl{CN} aims for decidability as an imperfect
+proxy.
 
-However, once we have rich constraints being tracked by the type system, we
-have a first-order logic with arithmetic, which is undecidable. There are type
-systems for real-world programming languages (such as Hack or F$^*$) which are
-undecidable, and so could just never terminate on some code, but have
-automation which works fine in practice, so why does this point require any
-special consideration?
+\kl{CN} ensures decidability by restricting its use of quantifiers as per the
+liquid types~\sidecite{rondon2008liquid} approach. In practice, this means
+constraints sent to the SMT solver are free of quantifiers. When this too
+restrictive, \kl{CN} offers a lemma mechanism (\cref{sec:lemma-prover}) to
+export and prove facts in the Rocq~\sidecite{CDT2024} proof assistant.
 
-Aside from the pleasing theoretical property of having a decidable type system,
-or having to tell users ``just increase the timeout'',  there are a couple of
-factors which lean us in this direction, namely to be able to use SMT solvers
-in a \emph{fast} and \emph{predictable} manner. Recognising that whilst
-decidability can still technically mean exponential, or very often, NP-complete
-complexity for problems does not negate the empirical observation that in
-practice, decidable theories tend to be quite fast, and their speed (and
-solvability) much less susceptible to heuristics being triggered. It is a proxy
-for performance, albeit an imperfect one.
-
-It also helps that the size of SMT problems generated by type checking
-\emph{tend} to be reasonably small, at least compared to the sorts of problems
-which SMT solvers are typically used for, because the amount of code humans
-write between annotations is limited by cognitive capacity (and hopefully,
-diligent code reviewers).
-
-\kl{CN} ensures decidability by following restrictions on quantifiers as set
-out by the liquid types~\sidecite{rondon2008liquid} approach. In practice, this
-means ensuring that the constraints sent to the SMT solver are free of
-quantifiers. When this approach is insufficiently expressive, \kl{CN} offers a
-lemma mechanism to export and prove claims in the \kl{Rocq} interactive proof
-assistant.
-
-Aiming for decidability also has the added benefit of extracting a concrete
-\kl{counter-example}, which is used to explain
-constraint failures in terms of concrete values for \kl{Core} program variables
-(a subset of which correspond to C program variables).
+Aiming for decidability also lets \kl{CN} extract concrete
+\kl{counter-examples} to explain constraint failures in terms of concrete
+values for \kl{Core} program variables (a subset of which correspond to C
+program variables).
 
 \section{Bidirectionality for taming subtyping}\label{sec:bidir-subtyping}
 
-Using a liquid typing discipline automates away the problem of tedious proof
-obligations with calls to an SMT solver, but introduces the new problem of \emph{when}
-during type checking is the right time to use it? This is because implications
-induce a subtyping relation in the type system, and so the question becomes:
-when is the correct time to use the subsumption rule, as shown in
-\cref{fig:subsumption}?
+With \kl{liquid types}, we can use an SMT solver to automate tedious proofs.
+However, implications induce a subtyping relation in such a type system, which
+means we have a \emph{subsumption rule}, as shown in~\cref{fig:subsumption}. As
+presented, the rule is \emph{not} syntax-directed, and so raises the question:
+when should it be used?
 
 \begin{marginfigure}
   \begin{mathpar}
@@ -775,57 +750,43 @@ when is the correct time to use the subsumption rule, as shown in
       implication $\Rightarrow$ as the subtyping relation.}\label{fig:subsumption}
 \end{marginfigure}
 
-Going back to the example in \cref{fig:dead-code}, let us imagine we are in a
-type system where the contexts $\Gamma$ are either $\cdot$ or $\Gamma, \{\, x \mid
-\phi (x) \,\}$, where $\phi$ represents some constraint on $x$. In particular, we
-are not accumulating control flow constraints in the context, only
-in the variable's subset type. We would like to check that the function
-\mintinline{py}{gt_zero} satisfies its postcondition, $ \{\, \mathsf{ret} \mid
-\mathsf{ret} > 0 \,\} $, i.e.\ it returns a value greater than 0 and does not
-raise an exception.
+Revisiting~\cref{fig:dead-code}, imagine a type system where contexts
+$\Gamma$ are either $\cdot$ or $\Gamma, \{\, x \mid \phi (x) \,\}$, and
+$\phi$ represents some constraint on $x$. In particular, we are not
+accumulating \kl{path conditions} in the context, just the variables and their
+subset types. We would like to prove that function \mintinline{py}{gt_zero}
+satisfies its postcondition, $ \{\, \mathsf{ret} \mid \mathsf{ret} > 0 \,\} $
+without raising an exception.
 
-Working forwards, we start off with a type for $\{\, \mathsf{x} \mid \top \,\}$.
-Inside the function, we are checking both branches because we cannot statically
-rule one of them out. In the true case, we now \emph{refine} the type to $\{\,
-\mathsf{x} \mid \mathsf{x} \geq 5 \,\}$.
+Working forwards, we start with a type $\{\, \mathsf{x} \mid \top
+\,\}$. Inside the function, we are checking both branches because we cannot
+statically rule one out. In the true case, we \emph{refine} the type to
+$\{\, \mathsf{x} \mid \mathsf{x} \geq 5 \,\}$. The subsumption rule is not
+syntax-directed, so we are free to apply it now. Doing so, we have have $\{\,
+\mathsf{x} \mid \mathsf{x} > 0 \,\}$, because $\mathsf{x} \geq 5 \Rightarrow
+\mathsf{x} > 0$. Unfortunately this means we cannot rule out the
+\cinline{else}-branch and the exception within.
 
-The subsumption rule is not syntax-directed, so we are free to apply it now.
-Doing so, we have have $\{\, \mathsf{x} \mid \mathsf{x} > 0 \,\}$, because
-$\mathsf{x} \geq 5 \Rightarrow \mathsf{x} > 0$. At this point, we cannot
-statically rule out the \cinline{else}-branch of the condition, so we start
-checking the one with the exception, instead of skipping over it as dead code.
+Whilst quite contrived, it illustrates the importance of knowing when and how
+to use the subsumption rule. We could ask users to annotate the code at each C
+statement, but this would be extremely burdensome: we would have traded the
+tedium of proving simple facts for the tedium of writing obvious annotations.
 
-Whilst quite contrived, this illustrates the point that we would like some sort
-of principled scheme to know when to use the subsumption rule, and with which
-constraints. We could avoid this by requiring users annotate their code at
-every step, but though this would be a predictable annotation scheme, it would
-be extremely burdensome. Using an SMT solver is meant to reduce the tedium of
-proving straightforward facts, not just trade it for the tedium of requiring a
-type annotation at each step.
+\kl{CN} chooses a middle-ground: it requires annotations on functions and
+loops, as a minimum. Socially, we believe this is easy to explain and accept,
+since programmers already write documentation for the former. And technically,
+function and loop annotations enable \emph{compositional verification}.
+Verifying a large code base can be parallelised and fast, because it can
+sidestep the need to do complex and potentially slow loop-unrolling or
+inter-procedural analyses.
 
-At the same time, while it would be great if we could infer all of them, this
-is often not necessary and counter-productive in practice because annotations
-on top-level functions (most commonly, types) serve as very useful
-documentation, which programmers are already used to writing.
-
-Another reason \kl{CN} is quite willing to accept per function annotations is
-that it allows checking a large code base to be parallelised, and obviate the
-need to do any complex and potentially slow inter-procedural analysis.
-Unfortunately, since loops are effectively function tail calls, and invariants
-are also difficult to infer, \kl{CN} requires annotation for them too.
-
-Still, pre- and postconditions on functions, and invariants on loops is a crisp
-way to explain to programmers where annotations need to be placed. What we
-would like to avoid is annotations on each statement of a C program.
-
-More concretely, in the presence of constraints due to refinement types, this
-means we would like \emph{check} types at function calls, function returns,
-before and after loops from the top down, and \emph{synthesise} types
-everywhere else from the bottom up. As explained in sections 4.4 and 4.6
-in~\sidetextcite{dunfield2021bidir}, this is precisely the sort of problem a
-bidirectional type system can solve. Moreover, it gives a clear principle of
-when to apply the subsumption rule (call the SMT solver): at the boundary between
-synthesis and checking (\cref{fig:simple-bidir}).
+Concretely, this means we would like \emph{check} types at function calls,
+function returns, loop entry, and loop exit, from the top down, and
+\emph{synthesise} types everywhere else, from the bottom up. This is exactly
+what \kl{bidirectional} type systems were designed to do (Sections 4.4 and 4.6
+in~\sidetextcite{dunfield2021bidir}). Moreover, it gives a clear principle of
+when to apply the subsumption rule (call the SMT solver): at the boundary
+between synthesis and checking (\cref{fig:simple-bidir}).
 
 \begin{figure}
     \begingroup%
@@ -877,7 +838,7 @@ synthesis and checking (\cref{fig:simple-bidir}).
     \end{mathpar}
     \endgroup%
     \caption{Simple \intro{bidirectional} type system, adapted
-    from~\cite{dunfield2021bidir}.  Note that its splits the traditional
+    from~\cite{dunfield2021bidir}.  Note that it splits the traditional
     $\Gamma{} \vdash{} e : T$ judgement, into two mutually recursive judgements,
     one for \intro[synthesis]{synthesising} a type and one for checking a type.
     %
@@ -895,6 +856,8 @@ synthesis and checking (\cref{fig:simple-bidir}).
     presence of refinement types, it would be logical
     entailment.}\label{fig:simple-bidir}
 \end{figure}
+
+%% RESUME
 
 \section{Linearity to manage (non-leaky) resources}\label{sec:linearity-manage-resources}
 
