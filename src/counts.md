@@ -6,10 +6,10 @@ Counts are `text + headers + captions`. **Own** is the prose directly under a he
 
 | Chapter | Total | Own |
 | :-- | --: | --: |
-| Introduction | **5995** | 16 |
+| Introduction | **5998** | 16 |
 | Example: queues in CN | **2797** | 52 |
-| Background: Cerberus and CN design | **7446** | 32 |
-| Kernel CN: Grammar | **4298** | 167 |
+| Background: Cerberus and CN design | **6989** | 32 |
+| Kernel CN: Grammar | **4299** | 167 |
 | Kernel CN: Static semantics | **4675** | 349 |
 | Kernel CN: Proof of soundness | **1642** | 188 |
 | Informing implementation discussions | **1458** | 156 |
@@ -24,19 +24,19 @@ Counts are `text + headers + captions`. **Own** is the prose directly under a he
 | Future Directions | **3285** | 22 |
 | Conclusion | **1334** | 545 |
 
-| **Document total** | **64982** | |
+| **Document total** | **64529** | |
 
 ## Introduction
 
-**Chapter total: 5995** (own 16)
+**Chapter total: 5998** (own 16)
 
 | Section | Subsection | Total | Own |
 | :-- | :-- | --: | --: |
 | Context |  |  | 620 |
 | Thesis statement |  |  | 87 |
-| Background |  | 3630 | 1 |
+| Background |  | 3633 | 1 |
 |  | The C programming language |  | 854 |
-|  | Verification with Separation Logic |  | 1612 |
+|  | Verification with Separation Logic |  | 1615 |
 |  | CN: C, No bugs! |  | 1163 |
 | Contributions of this thesis |  | 1642 | 66 |
 |  | Formalisation of CN |  | 236 |
@@ -57,7 +57,7 @@ Counts are `text + headers + captions`. **Own** is the prose directly under a he
 
 ## Background: Cerberus and CN design
 
-**Chapter total: 7446** (own 32)
+**Chapter total: 6989** (own 32)
 
 | Section | Subsection | Total | Own |
 | :-- | :-- | --: | --: |
@@ -66,24 +66,24 @@ Counts are `text + headers + captions`. **Own** is the prose directly under a he
 | Core grammar |  |  | 822 |
 | Elaboration example: list append |  | 1258 | 997 |
 |  | Discussion |  | 261 |
-| Decidable refinements for retrofitting and counter-examples |  |  | 528 |
-| Bidirectionality for taming subtyping |  |  | 498 |
-| Linearity to manage (non-leaky) resources |  |  | 887 |
-| Section |  | 1346 | 694 |
-|  | Precise assertions |  | 652 |
-| Monadic syntax for mode-correctness |  |  | 385 |
-| Iterated separating conjunctions to handle arrays |  |  | 444 |
+| Decidable refinements for retrofitting and counter-examples |  |  | 548 |
+| Bidirectionality for taming subtyping |  |  | 494 |
+| Linearity to manage (non-leaky) resources |  |  | 691 |
+| Section |  | 1110 | 518 |
+|  | Precise assertions |  | 592 |
+| Monadic syntax for mode-correctness |  |  | 374 |
+| Iterated separating conjunctions to handle arrays |  |  | 414 |
 
 ## Kernel CN: Grammar
 
-**Chapter total: 4298** (own 167)
+**Chapter total: 4299** (own 167)
 
 | Section | Subsection | Total | Own |
 | :-- | :-- | --: | --: |
 | Kernel CN types |  |  | 588 |
 | Desugaring CN types into kernel types |  |  | 729 |
 | ResCore |  |  | 885 |
-| Resource terms |  |  | 1038 |
+| Permissions resource terms |  |  | 1039 |
 | Core to ResCore example |  |  | 891 |
 
 ## Kernel CN: Static semantics
