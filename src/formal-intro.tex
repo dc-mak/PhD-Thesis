@@ -665,16 +665,18 @@ used for a proof of soundness, which would just be a sanity check on the
 dynamic semantics.
 
 \begin{marginfigure}
+    \small%
     \centering
     \begin{mathpar}
         \inferrule{ }{\Gamma{} \vdash{} \cnkw{undef} (\cnnt{UB\_name})\Leftarrow{} \cnnt{T}}
     \end{mathpar}
     \caption{Checking rule for the \coreinline{undef()} pure expression as % chktex 36
-        mentioned in \textcite{memarian2022cerberus}.}\label{fig:core-ub-typing}
+    mentioned in \textcite[p91]{memarian2022cerberus}.}\label{fig:core-ub-typing}
 \end{marginfigure}
 
 For example, \coreinline{undef()} checks against any type % chktex 36
-(\cref{fig:core-ub-typing}). This is because \kl{UB} terminates the dynamic
+(\cref{fig:core-ub-typing}).\margincite{memarian2022cerberus}
+This is because \kl{UB} terminates the dynamic
 semantics; it does not return control. Remember, a valid C program is one which
 has no \kl{UB}, but such a type system cannot guarantee its absence.
 
@@ -711,8 +713,8 @@ first-order logic with arithmetic is undecidable: type checking may not
 terminate on certain programs. Given that there are real-world programming
 languages\sidenote{\href{https://hacklang.org/}{Hack},
 \href{https://forums.swift.org/t/swift-type-checking-is-undecidable/39024/34}{Swift},
-and F$^*$~\cite{swamy2016dependent}.} which have undecidable type systems, but
-work fine in practice, is this a problem?
+and F$^*$~\cite{swamy2016dependent}.}\margincite{swamy2016dependent} which have
+undecidable type systems, but work fine in practice, is this a problem?
 
 Whilst `decidable' does include exponential or NP-complete time complexity, we
 conjecture that such SMT theories are faster, and more \emph{stable}: the
@@ -723,10 +725,12 @@ typical uses of SMT solvers. Thus \kl{CN} aims for decidability as an imperfect
 proxy.
 
 \kl{CN} ensures decidability by restricting its use of quantifiers as per the
-liquid types~\sidecite{rondon2008liquid} approach. In practice, this means
-constraints sent to the SMT solver are free of quantifiers. When this too
-restrictive, \kl{CN} offers a lemma mechanism (\cref{sec:lemma-prover}) to
-export and prove facts in the Rocq~\sidecite{CDT2024} proof assistant.
+liquid types~\sidecite{rondon2008liquid} approach. In practice, this means (a)
+all quantifiers must track program values (function arguments for $\forall$,
+return values for $\exists$) and (b) constraints sent to the SMT solver are
+free of quantifiers. When this too restrictive, \kl{CN} offers a lemma
+mechanism (\cref{sec:lemma-prover}) to export and prove facts in the
+Rocq~\sidecite{CDT2024} proof assistant.
 
 Aiming for decidability also lets \kl{CN} extract concrete
 \kl{counter-examples} to explain constraint failures in terms of concrete
@@ -861,33 +865,18 @@ between synthesis and checking (\cref{fig:simple-bidir}).
 
 \section{Linearity to manage (non-leaky) resources}\label{sec:linearity-manage-resources}
 
-Our aim is define a type system rich enough to prove the absence of \kl{UB},
-which can arise from both the pure and effectful fragments of \kl{Core}
-(\cref{sec:core-grammar}). Whilst decidable refinements and bidirectionality
-are suitable for preventing \kl{UB} from the former, we need more techniques to
-accomplish the same for the latter, ones capable of handling features such as
-such as loose evaluation order or a myriad of subtle memory violations.
+\kl{Decidable refinements} and \kl{bidirectional typing} are sufficient to
+prove the absence of \kl{UB} in \kl{Core}'s pure fragment
+(\cref{sec:core-grammar}), but we need more to do the same in its effectful
+fragment, to handle memory-related \kl{UB}.
 
-In \fancyref{sec:sep-logic-intro}, I sketched out how separation logic can be
-used to reason about the behaviour of imperative programs which manipulate a
-heap and can have syntactically distinct terms \intro{alias} the same location
-in said heap. If we want to embed separation logic propositions into a type
-system, then we need to be able to precisely control how those propositions are
-handled.
-
-In a typical (intuitionistic) type system, assumptions in the context are
-duplicable, for example, the type of a variable in \kl{Core}, or constraints
-about pure values. This relies on the fact that $A \Rightarrow A \wedge A$ in
-intuitionistic logic. However, the same is not true for $\ast{}$ in separation
-logic: $A \nRightarrow A \ast{} A$. This is because assertions have their
-semantics defined with reference to a heap. For example, a heap satisfies $A_1
-\ast{} A_2$ iff it can be split into two disjoint sub-heaps which satisfy $A_1$
-and $A_2$ separately. If $A = (x \mapsto{} y)$, then there is one heap
-satisfying $A$, but none for $A \ast{} A$.
-
-Such duplication is known as \intro{contraction} and we need to forbid this to
-reason soundly (whilst keeping other assumptions, such as the type of \kl{Core}
-program variables, and constraints, contractible).
+In \fancyref{sec:sep-logic-intro}, I showed how separation logic can be used to
+reason about the behaviour of heap-manipulating imperative programs. We can
+embed its propositions into a type system too, but we have to be careful.
+Typically, type systems are \intro{intuitionistic}; this means we can
+duplicate, forget, and re-order assumptions freely. In formal logic, these are
+enabled by \emph{substructural} rules, known as \intro{contraction},
+\intro{weakening} and \intro{exchange} respectively (\cref{fig:substructural}).
 
 \begin{marginfigure}
   \begin{mathpar}
@@ -910,47 +899,52 @@ program variables, and constraints, contractible).
   \caption{Substructural sequent calculus rules.}\label{fig:substructural}
 \end{marginfigure}
 
-In an intuitionistic setting, we can freely forget things we know.
-In a separation logic setting, this depends on whether the user cares about
-memory leaks or not (i.e\. the C standard does not make memory leaks an error).
-The intended use of \kl{CN} in resource constrained settings
-leans us towards being explicit about when we deallocate and more importantly
-\emph{when we forget to}.\sidenote{Though not yet supported by \kl{CN},
-concurrency also requires being explicit about destroying a resource, for
-example, to prevent a user from acquiring the same mutex twice.}
-Forgetting an assumption is known as \intro{weakening}, and we would like to
-forbid this \emph{only} for heap-related facts; it is sound to forget type
-information and ambient constraints.
+However, the first is \emph{unsound} for separation logic assertions, and the
+second is unsuitable for \kl{CN}'s use case. So, \kl{CN} must use separation
+logic assumptions \emph{linearly}~\sidecite{girard1987linear}; other
+assumptions, such as plain or refinement types, can be used without
+restriction.
+\begin{itemize}
+    \item Duplicating assumptions relies on the fact that
+        $A \Rightarrow A \wedge A$ in \kl{intuitionistic} logic. However, the
+        same is not true for $\ast{}$ in separation logic:
+        $A \nRightarrow A \ast{} A$. This is because assertions have their
+        semantics defined with reference to a heap. For example, a heap
+        satisfies $A_1 \ast{} A_2$ iff it can be split into two disjoint
+        sub-heaps which satisfy $A_1$ and $A_2$ separately. If $A = (x
+        \mapsto{} y)$, then there is one heap satisfying $A$, but none
+        for $A \ast{} A$.
+    \item Forgetting assumptions relies on whether the user cares about memory
+        leaks or not (the C standard does not make memory leaks an
+        error). The intended use of \kl{CN} in resource constrained settings
+        leans us towards being explicit about when we deallocate and
+        \emph{erroring when we forget to}.\sidenote{Though not yet supported by
+            \kl{CN}, concurrency also requires being explicit about destroying
+            a resource, for example, to prevent a user from acquiring the same
+        lock twice.}
+\end{itemize}
 
-We would however like the ability to commute assumptions freely, since it is
-perfectly acceptable to free in any order, regardless of the order of
-allocation, so we keep \intro{exchange}. Sequent calculus rules for contraction,
-weakening, and exchange are shown in \cref{fig:substructural}. Jettisoning
-weakening and contraction but keeping exchange means that we handle our
-(heap-related) separation logic assumptions
-\emph{linearly}~\sidecite{girard1987linear} in \kl{CN}.
-
-Note that this is in constrast to popular approaches such as the drop trait in
+This is in contrast to the drop trait in
 Rust,\sidenote{\url{https://doc.rust-lang.org/std/ops/trait.Drop.html}} or RAII
 (Resource Acquisition Is Initialisation) in
 C++,\sidenote{\url{https://isocpp.github.io/CppCoreGuidelines/CppCoreGuidelines\#Re-raii}}.
-These allow the programmer to elide explicit resource deallocation, by
-automatically inserting such a call when the resources goes out of scope.
-Modelling that would require \kl{affine} rather than linear resources.
+These allow the programmer to elide explicit deallocation, by automatically
+inserting such a call when the resource goes out of scope. Modelling that would
+require \kl{weakening}, and make resource types \intro{affine}.
 
-For completeness, a \kl{relevant} logic is one which supports contraction and
-exchange but not weakening. In practice this means relevant assumptions may not
-be implicitly dropped, but may be used one or more time.
+For completeness, a \intro{relevant} logic is one which supports
+\kl{contraction} and \kl{exchange} but not \kl{weakening}. In practice this
+means relevant assumptions may not be implicitly dropped, but may be used one
+or more time.
 
-Linearity may be necessary, but it can also be cumbersome. If a linear resource
-represents the permission to dereference a pointer, a typing rule which
-consumes that must also return an identical resource, so that it may be
-dereferenced again. If we require the programmer to handle these permissions
-explicitly in the annotations, such a discipline would quickly violate the goal
-to minimise obvious annotations. This means that in addition to automation for
-proving constraints, by using SMT solvers, we need to have some scheme to
-\intro[resource inference]{infer resources} (see \cref{sec:elaboration}) to
-reduce the burden of annotations.
+\kl{Linear} types may be necessary, but they can be cumbersome, because their
+corresponding terms \textemdash{} which I refer to as \kl{permissions} or
+\kl{resource terms} \textemdash{} must be threaded through most operations. For
+example, dereferencing a pointer requires a permission, but must also
+\emph{return} one, so that the pointer may be dereferenced again. Such
+threading is tedious and often obvious, so in \kl{CN} it is implicit and
+automated (see \cref{sec:elaboration}). I refer that automation to as
+\kl{resource inference}.
 
 \begin{marginfigure}
   \begin{mathpar}
@@ -990,35 +984,33 @@ reduce the burden of annotations.
   the declarative version.}\label{fig:decl-alg}
 \end{marginfigure}
 
-I should note that, for the purposes of the formalisation of \kl{Kernel CN}, I
-do use explicit linear resource terms, since that makes the system easier to
-state and prove sound. For clarity and convenience, the linear context in the
-system is used in a \intro{declarative} manner (\cref{fig:decl-alg}). Explicit
-linear resource terms also make it easy to specify and explain the \kl{CN}
-\kl{resource inference} algorithms as an \emph{elaboration}, which I do in
-\fancyref{sec:elaboration}.\sidenote{I have not embarked on any proofs about
-the elaboration rules.} Those rules use the linear context in an algorithmic
-manner.
+For formalising \kl{Kernel CN}, I do use explicit \kl{permissions}, since that
+makes the system easier to state and prove sound. And for clarity and
+convenience, I also write linear components \intro{declaratively}
+(\cref{fig:decl-alg}). \kl{Explicit permissions} also make it easy to specify
+and explain the \kl{CN} \kl{resource (term) inference} algorithms as an
+\emph{elaboration}, which I do in \fancyref{sec:elaboration}.\sidenote{I have
+not embarked on any proofs about the elaboration rules.} Those rules use the
+linear context in an algorithmic manner.
 
-\section{Precise assertions for inferring resources and quantifiers without
+\section{Precise assertions for instantiating quantifiers without
 backtracking}\label{sec:precise-assertion-inferring}
 
-Lurking behind the decision to use linear separation logic and liquid types is
-a tension between the rich scheme of quantifiers needed to write specifications
-expressive enough to prove \kl{UB}-freedom and full functional correctness and
-the desire to (a) not send quantified formulas to the SMT solver and (b)
-minimise the annotations (quantifier instantiations) a user needs to write.
+Prima facie, \kl{separation logic} types are in tension with \kl{liquid types}.
+The former supports arbitrary quantifiers, which are often sufficient to write
+expressive specifications to prove the absence of \kl{UB} and full functional
+correctness; the latter restricts quantifiers to ones corresponding to program
+values (function arguments for $\forall$, and return values for $\exists$), to
+avoid sending quantified constraints to the SMT solver.
 
-So aside from minimising annotations for proofs of obvious statements (by
-carefully using an SMT solver) and minimising annotations for linear resource
-terms (by inferring them), we would also, as far as possible, like to
-infer how quantifiers are instantiated, based on what the user wrote.\sidenote{
-Note that this is not at all related to \emph{inferring specifications}, which
-is a large and challenging problem in its own right.} Unfortunately, such
-inference is undecidable.
+Alongside automating obvious proofs (using an SMT solver), and automating
+\kl{permission} passing (with \kl{resource (term) inference}), we would also,
+like to automate obvious \emph{quantifier instantiation}.\sidenote{Note that
+this is not at all related to \emph{inferring specifications}, which is a
+large and challenging problem in its own right.}
 
-To better understand this problem, let us recall the separation logic proof
-sketch of linked integer list append from
+To better understand this problem, let us recall the \kl{separation logic}
+proof sketch of integer linked list append from
 \cref{fig:append-annot,fig:list-pred}, reproduced in
 \cref{fig:append-annot-formal,fig:list-pred-formal} for convenience.
 
@@ -1029,6 +1021,7 @@ sketch of linked integer list append from
         \mathrm{list} &(\mathsf{p}, l) \mathrel{{=}^\mathrm{def}} \\
                       &\mathsf{emp} \ast{} (\mathsf{p} = \mathsf{NULL} \wedge{} l = []) \\
                       &\vee{} \exists{} \; {head}, \; {tl}, \mathsf{p\_tail}.\\
+                      &\vee{} \exists{} \; {head}, \; {tl}, \mathsf{p\_tail}.\\
                       &\qquad (\mathsf{p} \mapsto{} {head}) \\
                       &\qquad \ast{} (\mathsf{p} + 1 \mapsto{} \mathsf{p\_tail}) \\
                       &\qquad \ast{} \mathrm{list} (\mathsf{p\_tail}, {tl}) \\
@@ -1038,47 +1031,30 @@ sketch of linked integer list append from
         logic.}\label{fig:list-pred-formal}
 \end{marginfigure}
 
-We see that in addition to the pointers $\mathsf{xs}$ and $\mathsf{ys}$, which
-can be thought of as a quantification over \intro{computational} variables, the
-specification for append also quantifies over \emph{logical} or ghost variables
-$l_1$ and $l_2$. Given that the ``computational terms'' are just code, the
-computational variables need not be inferred, since the user needs to provide
-them for the call to the function to be valid.\sidenote{The same principle
-applies for instantiating existentials used in postconditions too. I will
-discuss quantifiers related to array reasoning in \cref{sec:it-array}.}
+We see that, the specification (implicitly) quantifies over pointers
+$\mathsf{xs}$ and $\mathsf{ys}$, corresponding to the function arguments. It
+also quantifies over \emph{logical} or \kl{ghost} lists $l_1$ and $l_2$.
+Following a strict \kl{liquid typing} discipline would mean the user would have
+to manually instantiate them at each call site (line 9). The user would also
+have to do the same for the existential quantifiers of the $\mathrm{list}$
+predicate of \cref{fig:list-pred-formal}, when folding it (line 12).
 
 \begin{figure}[h]
-    \inputminted[breaklines,mathescape,fontsize=\small]{py}{code/append_annot.py}
+    \inputminted[breaklines,linenos,mathescape,fontsize=\small]{py}{code/append_annot.py}
     \caption{A separation logic proof sketch of a linked integer list
         append.}\label{fig:append-annot-formal}
 \end{figure}
 
-However, it would be a shame if the user had to provide explicit instantiations
-for $l_1$ and $l_2$ at each call site, including the recursive call within the
-implementation of \mintinline{py}{append}. If we want to stick to a liquid
-typing discipline, where every quantifier must be matched up to a program
-variable, we need a way to bind the ghost values which were existentially
-quantified over in the $\mathrm{list}$ predicate of
-\cref{fig:list-pred-formal}, to names the user would have to choose.
+% \sidenote{I will discuss quantifiers related to array reasoning in \cref{sec:it-array}.}
 
-This is doubly irksome because prior to the recursive function
-call, we already know (a) $\mathrm{list}(\mathsf{xs}', l_1')$ and
-$\mathrm{list}(\mathsf{ys}', l_2')$ and (b) the precondition requires choices
-of $l_1$ and $l_2$ such that $\mathrm{list}(\mathsf{xs}', l_1)$ and
-$\mathrm{list}(\mathsf{ys}', l_1)$ so there is \emph{only one sensible choice}
-for those quantifiers.
+This is irksome because because the arguments to \mintinline{py}{append}, and
+the first argument to $\mathrm{list}$, uniquely determine all the required
+instantiations at lines 9 and 12 respectively. So, a simple inference scheme
+would be to scan the context for predicates which match part of the goal based
+on shape and \emph{computational} arguments, and instantiate any quantifiers
+based on its remaining arguments.
 
-To recap, when calling a function, we need some way of guessing some
-instantiation of quantifiers such that it satisfies the precondition. \emph{If}
-we are in a situation where there is only one sensible instantiation given the
-required and the available assertions, a simple inference scheme would be to
-simply scan the context for predicates which match on constructor (i.e.\
-$\mathsf{emp}$ matches with $\mathsf{emp}$, $\_ \mapsto{} \_$ matches $\_
-\mapsto{} \_$, $\mathrm{list(\_, \_)}$ matches $\mathrm{list}(\_, \_)$) and
-\emph{computational} arguments, and instantiate any quantifiers based on the
-remaining values.
-
-So in this instance, when calling \mintinline{py}{append(xs->tail, ys)}, % chktex 36
+In this instance, when calling \mintinline{py}{append(xs->tail, ys)}, % chktex 36
 such an inference scheme would
 \begin{enumerate}
     \item Delay instantiating $l_1$ and $l_2$.
@@ -1108,14 +1084,14 @@ I will tackle the first three questions here, and leave the latter three
 to be discussed in~\fancyref{sec:heap-types}.
 
 For the first question, the answer is: in practice, \emph{yes}. If one assigns
-input and output \kl{modes} to the arguments of separation logic predicates,
-and ensures that predicates are \emph{mode-correct} via a syntactic check
-(\fancyref{sec:monadic-syntax}), then that suffices to guarantee that the system
-can \emph{always infer quantifiers}.
-
-However, the theoretical justification for this unclear. Such assertions happen
-to be characterisable as \kl{precise}~\sidecite{reynolds2008intro}, but the
-connection to modes has not been formally explained.
+input and output \kl{modes} to the arguments of \kl{separation logic}
+predicates, and ensures that predicates are \emph{mode-correct} via a syntactic
+check (\fancyref{sec:monadic-syntax}), then that suffices to guarantee that the
+system can \emph{always infer quantifiers}.%
+\sidenote{The theoretical justification for this unclear. Such assertions happen
+to be characterisable as \kl{precise}~\textcite{reynolds2008intro}, but the
+connection to modes has not been understood.}%
+\margincite{reynolds2008intro}
 
 \subsection{Precise assertions}\label{subsec:precise-assertion}
 
@@ -1128,11 +1104,11 @@ connection to modes has not been formally explained.
     does so uniquely.
 \end{definition}
 
-Based on this definition, one can derive some examples and properties of
-precise assertions as shown in~\cref{fig:precise} (examples of imprecise
-assertions are shown in~\cref{fig:imprecise}). As I shall show later, each
-production in the grammar for \kl{linear} \kl{resource types}
-(\cref{fig:kernel-res}), stays within the precise fragment.
+Some examples and properties of precise assertions as shown
+in~\cref{fig:precise} (examples of imprecise assertions are shown
+in~\cref{fig:imprecise}). As I shall show later, each production in the grammar
+for \kl{linear} \kl{resource types} (\cref{fig:kernel-res}), stays within the
+precise fragment.
 
 \begin{marginfigure}
 \small%
@@ -1158,12 +1134,11 @@ require backtracking and thus exponential).
 % (a) is intuitive, given that in C source a pointer is an ``input'' and
 % dereferenced value an ``output'' and (b) happens to coincide.
 
-This brings us nicely to the second question about disjunctions. As visible
-from \cref{fig:imprecise}, we see that arbitrary disjunctions pose a problem.
-Yet, from \cref{fig:precise}, we see that the list predicate, and even a
-version of it which is existentially quantified over its ghost list, fits the
-definition of precise, despite including a disjunction in its definition
-(\cref{fig:list-pred-formal}).
+This leads to answering the second question on disjunctions. As visible from
+\cref{fig:imprecise}, disjunctive assertions can be imprecise. Yet, from
+\cref{fig:precise}, we see that the list predicate, and even a version of it
+which is existentially quantified over its ghost list, fits the definition of
+precise (\cref{fig:list-pred-formal}).
 
 \begin{marginfigure}
 \small%
@@ -1177,37 +1152,33 @@ definition of precise, despite including a disjunction in its definition
 \caption{Examples of im\kl{precise} assertions.}\label{fig:imprecise}
 \end{marginfigure}
 
-This is because the two arms of the disjunction make assertions
-which are disjoint on \emph{both} the values the computational parameter
-$\mathsf{p}$ can take \emph{and} on the shape of the heap; one branch says
-$\mathsf{p} = \mathsf{NULL}$ and the heap will be $\mathsf{empty}$, whereas the
-other branch guarantees that (implicitly) $\mathsf{p} \neq \mathsf{NULL}$ and
-that the heap will have \emph{at least two} heap cells. I will return to the
-discussion of disjunctions in precise predicates imminently; for now I want to
-note that the locations of those two cells are expressed entirely in terms of
-program variables.
+How so? Informally, the two arms of the disjunction make assertions which are
+disjoint on \emph{both} the value of the computational parameter $\mathsf{p}$
+\emph{and} on the shape of the heap; one branch says $\mathsf{p} =
+\mathsf{NULL}$ and the heap will be $\mathsf{empty}$, whereas the other branch
+guarantees that (implicitly) $\mathsf{p} \neq \mathsf{NULL}$ and that the heap
+will have \emph{at least two} heap cells. The cells' locations, and thus the
+values they point to, $\mathsf{head}$ and $\mathsf{p\_tail}$, are wholly
+determined by $\mathsf{p}$, even though they are existentially quantified. This
+means the recursive call is also precise, and why ${tl}$ is also (recursively)
+wholly determined by $\mathsf{p}$, despite also being existentially quantified.
 
-At this point, a keen reader may have noticed that while this may be true at
-the `top-level' of the predicate, the recursive call does use the existentially
-quantified ghost value $\mathsf{p\_tail}$, which is on the right of $\mathsf{p}
-+ 1 \mapsto{} \mathsf{p\_tail}$. So why is this definition still \kl{precise}?
-It is because in any heap which satisfies the non-empty branch of the list
-predicate, $\mathsf{p\_tail}$ is \emph{uniquely} determined by its relation as
-the value in the location adjacent to $\mathsf{p}$.\sidenote{A proof of this is
-left as an exercise to the reader.} This can be operationalised with a \kl{mode}
-discipline for predicate arguments, which I shall discuss in
-\fancyref{sec:monadic-syntax}.
+This style of reasoning, of starting with computational parameters, and
+ensuring that all existentially quantified values are wholly determined by
+them, can be operationalised as a \kl{mode} discipline for predicate arguments,
+which I shall discuss in \fancyref{sec:monadic-syntax}. For now, it suffices to
+say disjunctions can be compatible with precision; on how to ensure this, I
+will imminently return.
 
 Finally, the third question, of whether precise assertions are expressive
-enough for realistic code is an empirical one. Our experience using \kl{CN} so
-far~\sidecite{pulte2023cn,pulte2024tutorial} suggests the answer is yes, it is
-sufficient for small to medium tutorial examples, all the way up to specifying
-the buddy allocator (\cref{chap:buddy}) used in pKVM\@.
+enough for realistic code, is an empirical one. Our experience using \kl{CN} so
+far~\sidecite{pulte2023cn,pulte2024tutorial,aamer2026code} suggests the answer
+is yes, it is sufficient for small to medium tutorial examples, all the way up
+to specifying the different allocators (\cref{chap:buddy}) used in pKVM\@.
 
-That being said, we have found that being able introduce and instantiate
-quantifiers manually can sometimes be useful for ergonomics. An example came
-from the efforts of Cassia Torczon to verify a basic string manipulation
-library in \kl{CN}.%
+That being said, we have found that introducing and instantiating quantifiers
+manually can actually be more ergonomic, as discovered by Cassia Torczon whilst
+verifying a basic string manipulation library in \kl{CN}.%
 \sidenote{\href{https://github.com/rems-project/cerberus/issues/540}{Cerberus\#540}}
 
 The representation of strings in this library are null-terminated arrays of
@@ -1225,14 +1196,13 @@ more convenient.
 
 \section{Monadic syntax for mode-correctness}\label{sec:monadic-syntax}
 
-\intro[mode]{Modes} help us ensure that we can infer quantifiers instantiations
-as follows. We start with separation logic predicates, and label their
-arguments as either $\mathsf{in}$puts or $\mathsf{out}$puts, as shown in
-\cref{fig:mode-pred}. In the scope of each quantifier, for each predicate, we
-check the mode of each parameter matches the mode of each argument.
-Computational arguments the user provides are considered inputs. If a
-quantified variable is used in an input position, it must also be used
-elsewhere in an output position.
+We can use \intro{modes} to ensure that we can infer quantifier instantiations.
+Start with separation logic predicates, and label their arguments as either
+$\mathsf{in}$puts or $\mathsf{out}$puts, as shown in \cref{fig:mode-pred}. In
+the scope of each quantifier, for each predicate, check the mode of each
+parameter matches the mode of each argument. Computational arguments are
+considered inputs. If a quantified variable is used in an input position, it
+must also be used elsewhere in an output position.
 
 \begin{marginfigure}
     \centering
@@ -1244,7 +1214,7 @@ elsewhere in an output position.
     \caption{Modes on separation logic predicates.}\label{fig:mode-pred}
 \end{marginfigure}
 
-So for example, the second disjunct of \cref{fig:list-pred-formal}, the
+Revisiting the second disjunct of \cref{fig:list-pred-formal}, the
 quantified variable $\mathsf{p\_tail}$, occurs in $\mathrm{list}
 (\mathsf{p\_tail}, {tl})$ in the input position, but this is fine because it also
 occurs in the output position in $\mathsf{p} + 1 \mapsto{} \mathsf{p\_tail}$.
@@ -1252,8 +1222,8 @@ However, in the example from \cref{fig:imprecise}, $\exists \mathsf{xs}. \
 \mathrm{list}(\mathsf{xs},l)$ is badly moded because $\mathsf{xs}$ occurs in an
 input position, but nowhere else in an output.
 
-Ensuring that quantifiers preserve \kl[precise]{precision} in assertions by
-dividing up predicate arguments into input and output modes is
+Ensuring that quantifiers preserve \kl{precision} in assertions by
+dividing predicate arguments into input and output modes is
 not new~\sidecite{somogyi1996execution,berdine2006smallfoot,nguyen2008runtime,maksimovic2021gillian},
 including for the purposes of reducing the burden of
 annotation~\sidecite{jacobs2011verifast}.
@@ -1294,21 +1264,18 @@ This notational transformation turns \emph{mode correctness} into
 e'$ as monadic bindings inside a covariant powerset monad. It also enforces the
 disjointness of computational values and the shape of the heap mentioned
 earlier with the $\mathsf{if}\ t\ \mathsf{then}\ e\ \mathsf{else}\ e'$
-construct. Not only can all logical quantifiers now be \emph{inferred} without
-backtracking, branching assertions can be checked without backtracking too:
+construct. Thus, all logical quantifiers can be \emph{inferred} without
+backtracking, and branching assertions can be checked similarly:
 check $e$ if you can can prove $t$, or check $e'$ if you can prove $\neg\;t$.
 
 \section{\kl[iterated]{Iterated} separating conjunctions to handle arrays}\label{sec:it-array}
 
-C programmers use arrays a lot, particularly with computed index (i.e.\
-`random') access, rather than following a particular traversal pattern to get
-some element in the middle.
-
-Typically (such as in VeriFast) arrays are handled via recursive predicates,
-and if the order of traversal in C does not match the order of traversal in the
-predicate, or access is required to the middle of the array, then a user needs
-to use lemmas of some sort to massage the available assertions into a usable
-form.
+C programmers use arrays a lot, particularly with computed index (\ie{}
+`random') access, rather than following a particular traversal pattern.
+Typically, arrays are handled via recursive predicates, and if the order of
+traversal in C does not match the order of traversal in the predicate, or
+access to the middle of the array is required, then a user needs to use lemmas
+to massage the available assumptions into a usable form.
 
 \kl{CN} implements \intro{iterated separating conjunctions}, inspired by
 \sidetextcite{muller2016automatic}, but with restrictions to ensure only
@@ -1333,19 +1300,19 @@ quantifier-free SMT queries. They are introduced and eliminated as follows.
 \end{itemize}
 \item Indices which are intended to move into or out of an iterated separating
     conjunction must be declared so explicitly with a $\cnkw{focus}\ \cnnt{term}\cnkw{;}$
-    statement.
+    \kl{CN statement}.
 \end{itemize}
 
 This enables a few convenient features.
 \begin{itemize}
     \item Iterated separating conjunctions can be tested for equality by
-        looking only at the name of the predicate being iterated over, symbolic
+        looking only at the name of the predicate inside, symbolic
         equality of the base pointer, and symbolic equivalence of the guard
         conditions.
     \item Predicates can be moved out of and into iterated separating conjunctions
         automatically.
     \item Iterated separating conjunctions can be split along an arbitrary
-        guard automatically in a similar fashion, except `subtraction' is done as follows:
+        guard automatically:
         for guard \cninline{A = 0i32 <= i && i < 10i32} and guard
         \cninline[breaklines]{B = A && mod(i, 2i32) == 0i32}, % chktex 36
         the subtraction is simply \cninline{A && !B}. Note that the split % chktex 26
@@ -1367,14 +1334,9 @@ It also comes with a few limitations.
 \kl{CN} did support the decidable array property
 fragment~\sidecite{bradley2006whats}, but it was not expressive enough for
 verifying pKVM's \kl{buddy allocator} (\cref{chap:buddy}) and so it was
-removed. \kl{CN} also supported a scheme for inferring indices (instead of
+removed. \kl{CN} also inferred indices (instead of
 requiring the movable ones to be declared up front), but this was removed
 during a change to the inference
 scheme.\sidenote{\href{https://github.com/rems-project/cerberus/commit/7c2c0a364a4373e4eb109f32d01cc9584f51e81f}{Commit
 7c2c0a36.}}\label{sn:new-inf}
 
-% \section{Alternatives and related work}
-%
-% \begin{itemize}
-%     \item Do I want to talk about this here?
-% \end{itemize}
