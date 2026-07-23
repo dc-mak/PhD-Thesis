@@ -1,99 +1,80 @@
-In \cref{sec:c-lang}, I discussed how competing forces of inherited portability
-requirements, proximity to hardware, and the desire for more aggressive
-optimisations are somewhat reconciled by complex and subtle choices in the
-\kl{ISO} standard of C. I also mentioned that its nature as a prose document,
-with natural language ambiguities and omissions, as well as divergence from C
-as used \kl{de facto}, mean that its semantics are unreasonable for a human to
-adhere to, and challenging to build into tools directly, without making some
-sort of simplifying assumptions.
+In \cref{sec:c-lang}, I discussed how the \kl{ISO standard} of C attempts to
+reconcile the competing forces of portability, hardware control, and
+optimisation. I also mentioned that it is ambiguous, and diverges from \kl{de
+facto} C. Its rules are challenging to adhere to manually, and complex to
+express over C-like languages; existing program logics thus simplify some of
+the tricky ones around control flow, variable scoping, aliasing, loose
+evaluation order and pointer manipulation.
 
-Existing program logic frameworks for C build a logic directly above a
-language which is simplified with respect to the \kl{ISO}; they attempt to
-retain as many C features (control flow, variable scoping, aliasing, loose
-evaluation order, pointer manipulation rules) as feasible.
+\kl{CN}'s headline goal (\cref{sec:cn-intro}) is to work with pre-existing C
+programs, ones whose correctness may rely on those tricky rules. Yet,
+expressing those rules over a C-like language would quickly make it unwieldy,
+and thus hamper its other goal of reducing the expertise required for
+verification.
 
-Given that \kl{CN}'s headline goal (\cref{sec:cn-intro}) is to work with
-pre-existing C programs, which rely on many if not all of those subtle
-features, adopting the conventional approach would quickly use up most of its
-complexity budget and make the other goal (of reducing the expertise required
-to do verification) unfeasible.
+So, \kl{CN} builds upon the \kl{Cerberus} executable and empirically validated
+semantics for C~\sidecite{memarian2022cerberus}. It thus benefits from both the
+\emph{accuracy} and the \emph{usability} of this semantics for both \kl{ISO}
+and \kl{de facto} C. This is because \kl{Cerberus} is elaborated into a
+relatively small calculus \emph{\kl{Core}}, which translates all of C's
+complexity into a first-order functional language with a few special
+constructs.
 
-Instead, \kl{CN} builds directly upon the \kl{Cerberus} executable and
-empirically validated semantics for C~\sidecite{memarian2022cerberus}. \kl{CN}
-benefits from both the \emph{accuracy} and the \emph{usability} of this
-semantics for both \kl{ISO} and \kl{de facto} C. This is because Cerberus is
-elaborated into a relatively small calculus \emph{\kl{Core}}, which translates
-all of C's complexity into a first-order functional language with a few special
-(but easy to understand and specify) constructs.
+Additionally, \kl{CN} is intended to be used like a \emph{type system} in an
+IDE than a program logic in a proof assistant. Ideally, instead of seeing
+intermediate goals in a sophisticated separation logic, and being proficient
+with a range of inference rules and automation tactics, a user sees their C
+program, scattered with predictable and lightweight annotations, in an editor
+which either indicates success, or a helpful error message.
 
-Additionally, \kl{CN} is intended to be used more like a \emph{type system} in
-an IDE than a program logic in a proof assistant. Ideally, instead of seeing
-intermediate goals in a sophisticated separation logic, and needing to be well
-versed with a range of inference rules and automation tactics, a user sees
-their C program, scattered with predictable and lightweight annotations in
-comments, in an editor which either indicates success, or a clear and helpful
-error message.
-
-Aside from the fact that the notion and mode of use of a type system is more
-familiar to most programmers, this approach also allows \kl{CN} to use and
-advance the extant literature on building refinement type systems on top of
-existing languages.
-
+% Aside from the fact that the notion and mode of use of a type system is more
+% familiar to most programmers, this approach also allows \kl{CN} to use and
+% advance the extant literature on building refinement type systems on top of
+% existing languages.
+%
 % This type system approach also leads to other desiderata and their
 % corresponding responses.
 
-Aiming to be a type system means we want to minimise obvious annotations and
-justify why the necessary ones are so. Thus, we need to be careful about
-tracking the flow of information in the type system, using a \kl{bidirectional}
-approach. We also need some sort of automation so as to not burden the
-programmer with proving things like $1 + 1 = 2$. Similar to
-VeriFast~\sidecite{jacobs2011verifast} and
-Frama-C~\sidecite{kirchner2015frama}, \kl{CN} enlists the support of SMT
-solvers to mitigate this. When trying to verify code against expressive
-specifications, this could lead to non-termination, so \kl{CN} also restricts
-the expressiveness of the assertion language, and the queries it sends to the
-SMT solver. And given the importance of managing resources in C, the typing
-discipline needs to be substructural.
+A good type system aims to minimise obvious annotations and be predictable on
+the necessary ones; to do so, \kl{CN} tracks the flow of information
+systematically, using a \kl{bidirectional} approach. A type system will also
+need automation to not burden the programmer with proving obvious things.
+Similar to VeriFast~\sidecite{jacobs2011verifast},
+Gillian-C~\sidecite{santos2020gillian}, and
+Frama-C~\sidecite{kirchner2015frama}, \kl{CN} enlists SMT solvers to help. A
+type system must also terminate, even with SMT solver, so \kl{CN} restricts the
+expressiveness of the assertion language and SMT queries. Lastly, to track and
+manage resources in C, the type system needs to be substructural.
 
-The \kl{CN} assertion language syntax aims to be expressive enough to verify
-real world C, but also restricted enough to limit the aforementioned technical
-problems, and intuitive enough to a target audience of systems programmers who
-happen to know Haskell (or Rust).
+\kl{CN}'s assertion language aims to be expressive for verifying real-world
+programs, but restrictive to ensure termination (and speed), and intuitive for
+systems programmers who are familiar with functional programming.
 
-With this many constraints and design decisions, it is easy to be doubtful of the
-elegance and feasibility of this approach, let alone consider proving such a
-type system sound.
+In this part, I formalise and prove type-safe \kl{Kernel CN}: a formalism for
+\kl{CN} which assumes all quantifiers are explicitly instantiated, and all
+\kl{resource manipulations} have \kl{proof terms} with \kl{linear} types. It does
+not require proof terms for the logical properties (by construction, all
+entailments fall are decidable). \kl{Kernel CN} is a \kl{bidirectional} type
+system for \intro{ResCore}, a \kl{let-normal} version of \kl{Core}.
 
-My contribution is this part is formalising and proving type safety for
-\kl{Kernel CN}: a formalism for \kl{CN} which assumes that universal
-quantifiers are explicitly instantiated, that all existential quantifiers have
-explicit witnesses, and all resource manipulations have proof terms with linear
-types. It does not require proof terms for the logical properties, since by
-construction all of the entailments fall into (decidable) SMT fragment.
-\kl{Kernel CN} is a bidirectional type system for \intro{ResCore}, a let-normal
-version of \kl{Cerberus}' \kl{Core} calculus.
+I also formalise two related elaboration algorithms: one for quantifier
+instantiations, one for \kl{iterated} predicate indices. I do so to explain the
+\emph{principles} of \kl{resource inference}, since the implementation
+frequently changes; I have not embarked on any proofs for either scheme.
 
-I also formalised an elaboration procedure to explain the principles of
-\kl{CN}'s resource inference scheme, though I have not embarked on any proofs
-about it.
+In~\fancyref{chap:formal-background}, I expand upon \kl{CN}'s constraints and
+design decisions, explain the relevant features of \kl{Core}, and cover the
+necessary background to understand \kl{CN}'s syntax and \kl{Kernel CN}.
 
-In~\fancyref{chap:formal-background}, I expand upon the aforementioned
-constraints and design decisions, highlight and explain the relevant features
-of \kl{Cerberus} and \kl{Core}, and cover the necessary type systems background
-to understand \kl{CN}'s syntax and \kl{Kernel CN}.
+In~\fancyref{chap:kernel-grammar}, I explain the \kl{Kernel CN}'s types, and
+how they relate to \kl{CN}'s syntax. I also explain the \kl{ResCore} and how it
+relates to \kl{Core} by example.
 
-In~\fancyref{chap:kernel-grammar}, I will explain the grammar of types in
-\kl{Kernel CN}, how they relate to the \kl{CN}'s syntax. I will also explain
-the grammar of \kl{ResCore} and how that relates to \kl{Cerberus}'s \kl{Core}
-by example.
-
-In~\fancyref{chap:kernel-statics}, I put the novel, multi-faceted and large
-setup presented so far to use, and explain the \kl{Kernel CN} typing rules for
-\kl{ResCore}. The lack of inference makes it a simpler language for which to
-prove type soundness, whilst still demonstrating all the key ingredients
-mentioned above. Since it handles the majority of C, the entire system is very
-large, and so I will only discuss the main features. I also show rules for
-inferring the quantifier instantiations assumed by \kl{Kernel CN}.
+In~\fancyref{chap:kernel-statics}, I explain the \kl{Kernel CN} typing rules
+for \kl{ResCore}. It lacks inference and so is simpler to prove sound. Since it
+handles the majority of C, the entire system is very large; I will only discuss
+the main features. I also show the aforementioned elaboration algorithms, which
+infer the information assumed by \kl{Kernel CN}.
 
 In~\fancyref{chap:kernel-soundness}, I discuss the key definitions, lemmas and
 proof sketches used in a syntactic proof of type safety for \kl{Kernel CN}. Of
@@ -101,8 +82,8 @@ note are the definition of substitution, the novel structure of the heap, and
 the interaction between resource terms and the heap.
 
 In~\fancyref{chap:inform-impl}, I discuss how the formalisation brings clarity
-to many questions around the implementation, centred around lifiting
-restrictions in the \kl{CN} implementation or adding new features.
+to many implementation questions around lifting restrictions or adding new
+features.
 
 In~\fancyref{chap:kernel-alternative}, I conclude this part by sketching out an
 alternative presentation of the \kl{CN} type system, \kl{MiniCN}, which is
@@ -116,66 +97,60 @@ for a C-like language.
 
 \margintoc{}
 
-The components of \intro{Kernel CN} all have precedent in prior work; my main
-new contribution is adapting and combining those ideas. In this chapter, I set out
-\kl{CN}'s design goals and origins, recapitulate the disparate concepts used in
-CN, and along the way discuss how they satisfy the aforementioned design goals.
+In this chapter, I set out \kl{CN}'s design goals and origins, recapitulate the
+disparate, pre-existing ideas it uses, and discuss how they satisfy the
+aforementioned goals.
 
 \section{\kl{CN} design goals and constraints}%
 \label{sec:cn-goals}
 
 Aiming for \emph{``a verification tool whose aspirational goal is to lower the
-cost of C verification from a Rocq programmer who knows separation logic to a
+prerequisites of C verification from a Rocq programmer who knows separation logic to a
 systems programmer who is proficient with functional programming''}
-(\cref{sec:cn-intro}) helps narrow down the large design space of verification
+(\cref{sec:cn-intro}) helps narrow down the large design space of such
 tools.
 
 There were two reasons for picking this goal. First, it was an unexplored area
 in the design space. Second, we wanted to verify the pKVM hypervisor, developed
 by Google~\cite{deacon2020virtualization} (and its precursor, Hafnium).
 
-To explain pKVM, I need to situate it in its context: the Android operating
-system, which runs on billions of devices worldwide, plays a central role in
-many lives, including handling an enormous amount of sensitive data. This means
-that security is paramount, however, because each device runs its own kernel
-(up to half the code is not Android's version of Linux), updates are very
-challenging and expensive to test and deploy to each device. Aside from
-security issues, this also leads to fragmentation of Android, so devices and
-apps are not all up-to-date and the long delay (at least 18 months) between
-Linux and device releases makes it difficult to upstream features and fixes.%
+To explain \kl{pKVM}, I need to explain its context: the Android operating
+system. Android runs on billions of devices worldwide and so handles an
+enormous amount of sensitive data. Security updates are paramount, but each
+device runs its own kernel: up to half the code is \emph{not} Android's version
+of the Linux kernel. This makes testing and deploying updates, challenging,
+expensive and slow: it takes more than 18 months for new releases of Linux and
+to roll-out to devices. Aside from security, fragmentation and fewer
+upstreamed features and fixes, are also concerns.
 
 % \url{https://youtu.be/7novnkldMmQ}
 
-Whilst some of this has been mitigated with the introduction of
-\intro[GKI]{Generic Kernel Images
-(GKI)},\sidenote{\url{https://source.android.com/docs/core/architecture/kernel/generic-kernel-image}}
+Whilst some of these concerns have been mitigated with the introduction of
+Generic Kernel Images
+(GKI),\sidenote{\url{https://source.android.com/docs/core/architecture/kernel/generic-kernel-image}}
 which provide a small and stable kernel ABI \emph{for a particular long-term
-release} version of Android, there are still security issues present in this
-model, because the kernel is too large (20 million lines of code) to be a
-reasonable trusted computing base, and the drivers vendors ship with a device
-are part of it.
+release} of Android, there are still fundamental issues with this model. Both
+the kernel (20 million lines of code), and device drivers shipped by vendors,
+are too large to be a reasonable trusted computing base.
 
-Some manufacturers use hypervisors, which attempt to isolate the kernel from
-the rest of the system by running Android and other hardware components in
-virtual machines, such `secure' parts of the device storing sensitive data.
-Aside from security, hypervisors are also used to partition memory at boot-time
-so that devices can use it for things like direct memory access, and run
-arbitrary code outside of Android, which is worrying because this code would
-run at a more privileged level than Android itself. All of this just
-\emph{shifts} the attack
+Some vendors try to use hypervisors to isolate the kernel from the rest of the
+system \textemdash{} such as `secure' hardware storing sensitive data
+\textemdash{} by running Android and other hardware components in separate
+virtual machines. They also use hypervisors for non-security reasons, such as
+partitioning memory at boot-time, direct memory access, or arbitrary code
+execution (at a more privileged level) outside of Android. Using hypervisors
+just \emph{shifts} the attack
 surface,\sidenote{\url{https://googleprojectzero.blogspot.com/2020/02/mitigations-are-attack-surface-too.html}}
-and has also resulted in \emph{more} fragmentation at the hypervisor layer.
+and also increases fragmentation.
 
-Similar to \kl{GKI}, the proposed solution is to standardise the hypervisor
-used. There is already a mature hypervisor which is part of the Linux kernel,
-the Kernel-based Virtual Machine (KVM)\@. It is set up so that a host kernel
-can dynamically allocate virtual machines for guests to run on, and protect the
-host from the guests. However, at the start of the project, the API exposed by
-the hypervisor to the host kernel offered too much control, and guests were not
-protected from the \emph{host}. This is a problem because the guest could be
-running code for a secure hardware component (e.g.\ a biometric authenticator),
-but the host could be a compromised version of Android, so an attacker could
-still get access to sensitive information.
+Similar to \kl{GKI}, the proposed solution is to standardise the hypervisor.
+There is already a mature hypervisor inside the Linux kernel: the Kernel-based
+Virtual Machine (KVM)\@. It lets a host kernel dynamically allocate virtual
+machines for guests, and protects the host from them. However, initially, it
+did not protect guests from the \emph{host}. This is a problem because the
+guest could be running code for a secure hardware component (e.g.\ a biometric
+authenticator), but the host could be a compromised version of Android, so an
+attacker could still get access to sensitive information.
 
 To solve this, Google, as part of the Android Virtualisation
 Framework,\sidenote{\url{https://source.android.com/docs/core/virtualization/whyavf}}
@@ -183,45 +158,41 @@ is developing a \intro[pKVM]{protected KVM
 (pKVM)},\sidenote{\url{https://lpc.events/event/7/contributions/780/}} which
 runs \emph{underneath} the kernel,\sidenote{pKVM utilises the Armv8 exception
     levels (EL) feature, which defines four levels of increasing privilege. EL0
-    is used for Android applications, EL1 is used for the kernel, EL2 is
-used for the hypervisor, and, EL3 is not used.} and ships \emph{as part} of the
-kernel image. This approach allows pKVM to commit to only handling implementing
-a select few functions such as virtual memory management and remain very small,
-and rely on the Linux kernel to manage the rest, such as scheduling, device
-drivers and power management.
+    is used for Android applications, EL1 is used for the kernel, EL2 is used
+for the hypervisor, and, EL3 is not used.} and ships \emph{as part} of the
+kernel image. This allows \kl{pKVM} to remain very small, only supporting a few
+functions (such as virtual memory management), and rely on the Linux kernel to
+manage the rest, such as scheduling, device drivers and power management.
 
-If successful, this could make the attack surface a lot smaller, but it could
-also make it one that is used very widely. It is in this context that we and
-Google saw the opportunity to verify a small hypervisor, \emph{on an ongoing
-basis}. A one-and-done verification which takes an army of PhD students and
-postdocs a few years to verify and is years out of date by the time is
-developed would not be worth the investment; a tool which C kernel programmers
-can understand, use and maintain proofs as they make changes to very important
-security critical code would be.
+If successful, this would make the attack surface much smaller in code, but
+much larger in number of devices. It is in this context that my research group
+and Google saw the opportunity to verify a small hypervisor, \emph{on an
+ongoing basis}. A one-and-done verification which takes an army of PhD students
+and postdocs a few years to verify is not worth the investment; a tool which C
+kernel programmers can understand, use and maintain security-critical proofs
+with, would be.
 
-So not only does this background explain \kl{CN}'s headline goal, it also
+This background explains \kl{CN}'s headline goal, and also
 clarifies some of the \emph{constraints} on its design:
 \begin{itemize}
     \item Because kernel programmers wrote the code, and are intending to use
-        conventional compilers to build and run it, we cannot rely on
-        (hopefully sound) approximation to the semantics of C
-        \textemdash{} we want and need something that matches and can handle
-        its real world behaviour as closely as possible.
-    \item Because it will be used by kernel programmers, we want a story that is
-        is accessible and acceptable to them. They are very smart and
-        capable people, who do not have the time or support to get up to
-        speed with separation logics and interactive proof assistants.
-        Nor are they amenable to changing their development or company's
-        product delivery workflows substantially, which would be the case
-        for using interactive proof assistants. I conjecture that a ``fancier
-        type system'' which runs as part of the \intro[CI]{continuous
-        integration (CI)} pipeline has a better chance of being adopted in this
-        context.
-    \item Similarly, because the annotations will be read by kernel programmers,
-        and upstreamed into Linux, we want them to be minimal and relatively
-        easy to understand. Not only does this affect the design of the type
-        system to manage the flow of information carefully, this encourages
-        exploring how best to automate as many obvious things as feasible.
+        conventional compilers to build and run it, we cannot hope
+        some \adhoc{} model of C is sound \textemdash{} we want and need
+        something that matches and can handle C's real-world behaviour as
+        closely as possible.
+    \item Because it will be used by kernel programmers, we want a story that
+        is acceptable to them. They are very smart and capable people, who do
+        not have the time or support to get up to speed with separation logic
+        and interactive proof assistants. Nor are they amenable to changing
+        their development or company's product delivery workflows
+        substantially. I conjecture that a ``fancier type system'' which runs
+        as part of their continuous integration (CI) pipeline has a better
+        chance of being adopted.
+    \item Similarly, because the annotations will be read by kernel
+        programmers, and upstreamed into Linux, we want them to be minimal and
+        easy to understand. Achieving this requires careful management
+        about the flow of information in the type system, and automating
+        as many obvious things as feasible.
 \end{itemize}
 
 In turn, these constraints feed into concrete technical choices which \kl{CN}
@@ -231,23 +202,24 @@ makes:
         empirically validated semantics.
     \item To integrate into existing workflows, \kl{CN} appears to users
         as a fancy type system.
-    \item To retrofit the type system on top of existing ones, and in
+    \item To retrofit the type system on top of the existing one, and in
 	particular to ensure erasure, \kl{CN}'s type system uses
-	\intro{refinement types}.
+	\kl{refinement types}.
     \item To automate proofs of constraints, \kl{CN} relies on SMT solvers.
     \item To ensure decidability (termination), and aim for reasonable in
-        practice performance, \kl{CN} follows a \emph{liquid} typing
+        practice performance, \kl{CN} follows a \emph{\kl{liquid typing}}
 	discipline, restricting the queries it sends to the SMT solver.
     \item To minimise constraint annotations, \kl{CN}'s type system is
         formalised and implemented in a \kl{bidirectional} style.
     \item To check the resource management of C programs, \kl{CN}'s type
-        system uses \intro{linear} types, using the grammar of separation
+        system uses \kl{linear} types, using the grammar of separation
         logic assertions.
-    \item To stay within the \kl{liquid} typing discipline \emph{and} avoid
-	quantifier instantiation annotations, \kl{CN} uses precise assertions
-	with a \kl{mode}d discipline for predicate arguments.
-    \item To make such precise assertions with a mode discipline easier to read,
-	write and explain, \kl{CN} presents users with \emph{monadic} syntax.
+    \item To stay within the \kl{liquid typing} discipline \emph{and} avoid
+        quantifier instantiation annotations, \kl{CN} uses precise assertions
+        with a \kl{mode}d discipline for predicate arguments.
+    \item To make such precise assertions with a mode discipline easier to
+        read, write and explain, \kl{CN} uses a \emph{monadic}
+        syntax.
 \end{itemize}
 
 \section{Cerberus and Core for a usable and accurate C semantics}%
@@ -259,53 +231,48 @@ between it and other C semantics is available in the Related Work chapter
 of \sidetextcite{memarian2022cerberus}, but for the purposes of \kl{CN},
 it suffices to say it captures real-world C.
 
-Where \kl{Cerberus} really shines with respect to \kl{CN}'s use case in
-\emph{how} it captures this executable semantics. Unusually, it does so by
-\emph{compositional elaboration} into a \emph{relatively simple first-order
-functional language}.
+\kl{Cerberus} is vital for \kl{CN} because it expresses this executable
+semantics in a \emph{relatively simple first-order functional language},
+\kl{Core}, via a \kl{compositional} elaboration.
 
-This approach drastically simplifies many tricky parts of C. For example,
-\kl{Cerberus} parses, and statically checks \cref{fig:perplexing-ub}, despite
-the strange scoping and strange control flow which jumps \emph{into} a loop
-body. However, it declares the program illegal when executing it because of
-subtle rules regarding block scopes, object lifetimes and initialisation (as
-explained in the caption). Whilst contrived, any C function which happens to
-have exception handling and retry behaviour, and be longer than a programmer's
-screen height, could make the same error. Cerberus handles C features such as
-mutable and potentially aliasing variables, and the myriad other
-\kl[UB]{undefined} or \kl{unspecified} behaviours, for example loose evaluation
-order and coercions respectively, by making them all \emph{explicit} in the
-syntax.
+This drastically simplifies many tricky parts of C. \kl{Cerberus} handles
+the strange scoping and control flow (of jumping \emph{into} a loop) of
+\cref{fig:perplexing-ub}. It parses, and statically checks the program.
+However, it declares the program illegal during execution because of
+subtle, dynamically checked rules (see caption). Whilst contrived, any C
+function which happens to have exception handling and retry behaviour, and be
+longer than the height of a programmer's screen, could make the same error.
+\kl{Cerberus} handles C features such as mutable and potentially aliasing
+variables, and the myriad other \kl{undefined} or \kl{unspecified} behaviours,
+\eg{} loose evaluation order and coercions respectively, by making them
+all \emph{explicit} in \kl{Core}'s syntax.
 
 \begin{marginfigure}
     \cfile[breaklines]{code/perplexing-ub.c}
-    \caption{Example of subtle scoping and control-flow issues leading to UB
-        (courtesy~\cite[p70]{memarian2022cerberus}).
+    \caption{Example of subtle scoping and control-flow issues leading to
+        \kl{UB} (courtesy~\cite[p70]{memarian2022cerberus}).
         Jumping to \cinline{l2} starts the lifetime of an object, but does not
         initialise it. Jumping to \cinline{l1} then \emph{ends that lifetime}
         because it exits the block (lines 5\textendash{}12). By the time
         execution reaches line 8, \cinline{p} \emph{refers to a dead object}.
         This is why the seemingly redundant re-assignment of \cinline{p = &x}
-        on line 7 would prevent UB in this example.}\label{fig:perplexing-ub}
+        on line 7 would prevent \kl{UB} in this example.}\label{fig:perplexing-ub}
 \end{marginfigure}
 
 \section{Core grammar}\label{sec:core-grammar}
 
-Instead of working directly over something similar to C and trying to express
-static and dynamic semantics over something so complex, \kl{Cerberus}
-elaborates C into \intro{Core}, a not-too-large calculus where each construct
-is designed to capture some peculiarity of C. It is split into two fragments, a
-pure fragment (\cref{fig:pure-core-grammar}) and an effectful on
-(\cref{fig:effectful-core-grammar}); the former is embedded into the latter.
+\kl{Cerberus} elaborates C into \intro{Core}, a not-too-large calculus where
+each construct is designed to capture some peculiarity of C. It is split into
+two fragments, a pure fragment (\cref{fig:pure-core-grammar}) and an effectful
+on (\cref{fig:effectful-core-grammar}); the former is embedded into the latter.
 
-The pure fragment is pure in the sense that it allows no memory operations, but does
-include the effect of undefined behaviour explicitly with the
-\coreinline{undef()} operator. This aspect of the language handles % chktex 36
+The pure fragment forbids memory operations, but
+does include the effect of undefined behaviour explicitly with the
+\coreinline{undef()} operator. It handles % chktex 36
 things like implicit type conversions or bounded arithmetic. As visible from the
 grammar, the pure part is very much a first-order functional language with
-recursive functions, with some constructs specific to C such as pointer
-arithmetic on arrays and struct fields, structs, unions and
-specified/unspecified/integer values.
+recursive functions, with some C-specific constructs such as pointer
+arithmetic on arrays/members and specified/unspecified/integer values.
 
 \begin{figure*}[tp]
     \ContinuedFloat*
@@ -333,28 +300,25 @@ specified/unspecified/integer values.
     \caption{The effectful fragment of Core.}\label{fig:effectful-core-grammar}
 \end{figure*}
 
-The effectful fragment captures interactions with memory (via a memory
-interface), various ordering constraints, and more exotic control flow with a
-goto-like operator used in the elaboration of C's iteration and \cinline{goto}
-statements. The distinction between the pure and effectful fragments is in
-fact unrelated to the distinction between expressions and statements in C,
-since both are elaborated into effectful expressions (for example,
-\coreinline{PtrEq} which tests for for pointer equality).
+The effectful fragment supports memory operations, sequencing constraints,
+and exotic control flow with a goto-like operator used for elaborating
+C's iteration and \cinline{goto} statements. The distinction between the pure
+and effectful fragments is unrelated to the distinction between expressions and
+statements in C:\ both are elaborated into effectful expressions (for example,
+\coreinline{PtrEq} which tests for pointer equality).
 
 I will discuss \coreinline{memop()} in more detail in % chktex 36
 \fancyref{chap:mem-model-explained}. For now it suffices to say that the
 operations are effects, part of the memory interface \kl{Core} uses to abstract
-over choices of different handlers, implementations of those effects in a
-specific memory object model.
+over different memory object models.
 
-Next are the constructs related to evaluation order. A more precise treatment
-of evaluation order and footprints of memory actions and expressions is given
-later in \fancyref{sec:weak-seq}. As per \sidetextcite{memarian2022cerberus},
-\emph{Each use of an action is either ``positive'' (the default case) or
-``negative'' (if the action appears in the syntax as the operand of the
-$\cnkw{neg()}$ operator)}.
+Next are the constructs related to sequencing. A more precise treatment
+of this is given later in \fancyref{sec:weak-seq}. As per
+\sidetextcite{memarian2022cerberus}, \emph{Each use of an action is either
+``positive'' (the default case) or ``negative'' (if the action appears in the
+syntax as the operand of the $\cnkw{neg()}$ operator)}.
 \begin{itemize}
-    \item $\cnkw{neg}(\cnnt{action})$ marks which memory actions are side
+    \item $\cnkw{neg}(\cnnt{action})$ marks side
         effects (see text to note~\ref{sn:side-effect}).
     \item $\cnkw{unseq}(E_1, \ldots, E_n)$ is unsequenced evaluation of each
         sub-expression.
@@ -378,25 +342,25 @@ The \coreinline{par()} construct is for spawning threads. The % chktex 36
 \coreinline{nd()} construct models non-determinism as required or % chktex 36
 implied by aspects of the standard.
 
-The \coreinline{ccall()} and \coreinline{pcall()} constructs for % chktex 36
-calling elaborated C functions and Core procedures (effectful functions)
+The \coreinline{ccall()} and \coreinline{pcall()} constructs are for % chktex 36
+calling elaborated C functions and \kl{Core} procedures (effectful functions)
 respectively. They differ only in how the name of the procedure to be called is
 found, with \coreinline{ccall()} using the memory interface to do so. % chktex 36
 
 The (thread-local) Core operational semantics is defined in
-\textcite{memarian2022cerberus} and I present key rules from it below.
+\textcite{memarian2022cerberus}; I present the key rules below.
 It is a small-step transition from a configuration to either undefined
-behaviour or a new configuration. Formally, this is $\langle h, E, \kappa
+behaviour or a new configuration: $\langle h, E, \kappa
 \rangle \rightarrow (\textsc{Undef} \mid{} \langle h', E', \kappa' \rangle)$,
 for a heap $h$, effectful expression $E$, and stack $\kappa$ (list of
 evaluation contexts $C$). These steps rely on evaluating pure expressions (in a
 big-step style) to either undefined behaviour or a value $\cnnt{pce} \Downarrow
 (\textsc{Undef} \mid{} \cnnt{value})$.
 
-For example, procedure calls pop the enclosing evaluation context $C$ on
-to the stack $\kappa$, evaluate the arguments into values, lookup the function
-body $E$ and substitute the parameters for the values, and proceed with
-executing the body.
+For example, \coreinline{pcall()} pushes the enclosing evaluation context $C$ % chktex 36
+on to the stack $\kappa$, evaluates its arguments into values, looks up the
+function body $E$, substitutes the parameters for the values, and then executes
+the body.
 
 {\small%
 \[
@@ -407,8 +371,8 @@ executing the body.
    \rightarrow \left< h , \left[ \cncomp{\cnnt{value}_i / x_i}{i} \right] E , C \Colon \kappa \right> }
 \]}
 
-Conversely, returns pop an evaluation context off of the stack, applies it to
-the values, and proceeds with the resulting expression.
+Conversely, \coreinline{return()} pops an evaluation context off of the stack, % chktex 36
+applies it to the returned value, and proceeds with the resulting expression.
 
 {\small%
 \[
@@ -419,13 +383,13 @@ the values, and proceeds with the resulting expression.
 \]}
 
 The \coreinline{save()} operator is \kl{Core}'s way of introducing named % chktex 36
-continuations with default arguments. This is the \cinline{goto}-like operator
-referred to earlier, which is used to elaborate all of C's iteration and
+continuations with default arguments. This is the aforementioned \cinline{goto}-like
+operator, which is used to elaborate C's iteration and
 \cinline{goto} statements.
 \begin{itemize}
     \item $\cnnt{id}$ is the name, also referred to as the label.
     \item $x_1, \ldots, x_n$ are parameters which in scope in $E$.
-    \item $e_1, \ldots, e_n$ are \emph{default arguments} for those parameters.
+    \itemAP{} $e_1, \ldots, e_n$ are \intro{default arguments} for those parameters.
 \end{itemize}
 
 \textbf{The label of \coreinline{save()} expression is scoped to its % chktex 36
@@ -438,16 +402,16 @@ one.
     \item No jump, via evaluation of the enclosing expression.
 \end{itemize}
 
-When evaluating a \coreinline{save()} expression, its parameters % chktex 36
-must be instantiated and substituted into its body. The instantiaion
+A \coreinline{save()} expression evaluates by instantiating % chktex 36
+and substituting its parameters in its body. The instantiation
 depends on how the expression was reached. If it was via the
-\coreinline{run()} operator, then they are instantiated % chktex 36
+\coreinline{run()} operator, then the instantiation is % chktex 36
 with the arguments of the same. If it was via the enclosing expression,
-then they are instantiated with the default arguments.
+then the instantiation is with the \kl{default arguments}.
 
-Formally, reaching a \coreinline{save()} expression via its enclosing % chktex 36
-expression evaluates its default arguments (pure expressions) into values and
-then substitutes those values into its expression.\sidenote{Since this does not
+Formally, \coreinline{save()} (reached normally, via its enclosing % chktex 36
+expression) evaluates its default arguments into values and then substitutes
+those values into its body.\sidenote{Since this does not
 manipulate the heap or the stack, it is phrased purely as expression
 reduction, with a separate, omitted rule to lift expression reductions to
 thread-local reductions.}
@@ -461,10 +425,10 @@ thread-local reductions.}
 \]}
 
 Reaching the same \coreinline{save()} via a \coreinline{run()}  % chktex 36
-however, is more complicated. Like a procedure call, it evaluates its arguments
+is more complicated. Like a \coreinline{pcall()}, it evaluates its arguments % chktex 36
 into values and looks up the label $\cnnt{id}$. The $\mathrm{labelmap}$ is
 precomputed on a per-procedure basis by \kl{Cerberus} during elaboration.
-Unlike a procedure call, the result of the lookup is \emph{a context}
+Unlike \coreinline{pcall()}, the result of the lookup is \emph{a context} % chktex 36
 $C_{\cnnt{id}}$ and an expression $E_{\cnnt{id}}$. It substitutes the values
 for the parameters in $E_\cnnt{id}$, \emph{discards the current context} $C$,
 and uses $C_\cnnt{id}$ instead. All the while, the stack $\kappa$ is unchanged.
@@ -478,21 +442,21 @@ and uses $C_\cnnt{id}$ instead. All the while, the stack $\kappa$ is unchanged.
     \rightarrow \left< h , C_{\cnnt{id}} \left[ \left[ \cncomp{\cnnt{value}_i / x_i}{i} \right] E_{\cnnt{id}} \right] , \kappa \right> }
 \]}
 
-\textbf{The important aspect for our purposes is that while control flows into
-\coreinline{ccall()}, \coreinline{pcall()} and \coreinline{run()}, it % chktex 36
+\textbf{For our purposes, the most important thing is that while control flows
+into \coreinline{ccall()}, \coreinline{pcall()} and \coreinline{run()}, it % chktex 36
 only returns from the first two and not the last.}
 
 \section{Elaboration example: list append}\label{sec:append-core}
 
-We can see an example of Cerberus' elaboration into \kl{Core}, by recalling the
-linked integer list append function from \cref{fig:append-c}.
+I will use the linked integer list append function from \cref{fig:append-c},
+as an demonstration of Cerberus' elaboration into \kl{Core}.
 
 The first thing it does it declare its parameters. In C, these are mutable
 local variables.
 
 \cfile[firstline=5, lastline=6]{code/append_plain.c}
 
-In Core, the pointer value passed into the function, and the mutable storage
+In \kl{Core}, the pointer value passed into the function, and the mutable storage
 for it, are separated syntactically. The parameters have type
 \coreinline{loaded pointer}, where \coreinline{loaded t} is either a
 \coreinline{Specified(v:t)} or an \coreinline{Unspecified} value % chktex 36
@@ -503,30 +467,29 @@ result of the function has type \coreinline{eff (loaded t)} where
 
 \corefile[firstline=3, lastline=4]{code/append_plain.core}
 
-To keep the elaboration compositional (reflecting the structure of the C
-program), especially for early returns, when a C function is elaborated into a
-\kl{Core} procedure, \kl{Cerberus} adds a single \coreinline{save()} % chktex 36
-expression to delare a return label (here, \coreinline{ret_430}) \emph{at the
-end of the procedure}. Any part of the procedure may thus \emph{forward jump}
+To keep the C function elaboration \kl{compositional}, especially for early returns,
+\kl{Cerberus} adds a single \coreinline{save()} % chktex 36
+expression to declare a return label (here, \coreinline{ret_430}) \emph{at the
+end of each procedure}. Any part of the procedure may thus \emph{forward jump}
 to the return label because, as mentioned earlier, \textbf{labels are scoped to
 their enclosing procedure.}
 
-Like C labels, Core labels can be reached by evaluating the enclosing
-expression as well as being jumped to. In this case, the arguments to the label
-still need to be given a value; these default values are defined by the
+Like C labels, \kl{Core} labels can be reached by evaluating the enclosing
+expression as well as being jumped to. In the first case, the arguments to the
+label still need to be given a value; these default values are defined by the
 right-hand-side of the \coreinline{:=}, here an \coreinline{undef()} % chktex 36
-value because it is UB to reach the end of a function with a non-void return
-type without returning a value.
+value because it is \kl{UB} to reach the end of a function with a non-void
+return type without returning a value.
 
 \corefile[firstline=147, lastline=148]{code/append_plain.core}
 
 The \coreinline{create()} and \coreinline{store()} operations are % chktex 36
-memory actions, and produce values of type \coreinline{eff pointer} and
+\kl{memory actions}; they produce values of type \coreinline{eff pointer} and
 \coreinline{eff unit} respectively. The \coreinline{create()} action % chktex 36
-takes two arguments, an integer (for constraining the aligment of the
+takes an integer (for constraining the alignment of the
 resulting pointer), and a C type. \coreinline{Ivalignof(τ)} is an % chktex 36
-integer value constructor which takes as an argument a C type τ; in C, the
-alignnemnt of a type is an implementation-defined value and using an abstract
+integer value constructor which carries a C type τ; in C, the
+alignment of a type is an implementation-defined value and using an abstract
 constructor allows the elaboration to be agnostic of such choices.
 
 Binding constructs \coreinline{let strong} and \coreinline{let weak}
@@ -542,13 +505,13 @@ integer.
 
 \cfile[firstline=8, lastline=8]{code/append_plain.c}
 
-First this requires loading the \coreinline{xs} from memory, and then doing a
+First this requires loading \coreinline{xs} from memory, and then doing a
 \coreinline{PtrEq} memory operation to check if it is \coreinline{NULL}.
 The result of this expression is a \coreinline{loaded integer}.
 
 \corefile[firstline=15, lastline=25]{code/append_plain.core}
 
-Elsewhere, lines 15\textemdash{}25 are bound to \coreinline{a_432}. That is
+Elsewhere, lines 15\textendash{}25 are bound to \coreinline{a_432}. That is
 then converted into a Core boolean bound to \coreinline{a_431}. The boolean
 variable is in a Core if-expression on line 48. Recall the true-branch of the C
 code.
@@ -576,21 +539,21 @@ the local variable.
 \corefile[firstline=59, lastline=60]{code/append_plain.core}
 
 Next is getting the pointer for the C function to be called; elsewhere, lines
-67\textemdash{}68 are bound to \coreinline{a_447} to be used in
+67\textendash{}68 are bound to \coreinline{a_447} to be used in
 \coreinline{ccall()} later. % chktex 36
 
 \corefile[firstline=67, lastline=68]{code/append_plain.core}
 
 The first argument is \cinline{xs->tail}. In Core, that is represented by a
 \coreinline{load()} of \cinline{&xs}, a case-split on the loaded value % chktex 36
-(UB if it is \coreinline{Unspecified}), a \coreinline[breaklines]{member_shift()}, % chktex 36
+(\kl{UB} if it is \coreinline{Unspecified}), a \coreinline[breaklines]{member_shift()}, % chktex 36
 and then another \coreinline{load()}. Elsewhere, lines 71\textemdash{}81 % chktex 36
 are bound to \coreinline{a_454}.
 
 \corefile[firstline=71, lastline=81]{code/append_plain.core}
 
 The second argument is \cinline{ys}; in Core that is just a \coreinline{load()} % chktex 36
-of \cinline{&ys}. Elsewhere, lines 83\textemdash{}84 bound to
+of \cinline{&ys}. Elsewhere, lines 83\textendash{}84 bound to
 \coreinline{a_461}.
 
 \corefile[firstline=83, lastline=84]{code/append_plain.core}
@@ -598,7 +561,7 @@ of \cinline{&ys}. Elsewhere, lines 83\textemdash{}84 bound to
 Finally, the elaboration of the function call itself performs a large amount of
 run-time type checking; in the general case this supports calling variadic
 functions via function pointers, but for this example, because the function is
-(a) known at compile time and (b) not variadic, it simplifies to the below.
+(a) known at compile time, and (b) not variadic, it simplifies to the below.
 
 \begin{corecode}
 ccall("struct int_list* (*) (struct int_list*, struct int_list*)",
@@ -608,7 +571,7 @@ ccall("struct int_list* (*) (struct int_list*, struct int_list*)",
 \end{corecode}
 
 Elsewhere, the \coreinline{ccall()} is bound to \coreinline{a_445}, % chktex 36
-which is then stored in at \cinline{&new_tail} (in Core, just
+which is then stored at \cinline{&new_tail} (in Core, just
 \coreinline{new_tail}).
 
 \corefile[firstline=105, lastline=107]{code/append_plain.core}
@@ -632,7 +595,7 @@ Elsewhere, those lines are bound to \coreinline{a_479}.
 
 In C, assignments can be used as expressions. In the jargon of the standard,
 any loads used to evaluate the operands form a \emph{value computation}, but
-the stores do not: they are classed as \intro{side effect}s.\sidenote{%
+the stores do not: they are classed as \intro{side effects}.\sidenote{%
 §5.1.2.3\#2: [\ldots] Evaluation of an expression in general includes both
 value computations and initiation of side effects.}\label{sn:side-effect} As
 per~\textcite[p61, p66, p99]{memarian2022cerberus}, \emph{``intuitively, a Core action
@@ -655,14 +618,14 @@ return label \coreinline{ret_430} mentioned earlier.
 
 \corefile[firstline=132, lastline=140]{code/append_plain.core}
 
-\subsection{Discussion}
+\subsection{Discussion}\label{subsec:elab-discussion}
 
-A few things are note-worthy about the Core elaboration:
+A few things are noteworthy about the Core elaboration:
 \begin{itemize}
-    \item The translation is \intro{compositional}. Each function, block,
+    \item The elaboration is \intro{compositional}: each function, block,
         statement and expression is elaborated in isolation, based only
-        on its parts, and follows the structure of the original C program.
-    \item Each variable (function argument and local and global) is uniformly
+        on its parts, and follows the structure of the original \kl{C} program.
+    \item Each variable (function argument, local, and global) is uniformly
         handled as living on the heap and gets its own storage via the
         \coreinline{create} function. Reads, writes, and de-allocations are
         represented with \coreinline{load}, \coreinline{store},
@@ -672,144 +635,115 @@ A few things are note-worthy about the Core elaboration:
     \item \kl{UB} is made explicit in the syntax of the program.
 \end{itemize}
 
-In particular, \kl{compositional}ity is just as important, if not more, as the
-target language being a first-order functional language with effects. Given
-that we want users to annotate programs at the C level, if we wish to type
-check \kl{Core}, we need to be able to transport those annotations through the
-elaboration process too, and place them at the appropriate program points.
+\kl{Compositionality} is just as important, as the \kl{Core} being a
+first-order functional language. This makes it straightforward transport
+annotations on C source, via the elaboration, to annotations on \kl{Core}.
 
-If \kl{Cerberus} were to have elaborated into a dataflow graph instead of \kl{Core},
-such transporting would be a major undertaking in itself. It might be achievable
-for function pre- and postconditions, but would become much more challenging
-for loops, \coreinline{goto}, and inter-statement proof
-hints to \kl{CN}. With a \kl{compositional} mapping, placing annotations
-structurally, and relating annotations mentioning C variables to \kl{Core}
-variables becomes feasible.
+If \kl{Cerberus} elaborated C into a dataflow graph instead,
+such transporting might be difficult. Function pre- and postconditions would
+be easy, but how to handle loop invariants, \coreinline{goto} annotations, and
+\kl{CN statements} (proof hints) is unclear.
 
-In principle, the compositional mapping also ensures that errors in \kl{Core}
-elaboration can be related back to useful source locations in the original C
-program. However, in practice, though \emph{compositional}ity does
-\emph{enable} this, it requires a good amount of engineering effort to
-\emph{accomplish} (\cref{sec:error-msgs}).
+In principle, the \kl{compositional} mapping also ensures that errors in
+verifying \kl{Core} can be related back to useful locations in the original C.
+In practice, this requires a good amount of engineering to accomplish
+(\cref{sec:error-msgs}).
 
-Another challenge is that though elaboration simplifies greatly the checked
-language, it also increases the distance between the checked and the typed
-language. This becomes problematic when attempting to relate failures in SMT
-queries back to what users wrote, particularly when those queries are part of
-an inference procedure, rather than checking C source assertions
-(\cref{sec:counter-ex}).
+Another challenge is distance between C and \kl{Core}. Reporting SMT assertion
+failures in terms of what the user wrote is difficult when it mentions
+variables introduced by the elaboration, or when the assertion itself is
+introduced by \kl{CN} (\cref{sec:counter-ex}).
 
-This concludes the background related to \kl{Cerberus}; now I will discuss the
+This concludes the background related to \kl{Cerberus}; I will now discuss the
 background related to the \kl{CN} type system.
 
-\section{Decidable refinements for retrofitting and counter-examples}
+\section{Decidable refinements for retrofitting and counter-examples}\label{sec:decidable-refinements}
 
-\kl{Core} already has a straightforward \kl{bidirectional} type system as a
-sanity check on the output of elaboration. It has not been used for a proof of
-soundness with respect to the dynamic semantics, since such a theorem would be
-just another sanity check (on the dynamic semantics).
+\kl{Core} already has a straightforward \kl{bidirectional} type system which
+\kl{Cerberus} uses as a sanity check for the \kl{elaboration}. It has not been
+used for a proof of soundness, which would just be a sanity check on the
+dynamic semantics.
 
 \begin{marginfigure}
+    \small%
     \centering
     \begin{mathpar}
         \inferrule{ }{\Gamma{} \vdash{} \cnkw{undef} (\cnnt{UB\_name})\Leftarrow{} \cnnt{T}}
     \end{mathpar}
     \caption{Checking rule for the \coreinline{undef()} pure expression as % chktex 36
-        mentioned in \textcite{memarian2022cerberus}.}\label{fig:core-ub-typing}
+    mentioned in \textcite[p91]{memarian2022cerberus}.}\label{fig:core-ub-typing}
 \end{marginfigure}
 
-This is evidenced by the typing rule for \coreinline{undef()} % chktex 36
-(\cref{fig:core-ub-typing}). Since \kl{UB} is by definition, assumed to be
-absent in a valid C program, the type system must accept any type as validly
-checking against \coreinline{undef()}. % chktex 36
+For example, \coreinline{undef()} checks against any type % chktex 36
+(\cref{fig:core-ub-typing}).\margincite{memarian2022cerberus}
+This is because \kl{UB} terminates the dynamic
+semantics; it does not return control. Remember, a valid C program is one which
+has no \kl{UB}, but such a type system cannot guarantee its absence.
 
-At a minimum, to prove C programs safe, what we would like is a type system
-expressive enough to \emph{prove} the absence of \kl{UB}. If the type checking
-context is enriched to track the control flow path to reach this point in the
-program, for example by tracking conditions (or their negations), then the
-typing rule for \coreinline{undef()} would simply require that the context % chktex 36
-be inconsistent, i.e.\ able to prove false. To illustrate this point with
-a trivial example, consider the nested \mintinline{py}{if} statements in
-\cref{fig:dead-code}.
+To do that, we need to enrich the context to track the (control flow) path
+conditions. Then, the typing rule for \coreinline{undef()} would % chktex 36
+require that the context be inconsistent (able to prove false), meaning
+the expression is unreachable. To illustrate this, consider a trivial example
+of nested \mintinline{py}{if} statements in \cref{fig:dead-code}.
 
 \begin{figure}[h]
-    \inputminted[breaklines,mathescape,fontsize=\small]{py}{code/dead_code.py}
+    \inputminted[linenos,numbersep=6pt,mathescape,fontsize=\small]{py}{code/dead_code.py}
     \caption{A contrived example on how tracking control flow assumptions
         within a program could be used to prove the impossibility of
         undesirable behaviour.}\label{fig:dead-code}
 \end{figure}
 
-Since we know from the outer \mintinline{py}{if} that \mintinline{py}{x} is
-greater than or equal to 5, the check for \mintinline{py}{x} being strictly
-less than 4 is always going to evaluate to \mintinline{py}{False} and so go to
-the \mintinline{py}{else} branch rather than raise the exception. When tracking
-constraints, this unreachability or dead code is represented by an inconsistent
-context, from which we can prove $\mathsf{false}$.
+From the outer \mintinline{py}{if}, we know that \mintinline{py}{x >= 5}, so
+the check \mintinline{py}{x < 4} will always evaluate to \mintinline{py}{False}.
+Thus control will always flow to line 12 (and return) instead of line 9 (and
+raise the exception). Tracking path conditions in a constraint context during
+type checking means that the context is inconsistent at line 9.
 
-In general, to express and track these constraints in types, we need to be able
-to talk about computational variables and values \emph{at the type level},
-introducing a form of dependency. However, we do not want to make programming
-language itself more expressive, merely its type system. For example, we do not
-wish to the ability for computation to depend on types (as in a \kl{dependent
-type} system). In fact, we would like to add richer types in a way such that we
-could erase them after type checking, and recover the original program and
-dynamic semantics.
+To track such constraints in a typing context, we need to talk about program
+variables and values \emph{at the type level}. This requires richer types which
+can depend on program terms. However, we \emph{do not} want the converse; we
+should be able to recover the original program and dynamic semantics by erasing
+the types after type checking. Enriching the type of an existing language
+whilst retaining erasure is known as \intro{refinement
+types}~\sidecite{jhala2021refinement}.
 
-This approach of enriching the expressiveness of types on an existing language
-whilst retaining the erasure is known as \intro{refinement types}. There is a
-rich history of the origins, naming and development of these
-ideas~\sidecite{jhala2021refinement}, and so I will focus only on the strands
-relevant to \kl{CN}.
+When using such types, we do not want the user to provide proofs for obvious
+deductions, such as $x \geq 5 \wedge x < 4 \Rightarrow \bot$. Unfortunately,
+first-order logic with arithmetic is undecidable: type checking may not
+terminate on certain programs. Given that there are real-world programming
+languages\sidenote{\href{https://hacklang.org/}{Hack},
+\href{https://forums.swift.org/t/swift-type-checking-is-undecidable/39024/34}{Swift},
+and F$^*$~\cite{swamy2016dependent}.}\margincite{swamy2016dependent} which have
+undecidable type systems, but work fine in practice, is this a problem?
 
-If our goal is to minimise annotations and not require proofs for obvious
-statements, then we need some sort of automation to dispatch proof obligations:
-recall the examples shown in \cref{fig:call-incr}, where \kl{CN} deduces
-\cinline[breaklines]{y <= MAXi32()} from the constraint \cinline[breaklines]{y
-<= 100i32}.
+Whilst `decidable' does include exponential or NP-complete time complexity, we
+conjecture that such SMT theories are faster, and more \emph{stable}: the
+performance is consistent across irrelevant or small changes to a proof. We
+also conjecture that problems generated by type checking will be limited by
+human cognitive capacity and thus be reasonably small, especially compared to the
+typical uses of SMT solvers. Thus \kl{CN} aims for decidability as an imperfect
+proxy.
 
-However, once we have rich constraints being tracked by the type system, we
-have a first-order logic with arithmetic, which is undecidable. There are type
-systems for real-world programming languages (such as Hack or F$^*$) which are
-undecidable, and so could just never terminate on some code, but have
-automation which works fine in practice, so why does this point require any
-special consideration?
+\kl{CN} ensures decidability by restricting its use of quantifiers as per the
+\intro{liquid types}~\sidecite{rondon2008liquid} approach. In practice, this means (a)
+all quantifiers must track program values (function arguments for $\forall$,
+return values for $\exists$) and (b) constraints sent to the SMT solver are
+free of quantifiers. When this too restrictive, \kl{CN} offers a lemma
+mechanism (\cref{sec:lemma-prover}) to export and prove facts in the
+Rocq~\sidecite{CDT2024} proof assistant.
 
-Aside from the pleasing theoretical property of having a decidable type system,
-or having to tell users ``just increase the timeout'',  there are a couple of
-factors which lean us in this direction, namely to be able to use SMT solvers
-in a \emph{fast} and \emph{predictable} manner. Recognising that whilst
-decidability can still technically mean exponential, or very often, NP-complete
-complexity for problems does not negate the empirical observation that in
-practice, decidable theories tend to be quite fast, and their speed (and
-solvability) much less susceptible to heuristics being triggered. It is a proxy
-for performance, albeit an imperfect one.
-
-It also helps that the size of SMT problems generated by type checking
-\emph{tend} to be reasonably small, at least compared to the sorts of problems
-which SMT solvers are typically used for, because the amount of code humans
-write between annotations is limited by cognitive capacity (and hopefully,
-diligent code reviewers).
-
-\kl{CN} ensures decidability by following restrictions on quantifiers as set
-out by the liquid types~\sidecite{rondon2008liquid} approach. In practice, this
-means ensuring that the constraints sent to the SMT solver are free of
-quantifiers. When this approach is insufficiently expressive, \kl{CN} offers a
-lemma mechanism to export and prove claims in the \kl{Rocq} interactive proof
-assistant.
-
-Aiming for decidability also has the added benefit of extracting a concrete
-\kl{counter-example} (see \cref{sec:counter-ex}), which is used to explain
-constraint failures in terms of concrete values for \kl{Core} program variables
-(a subset of which correspond to C program variables).
+Aiming for decidability also lets \kl{CN} extract concrete
+\kl{counter-examples} to explain constraint failures in terms of concrete
+values for \kl{Core} program variables (a subset of which correspond to C
+program variables).
 
 \section{Bidirectionality for taming subtyping}\label{sec:bidir-subtyping}
 
-Using a liquid typing discipline automates away the problem of tedious proof
-obligations with calls to an SMT solver, but introduces the new problem of \emph{when}
-during type checking is the right time to use it? This is because implications
-induce a subtyping relation in the type system, and so the question becomes:
-when is the correct time to use the subsumption rule, as shown in
-\cref{fig:subsumption}?
+With \kl{liquid types}, we can use an SMT solver to automate tedious proofs.
+However, implications induce a subtyping relation in such a type system, which
+means we have a \emph{subsumption rule}, as shown in~\cref{fig:subsumption}. As
+presented, the rule is \emph{not} syntax-directed, and so raises the question:
+when should it be used?
 
 \begin{marginfigure}
   \begin{mathpar}
@@ -820,57 +754,43 @@ when is the correct time to use the subsumption rule, as shown in
       implication $\Rightarrow$ as the subtyping relation.}\label{fig:subsumption}
 \end{marginfigure}
 
-Going back to the example in \cref{fig:dead-code}, let us imagine we are in a
-type system where the contexts $\Gamma$ are either $\cdot$ or $\Gamma, \{\, x \mid
-\phi (x) \,\}$, where $\phi$ represents some constraint on $x$. In particular, we
-are not accumulating control flow constraints in the context, only
-in the variable's subset type. We would like to check that the function
-\mintinline{py}{gt_zero} satisfies its postcondition, $ \{\, \mathsf{ret} \mid
-\mathsf{ret} > 0 \,\} $, i.e.\ it returns a value greater than 0 and does not
-raise an exception.
+Revisiting~\cref{fig:dead-code}, imagine a type system where contexts
+$\Gamma$ are either $\cdot$ or $\Gamma, \{\, x \mid \phi (x) \,\}$, and
+$\phi$ represents some constraint on $x$. In particular, we are not
+accumulating \kl{path conditions} in the context, just the variables and their
+subset types. We would like to prove that function \mintinline{py}{gt_zero}
+satisfies its postcondition, $ \{\, \mathsf{ret} \mid \mathsf{ret} > 0 \,\} $
+without raising an exception.
 
-Working forwards, we start off with a type for $\{\, \mathsf{x} \mid \top \,\}$.
-Inside the function, we are checking both branches because we cannot statically
-rule one of them out. In the true case, we now \emph{refine} the type to $\{\,
-\mathsf{x} \mid \mathsf{x} \geq 5 \,\}$.
+Working forwards, we start with a type $\{\, \mathsf{x} \mid \top
+\,\}$. Inside the function, we are checking both branches because we cannot
+statically rule one out. In the true case, we \emph{refine} the type to
+$\{\, \mathsf{x} \mid \mathsf{x} \geq 5 \,\}$. The subsumption rule is not
+syntax-directed, so we are free to apply it now. Doing so, we have have $\{\,
+\mathsf{x} \mid \mathsf{x} > 0 \,\}$, because $\mathsf{x} \geq 5 \Rightarrow
+\mathsf{x} > 0$. Unfortunately this means we cannot rule out the
+\cinline{else}-branch and the exception within.
 
-The subsumption rule is not syntax-directed, so we are free to apply it now.
-Doing so, we have have $\{\, \mathsf{x} \mid \mathsf{x} > 0 \,\}$, because
-$\mathsf{x} \geq 5 \Rightarrow \mathsf{x} > 0$. At this point, we cannot
-statically rule out the \cinline{else}-branch of the condition, so we start
-checking the one with the exception, instead of skipping over it as dead code.
+Whilst quite contrived, it illustrates the importance of knowing when and how
+to use the subsumption rule. We could ask users to annotate the code at each C
+statement, but this would be extremely burdensome: we would have traded the
+tedium of proving simple facts for the tedium of writing obvious annotations.
 
-Whilst quite contrived, this illustrates the point that we would like some sort
-of principled scheme to know when to use the subsumption rule, and with which
-constraints. We could avoid this by requiring users annotate their code at
-every step, but though this would be a predictable annotation scheme, it would
-be extremely burdensome. Using an SMT solver is meant to reduce the tedium of
-proving straightforward facts, not just trade it for the tedium of requiring a
-type annotation at each step.
+\kl{CN} chooses a middle-ground: it requires annotations on functions and
+loops, as a minimum. Socially, we believe this is easy to explain and accept,
+since programmers already write documentation for the former. And technically,
+function and loop annotations enable \emph{compositional verification}.
+Verifying a large code base can be parallelised and fast, because it can
+sidestep the need to do complex and potentially slow loop-unrolling or
+inter-procedural analyses.
 
-At the same time, while it would be great if we could infer all of them, this
-is often not necessary and counter-productive in practice because annotations
-on top-level functions (most commonly, types) serve as very useful
-documentation, which programmers are already used to writing.
-
-Another reason \kl{CN} is quite willing to accept per function annotations is
-that it allows checking a large code base to be parallelised, and obviate the
-need to do any complex and potentially slow inter-procedural analysis.
-Unfortunately, since loops are effectively function tail calls, and invariants
-are also difficult to infer, \kl{CN} requires annotation for them too.
-
-Still, pre- and postconditions on functions, and invariants on loops is a crisp
-way to explain to programmers where annotations need to be placed. What we
-would like to avoid is annotations on each statement of a C program.
-
-More concretely, in the presence of constraints due to refinement types, this
-means we would like \emph{check} types at function calls, function returns,
-before and after loops from the top down, and \emph{synthesise} types
-everywhere else from the bottom up. As explained in sections 4.4 and 4.6
-in~\sidetextcite{dunfield2021bidir}, this is precisely the sort of problem a
-bidirectional type system can solve. Moreover, it gives a clear principle of
-when to apply the subsumption rule (call the SMT solver): at the boundary between
-synthesis and checking (\cref{fig:simple-bidir}).
+Concretely, this means we would like \emph{check} types at function calls,
+function returns, loop entry, and loop exit, from the top down, and
+\emph{synthesise} types everywhere else, from the bottom up. This is exactly
+what \kl{bidirectional} type systems were designed to do (Sections 4.4 and 4.6
+in~\sidetextcite{dunfield2021bidir}). Moreover, it gives a clear principle of
+when to apply the subsumption rule (call the SMT solver): at the boundary
+between synthesis and checking (\cref{fig:simple-bidir}).
 
 \begin{figure}
     \begingroup%
@@ -922,7 +842,7 @@ synthesis and checking (\cref{fig:simple-bidir}).
     \end{mathpar}
     \endgroup%
     \caption{Simple \intro{bidirectional} type system, adapted
-    from~\cite{dunfield2021bidir}.  Note that its splits the traditional
+    from~\cite{dunfield2021bidir}.  Note that it splits the traditional
     $\Gamma{} \vdash{} e : T$ judgement, into two mutually recursive judgements,
     one for \intro[synthesis]{synthesising} a type and one for checking a type.
     %
@@ -943,33 +863,18 @@ synthesis and checking (\cref{fig:simple-bidir}).
 
 \section{Linearity to manage (non-leaky) resources}\label{sec:linearity-manage-resources}
 
-Our aim is define a type system rich enough to prove the absence of \kl{UB},
-which can arise from both the pure and effectful fragments of \kl{Core}
-(\cref{sec:core-grammar}). Whilst decidable refinements and bidirectionality
-are suitable for preventing \kl{UB} from the former, we need more techniques to
-accomplish the same for the latter, ones capable of handling features such as
-such as loose evaluation order or a myriad of subtle memory violations.
+\kl{Decidable refinements} and \kl{bidirectional} typing are sufficient to
+prove the absence of \kl{UB} in \kl{Core}'s pure fragment
+(\cref{sec:core-grammar}), but we need more to do the same in its effectful
+fragment, to handle memory-related \kl{UB}.
 
-In \fancyref{sec:sep-logic-intro}, I sketched out how separation logic can be
-used to reason about the behaviour of imperative programs which manipulate a
-heap and can have syntactically distinct terms \intro{alias} the same location
-in said heap. If we want to embed separation logic propositions into a type
-system, then we need to be able to precisely control how those propositions are
-handled.
-
-In a typical (intuitionistic) type system, assumptions in the context are
-duplicable, for example, the type of a variable in \kl{Core}, or constraints
-about pure values. This relies on the fact that $A \Rightarrow A \wedge A$ in
-intuitionistic logic. However, the same is not true for $\ast{}$ in separation
-logic: $A \nRightarrow A \ast{} A$. This is because assertions have their
-semantics defined with reference to a heap. For example, a heap satisfies $A_1
-\ast{} A_2$ iff it can be split into two disjoint sub-heaps which satisfy $A_1$
-and $A_2$ separately. If $A = (x \mapsto{} y)$, then there is one heap
-satisfying $A$, but none for $A \ast{} A$.
-
-Such duplication is known as \intro{contraction} and we need to forbid this to
-reason soundly (whilst keeping other assumptions, such as the type of \kl{Core}
-program variables, and constraints, contractible).
+In \fancyref{sec:sep-logic-intro}, I showed how separation logic can be used to
+reason about the behaviour of heap-manipulating imperative programs. We can
+embed its propositions into a type system too, but we have to be careful.
+Typically, type systems are \intro{intuitionistic}; this means we can
+duplicate, forget, and re-order assumptions freely. In formal logic, these are
+enabled by \emph{substructural} rules, known as \intro{contraction},
+\intro{weakening} and \intro{exchange} respectively (\cref{fig:substructural}).
 
 \begin{marginfigure}
   \begin{mathpar}
@@ -992,47 +897,52 @@ program variables, and constraints, contractible).
   \caption{Substructural sequent calculus rules.}\label{fig:substructural}
 \end{marginfigure}
 
-In an intuitionistic setting, we can freely forget things we know.
-In a separation logic setting, this depends on whether the user cares about
-memory leaks or not (i.e\. the C standard does not make memory leaks an error).
-The intended use of \kl{CN} in resource constrained settings
-leans us towards being explicit about when we deallocate and more importantly
-\emph{when we forget to}.\sidenote{Though not yet supported by \kl{CN},
-concurrency also requires being explicit about destroying a resource, for
-example, to prevent a user from acquiring the same mutex twice.}
-Forgetting an assumption is known as \intro{weakening}, and we would like to
-forbid this \emph{only} for heap-related facts; it is sound to forget type
-information and ambient constraints.
+However, the first is \emph{unsound} for separation logic assertions, and the
+second is unsuitable for \kl{CN}'s use case. So, \kl{CN} must use separation
+logic assumptions \emph{linearly}~\sidecite{girard1987linear}; other
+assumptions, such as plain or refinement types, can be used without
+restriction.
+\begin{itemize}
+    \item Duplicating assumptions relies on the fact that
+        $A \Rightarrow A \wedge A$ in \kl{intuitionistic} logic. However, the
+        same is not true for $\ast{}$ in separation logic:
+        $A \nRightarrow A \ast{} A$. This is because assertions have their
+        semantics defined with reference to a heap. For example, a heap
+        satisfies $A_1 \ast{} A_2$ iff it can be split into two disjoint
+        sub-heaps which satisfy $A_1$ and $A_2$ separately. If $A = (x
+        \mapsto{} y)$, then there is one heap satisfying $A$, but none
+        for $A \ast{} A$.
+    \item Forgetting assumptions relies on whether the user cares about memory
+        leaks or not (the C standard does not make memory leaks an
+        error). The intended use of \kl{CN} in resource constrained settings
+        leans us towards being explicit about when we deallocate and
+        \emph{erroring when we forget to}.\sidenote{Though not yet supported by
+            \kl{CN}, concurrency also requires being explicit about destroying
+            a resource, for example, to prevent a user from acquiring the same
+        lock twice.}
+\end{itemize}
 
-We would however like the ability to commute assumptions freely, since it is
-perfectly acceptable to free in any order, regardless of the order of
-allocation, so we keep \intro{exchange}. Sequent calculus rules for contraction,
-weakening, and exchange are shown in \cref{fig:substructural}. Jettisoning
-weakening and contraction but keeping exchange means that we handle our
-(heap-related) separation logic assumptions
-\emph{linearly}~\sidecite{girard1987linear} in \kl{CN}.
-
-Note that this is in constrast to popular approaches such as the drop trait in
+This is in contrast to the drop trait in
 Rust,\sidenote{\url{https://doc.rust-lang.org/std/ops/trait.Drop.html}} or RAII
 (Resource Acquisition Is Initialisation) in
 C++,\sidenote{\url{https://isocpp.github.io/CppCoreGuidelines/CppCoreGuidelines\#Re-raii}}.
-These allow the programmer to elide explicit resource deallocation, by
-automatically inserting such a call when the resources goes out of scope.
-Modelling that would require \kl{affine} rather than linear resources.
+These allow the programmer to elide explicit deallocation, by automatically
+inserting such a call when the resource goes out of scope. Modelling that would
+require \kl{weakening}, and make resource types \intro{affine}.
 
-For completeness, a \kl{relevant} logic is one which supports contraction and
-exchange but not weakening. In practice this means relevant assumptions may not
-be implicitly dropped, but may be used one or more time.
+For completeness, a \intro{relevant} logic is one which supports
+\kl{contraction} and \kl{exchange} but not \kl{weakening}. In practice this
+means relevant assumptions may not be implicitly dropped, but may be used one
+or more time.
 
-Linearity may be necessary, but it can also be cumbersome. If a linear resource
-represents the permission to dereference a pointer, a typing rule which
-consumes that must also return an identical resource, so that it may be
-dereferenced again. If we require the programmer to handle these permissions
-explicitly in the annotations, such a discipline would quickly violate the goal
-to minimise obvious annotations. This means that in addition to automation for
-proving constraints, by using SMT solvers, we need to have some scheme to
-\intro[resource inference]{infer resources} (see \cref{sec:elaboration}) to
-reduce the burden of annotations.
+\kl{Linear} types may be necessary, but they can be cumbersome, because their
+corresponding terms \textemdash{} which I refer to as \kl{permissions} or
+\kl{resource terms} \textemdash{} must be threaded through most operations. For
+example, dereferencing a pointer requires a permission, but must also
+\emph{return} one, so that the pointer may be dereferenced again. Such
+threading is tedious and often obvious, so in \kl{CN} it is implicit and
+automated (see \cref{sec:elaboration}). I refer that automation to as
+\kl{resource inference}.
 
 \begin{marginfigure}
   \begin{mathpar}
@@ -1072,35 +982,33 @@ reduce the burden of annotations.
   the declarative version.}\label{fig:decl-alg}
 \end{marginfigure}
 
-I should note that, for the purposes of the formalisation of \kl{Kernel CN}, I
-do use explicit linear resource terms, since that makes the system easier to
-state and prove sound. For clarity and convenience, the linear context in the
-system is used in a \intro{declarative} manner (\cref{fig:decl-alg}). Explicit
-linear resource terms also make it easy to specify and explain the \kl{CN}
-\kl{resource inference} algorithms as an \emph{elaboration}, which I do in
-\fancyref{sec:elaboration}.\sidenote{I have not embarked on any proofs about
-the elaboration rules.} Those rules use the linear context in an algorithmic
-manner.
+For formalising \kl{Kernel CN}, I do use explicit \kl{permissions}, since that
+makes the system easier to state and prove sound. And for clarity and
+convenience, I also write linear components declaratively
+(\cref{fig:decl-alg}). \kl{Explicit permissions} also make it easy to specify
+and explain the \kl{CN} \kl{resource (term) inference} algorithms as an
+\emph{elaboration}, which I do in \fancyref{sec:elaboration}.\sidenote{I have
+not embarked on any proofs about the elaboration rules.} Those rules use the
+linear context in an algorithmic manner.
 
-\section{Precise assertions for inferring resources and quantifiers without
+\section{Precise assertions for instantiating quantifiers without
 backtracking}\label{sec:precise-assertion-inferring}
 
-Lurking behind the decision to use linear separation logic and liquid types is
-a tension between the rich scheme of quantifiers needed to write specifications
-expressive enough to prove \kl{UB}-freedom and full functional correctness and
-the desire to (a) not send quantified formulas to the SMT solver and (b)
-minimise the annotations (quantifier instantiations) a user needs to write.
+Prima facie, \kl{separation logic} types are in tension with \kl{liquid types}.
+The former supports arbitrary quantifiers, which are often sufficient to write
+expressive specifications to prove the absence of \kl{UB} and full functional
+correctness; the latter restricts quantifiers to ones corresponding to program
+values (function arguments for $\forall$, and return values for $\exists$), to
+avoid sending quantified constraints to the SMT solver.
 
-So aside from minimising annotations for proofs of obvious statements (by
-carefully using an SMT solver) and minimising annotations for linear resource
-terms (by inferring them), we would also, as far as possible, like to
-infer how quantifiers are instantiated, based on what the user wrote.\sidenote{
-Note that this is not at all related to \emph{inferring specifications}, which
-is a large and challenging problem in its own right.} Unfortunately, such
-inference is undecidable.
+Alongside automating obvious proofs (using an SMT solver), and automating
+\kl{permission} passing (with \kl{resource (term) inference}), we would also,
+like to automate obvious \emph{quantifier instantiation}.\sidenote{Note that
+this is not at all related to \emph{inferring specifications}, which is a
+large and challenging problem in its own right.}
 
-To better understand this problem, let us recall the separation logic proof
-sketch of linked integer list append from
+To better understand this problem, let us recall the \kl{separation logic}
+proof sketch of integer linked list append from
 \cref{fig:append-annot,fig:list-pred}, reproduced in
 \cref{fig:append-annot-formal,fig:list-pred-formal} for convenience.
 
@@ -1111,6 +1019,7 @@ sketch of linked integer list append from
         \mathrm{list} &(\mathsf{p}, l) \mathrel{{=}^\mathrm{def}} \\
                       &\mathsf{emp} \ast{} (\mathsf{p} = \mathsf{NULL} \wedge{} l = []) \\
                       &\vee{} \exists{} \; {head}, \; {tl}, \mathsf{p\_tail}.\\
+                      &\vee{} \exists{} \; {head}, \; {tl}, \mathsf{p\_tail}.\\
                       &\qquad (\mathsf{p} \mapsto{} {head}) \\
                       &\qquad \ast{} (\mathsf{p} + 1 \mapsto{} \mathsf{p\_tail}) \\
                       &\qquad \ast{} \mathrm{list} (\mathsf{p\_tail}, {tl}) \\
@@ -1120,47 +1029,30 @@ sketch of linked integer list append from
         logic.}\label{fig:list-pred-formal}
 \end{marginfigure}
 
-We see that in addition to the pointers $\mathsf{xs}$ and $\mathsf{ys}$, which
-can be thought of as a quantification over \intro{computational} variables, the
-specification for append also quantifies over \emph{logical} or ghost variables
-$l_1$ and $l_2$. Given that the ``computational terms'' are just code, the
-computational variables need not be inferred, since the user needs to provide
-them for the call to the function to be valid.\sidenote{The same principle
-applies for instantiating existentials used in postconditions too. I will
-discuss quantifiers related to array reasoning in \cref{sec:it-array}.}
+We see that, the specification (implicitly) quantifies over pointers
+$\mathsf{xs}$ and $\mathsf{ys}$, corresponding to the function arguments. It
+also quantifies over \emph{logical} or \kl{ghost} lists $l_1$ and $l_2$.
+Following a strict \kl{liquid typing} discipline would mean the user would have
+to manually instantiate them at each call site (line 9). The user would also
+have to do the same for the existential quantifiers of the $\mathrm{list}$
+predicate of \cref{fig:list-pred-formal}, when folding it (line 12).
 
 \begin{figure}[h]
-    \inputminted[breaklines,mathescape,fontsize=\small]{py}{code/append_annot.py}
+    \inputminted[breaklines,linenos,mathescape,fontsize=\small]{py}{code/append_annot.py}
     \caption{A separation logic proof sketch of a linked integer list
         append.}\label{fig:append-annot-formal}
 \end{figure}
 
-However, it would be a shame if the user had to provide explicit instantiations
-for $l_1$ and $l_2$ at each call site, including the recursive call within the
-implementation of \mintinline{py}{append}. If we want to stick to a liquid
-typing discipline, where every quantifier must be matched up to a program
-variable, we need a way to bind the ghost values which were existentially
-quantified over in the $\mathrm{list}$ predicate of
-\cref{fig:list-pred-formal}, to names the user would have to choose.
+% \sidenote{I will discuss quantifiers related to array reasoning in \cref{sec:it-array}.}
 
-This is doubly irksome because prior to the recursive function
-call, we already know (a) $\mathrm{list}(\mathsf{xs}', l_1')$ and
-$\mathrm{list}(\mathsf{ys}', l_2')$ and (b) the precondition requires choices
-of $l_1$ and $l_2$ such that $\mathrm{list}(\mathsf{xs}', l_1)$ and
-$\mathrm{list}(\mathsf{ys}', l_1)$ so there is \emph{only one sensible choice}
-for those quantifiers.
+This is irksome because because the arguments to \mintinline{py}{append}, and
+the first argument to $\mathrm{list}$, uniquely determine all the required
+instantiations at lines 9 and 12 respectively. So, a simple inference scheme
+would be to scan the context for predicates which match part of the goal based
+on shape and \emph{computational} arguments, and instantiate any quantifiers
+based on its remaining arguments.
 
-To recap, when calling a function, we need some way of guessing some
-instantiation of quantifiers such that it satisfies the precondition. \emph{If}
-we are in a situation where there is only one sensible instantiation given the
-required and the available assertions, a simple inference scheme would be to
-simply scan the context for predicates which match on constructor (i.e.\
-$\mathsf{emp}$ matches with $\mathsf{emp}$, $\_ \mapsto{} \_$ matches $\_
-\mapsto{} \_$, $\mathrm{list(\_, \_)}$ matches $\mathrm{list}(\_, \_)$) and
-\emph{computational} arguments, and instantiate any quantifiers based on the
-remaining values.
-
-So in this instance, when calling \mintinline{py}{append(xs->tail, ys)}, % chktex 36
+In this instance, when calling \mintinline{py}{append(xs->tail, ys)}, % chktex 36
 such an inference scheme would
 \begin{enumerate}
     \item Delay instantiating $l_1$ and $l_2$.
@@ -1190,14 +1082,14 @@ I will tackle the first three questions here, and leave the latter three
 to be discussed in~\fancyref{sec:heap-types}.
 
 For the first question, the answer is: in practice, \emph{yes}. If one assigns
-input and output \kl{modes} to the arguments of separation logic predicates,
-and ensures that predicates are \emph{mode-correct} via a syntactic check
-(\fancyref{sec:monadic-syntax}), then that suffices to guarantee that the system
-can \emph{always infer quantifiers}.
-
-However, the theoretical justification for this unclear. Such assertions happen
-to be characterisable as \kl{precise}~\sidecite{reynolds2008intro}, but the
-connection to modes has not been formally explained.
+input and output \kl{modes} to the arguments of \kl{separation logic}
+predicates, and ensures that predicates are \emph{mode-correct} via a syntactic
+check (\fancyref{sec:monadic-syntax}), then that suffices to guarantee that the
+system can \emph{always infer quantifiers}.%
+\sidenote{The theoretical justification for this unclear. Such assertions happen
+to be characterisable as \kl{precise}~\cite{reynolds2008intro}, but the
+connection to modes has not been understood.}%
+\margincite{reynolds2008intro}
 
 \subsection{Precise assertions}\label{subsec:precise-assertion}
 
@@ -1210,20 +1102,20 @@ connection to modes has not been formally explained.
     does so uniquely.
 \end{definition}
 
-Based on this definition, one can derive some examples and properties of
-precise assertions as shown in~\cref{fig:precise} (examples of imprecise
-assertions are shown in~\cref{fig:imprecise}). As I shall show later, each
-production in the grammar for \kl{linear} \kl{resource types}
-(\cref{fig:kernel-res}), stays within the precise fragment.
+Some examples and properties of precise assertions as shown
+in~\cref{fig:precise}; the same for of imprecise assertions are shown
+in~\cref{fig:imprecise}. As I shall show later, each production in the grammar
+for \kl{linear} \kl{resource types} (\cref{fig:kernel-res}), stays within the
+precise fragment.
 
 \begin{marginfigure}
 \small%
 \begin{mathpar}
     \mathsf{emp}
     \and p \mapsto v
-    \and \exists v.\ p \mapsto v
+    \and \exists \; v.\ p \mapsto v
     \and \mathrm{list}(\mathsf{p}, l)
-    \and \exists l.\ \mathrm{list}(\mathsf{p}, l)
+    \and \exists \; l.\ \mathrm{list}(\mathsf{p}, l)
     \and P \wedge Q \text{ when $P$ or $Q$ is precise}
     \and P \ast Q \text{ when $P$ and $Q$ are precise}
 \end{mathpar}%
@@ -1231,7 +1123,7 @@ production in the grammar for \kl{linear} \kl{resource types}
 \end{marginfigure}
 
 \citeauthor{brotherston2016model}~\sidecite{brotherston2016model}~showed that
-precise assertions and an ordered-disjunction allow for efficient (polynomial time)
+precise assertions and an \kl{ordered-disjunction} allow for efficient (polynomial time)
 model checking without backtracking (since a normal disjunction is enough to
 require backtracking and thus exponential).
 % in~\fancyref{sec:elaboration}, I
@@ -1240,12 +1132,11 @@ require backtracking and thus exponential).
 % (a) is intuitive, given that in C source a pointer is an ``input'' and
 % dereferenced value an ``output'' and (b) happens to coincide.
 
-This brings us nicely to the second question about disjunctions. As visible
-from \cref{fig:imprecise}, we see that arbitrary disjunctions pose a problem.
-Yet, from \cref{fig:precise}, we see that the list predicate, and even a
-version of it which is existentially quantified over its ghost list, fits the
-definition of precise, despite including a disjunction in its definition
-(\cref{fig:list-pred-formal}).
+This leads to answering the second question on disjunctions. As visible from
+\cref{fig:imprecise}, disjunctive assertions can be imprecise. Yet, from
+\cref{fig:precise}, we see that the list predicate, and even a version of it
+which is existentially quantified over its ghost list, fits the definition of
+precise (\cref{fig:list-pred-formal}).
 
 \begin{marginfigure}
 \small%
@@ -1253,43 +1144,39 @@ definition of precise, despite including a disjunction in its definition
     \mathsf{true}
     \and \mathsf{emp} \vee{} \mathsf{x} \mapsto{} 42
     \and \mathsf{x} \mapsto{} 3 \vee{} \mathsf{y} \mapsto{} 7
-    \and \exists \mathsf{p}.\ \mathsf{p} \mapsto{} 1
-    \and \exists \mathsf{p}.\ \mathrm{list}(\mathsf{p}, l).
+    \and \exists \; \mathsf{p}.\ \mathsf{p} \mapsto{} 1
+    \and \exists \; \mathsf{p}.\ \mathrm{list}(\mathsf{p}, l).
 \end{mathpar}
 \caption{Examples of im\kl{precise} assertions.}\label{fig:imprecise}
 \end{marginfigure}
 
-This is because the two arms of the disjunction make assertions
-which are disjoint on \emph{both} the values the computational parameter
-$\mathsf{p}$ can take \emph{and} on the shape of the heap; one branch says
-$\mathsf{p} = \mathsf{NULL}$ and the heap will be $\mathsf{empty}$, whereas the
-other branch guarantees that (implicitly) $\mathsf{p} \neq \mathsf{NULL}$ and
-that the heap will have \emph{at least two} heap cells. I will return to the
-discussion of disjunctions in precise predicates imminently; for now I want to
-note that the locations of those two cells are expressed entirely in terms of
-program variables.
+How so? Informally, the two arms of the disjunction make assertions which are
+disjoint on \emph{both} the value of the computational parameter $\mathsf{p}$
+\emph{and} on the shape of the heap; one branch says $\mathsf{p} =
+\mathsf{NULL}$ and the heap will be $\mathsf{empty}$, whereas the other branch
+guarantees that (implicitly) $\mathsf{p} \neq \mathsf{NULL}$ and that the heap
+will have \emph{at least two} heap cells. The cells' locations, and thus the
+values they point to, $\mathsf{head}$ and $\mathsf{p\_tail}$, are wholly
+determined by $\mathsf{p}$, even though they are existentially quantified. This
+means the recursive call is also precise, and why ${tl}$ is also (recursively)
+wholly determined by $\mathsf{p}$, despite also being existentially quantified.
 
-At this point, a keen reader may have noticed that while this may be true at
-the `top-level' of the predicate, the recursive call does use the existentially
-quantified ghost value $\mathsf{p\_tail}$, which is on the right of $\mathsf{p}
-+ 1 \mapsto{} \mathsf{p\_tail}$. So why is this definition still \kl{precise}?
-It is because in any heap which satisfies the non-empty branch of the list
-predicate, $\mathsf{p\_tail}$ is \emph{uniquely} determined by its relation as
-the value in the location adjacent to $\mathsf{p}$.\sidenote{A proof of this is
-left as an exercise to the reader.} This can be operationalised with a \kl{mode}
-discipline for predicate arguments, which I shall discuss in
-\fancyref{sec:monadic-syntax}.
+This style of reasoning, of starting with computational parameters, and
+ensuring that all existentially quantified values are wholly determined by
+them, can be operationalised as a \kl{mode} discipline for predicate arguments,
+which I shall discuss in \fancyref{sec:monadic-syntax}. For now, it suffices to
+say disjunctions can be compatible with precision; on how to ensure this, I
+will imminently return.
 
 Finally, the third question, of whether precise assertions are expressive
-enough for realistic code is an empirical one. Our experience using \kl{CN} so
-far~\sidecite{pulte2023cn,pulte2024tutorial} suggests the answer is yes, it is
-sufficient for small to medium tutorial examples, all the way up to specifying
-the buddy allocator (\cref{chap:buddy}) used in pKVM\@.
+enough for realistic code, is an empirical one. Our experience using \kl{CN} so
+far~\sidecite{pulte2023cn,pulte2024tutorial,aamer2026code} suggests the answer
+is yes, it is sufficient for small to medium tutorial examples, all the way up
+to specifying the different allocators (\cref{chap:buddy}) used in pKVM\@.
 
-That being said, we have found that being able introduce and instantiate
-quantifiers manually can sometimes be useful for ergonomics. An example came
-from the efforts of Cassia Torczon to verify a basic string manipulation
-library in \kl{CN}.%
+That being said, we have found that introducing and instantiating quantifiers
+manually can actually be more ergonomic, as discovered by Cassia Torczon whilst
+verifying a basic string manipulation library in \kl{CN}.%
 \sidenote{\href{https://github.com/rems-project/cerberus/issues/540}{Cerberus\#540}}
 
 The representation of strings in this library are null-terminated arrays of
@@ -1307,14 +1194,13 @@ more convenient.
 
 \section{Monadic syntax for mode-correctness}\label{sec:monadic-syntax}
 
-\intro[mode]{Modes} help us ensure that we can infer quantifiers instantiations
-as follows. We start with separation logic predicates, and label their
-arguments as either $\mathsf{in}$puts or $\mathsf{out}$puts, as shown in
-\cref{fig:mode-pred}. In the scope of each quantifier, for each predicate, we
-check the mode of each parameter matches the mode of each argument.
-Computational arguments the user provides are considered inputs. If a
-quantified variable is used in an input position, it must also be used
-elsewhere in an output position.
+We can use \intro{modes} to ensure that we can infer quantifier instantiations.
+Start with separation logic predicates, and label their arguments as either
+$\mathsf{in}$puts or $\mathsf{out}$puts, as shown in \cref{fig:mode-pred}. In
+the scope of each quantifier, for each predicate, check the mode of each
+parameter matches the mode of each argument. Computational arguments are
+considered inputs. If a quantified variable is used in an input position, it
+must also be used elsewhere in an output position.
 
 \begin{marginfigure}
     \centering
@@ -1326,16 +1212,16 @@ elsewhere in an output position.
     \caption{Modes on separation logic predicates.}\label{fig:mode-pred}
 \end{marginfigure}
 
-So for example, the second disjunct of \cref{fig:list-pred-formal}, the
+Revisiting the second disjunct of \cref{fig:list-pred-formal}, the
 quantified variable $\mathsf{p\_tail}$, occurs in $\mathrm{list}
 (\mathsf{p\_tail}, {tl})$ in the input position, but this is fine because it also
 occurs in the output position in $\mathsf{p} + 1 \mapsto{} \mathsf{p\_tail}$.
-However, in the example from \cref{fig:imprecise}, $\exists \mathsf{xs}. \
+However, in the example from \cref{fig:imprecise}, $\exists \; \mathsf{xs}. \
 \mathrm{list}(\mathsf{xs},l)$ is badly moded because $\mathsf{xs}$ occurs in an
 input position, but nowhere else in an output.
 
-Ensuring that quantifiers preserve \kl[precise]{precision} in assertions by
-dividing up predicate arguments into input and output modes is
+Ensuring that quantifiers preserve \kl{precision} in assertions by
+dividing predicate arguments into input and output modes is
 not new~\sidecite{somogyi1996execution,berdine2006smallfoot,nguyen2008runtime,maksimovic2021gillian},
 including for the purposes of reducing the burden of
 annotation~\sidecite{jacobs2011verifast}.
@@ -1363,7 +1249,7 @@ powerset monad, very natural.
         &\llbracket \mathsf{return}\ t \rrbracket = \lambda a.\ t = a \wedge{} \mathsf{emp} \\
         &\llbracket \mathsf{Own(t)} \rrbracket = \lambda a.\ t \mapsto{} a \\
         &\llbracket \mathsf{let\ x} = e; e' \rrbracket \\
-        &\: = \lambda a.\ \exists x.\ \llbracket e \rrbracket x \ast{} \llbracket e' \rrbracket a \\
+        &\: = \lambda a.\ \exists \; x.\ \llbracket e \rrbracket x \ast{} \llbracket e' \rrbracket a \\
         &\llbracket \mathsf{if}\ t\ \mathsf{then}\ e\ \mathsf{else}\ e' \rrbracket \\
         &\: = \lambda a.\  \left( t \wedge \llbracket e \rrbracket a \right) \vee \left( \neg \; t \wedge \llbracket e' \rrbracket a \right)
     \end{align*}
@@ -1376,25 +1262,23 @@ This notational transformation turns \emph{mode correctness} into
 e'$ as monadic bindings inside a covariant powerset monad. It also enforces the
 disjointness of computational values and the shape of the heap mentioned
 earlier with the $\mathsf{if}\ t\ \mathsf{then}\ e\ \mathsf{else}\ e'$
-construct. Not only can all logical quantifiers now be \emph{inferred} without
-backtracking, branching assertions can be checked without backtracking too:
+construct. Thus, all logical quantifiers can be \emph{inferred} without
+backtracking, and branching assertions can be checked similarly:
 check $e$ if you can can prove $t$, or check $e'$ if you can prove $\neg\;t$.
 
 \section{\kl[iterated]{Iterated} separating conjunctions to handle arrays}\label{sec:it-array}
 
-C programmers use arrays a lot, particularly with computed index (i.e.\
-`random') access, rather than following a particular traversal pattern to get
-some element in the middle.
+C programmers use arrays a lot, particularly with computed index (\ie{}
+`random') access, rather than following a particular traversal pattern.
+Typically, arrays are handled via recursive predicates, and if the order of
+traversal in C does not match the order of traversal in the predicate, or
+access to the middle of the array is required, then a user needs to use lemmas
+to massage the available assumptions into a usable form.
 
-Typically (such as in VeriFast) arrays are handled via recursive predicates,
-and if the order of traversal in C does not match the order of traversal in the
-predicate, or access is required to the middle of the array, then a user needs
-to use lemmas of some sort to massage the available assertions into a usable
-form.
-
-\kl{CN} implements \intro{iterated separating conjunctions}, inspired by
-\sidetextcite{muller2016automatic}, but with restrictions to ensure only
-quantifier-free SMT queries. They are introduced and eliminated as follows.
+\kl{CN} implements \kl{iterated separating conjunctions}, henceforth refered as
+\intro{iterated predicates}, inspired by \sidetextcite{muller2016automatic},
+but with restrictions to ensure only quantifier-free SMT queries. They are
+introduced and eliminated as follows.
 \begin{itemize}
 \item $ \cnkw{each}  \left(  \beta \,  \cnmv{x} \, ;  \cnnt{iguard}
     \right)\, \left\{  { \alpha }  \left(  \cnkw{array\_shift} \, \langle
@@ -1413,21 +1297,21 @@ quantifier-free SMT queries. They are introduced and eliminated as follows.
         ${ \alpha }$ to be a pointer.
     \item $\cnnt{iargs}$ is a list of logical/SMT arguments.
 \end{itemize}
-\item Indices which are intended to move into or out of an iterated separating
-    conjunction must be declared so explicitly with a $\cnkw{focus}\ \cnnt{term}\cnkw{;}$
-    statement.
+\item The user must explicitly declare which indices can be moved in or out
+    with a `$\cnkw{focus}\ \alpha,\ \cnnt{term}\cnkw{;}$'
+    \kl{CN statement}.
 \end{itemize}
 
 This enables a few convenient features.
 \begin{itemize}
     \item Iterated separating conjunctions can be tested for equality by
-        looking only at the name of the predicate being iterated over, symbolic
+        looking only at the name of the predicate inside, symbolic
         equality of the base pointer, and symbolic equivalence of the guard
         conditions.
     \item Predicates can be moved out of and into iterated separating conjunctions
         automatically.
     \item Iterated separating conjunctions can be split along an arbitrary
-        guard automatically in a similar fashion, except `subtraction' is done as follows:
+        guard automatically:
         for guard \cninline{A = 0i32 <= i && i < 10i32} and guard
         \cninline[breaklines]{B = A && mod(i, 2i32) == 0i32}, % chktex 36
         the subtraction is simply \cninline{A && !B}. Note that the split % chktex 26
@@ -1449,14 +1333,9 @@ It also comes with a few limitations.
 \kl{CN} did support the decidable array property
 fragment~\sidecite{bradley2006whats}, but it was not expressive enough for
 verifying pKVM's \kl{buddy allocator} (\cref{chap:buddy}) and so it was
-removed. \kl{CN} also supported a scheme for inferring indices (instead of
+removed. \kl{CN} also inferred indices (instead of
 requiring the movable ones to be declared up front), but this was removed
 during a change to the inference
 scheme.\sidenote{\href{https://github.com/rems-project/cerberus/commit/7c2c0a364a4373e4eb109f32d01cc9584f51e81f}{Commit
 7c2c0a36.}}\label{sn:new-inf}
 
-% \section{Alternatives and related work}
-%
-% \begin{itemize}
-%     \item Do I want to talk about this here?
-% \end{itemize}
