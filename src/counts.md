@@ -9,7 +9,7 @@ Counts are `text + headers + captions`. **Own** is the prose directly under a he
 | Introduction | **5998** | 16 |
 | Example: queues in CN | **2797** | 52 |
 | Background: Cerberus and CN design | **6989** | 32 |
-| Kernel CN: Grammar | **4299** | 167 |
+| Kernel CN: Grammar | **4240** | 158 |
 | Kernel CN: Static semantics | **4675** | 349 |
 | Kernel CN: Proof of soundness | **1642** | 188 |
 | Informing implementation discussions | **1458** | 156 |
@@ -24,7 +24,7 @@ Counts are `text + headers + captions`. **Own** is the prose directly under a he
 | Future Directions | **3285** | 22 |
 | Conclusion | **1334** | 545 |
 
-| **Document total** | **64529** | |
+| **Document total** | **64470** | |
 
 ## Introduction
 
@@ -69,21 +69,21 @@ Counts are `text + headers + captions`. **Own** is the prose directly under a he
 | Decidable refinements for retrofitting and counter-examples |  |  | 548 |
 | Bidirectionality for taming subtyping |  |  | 494 |
 | Linearity to manage (non-leaky) resources |  |  | 691 |
-| Section |  | 1110 | 518 |
-|  | Precise assertions |  | 592 |
+| Section |  | 1111 | 517 |
+|  | Precise assertions |  | 594 |
 | Monadic syntax for mode-correctness |  |  | 374 |
-| Iterated separating conjunctions to handle arrays |  |  | 414 |
+| Iterated separating conjunctions to handle arrays |  |  | 413 |
 
 ## Kernel CN: Grammar
 
-**Chapter total: 4299** (own 167)
+**Chapter total: 4240** (own 158)
 
 | Section | Subsection | Total | Own |
 | :-- | :-- | --: | --: |
-| Kernel CN types |  |  | 588 |
-| Desugaring CN types into kernel types |  |  | 729 |
-| ResCore |  |  | 885 |
-| Permissions resource terms |  |  | 1039 |
+| Kernel CN types |  |  | 572 |
+| Desugaring CN types into kernel types |  |  | 726 |
+| ResCore |  |  | 856 |
+| Permissions resource terms |  |  | 1037 |
 | Core to ResCore example |  |  | 891 |
 
 ## Kernel CN: Static semantics
