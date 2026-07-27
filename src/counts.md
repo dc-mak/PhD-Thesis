@@ -10,8 +10,8 @@ Counts are `text + headers + captions`. **Own** is the prose directly under a he
 | Example: queues in CN | **2797** | 52 |
 | Background: Cerberus and CN design | **6989** | 32 |
 | Kernel CN: Grammar | **4240** | 158 |
-| Kernel CN: Static semantics | **4675** | 349 |
-| Kernel CN: Proof of soundness | **1642** | 188 |
+| Kernel CN: Static semantics | **3860** | 340 |
+| Kernel CN: Proof of soundness | **1640** | 188 |
 | Informing implementation discussions | **1458** | 156 |
 | An alternative presentation | **2241** | 91 |
 | Memory object models, explained | **7245** | 394 |
@@ -24,7 +24,7 @@ Counts are `text + headers + captions`. **Own** is the prose directly under a he
 | Future Directions | **3285** | 22 |
 | Conclusion | **1334** | 545 |
 
-| **Document total** | **64470** | |
+| **Document total** | **63653** | |
 
 ## Introduction
 
@@ -88,35 +88,35 @@ Counts are `text + headers + captions`. **Own** is the prose directly under a he
 
 ## Kernel CN: Static semantics
 
-**Chapter total: 4675** (own 349)
+**Chapter total: 3860** (own 340)
 
 | Section | Subsection | Total | Own |
 | :-- | :-- | --: | --: |
-| Contexts |  |  | 75 |
-| Pure values and expressions |  |  | 362 |
-| Pure statements |  |  | 268 |
-| Resource terms |  | 855 | 85 |
-|  | Synthesis for resource terms |  | 313 |
-|  | Synthesis for predicate operations |  | 135 |
-|  | Checking for resource terms |  | 322 |
-| Memory actions and pointer operations |  |  | 470 |
-| Spine judgement |  |  | 305 |
-| Effectful values and expressions |  |  | 144 |
-| Pattern matching |  |  | 501 |
-| Effectful statements |  |  | 154 |
-| Elaboration |  | 1192 | 609 |
-|  | Normalised resource contexts |  | 170 |
+| Contexts |  |  | 64 |
+| Pure values and expressions |  |  | 255 |
+| Pure statements |  |  | 199 |
+| Resource terms |  | 680 | 62 |
+|  | Synthesis for resource terms |  | 203 |
+|  | Synthesis for predicate operations |  | 140 |
+|  | Checking for resource terms |  | 275 |
+| Memory actions and pointer operations |  |  | 416 |
+| Spine judgement |  |  | 227 |
+| Effectful values and expressions |  |  | 69 |
+| pattern-matching |  |  | 375 |
+| Effectful statements |  |  | 126 |
+| Elaboration |  | 1109 | 533 |
+|  | Normalised resource contexts |  | 169 |
 |  | Synthesising output arguments |  | 246 |
-|  | Synthesising indices for iterated predicates |  | 167 |
+|  | Synthesising indices for iterated predicates |  | 161 |
 
 ## Kernel CN: Proof of soundness
 
-**Chapter total: 1642** (own 188)
+**Chapter total: 1640** (own 188)
 
 | Section | Subsection | Total | Own |
 | :-- | :-- | --: | --: |
 | Substitution and contexts |  |  | 377 |
-| Heaps and their types |  |  | 586 |
+| Heaps and their types |  |  | 584 |
 | Soundness |  |  | 491 |
 
 ## Informing implementation discussions
