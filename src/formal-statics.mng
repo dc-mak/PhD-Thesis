@@ -338,7 +338,7 @@ represents a constraint to be proven by the SMT solver, but does not state
 which one. Similarly, existential types are also \kl{checking} because it is
 impossible to infer them in the general case.\sidenote{Consider a heap $1 \mapsto 1$, and consider that all
 of $\exists x.\ 1 \mapsto 1$, $\exists x.\ x \mapsto 1$, $\exists x.\ 1 \mapsto x$
-(imprecise), $\exists x.\ x \mapsto x$ are valid types describing it.}.
+(imprecise), $\exists x.\ x \mapsto x$ are valid types describing it.}
 % The witness \textemdash{} carried by the {\small $\cnkw{pack}$} \textemdash{}
 % is substituted into the inner type, which is turn is used to check the inner
 % $\mathit{res\_term}$.
@@ -350,18 +350,20 @@ and which one depends on whether the condition or its negation is entailed. I
 intentionally avoid the more permissive rule below because that would lead to
 the same \kl{resource term} being typed twice, incurring an exponential cost.
 
+{\small%
 \[
   \inferrule{ [[ C ; L ; N , term ; R |- res_term <= res1 ]] \\ [[ C ; L ; N , neg term ; R |- res_term <= res2 ]] }
             { [[ C ; L ; N , term ; R |- res_term <= if term then res1 else res2 ]] }
-\]
+\]}
 
 If neither the condition nor its negation is entailed, I call the condition
-(and the resource) \intro{under-determined} (with respect to a constraint
-context). In this case, the system may attempt to \kl{synthesise} a type for
-the \kl[res-term]{term} and check that the \kl{synthesised} \kl[res-type]{type}
-is equal to the \kl{ordered-disjunction}. Only variables can \kl{synthesise} an
+(and the resource) \intro{under-determined}. In this case, the system may
+attempt to \kl{synthesise} a type for the \kl[res-term]{term} and check that
+the \kl{synthesised} \kl[res-type]{type} is equal to the
+\kl{ordered-disjunction}. Only variables can \kl{synthesise} an
 \kl{ordered-disjunction} type, that too only if the condition is
-\kl{under-determined} (otherwise simplification will reduce it to either branch).
+\kl{under-determined} (otherwise simplification will reduce it to either
+branch).
 
 \kl{Separating conjunctions} are also checked to allow for the case where an
 existential or an \kl{ordered-disjunction} are in the sub-components.
@@ -906,45 +908,49 @@ from the lookup judgement (\cref{subsec:app-synth-indices}).
 \chapter{Kernel CN:\ Proof of soundness}%
 \label{chap:kernel-soundness}
 
-To ensure that \kl{Kernel CN} had served as a useful formalisation for \kl{CN},
-I proved that it was sound. The whole proof is in~\cref{chap:soundness}; in
-this chapter, I will discuss the key definitions, lemmas and proof sketches. I
-will first define an operational semantics for \kl{ResCore}, and then do a
-tedious, straightforward, syntactic proof of type
-safety.\sidenote{The continuation-like behaviour of the \coreinline{run()}
-and \coreinline{save()} operators make it more challenging to prove
-soundness in a denotational manner.} This suffices because \kl{ResCore} is a
-first-order language, and all functions and labels are annotated with the
-correct type, despite the presence of linear types, which usually require
-logical relation methods.
+In this chapter, I discuss the key definitions, lemmas and proof sketches (the
+whole proof is in~\cref{chap:soundness}) for establishing the soundness of
+\kl{Kernel CN}. I first define an operational semantics for \kl{ResCore}, and
+then sketch out a straightforward, syntactic proof of type safety.\sidenote{The
+continuation-like behaviour of the $\cnkw{run}$ and $\cnkw{save}$ operators
+make it more challenging to prove soundness denotationally.} This suffices
+because \kl{ResCore} is a first-order language, and all functions and labels
+are annotated with the correct type, despite the presence of \kl{linear} types,
+which usually require logical relation methods.
 
 The proof is split up into three smaller proofs: a joint
-progress-and-type-preservation proof for resource term reduction, a progress
-theorem, and a type-preservation theorem.
+progress-and-type-preservation proof for \kl{resource term} reduction, a
+progress theorem, and a type-preservation theorem.
 
 The definitions and lemmas of note in this proof are (a) the careful definition
-of substitution, and its accompanying substitution lemma, (b) the novel
-structure of the heap, which is unusual in that is essentially just separation
-logic predicate and, (c) the interaction between the resource terms and heaps.
+of \kl{substitution}, and its accompanying substitution lemma, (b) the novel
+structure of the \kl{heap}, which is unusual in that is essentially just
+separation logic predicate and, (c) the interaction between the \kl{resource
+terms} and \kl{heaps}.
 
 \section{Substitution and contexts}\label{sec:sub-ctxts}
 
-The first three rules for typing substitutions (\cref{fig:soundness-sub}) are
-straightforward: the empty substitution represents the empty context, a
-computational or logical substitution requires the substituted value to be well
-typed, and same for the resource term. However, because resource terms and
-types can depend on the first two, scoping needs to be handled carefully,
-so resource types in a substitution may only mention variables
-either in the contexts on the left of the turnstile, or the computational
-and logical context in the substitution type. This makes it easier to decompose
-substitutions into valid parts, each of which can be applied sequentially but
-still produce meaningful results (because of the dependent types,
-substitutions may be telescoping, so need not commute). Hence, the
-\textsc{Sub\_Chk\_Concat} rule checks not only the first half $\psi$ of the
-substitution against half the context, but checks the second half
-\emph{substituted} against second half of the context \emph{substituted}, to
-eliminate any mention of variables from $[[ C1 ]]$ and $[[ L1 ]]$ in
-$[[ R'2 ]]$.
+I start with a \kl{substitution lemma}, which  requires assigning `context
+types' to substitutions. The first three rules for typing substitutions
+(\cref{fig:soundness-sub}) are straightforward: the empty substitution
+represents the empty context, a computational or logical substitution requires
+the substituted terms to be well-typed.
+
+A resource substitution also requires its \kl[res-term]{term} to be well-typed.
+However, because \kl{resource terms} and \kl[res-type]{types} depend on
+\kl[Cctx]{computational} and \kl{logical variables}, scoping needs to be
+handled carefully. \kl{Resource types} in a substitution may only mention
+variables either in the contexts on the left of the turnstile, or the
+\kl[Cctx]{computational} and \kl[Lctx]{logical context} in the substitution
+type.
+
+This scoping discipline makes it easier to decompose substitutions into valid
+parts, each of which must be applied sequentially. Hence, the
+\textsc{Sub\_Chk\_Concat} rule \kl{checks} not only the first half $\psi$ of
+the substitution against half the context, but checks the second half
+\emph{substituted} $\psi(\sigma)$ against second half of the context
+\emph{substituted}, to eliminate any mention of variables from $[[ C1 ]]$ and
+$[[ L1 ]]$ in $[[ R'2 ]]$.
 
 \begin{figure*}[tp]
     \small
@@ -953,10 +959,10 @@ $[[ R'2 ]]$.
     \caption{\kl{Kernel CN} substitution typing}\label{fig:soundness-sub}
 \end{figure*}
 
-In~\cref{sec:sub}, I use this definition to prove lemmas such as the
-fact that substitution preserves SMT results and that substitutions can be
-split up (linearity means this property is not completely trivial). The key one
-is the substitution lemma stated below.
+In~\cref{sec:sub}, I use this definition to prove lemmas such as the fact that
+substitution preserves SMT results and that substitutions can be split up; the
+latter is complicated by the presence of \kl{linearity}. The key one is the
+\intro{substitution lemma} stated below.
 
 \begin{lemma}[Substitution lemma]
 If $[[ C' ; L' ; N ; R' ]] [[|-]] J$, then
@@ -966,31 +972,27 @@ If $[[ C' ; L' ; N ; R' ]] [[|-]] J$, then
     &[[ C ; L ; subs ( N ) ; R ]] [[|-]] [[ subs ]] ( J ).
 \end{align*}
 
-For types, substitutions are only defined over resource types $[[res]]$, and
-return types $[[ret]]$, not base types $[[base_type]]$. Similarly,
-for terms, substitutions are only defined over expressions (including SMT terms
-$[[term]]$), but not (computational, resource or return) patterns.
+Remember, only \kl{logical terms} $[[term]]$, \kl{resource types} $[[res]]$ and
+\kl{return types} $[[ret]]$ depend on \kl[Cctx]{computational} or \kl{logical
+variables}; base types $[[base_type]]$ are simple.
 
-Since $[[ N ]]$ is scoped to $[[ C' ]] ; [[ L' ]]$, we must substitute
-over it as well as all the usual suspects on the right.
-
-Substitution of contexts is defined by substituting over each constraint in
-$[[ N ]]$. As a result, $[[ subs ( N1 , N2) ]] = [[ subs ( N1 ) , subs ( N2 ) ]]$,
-and if $[[ subs ( N ) ]] = [[ N1' , N2' ]]$ then
-$[[ exists ]] [[ N1 ]], [[ N2 ]] .\: [[ subs ( N1 , N2 ) ]] = [[ subs ( N1 ) , subs ( N2 ) ]]$.
+Since $[[ N ]]$ is scoped to $[[ C' ]] ; [[ L' ]]$, we must substitute over it
+as well as all the usual suspects on the right. This is defined by substituting
+over each constraint in $[[ N ]]$. As a result, $[[ subs ( N1 , N2) ]] =
+[[ subs ( N1 ) , subs ( N2 ) ]]$, and if $[[ subs ( N ) ]] = [[ N1' , N2' ]]$ then
+$[[ exists ]] [[ N1 ]], [[ N2 ]] .\: [[ subs ( N1 , N2 ) ]] =
+[[ subs ( N1 ) , subs ( N2 ) ]]$.
 \end{lemma}
 
 \begin{proof}
-Full proof in~\cref{subsec:sub}. Induction over the typing judgements. There are
-four parts to this proof.
+See~\cref{subsec:sub}, which proceeds by an induction over the typing
+judgements, in four parts.
 \begin{itemize}
 \item \textbf{Variable rules.} Repeatedly invert the substitution typing
     assumption until the variable used in the context appears, and then
-    use the equational properties of substitution and the assumptions
-    to prove the goal.
-\item \StmtRetT. $[[ to_fun ret ]]$ commutes with
-    substitution, but leaves terms unchanged, so induction proceeds
-    straightforwardly.
+    use the equational properties of substitution to prove the goal.
+\item \StmtRetT. $[[ to_fun ret ]]$ commutes with substitution, by leaving
+    $[[terms]]$ unchanged, so induction proceeds straightforwardly.
 \item \textbf{Context change rules.} Split up substitutions as required by the
     restrictions on the resource context. If a rule uses the SMT judgement, use
     the substitution preserves SMT results lemma.
@@ -1000,15 +1002,11 @@ four parts to this proof.
 
 \section{Heaps and their types}\label{sec:heap-types}
 
-Heaps in the operational semantics are, slightly unusually, tree-shaped
-collections of predicates (\cref{fig:kernel-heap-def}). The leaves of the tree
-are the built-in ownership and allocation predicates; the branches of the heap
-are predicates tagged with their definition (a resource value of the type of
-the predicate body) and a sub-heap (of the resources used by the definition).
-
-Resource \emph{values} are the subset of resource terms which cannot reduce
-further. This is to capture the idea that predicates encapsulate their contents
-until opened.
+\intro{Heaps} in the operational semantics are, slightly unusually, tree-shaped
+collections of \kl{predicates} (\cref{fig:kernel-heap-def}). The leaves of the
+tree are the \kl{built-in predicates}; the branches of the \kl{heap} are
+\kl{user-defined ones} tagged with their `run-time' definitions (resource
+values) and a sub-heap (of the resources used by the definition).
 
 \begin{figure*}
     \small%
@@ -1023,12 +1021,12 @@ until opened.
     \caption{\kl{ResCore} dynamics heap definition.}\label{fig:kernel-heap-def}
 \end{figure*}
 
-This means that, in the dynamic semantics, unfolding predicates (via pattern
-matching), \emph{affect the shape of the heap} (\cref{fig:kernel-unfold}). The
-nested definition is used to destruct the rest of the pattern into a
-substitution, and the heap is extended with the sub-heap associated with those
-values. In other words, unfolding a predicate flattens the structure of the
-tree-shaped heap by one level.
+\intro{Resource values} are the subset of \kl{resource terms} which cannot
+reduce further. They help capture the idea that \kl{predicates} encapsulate
+their contents until unfolded, via \kl[resource patttern]{pattern-matching}
+(\cref{fig:kernel-unfold}), which flattens the tree-shaped heap by one level.
+The nested definition is used to destruct the rest of the \kl[resource
+pattern]{pattern} to produce a new \kl{heap} and \kl{substitution}.
 
 \begin{figure}[htp]
     \small%
@@ -1040,10 +1038,11 @@ tree-shaped heap by one level.
     flattens the structure of the tree-shaped heap by one level.}\label{fig:kernel-unfold}
 \end{figure}
 
-In the fold rule (\cref{fig:kernel-fold}), the inverse happens, which requires
-splitting a heap into the \emph{footprint} of some resource values (\cref{fig:kernel-footprint}), and the
-remainder. I define the footprint of a resource value as the sub-heap containing
-the (iterated) predicates referred to in said value.
+In the {\small $\cnkw{fold}$} rule (\cref{fig:kernel-fold}), the inverse
+happens, which requires splitting a heap into the \kl{footprint} of some
+\kl{resource values} (\cref{fig:kernel-footprint}), and the remainder. The
+\intro{footprint} of a resource value is the sub-heap containing the (iterated)
+predicates it refers to.
 
 \begin{figure}[htp]
     \ContinuedFloat%
@@ -1057,10 +1056,10 @@ the (iterated) predicates referred to in said value.
         heap.}\label{fig:kernel-fold}
 \end{figure}
 
-I defined both the pattern-matching and the resource term reduction dynamic
-semantics in a big-step style; this makes their definitions more concise,
-at the cost of intertwining the usually separate proofs of progress and type
-preservations for resource term reduction.
+I defined both the \kl[res-pat]{pattern-matching} and the \kl{resource
+term} dynamic semantics in a big-step style; this makes their definitions more
+concise, at the cost of intertwining the usually separate proofs of progress
+and type preservations.
 
 \begin{figure}[htp]
     \ContinuedFloat%
@@ -1075,13 +1074,13 @@ preservations for resource term reduction.
         predicate.}\label{fig:kernel-footprint}
 \end{figure}
 
-The final definition required for the proof is that of the type of a heap. The
-type of a heap is a \kl{normalised resource} context
-(\cref{sec:norm-ctxt-res}); the rules for these are straightforward
-(\cref{fig:kernel-heap-typing}), except the fact a heap with a folded predicate
-requires there exists a context for which the resource value $[[ def ]]$ and
-$[[ heap ]]$ is well-typed. This becomes necessary for proving the progress of
-pattern-matching for the whole of ResCore.
+I finish the proof preliminaries by defining the type of a heap: a
+\kl{normalised resource context} (\cref{sec:norm-ctxt-res}); the rules for
+these are straightforward (\cref{fig:kernel-heap-typing}), except for
+\HeapPredOther{}. This rule (implicitly) existentially quantifies over a
+\kl[nRctx]{resource context} $[[nR]]$ for which the resource value $[[ def ]]$
+and $[[ heap ]]$ are well-typed. I use this to prove prove progress for
+\kl{ResCore} pattern-matching.
 
 \begin{figure*}
     \small
@@ -1094,40 +1093,41 @@ pattern-matching for the whole of ResCore.
     \caption{Select typing rules for heaps.}\label{fig:kernel-heap-typing}
 \end{figure*}
 
-As with elaboration, using normalised resource contexts does not restrict the
-generality of progress and type preservations theorems. This is because of the
-following lemma: if a well-typed resource term is closed, then the context in
-which it is well-typed must be normalised (\cref{subsec:res_ctx_closed_norm}). We
-now have all the ingredients to state and sketch a proof for the progress and
-type preservation for resource terms.
+As with elaboration (\cref{sec:elaboration}), using \kl{normalised resource
+contexts} does not restrict the generality of progress and type preservations
+theorems. This is because of the following lemma: if a well-typed \kl{resource
+term} is closed, then the context in which it is well-typed must be
+\kl[nRctx]{normalised} (\cref{subsec:res_ctx_closed_norm}).
+
+Using these definitions, we can state and prove \kl{progress and type
+preservation for resource terms}.
 
 \begin{theorem}[Progress and type preservation for resource terms]
-For all closed resource terms ($[[ res_term ]]$) which type check or
-synthesise ($[[ cdot ; cdot ; N ; nR |- res_term <= res ]]$) and all well-typed
-heaps ($[[ h <= nR ]]$) there exists a resource value ($[[ res_val ]]$),
-context ($[[ nR' ]]$) and heap ($[[ h' ]]$), such that: the value is
-well-typed ($[[ cdot ; cdot ; N ; nR' |- res_val <= res ]]$); the heap is
-well-typed ($[[ h' <= nR' ]]$); for all frame-heaps ($[[ f ]]$), the
-resource term reduces to the resource value without affecting the frame-heap
-($[[ _t | < h + f ; res_term > ||v < h' + f ; res_val > ]]$).
+For all closed resource terms ($[[ res_term ]]$) which type \kl{check} or
+\kl{synthesise} ($[[ cdot ; cdot ; N ; nR |- res_term <= res ]]$) and all well-typed
+\kl{heaps} ($[[ h <= nR ]]$) there exists a \kl{resource value} ($[[ res_val ]]$),
+\kl[nRctx]{context} ($[[ nR' ]]$) and \kl{heap} ($[[ h' ]]$), such that: the
+\kl[res-val]{value} is well-typed ($[[ cdot ; cdot ; N ; nR' |- res_val <= res ]]$);
+the \kl{heap} is well-typed ($[[ h' <= nR' ]]$); and, for all frame-\kl{heaps}
+($[[ f ]]$), the \kl{resource term} reduces to the \kl{resource value} without
+affecting the frame-\kl{heap} ($[[ _t | < h + f ; res_term > ||v < h' + f ; res_val > ]]$).
 \end{theorem}
 
 \begin{proof}
-Full proof in~\cref{subsec:res_term_progress}. Induction on the resource
-term typing assumption. The type dictates the value and context, the latter of
-which dictates the shape of the heap; all of this relies heavily on a few
-inversion lemmas. The existential is necessary later for proving well-typed
-values pattern pattern-match successfully, where it is used as a witness when
-proving heap typing for folded predicates. The frame heap $f$ is necessary later
-for proving type preservation for \coreinline{let}-expressions.
+See~\cref{subsec:res_term_progress}, which proceeds by induction on the
+\kl{resource term} typing assumption. The \kl[res-type]{type} dictates the
+\kl[res-val]{value} and \kl[nRctx]{context}, the latter of which dictates the
+shape of the \kl{heap}. This chain relies heavily on a few inversion lemmas.
+The existential is necessary later for \fancyref{subsec:wt_values_pat_match}.
+The frame heap $f$ is necessary later for proving type preservation for {\small
+$\cnkw{let}$}-expressions.
 \end{proof}
 
 \section{Soundness}
 
-The configuration for the operational semantics is a pair of a heap and a
-ResCore program. As one might expect, proving progress requires well-typed
-patterns successfully produce substitutions (\cref{subsec:wt_values_pat_match}).
-Cerberus generates all computational
+The configuration for the operational semantics is a pair of a \kl{heap} and a
+\kl{ResCore} program. As one might expect, proving progress requires
+\fancyref{subsec:wt_values_pat_match}. \kl{Cerberus} generates all computational
 patterns and ensures they are all exhaustive, so I assume this in the proof.
 Proving well-typed patterns successfully produce substitutions is complicated
 by two things, the solution to which requires the introduction of a relation on
@@ -1144,17 +1144,17 @@ types to $~$ relatedness, which links the two, so that during the proof,
 we can substitute the constraint term $[[ x1 :: x2 ]]$ at the type-level, and
 maintain a link to the corresponding value.
 
-The second is that the conditions of related ordered-disjunctions must remain
-SMT-equivalent (with reference to a constraint context), so that pattern-match
-typing and resource term typing are consistent.
+The second is that the conditions of related \kl{ordered-disjunctions} must
+remain SMT-equivalent (with reference to a constraint context), so that
+pattern-match typing and \kl{resource term} typing are consistent.
 
 \begin{theorem}[Progress for ResCore]
-If a statement ($[[ stmt ]]$) is well-typed
-($[[ cdot ; cdot ; N ; nR |- stmt <= ret ]]$) and all computational patterns
-in it are exhaustive, then either it is a value
+If a \kl[stmt]{statement} ($[[ stmt ]]$) is well-typed
+($[[ cdot ; cdot ; N ; nR |- stmt <= ret ]]$) and all \kl{computational patterns}
+in it are exhaustive, then either it is a \kl[ret-term]{value}
 ($[[<ret_terms>]]$)\sidenote{See~\cref{fig:kernel-expr,fig:typing-ret-terms}.}, or it is
-unreachable, or for all heaps ($[[ h ]]$), if the heap is well-typed
-($[[ h <= nR ]]$) then there exists another heap ($[[ h' ]]$) and expression
+unreachable, or for all \kl{heaps} ($[[ h ]]$), if the \kl{heap} is well-typed
+($[[ h <= nR ]]$) then there exists another \kl{heap} ($[[ h' ]]$) and \kl[stmt]{statement}
 ($[[ stmt' ]]$) which is stepped to ($[[ < _t ; h ; stmt > --> < _t ; h' ; stmt' > ]]$)
 in the operational semantics.
 \end{theorem}
@@ -1165,8 +1165,8 @@ Induction over the typing assumption. Full proof in~\cref{sec:progress}.
 
 For type preservation, a few things are noteworthy about its proof.
 
-First is that a frame-heap has to be explicitly passed around.  Whilst this is
-inconvenient, it becomes necessary in the \textsc{Stmt\_Let} case.
+First is that a frame-\kl{heap} has to be explicitly passed around.  Whilst
+this is inconvenient, it becomes necessary in the \textsc{Stmt\_Let} case.
 
 Second is in the lemma \fancyref{subsec:wt_values_pat_match}.
 There are two substitutions at play here. As an example, let
@@ -1191,22 +1191,22 @@ all the constraints involve no variables,
 they will be trivially decidable.
 
 \begin{theorem}[Type preservation for ResCore]
-For all closed and well-typed statements
+For all closed and well-typed \kl[stmt]{statements}
 ($[[ cdot ; cdot ; N ; nR |- stmt <= ret ]]$),
-well typed heaps ($[[ h <= nR ]]$),
-frame-heaps ($[[ f ]]$),
-new heaps ($[[ heap ]]$),
-and new statements ($[[ stmt' ]]$),
+well typed \kl{heaps} ($[[ h <= nR ]]$),
+frame-\kl{heaps} ($[[ f ]]$),
+new \kl{heaps} ($[[ heap ]]$),
+and new \kl{statements} ($[[ stmt' ]]$),
 which are connected by a step in the operational semantics
 ($[[ < _t ; h + f ; stmt > -->  < _t ; heap ; stmt' > ]]$),
 if all top-level functions are annotated correctly,
-there exists a constraint context ($[[ N' ]]$),
-sub-heap ($[[ h' ]]$),
-and resource context ($[[ nR' ]]$),
-such that the constraint context is $[[ N ]]$ extended,
-the frame is unaffected ($[[ heap ]] = [[ h' + f ]]$),
-the sub-heap is well-typed ($[[ h' <= nR' ]]$),
-and the statement too
+there exists a \kl{constraint context} ($[[ N' ]]$),
+sub-\kl{heap} ($[[ h' ]]$),
+and \kl[nRctx]{resource context} ($[[ nR' ]]$),
+such that the \kl{constraint context} is $[[ N ]]$ extended,
+the \kl{frame} is unaffected ($[[ heap ]] = [[ h' + f ]]$),
+the sub-\kl{heap} is well-typed ($[[ h' <= nR' ]]$),
+and the \kl[stmt]{statement} too
 ($[[ cdot ; cdot ; N' ; nR' |- stmt' <= ret ]]$).
 \end{theorem}
 

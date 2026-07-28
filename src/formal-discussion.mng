@@ -1,17 +1,19 @@
 % vim: ft=tex
 \chapter{Informing implementation discussions}\label{chap:inform-impl}
 
+\margintoc{}%
+%
 I started formalising \kl{Kernel CN} long after implementation had begun, and
 benefited by the clarity of having an implementation and implementers I could
 consult in moments of confusion.
 
-However, this mode of development means that there were \emph{many} design
-decisions made in a rather conservative context, because the programming was
-always of a system which was being defined along the way, rather than a
-well-understood pre-existing one. Extensions to syntax and inference were
-always the minimum required for verifying the \kl{pKVM} \kl{buddy allocator}, lest
-performance and inference suffer greatly, rather than ones based on a strong
-formal and holistic consideration of the constructs and interactions at play.
+However, this meant there were \emph{many} design decisions made quite
+conservatively, because the implementation was defining the system along the
+way, rather than using a well-understood pre-existing one. Syntax and
+\kl{resource inference} were extended by the minimum required for verifying the
+\kl{pKVM} \kl{buddy allocator}, lest performance suffer, rather than extended
+based on a strong formal and holistic consideration of the constructs and
+interactions at play.
 
 As such, there are several restrictions in the implementation, which with the
 benefit of hindsight and formalisation, are unnecessary, but persist
@@ -22,38 +24,39 @@ implementation.
 % \url{https://github.com/rems-project/cerberus/labels/language}
 % \url{https://github.com/rems-project/cerberus/labels/resource\%20reasoning}
 
-\section{Supporting partially initialised reads of structs/unions}\label{sec:partial-init-structs}
+\section{Supporting loads of partially initialised structs/unions}\label{sec:partial-init-structs}
 
-So far in working on verifying the \kl{buddy allocator}, writing a tutorial and
-working with our industry partners, no code has needed the ability to load a
-partially (including completely) uninitialised struct/union as a whole (loads
-of initialised members from a struct which has other members uninitialised are
-fine). Similar to uninitialised integer types, any \kl{UB} only comes when one
-tries to use an uninitialised primitive type member of the struct/union in
-certain ways. Such loads would happen when whole structs/unions are used as an
-rvalue in assignments, function call arguments, function return values, as well
-as a dereference of a pointer.
+So far, in verifying the \kl{buddy allocator}, writing a tutorial and working
+with our industry partners, no code has loaded a partially (or completely)
+uninitialised struct/union as a whole (loads of initialised members from a
+struct which has other members uninitialised are fine).
 
-Because we can decompose ownership of a struct into its fields, and track the
-initialised status of those individually (perhaps verbosely for large structs),
-we do not lose expressiveness by not supporting this idiom. The only valid code
-forbidden by this omitting support for it would be passing a loaded partially
-initialised struct as an argument to a function which reads only the
-initialised fields. This is because the value would cross a function boundary,
-\kl{CN} checks each function against its own pre- and postconditions and the
-specification language has no syntax or semantics to express that the struct
-value itself (not the memory it resides in) is a special uninitialised value.
-In such instances, the code could be refactored to only pass the initialised
-fields, or a pointer to the struct with the appropriate precondition to only
-read the initialised fields.
+Similar to uninitialised integer types, uninitialised primitive type members of
+a struct/union only trigger \kl{UB} when they are used in certain ways. Such
+loads only occur when whole structs/unions are used as rvalues, \eg{} in
+assignments, function call arguments, function return values.
+
+Remember, \kl{CN} lets one decompose ownership of a struct into ownership of
+its fields, which means we can track the initialisation status of those
+individually. This means that not supporting loads of partially initialised
+structs/unions does not forfeit \kl{CN} an expressiveness.
+
+The only valid situation which would need to be refactored to work around this
+limitation is if partially initialised struct is passed to a function which
+reads only the initialised fields. This is because the value would crosses a
+function boundary. \kl{CN} checks each function against its own \kl{pre-} and
+\kl{postconditions} and the \kl{specification} language has no syntax or
+semantics to express that a field value itself is unspecified. In such
+instances, the code could be refactored to only pass the initialised fields, or
+a pointer to the struct with the appropriate precondition to only read the
+initialised fields.
 
 Although we wish to verify C code as is, because programmers need to change the
 ``code'' to write annotations anyway, such small, rare and easy to explain
 refactors are a worthwhile trade-off if it makes the design and implementation
-of \kl{CN} simpler. The book-keeping for tracking initialised status in
-symbolic terms, rather than in a flag in the name of a predicate, adds a
-non-trivial amount of noise to formalisation and would do the same in the
-implementation.
+of \kl{CN} simpler. The book-keeping for tracking initialisation status in
+symbolic terms, rather than in the name of a predicate, adds a non-trivial
+amount of noise to the formalisation and implementation.
 
 % Perhaps such an allowance simplifies data-flow analysis inside a compiler, so
 % that it may safely ignore the values resulting from a load of partially
@@ -66,30 +69,31 @@ implementation.
 
 \section{Automatic unfolding scheme for logical functions}\label{sec:auto-unfold-functions}
 
-One of the strange parts of working with \kl{CN} is the predicate definitions
-can be (with a flag) automatically unfolded but not logical functions, even though both may be
+One of the strange parts of working with \kl{CN} is that \kl{predicate
+definitions} can be (with a flag) automatically unfolded but not \kl{logical
+functions}, even though both may be
 recursive.\sidenote{\href{https://github.com/rems-project/cerberus/issues/483}{Cerberus\#483}.}
 As such there is separate and cumbersome annotation to manually unfold a
-function.
+\kl[logical function]{function}.
 
-The way the implementation determines whether to unfold a predicate is
+The way the implementation determines whether to unfold a \kl{predicate} is
 to always unfold it if there is no top-level if, or to check if the condition
-or its negation can be proven before unfolding the corresponding branch.
+or its negation is entailed before unfolding the corresponding branch.
 
-However, with the benefit of the formalisation, we can see that those are
-actually two orthogonal questions, which happen to be tied together because of
-historical reasons. In the formalisation (\cref{fig:typing-res-pat}), including
-the elaboration rules (\cref{fig:elab-fold}),  we can see that (un)folding % chktex 36
-predicates does not require calling the SMT solver, but determining which
-branch of an ordered-disjunction to check does.
+However, thanks to the formalisation, we can see the implementation's strategy
+conflates orthogonal considerations. In the formalisation
+(\cref{fig:typing-res-pat}), including the elaboration rules
+(\cref{fig:elab-fold}), (un)folding predicates does not require % chktex 36
+calling the SMT solver, but determining which branch of an ordered-disjunction
+to check does.
 
-So not only does this suggest loosening the restrictions on branching in
-predicate definitions (\cref{sec:restriction-branching}), it also suggests that
-the general approach of ``unfold until you reach a condition for which neither
-it nor its negation can be proven'' would work for logical functions too.
+This suggests that it is fine to loosen the restrictions on branching in
+\kl{predicate definitions} (\cref{sec:restriction-branching}), and that the
+approach of ``unfold until you reach a condition for which neither it nor its
+negation are entailed'' would work for \kl{logical functions} too.
 
-It is important to note that with automatic constraint-based unfolding, it is
-possible for users to define predicates which make \kl{CN}
+Please note that with automatic constraint-based unfolding, it is
+possible for users to \kl{define predicates} which make \kl{CN}
 diverge.\sidenote{\href{https://github.com/rems-project/cerberus/issues/451}{Cerberus\#451}.}
 I propose a solution to this in~\fancyref{sec:pred-defn-checks}.
 
@@ -100,92 +104,85 @@ concurrency.\sidenote{\href{https://github.com/rems-project/cerberus/issues/363}
 We can use the formalisation to reflect on what changes would be needed to
 support this.
 
-Fractional permissions would be useful to enable sharing. After that,
-the issue becomes what level of support would be useful and worth implementing
-based on the size of the change.
-
-For example, hard-coding support for locks as an extra kind of resource would
-be relatively straightforward (adding more terms and operations to the
-grammar), but adding support for higher-order resources in general, so that
-locks can be defined rather than an built-in feature, would be substantial
-change to the resource type definitions and rules.
+Fractional permissions could be used to enable sharing. Beyond that, we have a
+couple of options. Hard-coding support for locks as an extra kind of resource
+would be relatively straightforward (adding more terms and operations to the
+grammar). Adding support for higher-order resources in general, so that locks
+can be defined rather than built-in, would be substantial change to the
+\kl{resource type} definitions and rules.
 
 \section{Restrictions on branching}\label{sec:restriction-branching}
 
 As mentioned in~\fancyref{sec:auto-unfold-functions}, the formalisation
-separates out two features (unfolding definitions, and selecting a branch of an
-ordered-disjunction) which are tied together in the implementation. One of the
-other places this shows up is in a restricted syntax for predicate definitions:
-they must either have no ordered-disjunctions, or only one, placed first at the
+distinguishes two features (unfolding definitions, and selecting a branch of an
+ordered-disjunction) which are conflated in the implementation. This also
+unnecessarily restricts the syntax for predicate definitions: they must either
+have no ordered-disjunctions, or only one, placed first at the
 top-level.\sidenote{\href{https://github.com/rems-project/cerberus/issues/266}{Cerberus\#266}}
 
-With the formalisation, not only can I show that that restriction is
-unnecessary, I can also shed light on how to lift it.
+With the formalisation, I can explain why that restriction is unnecessary, and
+shed light on how to lift it.
 
-This is because the surface syntactic restriction and the internal
-representation of predicate definition are actually two \emph{orthogonal}
-issues. The key insight here is that this feature does not add any extra
-expressive power, it simply unbundles two features which are orthogonal in the
-formalisation. Indeed, users can work around the restriction (albeit clunkily)
-by manually defining an extra auxiliary predicate each time they wish to use an
-ordered-disjunction anywhere which is not first and at the top-level.
+Restricting the surface syntax is unnecessary because the syntax is orthogonal
+to the internal representation of \kl{predicate definitions}. The key insight
+here is that lifting this feature would not add any extra expressive power,
+because users can (and do) clunkily work around it by manually defining an
+auxiliary \kl{predicate} each time they wish to use an \kl{ordered-disjunction}
+anywhere which is not first and at the top-level.
 
-This orthogonality extends to implementing fixes for this issue too. If we
-wanted, we could generalise the surface syntax whilst retaining most of the
+The same orthogonality also gives us options on how to lift the restriction. If
+we wanted, we could generalise the surface syntax whilst retaining most of the
 implementation internals, by automating the work-around users already use. Or
 we could generalise the internals first, and change the surface syntax later,
-to ensure a smooth transition. Each comes with its own trade-offs: the first
-will be quicker but the second produces less technical debt.
+to ensure a smooth transition. The first option will be quicker but the second
+produces less technical debt.
 
 \section{Removing the pointer first restriction on predicates}\label{sec:rm-ptr-first}
 
-Another awkward restriction in working with \kl{CN} is that the first argument
-to a predicate must always be a pointer. This is usually fine because it would
-be strange to speak of ownership without a pointer, but sometimes the pointer
-is derived from elsewhere (a fixed base pointer, but a given index), or
+Another awkward \kl{CN} restriction is requiring the first argument to a
+\kl{predicate} to be a pointer. This is usually fine because it would be
+strange to speak of ownership without a pointer, but sometimes the pointer is
+derived from elsewhere (a global base pointer, but changing indices), or
 sometimes the pointer is in a record and that is the easiest thing to pass
 in.\sidenote{\href{https://github.com/rems-project/cerberus/issues/303}{Cerberus\#303}.}
 
-With the formalisation, we can estimate the impact of removing this restriction
-and see that the main thing we would lose is not in terms of typing fewer
-programs, but in terms of synthesising indices for manipulating iterated
-predicates (\cref{subsec:synth-indices}). Given that \kl{CN} has already moved
-away from inferring those,\sidenote{See note~\ref{sn:new-inf-statics}.} we can
-conclude that removing this restriction will not diminish the automation or the
-expressive power of \kl{CN}.\sidenote{It will not increase expressiveness
-either, because users currently can and do just use a dummy parameter.}
+With the formalisation, we can see lifting this restriction would hinder
+\kl{CN}'s ability to infer indices when handling \kl{iterated predicates}
+(\cref{subsec:synth-indices}). But, given that \kl{CN} does not infer those
+anyway,\sidenote{See note~\ref{sn:new-inf-statics}.} we do not lose automation
+or expressiveness.\sidenote{It will not increase expressiveness either, because
+users currently can and do just use a dummy parameter.}
 
 \section{Unifying the syntax of functions, predicates and specifications}
 
 Syntax is part of the user-interface of \kl{CN}, and as such it is subject to
 strong constraints, strong scrutiny and strong opinions.
 
-Currently, logical (ghost) functions and predicates are separated (represented
-by different OCaml types) in the implementation. This is with good reason: the
-pure parts are shipped off to an SMT solver, but the heap parts are the domain
-of the resource reasoning. However, \kl{CN} also enforces this distinction
-syntactically, which is a perfectly valid choice, but it trades concision and
-occasional confusion when those worlds need to
-mix,\sidenote{\href{https://github.com/rems-project/cerberus/issues/288}{Cerberus\#288}.}
-for clarity in separating when the two do not.
+Currently, \kl{logical (ghost) functions} and \kl{predicates} are separated
+(represented by different OCaml types) in the implementation. This is with good
+reason: the pure parts are shipped off to an SMT solver, but the \kl{heap}
+parts are handled by \kl{resource inference}. However, \kl{CN} also enforces
+this distinction syntactically, which is clunky and occasionally
+confusing,\sidenote{\href{https://github.com/rems-project/cerberus/issues/288}{Cerberus\#288}.}.
 
-Another equally valid choice would be to unify the two syntaxes and find some
-other way of enforcing the necessary distinction between the two
+This could be remedied by unifying the two syntaxes and using another method to
+enforcing the distinction between the pure and \kl{heap}
 worlds.\sidenote{\href{https://github.com/rems-project/cerberus/issues/304}{Cerberus\#304}.}
-Exposing the monad implicit in the predicate syntax as a type constructor would
-achieve both, though at the cost of exposing developers to a fancier type
-system. As a programming-language theorist, I prefer this, though the ultimate
-arbiter of such a decision would be well-designed user-studies.
+Exposing the monad implicit in the \kl{predicate} syntax as a type constructor
+would achieve both; whilst this is theoretically elegant, it could be too
+complicated for users.
 
 \chapter{An alternative presentation}\label{chap:kernel-alternative}
 
+\margintoc{}%
+%
 I will conclude this part by sketching out an alternative presentation of the
 \kl{CN} type system, \intro{MiniCN}, which is closer to both C as a surface
 language and the \kl{CN} implementation. It will demonstrate the challenges of
 \emph{not} using \kl{ResCore}, because \kl{MiniC} is an imperative,
-expression-based language with implicit resource passing. The latter means the
+expression-based language with implicit \kl{resource passing}. The latter means the
 inference cannot be specified separately, whereas the former complicates typing
-early-returns and join-points. It will also demonstrate the challenges which
+early returns and \kl{join-points}. It will also demonstrate the challenges which
 seem to be inherent to designing a type system for a C-like language.
 
 \section{MiniC and MiniCN}
@@ -198,7 +195,7 @@ variables, mutable function parameters, block-scoped local variables, and early
 return, but omits loops and unstructured control flow such as \cinline{goto}.
 Expressions and statements are unified into a single construct $[[e]]$, and evaluation
 is fixed to be left-to-right. The only MiniC types are integers or pointers
-(with free conversion between the two), hence no structured data such as
+(with free conversion between the two), so there is no structured data such as
 structs or arrays. Notably, \kl{MiniC} includes taking the address of
 variables and dereferencing arbitrary expressions; indirect assignment is also
 supported via $[[*lve]]$. Its expression grammar is shown in
@@ -225,16 +222,16 @@ focusing here on typing rules for \kl{MiniCN}.
 
 The specification language for \kl{MiniC}, is a simplified version of the
 surface syntax of \kl{CN} (\cref{fig:surface-cn-syntax}). The simplifications
-are to (a) equate pointers and integers (b) assume that all
-$\cnkw{Owned}$s are always initialised and (c) ignore any other C types,
-including structs and arrays (d) ignore iterated predicates. Using this, I
+are to (a) equate pointers and integers, (b) assume that all
+$\cnkw{Owned}$s are always initialised, (c) ignore any other C types,
+including structs and arrays, and (d) ignore iterated predicates. Using this, I
 define \kl{MiniCN} as the typing rules for \kl{MiniC} using this simplified
 specification language.
 
 \section{Aliasing requires linear resources}\label{sec:minicn-aliasing}
 
 Because syntactically different expressions may alias the same heap locations,
-the type system still needs symbolic expressions and linear resources to track
+the type system still needs symbolic expressions and \kl{linearity} to track
 permissions on reading and writing locations (there is no allocation and
 destruction). This is visible in the \textsc{Mini\_Prove*} judgement in
 \cref{fig:minicn-spine}, which is used to prove a specification holds.
@@ -277,17 +274,17 @@ new constraints $[[Phi1]]$, and updated resources $[[Rc1]]$.
 
 \section{Implicit resource terms intertwine elaboration and typing}\label{sec:minicn-implicit}
 
-\kl{MiniCN} is intended to be closer to the syntax (and implementation) than
-\kl{Kernel CN}. This is why I phrased the rules in an algorithmic-style in terms
-of input and output contexts, rather than a declarative, context-splitting
-style. It also means that there are no explicit resource terms or logical
-(ghost) quantifier instantiations in the syntax tree.
+% RESUME HERE?
 
-As such, the rules for proving (and assuming) a specification both have to
-compute the instantiation of logical (ghost) quantifiers on-the-fly, whereas
-this is separated into typing and elaboration in the \kl{Kernel CN}
-presentation. This is why, in addition to outputting a modified resource
-context, the judgement also outputs a specification value
+\kl{MiniCN} is intended to be closer to the syntax (and implementation) than
+\kl{Kernel CN}. This is why I phrased the rules in an \kl{algorithmic}-style in
+terms of input and output contexts, rather than a \kl{declarative},
+context-splitting style. It also means that there are no \kl{resource
+terms} or quantifier instantiations in the syntax.
+
+As such, the rules for proving (and assuming) a specification compute
+quantifier instantiations on-the-fly. This is why, in addition to outputting a
+modified resource context, the judgement also outputs a specification value
 $[[sval]]$, as well as the additional constraints learnt (and additional
 variables used). This is best demonstrated in \cref{fig:minicn-spine-take},
 where premise 1 says that $[[return term]]$ is the result of proving and
@@ -303,22 +300,23 @@ $[[spec']]$ evaluates to $[[sval]]$.
     \caption{Proving a $[[take id = spec; spec']]$ specification in \kl{MiniCN}.}\label{fig:minicn-spine-take}
 \end{figure}
 
-\section{Early returns intertwine normalising, synthesising and checking}\label{sec:minicn-early}
+\section{Early-returns intertwine normalising, synthesising and checking}\label{sec:minicn-early}
 
 Because expressions and statements are a single construct in \kl{MiniC}, and
-statements include \cinline{return} statements, any expression could
+statements include {\small $\cnkw{return}$} statements, any expression could
 potentially have its evaluation interrupted by a nested early-return.
-
 The typing judgement for expressions needs to take this into account, so in
-addition to synthesising symbolic values for sub-expressions, it also needs to
-thread a postcondition $[[spec]]$ for \emph{checking} a return expression
-(\cref{fig:minicn-return}). The judgement expresses the fact that given the
-context $[[Vc]]; [[Phi]]; [[Rc]]$, and postcondition $[[y]] .\: [[spec]]$, the
-expression $[[e]]$ symbolically evaluates to $[[id1]]$, with a new variables
-$[[Vc1]]$, new constraints $[[Phi1]]$, and updated resources $[[Rc1]]$.
-Remember that $[[id1]]$ is a fresh variable and that the postcondition
-$[[spec]]$ is defined with respect to the return value bound to $[[y]]$, hence
-the constraint $[[y = id1 ]]$ for evaluating $[[spec]]$.
+addition to \kl{synthesising} symbolic values for sub-expressions, it also needs to
+thread a postcondition $[[spec]]$ for \kl{checking} a return expression
+(\cref{fig:minicn-return}).
+
+The judgement expresses the fact that given the context $[[Vc]]; [[Phi]];
+[[Rc]]$, and \kl{postcondition} $[[y]] .\: [[spec]]$, the expression $[[e]]$
+symbolically evaluates to $[[id1]]$, with new variables $[[Vc1]]$, new
+constraints $[[Phi1]]$, and updated resources $[[Rc1]]$. Remember that
+$[[id1]]$ is a fresh variable and that the \kl{postcondition} $[[spec]]$ is
+defined with respect to the return value bound to $[[y]]$, hence the constraint
+$[[y = id1 ]]$ for evaluating $[[spec]]$.
 
 \begin{figure*}[tpb]
     \ContinuedFloat*
@@ -331,11 +329,11 @@ the constraint $[[y = id1 ]]$ for evaluating $[[spec]]$.
     expression.}\label{fig:minicn-return}
 \end{figure*}
 
-For the sake of simplicity, the synthesised value of each sub-expression is is
-represented by a fresh variable and constrained in the output constraint
+For the sake of simplicity, the \kl{synthesised} value of each sub-expression
+is represented by a fresh variable and constrained in the output constraint
 context. In the case of a return expression, the fresh variable remains
-unconstrained and the output context has $\mathsf{false}$ added to it, to allow
-any ancestor expression to continue typing correctly.
+unconstrained and the output context has `$\mathsf{false}$' added to it, to
+allow any ancestor expression to continue typing correctly.
 
 \begin{figure*}[tpb]
     \ContinuedFloat{}
@@ -347,18 +345,19 @@ any ancestor expression to continue typing correctly.
 \end{figure*}
 
 In the case of a binary operation expression (\cref{fig:minicn-bop}), this
-shows how the let-normalisation absent in the grammar shows up in the
-constraint context anyway.\sidenote{Remember that the implementation gets
-around this by passing around explicit continuations
+scheme recovers in the constraint context the let-normalisation absent in the
+grammar.\sidenote{Remember that the implementation this by passing around
+explicit continuations
 (\href{https://github.com/rems-project/cerberus/commit/350fefc675626dcc69c7adc9edea30ff9687b752}{commit
 350fefc6}). Another way of implementing this would be to have the type
 system's symbolic evaluation \emph{itself} specified as a non-determinism
-monad (\href{https://github.com/rems-project/cerberus/issues/730}{Cerberus\#730}).}
+monad
+(\href{https://github.com/rems-project/cerberus/issues/730}{Cerberus\#730}).}
 
 \section{Lack of let-normalisation requires join-points}\label{sec:lack-let-norm}
 
-Aside from complications arising from early returns, avoiding let-normalisation
-also requires us to construct join-points for resource and constraint contexts
+Aside from handling early-returns, avoiding let-normalisation also necessitates
+constructing join-points for resource and constraint contexts
 (\cref{fig:minicn-if}).
 
 \begin{figure}[tpbh]
@@ -375,14 +374,14 @@ I chose to represent these join-points as an ordered-disjunction of
 because it complicates how to specify a lookup in the resource context. One
 possibility, is a scheme where such ordered-disjunctions would be simplified if
 either the condition or its negation could be proven, and otherwise require a
-syntactic match on both branch.
+syntactic match on both branches (see~\cref{sec:join-points}).
 
 \section{Discussion}
 
 As I showed in the previous sections, the typing judgements for \kl{MiniCN}
-becomes substantially more complicated in the absence of key features of
-\kl{ResCore}. This would extend to the proof of soundness too, because the input
-and output contexts would not remain the same as an expression evaluates.
+become substantially more complex in the absence of key features of
+\kl{ResCore}. This would extend to the proof of soundness too, because the
+input and output contexts would not remain the same as an expression evaluates.
 
 For concision, I will write $\Omega$ to represent all the contexts combined.
 For typing a binary operation, $\Omega_0 \vdash e_1 + e_2 \dashv \Omega_2$, the
@@ -403,5 +402,5 @@ $\Omega_A' \vdash e \dashv \Omega_B'$ where $\Omega_B \sqsupseteq \Omega_B'$. % 
 % $\Omega_0 \sqsupseteq \Omega_0'$ and $\Omega_1 \sqsupseteq \Omega_1'$.
 
 This resembles a rule of consequence proof for a Hoare-triple, except that one
-would need to prove there is a valid pre- and postcondition for every step of
-the evaluation of the program.
+would need to prove there is a valid \kl{pre-} and \kl{postcondition} for every
+step of the evaluation of the program.
