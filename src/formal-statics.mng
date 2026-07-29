@@ -112,9 +112,9 @@ $[[ C ; L ; N ; R |- stmt <= ret ]]$
 
 The contexts for the static semantics consist of four parts: (1) $[[ C ]]$
 containing the \intro{computational variables} from the \kl{Core} program; (2) $[[ L ]]$
-containing purely \intro{logical variables} mentioned in \kl[CN spec]{specifications}; (3) $[[ N ]]$,
+containing purely \intro{logical variables} mentioned in \kl(CN){specifications}; (3) $[[ N ]]$,
 the \intro{constraint context}, containing a list of (non-quantified) SMT constraints;
-and (4) $[[R]]$ a \kl{linear context} containing \kl[res-type]{resources}.
+and (4) $[[R]]$ a \kl{linear context} containing \kl(type){resources}.
 I assume a \kl{constraint context} of only non-quantified constraints because users
 are required to manually instantiate quantified constraints.
 
@@ -146,14 +146,14 @@ Building on top of this (in the same figure), the \kl{pure expression}
 \kl{synthesis} judgement is similar $[[ C ; L ; N |- pexpr => pure_ret ]]$.
 Given a \kl{computational context}, a \kl{logical context}, a \kl{constraint
 context} and a \kl{pure expression}, \kl{synthesise} a \emph{pure} \kl{return type}
-(a return type without any \kl[res-type]{resources} or
+(a return type without any \kl(type){resources} or
 \kl{logical variables}).
 
 The type $[[pure_ret]] \mathop{{\Colon}{=}} [[ sigma y : base_type .: term /\ I ]]$
 is the \kl{Kernel CN} version of the traditional
 $\left\{ \, y \in \beta \mid \mathit{ term } \, \right\}$ \kl{refinement type}.
 Recall that $\Sigma$ binds the \kl{computational value} the
-\kl{pure values} and \kl[pexpr]{expressions} will evaluate to, and $[[term]]$
+\kl{pure values} and \kl(pure){expressions} will evaluate to, and $[[term]]$
 constrains that value to be equal to lifted counterparts.
  
 \begin{figure*}[tp]
@@ -199,7 +199,7 @@ constrains that value to be equal to lifted counterparts.
 \kl{Pure statements} are typed with \kl{checking} judgements
 instead of \kl{synthesising} ones, of the form
 $[[ C ; L ; N |- pstmt <= pure_ret ]]$.
-Given the \kl[Cctx]{computational}, \kl[Lctx]{logical} and \kl{constraint
+Given the \kl(ctx){computational}, \kl(ctx){logical} and \kl{constraint
 contexts}, check the \kl{pure statement} satisfies this type.
 
 Here, we begin to see \kl{liquid typing}, \kl{let-normalisation} (\cref{sec:rescore}) and the
@@ -245,7 +245,7 @@ pattern. To simplify matters, I assume all patterns are complete.
 \end{figure*}
 
 Typing resource terms requires the addition of an extra \kl{linear context}
-$[[ R ]]$ of \kl[res-type]{resources}.%
+$[[ R ]]$ of \kl(type){resources}.%
 % I will start with the \kl{synthesising}
 % judgements first, and move on to checking judgements after.
 For readers more familiar with program logics, the following abuse
@@ -267,8 +267,8 @@ or their negations are entailed. \kl{Predicate terms}
 of the correct type; the same is true for \kl{iterated predicate terms}.
 Several features are noteworthy.
 \begin{itemize}
-    \item The \kl[Rctx]{context} is a singleton because of \kl{linearity}.
-    \item The lookup into the \kl[Rctx]{context} is by \kl{predicate name}
+    \item The \kl(resource){context} is a singleton because of \kl{linearity}.
+    \item The lookup into the \kl(resource){context} is by \kl{predicate name}
         $\alpha$ and its \kl{input arguments}, not by variable.
     \item The \kl{output argument} is \kl{synthesised} from the context.
 \end{itemize}
@@ -306,7 +306,7 @@ substituted in (if they are of the correct type).
 
 \kl{Predicate operations} are also \kl{synthesising} and have their own
 judgement. And because these operations can combine more than one kind of
-\kl[res-type]{resource}, they need to \kl{synthesise} separating conjunctions,
+\kl(type){resource}, they need to \kl{synthesise} separating conjunctions,
 so the rule for them is also synthesising.
 
 For space, I only present the rules for turning ownership of fixed-length arrays
@@ -358,8 +358,8 @@ the same \kl{resource term} being typed twice, incurring an exponential cost.
 
 If neither the condition nor its negation is entailed, I call the condition
 (and the resource) \intro{under-determined}. In this case, the system may
-attempt to \kl{synthesise} a type for the \kl[res-term]{term} and check that
-the \kl{synthesised} \kl[res-type]{type} is equal to the
+attempt to \kl{synthesise} a type for the \kl(resource){term} and check that
+the \kl{synthesised} \kl(resource){type} is equal to the
 \kl{ordered-disjunction}. Only variables can \kl{synthesise} an
 \kl{ordered-disjunction} type, that too only if the condition is
 \kl{under-determined} (otherwise simplification will reduce it to either
@@ -383,9 +383,9 @@ existential or an \kl{ordered-disjunction} are in the sub-components.
         resource terms.}\label{fig:typing-res-term-check}
 \end{figure*}
 
-At any point, if the \kl[res-term]{term} cannot be \kl{checked} by any other
+At any point, if the \kl(resource){term} cannot be \kl{checked} by any other
 rule, the system can switch to \kl{synthesising} a type and then comparing
-whether the two \kl[res-type]{types} are structurally equal, modulo SMT
+whether the two \kl(resource){types} are structurally equal, modulo SMT
 entailment (\cref{fig:typing-res-term-check}).
 
 \begin{marginfigure}
@@ -399,8 +399,8 @@ entailment (\cref{fig:typing-res-term-check}).
 \section{Memory actions and pointer operations}\label{sec:kernel-mem-action-ops}
 
 As with \kl{resource terms}, \kl{memory actions} require all the contexts
-(\kl[Cctx]{computational}, \kl[Lctx]{logical}, \kl[Nctx]{constraint} and
-\kl[Rctx]{resource}), using the following judgement:
+(\kl(ctx){computational}, \kl(ctx){logical}, \kl(ctx){constraint} and
+\kl(ctx){resource}), using the following judgement:
 \[
 [[ C ; L ; N ; R |- res_action => ret ]].
 \]
@@ -504,10 +504,10 @@ The judgement for typing \kl{spines} is $[[ C ; L ; N ; R |- param_spine :: fon 
 which means that given the contexts, a list of parameter-argument pairs and a
 \kl{function type}, produce a substitution $[[ subs ]]$ and a \kl{return type} $[[ ret ]]$.
 
-\kl{Function types} depend on \kl[Cvar]{computational} and \kl{logical (ghost)
+\kl{Function types} depend on \kl(var){computational} and \kl{logical (ghost)
 variables}; for notational convenience, I assume that these are the same as the
-parameters in the spine. Checking \kl[pval]{computational} values and
-\kl[Lterm]{logical} terms requires substituting them into the rest of the type,
+parameters in the spine. Checking \kl[pval]{computational values} and
+\kl{logical terms} requires substituting them into the rest of the type,
 and checking the rest of the \kl{spine}. The resulting substitution is then extended
 with the same.\sidenote{Building the substitution this way, rather than
 `tail-recursively', made it easier to prove properties about it by induction
@@ -548,18 +548,18 @@ are explicitly enumerated.} and \kl{synthesise} the \kl{return type}
 \section{pattern-matching}\label{sec:pat-match}
 
 \intro{Pattern-matching} is an unusually important for \kl{Kernel CN} because
-it is \emph{the funnel} through which \kl[res-type]{resource} and \kl{return
+it is \emph{the funnel} through which \kl(type){resource} and \kl{return
 types} enter contexts.
 
 The judgement for this is $[[ C ; L ; N |- ret_pat : ret ~> C' ; L' ; N' ; R' ]]$.
 This says that given the contexts, a \kl{return pattern} and a \kl{return
-type}, \kl{synthesise} \kl[Cctx]{computational}, \kl[Lctx]{logical},
-\kl[Nctx]{constraint} and \kl{resource contexts}.
+type}, \kl{synthesise} \kl(ctx){computational}, \kl(ctx){logical},
+\kl(ctx){constraint} and \kl{resource contexts}.
 
 \kl{Pattern-matching} for \kl{return types} (\cref{fig:typing-ret-pat}) is an
 extension of pattern-matching for \kl{Core} values (\cref{fig:typing-pstmt}),
 complicated by the fact that \kl{return types} are dependent on
-\kl[Cvar]{computational} and \kl{logical (ghost) variables}
+\kl(var){computational} and \kl{logical (ghost) variables}
 
 \begin{figure*}[tp]
     \small
@@ -589,15 +589,15 @@ be similar to the computational case.}, and is otherwise similar to
 For any pattern, \PatRetPhi{} adds the constraint to the contexts
 \kl{synthesised} by the rest of the \kl{return type}. Lastly, \PatRetRes{} is
 similar to \PatRetComp{}, but \kl{synthesises} and extends
-\kl[Lctx]{logical}, \kl[Nctx]{constraint} and \kl{resource contexts}.
+\kl(ctx){logical}, \kl(ctx){constraint} and \kl{resource contexts}.
 
 \kl{Resource types} are destructed against \kl{resource patterns} to
 \kl{synthesise} contexts (\cref{fig:typing-res-pat}). The judgement for this is
 $[[ L ; N |- res_pat : res ~> L' ; N' ; R' ]]$, which means that given
 contexts,\sidenote{I abuse the notation slightly and omit the computational
 context $[[ C ]]$ because it remains the same in all the rules.} a resource
-pattern and a \kl[res-type]{type}, \kl{synthesise} \kl[Lctx]{logical},
-\kl[Nctx]{constraint} and \kl{resource contexts}.
+pattern and a \kl(resource){type}, \kl{synthesise} \kl(ctx){logical},
+\kl(ctx){constraint} and \kl{resource contexts}.
 
 \begin{figure*}[tp]
     \small
@@ -623,9 +623,9 @@ statements} (\cref{fig:typing-stmt}). I will focus only on {\small
 $\cnkw{let}$} and {\small $\cnkw{run}$} statements, the rest are
 straightforward and in~\fancyref{sec:explicit-system}.
 
-\kl{Effectful statements} are \kl{checked}, but the bound \kl[effectful
-expression]{expression} in the {\small $\cnkw{let}$} is \kl{synthesised}, so
-that the \kl[ret-type]{type} can be used for \kl{pattern-matching}. The
+\kl{Effectful statements} are \kl{checked}, but the bound
+\kl(effectful){expression} in the {\small $\cnkw{let}$} is \kl{synthesised}, so
+that the \kl(return){type} can be used for \kl{pattern-matching}. The
 \kl{synthesised} contexts from that are then appended to the existing ones to
 \kl{check} the body of the {\small $\cnkw{let}$}.
 
@@ -633,8 +633,8 @@ For typing {\small $\cnkw{run}$}, the rule looks up the \kl{function type}
 belonging to the label, and then \kl{checks} that the \kl{spine} satisfies it.
 Unlike {\small $\cnkw{ccall}$} or {\small $\cnkw{pcall}$}, control flow does
 not return from {\small $\cnkw{run}$}, and so the \kl{synthesised}
-\kl[ret-type]{type} is expected to be false, and it \kl{checks} against any
-\kl[ret-type]{type}.
+\kl(return){type} is expected to be false, and it \kl{checks} against any
+\kl(return){type}.
 
 \begin{figure*}[tp]
     \small
@@ -650,7 +650,7 @@ not return from {\small $\cnkw{run}$}, and so the \kl{synthesised}
 
 I have also formalised an elaboration system as part of \kl{Kernel CN}. When I
 wrote it, \kl{CN} required users to manually fold and unfold all
-\kl[user-defined pred]{predicates}, but inferred indices for \kl{iterated
+\kl(user-defined){predicates}, but inferred indices for \kl{iterated
 predicates} automatically. Now, \kl{CN} automatically folds and unfolds
 \kl{non-recursive predicates} with a single clause, and requires users to state
 which indices can be moved in and out of any \kl{iterated predicates} in the
@@ -710,11 +710,11 @@ Name & Judgement & Figure (Section) \\
 highlight the key judgements; the full system is in~\fancyref{sec:elab-system}.
 
 \textsc{Oarg*} reads as follows: given an output parameter $[[y]]$,
-\kl[Nctx]{constraint context} $[[N]]$, a \kl{resource context} $[[nR]]$, and a
+\kl{constraint context} $[[N]]$, a \kl{resource context} $[[nR]]$, and a
 \kl{resource type} $[[res]]$, \kl{synthesise} a series of bindings
 $[[res_bind]]$ for a \kl{resource term} $[[res_term]]$ and \kl{output argument}
 $[[oarg]]$ which will result in the updated \kl{resource context} $[[nR']]$.
-The variable $[[y]]$ represents the output of the \kl[res-type]{resource}, it
+The variable $[[y]]$ represents the output of the \kl(type){resource}, it
 is threaded through only for the \OargIfUndet{} rule
 (\cref{fig:elab-res-oarg}), when we learn nothing new about the \kl{output
 argument} and so just return it instead.
@@ -723,8 +723,8 @@ argument} and so just return it instead.
 the main place this judgement is used (by historical accident) is in a
 \kl{synthesis} position (\cref{fig:elab-fold}). As mentioned earlier
 (\cref{subsec:synth-res-term}), this is why {\small $\cnkw{fold}$} is an
-annotated \kl{synthesising} \kl[res-term]{term}, when morally it is a
-\kl{checking} \kl[res-term]{term}.
+annotated \kl{synthesising} \kl(resource){term}, when morally it is a
+\kl{checking} \kl(resource){term}.
 
 \textsc{Oarg*} is used in \ElabExprFold, in~\cref{fig:elab-fold}. The
 \textsc{Elab\_Expr*} judgement is similar to the \textsc{Oarg*} judgement, but
@@ -742,9 +742,9 @@ annotated \kl{synthesising} \kl[res-term]{term}, when morally it is a
         predicates.}\label{fig:elab-fold}
 \end{figure}
 
-\textsc{Req*} reads as follows: given a \kl[Nctx]{constraint context} $[[N]]$,
-a \kl[Rctx]{resource context} $[[nR]]$, and a \kl{resource request} $[[
-pred_ipred ]]$, \kl{synthesise} a series of bindings $[[res_bind]]$ for a
+\textsc{Req*} reads as follows: given a \kl{constraint context} $[[N]]$,
+a \kl(normalised){resource context} $[[nR]]$, and a \kl{resource request}
+$[[ pred_ipred ]]$, \kl{synthesise} a series of bindings $[[res_bind]]$ for a
 \kl{resource term} $[[res_term]]$ and \kl{output argument} $[[oarg]]$ which
 will result in the updated \kl{resource context} $[[nR']]$.
 
@@ -794,9 +794,9 @@ pattern-matching), any \kl{resource context} can be manipulated into such a
 \kl{normal form}. This means it is simple to specify lookups in the context: if
 I need $b \ast{} c$ but the context has $\{\; x {:} (a \ast b) , y {:} (c
 \ast{} d) \}$ then how should I proceed? Do I lookup $b$ and $c$ individually?
-Together? Swapped? How do I handle the case where one is a sub-\kl[res-type]{resource} of
+Together? Swapped? How do I handle the case where one is a sub-\kl(type){resource} of
 another in the context? I avoid these questions and simply require that all
-rules which use \kl[res-type]{resource} lookup preserve normality as an invariant. This
+rules which use \kl(type){resource} lookup preserve normality as an invariant. This
 requires binding existing terms (\cref{fig:res-bind-def}) to manipulate the
 context, carefully retaining `leftover' resources from a lookup.
 
@@ -919,7 +919,7 @@ are annotated with the correct type, despite the presence of \kl{linear} types,
 which usually require logical relation methods.
 
 The proof is split up into three smaller proofs: a joint
-progress-and-type-preservation proof for \kl{resource term} reduction, a
+progress-and-type-preservation proof for \kl{resource term reduction}, a
 progress theorem, and a type-preservation theorem.
 
 The definitions and lemmas of note in this proof are (a) the careful definition
@@ -936,12 +936,12 @@ types' to substitutions. The first three rules for typing substitutions
 represents the empty context, a computational or logical substitution requires
 the substituted terms to be well-typed.
 
-A resource substitution also requires its \kl[res-term]{term} to be well-typed.
-However, because \kl{resource terms} and \kl[res-type]{types} depend on
-\kl[Cctx]{computational} and \kl{logical variables}, scoping needs to be
+A resource substitution also requires its \kl(resource){term} to be well-typed.
+However, because \kl{resource terms} and \kl(resource){types} depend on
+\kl(ctx){computational} and \kl{logical variables}, scoping needs to be
 handled carefully. \kl{Resource types} in a substitution may only mention
 variables either in the contexts on the left of the turnstile, or the
-\kl[Cctx]{computational} and \kl[Lctx]{logical context} in the substitution
+\kl(ctx){computational} and \kl{logical context} in the substitution
 type.
 
 This scoping discipline makes it easier to decompose substitutions into valid
@@ -973,7 +973,7 @@ If $[[ C' ; L' ; N ; R' ]] [[|-]] J$, then
 \end{align*}
 
 Remember, only \kl{logical terms} $[[term]]$, \kl{resource types} $[[res]]$ and
-\kl{return types} $[[ret]]$ depend on \kl[Cctx]{computational} or \kl{logical
+\kl{return types} $[[ret]]$ depend on \kl(ctx){computational} or \kl{logical
 variables}; base types $[[base_type]]$ are simple.
 
 Since $[[ N ]]$ is scoped to $[[ C' ]] ; [[ L' ]]$, we must substitute over it
@@ -1023,10 +1023,10 @@ values) and a sub-heap (of the resources used by the definition).
 
 \intro{Resource values} are the subset of \kl{resource terms} which cannot
 reduce further. They help capture the idea that \kl{predicates} encapsulate
-their contents until unfolded, via \kl[resource patttern]{pattern-matching}
+their contents until unfolded, via \kl(resource){pattern-matching}
 (\cref{fig:kernel-unfold}), which flattens the tree-shaped heap by one level.
-The nested definition is used to destruct the rest of the \kl[resource
-pattern]{pattern} to produce a new \kl{heap} and \kl{substitution}.
+The nested definition is used to destruct the rest of the
+\kl(resource){pattern} to produce a new \kl{heap} and \kl{substitution}.
 
 \begin{figure}[htp]
     \small%
@@ -1056,8 +1056,8 @@ predicates it refers to.
         heap.}\label{fig:kernel-fold}
 \end{figure}
 
-I defined both the \kl[res-pat]{pattern-matching} and the \kl{resource
-term} dynamic semantics in a big-step style; this makes their definitions more
+I defined both the \kl(resource){pattern-matching} and the \kl{resource
+term dynamic semantics} in a big-step style; this makes their definitions more
 concise, at the cost of intertwining the usually separate proofs of progress
 and type preservations.
 
@@ -1078,7 +1078,7 @@ I finish the proof preliminaries by defining the type of a heap: a
 \kl{normalised resource context} (\cref{sec:norm-ctxt-res}); the rules for
 these are straightforward (\cref{fig:kernel-heap-typing}), except for
 \HeapPredOther{}. This rule (implicitly) existentially quantifies over a
-\kl[nRctx]{resource context} $[[nR]]$ for which the resource value $[[ def ]]$
+\kl(normalised){resource context} $[[nR]]$ for which the resource value $[[ def ]]$
 and $[[ heap ]]$ are well-typed. I use this to prove prove progress for
 \kl{ResCore} pattern-matching.
 
@@ -1097,26 +1097,27 @@ As with elaboration (\cref{sec:elaboration}), using \kl{normalised resource
 contexts} does not restrict the generality of progress and type preservations
 theorems. This is because of the following lemma: if a well-typed \kl{resource
 term} is closed, then the context in which it is well-typed must be
-\kl[nRctx]{normalised} (\cref{subsec:res_ctx_closed_norm}).
+\kl{normalised} (\cref{subsec:res_ctx_closed_norm}).
 
 Using these definitions, we can state and prove \kl{progress and type
 preservation for resource terms}.
 
 \begin{theorem}[Progress and type preservation for resource terms]
-For all closed resource terms ($[[ res_term ]]$) which type \kl{check} or
-\kl{synthesise} ($[[ cdot ; cdot ; N ; nR |- res_term <= res ]]$) and all well-typed
-\kl{heaps} ($[[ h <= nR ]]$) there exists a \kl{resource value} ($[[ res_val ]]$),
-\kl[nRctx]{context} ($[[ nR' ]]$) and \kl{heap} ($[[ h' ]]$), such that: the
-\kl[res-val]{value} is well-typed ($[[ cdot ; cdot ; N ; nR' |- res_val <= res ]]$);
-the \kl{heap} is well-typed ($[[ h' <= nR' ]]$); and, for all frame-\kl{heaps}
-($[[ f ]]$), the \kl{resource term} reduces to the \kl{resource value} without
-affecting the frame-\kl{heap} ($[[ _t | < h + f ; res_term > ||v < h' + f ; res_val > ]]$).
+For all closed \kl{resource terms} ($[[ res_term ]]$) which type \kl{check} or
+\kl{synthesise} ($[[ cdot ; cdot ; N ; nR |- res_term <= res ]]$) and all
+\kl{well-typed heaps} ($[[ h <= nR ]]$) there exists a \kl{resource value}
+($[[ res_val ]]$), \kl(normalised){context} ($[[ nR' ]]$) and \kl{heap}
+($[[ h' ]]$), such that: the \kl(resource){value} is well-typed
+($[[ cdot ; cdot ; N ; nR' |- res_val <= res ]]$); the \kl{heap is well-typed}
+($[[ h' <= nR' ]]$); and, for all frame-\kl{heaps} ($[[ f ]]$), the
+\kl{resource term} reduces to the \kl{resource value} without affecting the
+frame-\kl{heap} ($[[ _t | < h + f ; res_term > ||v < h' + f ; res_val > ]]$).
 \end{theorem}
 
 \begin{proof}
 See~\cref{subsec:res_term_progress}, which proceeds by induction on the
-\kl{resource term} typing assumption. The \kl[res-type]{type} dictates the
-\kl[res-val]{value} and \kl[nRctx]{context}, the latter of which dictates the
+\kl{resource term} typing assumption. The \kl(resource){type} dictates the
+\kl(resource){value} and \kl(normalised){context}, the latter of which dictates the
 shape of the \kl{heap}. This chain relies heavily on a few inversion lemmas.
 The existential is necessary later for \fancyref{subsec:wt_values_pat_match}.
 The frame heap $f$ is necessary later for proving type preservation for {\small
@@ -1150,13 +1151,13 @@ pattern-match typing and \kl{resource term} typing are consistent.
 
 \begin{theorem}[Progress for ResCore]
 If a \kl[stmt]{statement} ($[[ stmt ]]$) is well-typed
-($[[ cdot ; cdot ; N ; nR |- stmt <= ret ]]$) and all \kl{computational patterns}
-in it are exhaustive, then either it is a \kl[ret-term]{value}
-($[[<ret_terms>]]$)\sidenote{See~\cref{fig:kernel-expr,fig:typing-ret-terms}.}, or it is
-unreachable, or for all \kl{heaps} ($[[ h ]]$), if the \kl{heap} is well-typed
-($[[ h <= nR ]]$) then there exists another \kl{heap} ($[[ h' ]]$) and \kl[stmt]{statement}
-($[[ stmt' ]]$) which is stepped to ($[[ < _t ; h ; stmt > --> < _t ; h' ; stmt' > ]]$)
-in the operational semantics.
+($[[ cdot ; cdot ; N ; nR |- stmt <= ret ]]$) and all \kl{computational
+patterns} in it are exhaustive, then either it is a \kl(return){value}
+($[[<ret_terms>]]$)\sidenote{See~\cref{fig:kernel-expr,fig:typing-ret-terms}.},
+or it is unreachable, or for all \kl{well-typed heaps} ($[[ h <= nR ]]$), there
+exists another \kl{heap} ($[[ h' ]]$) and \kl[stmt]{statement} ($[[ stmt' ]]$)
+which is stepped to ($[[ < _t ; h ; stmt > --> < _t ; h' ; stmt' > ]]$) in the
+dynamic semantics.
 \end{theorem}
 
 \begin{proof}
@@ -1193,19 +1194,19 @@ they will be trivially decidable.
 \begin{theorem}[Type preservation for ResCore]
 For all closed and well-typed \kl[stmt]{statements}
 ($[[ cdot ; cdot ; N ; nR |- stmt <= ret ]]$),
-well typed \kl{heaps} ($[[ h <= nR ]]$),
+\kl{well-typed heaps} ($[[ h <= nR ]]$),
 frame-\kl{heaps} ($[[ f ]]$),
 new \kl{heaps} ($[[ heap ]]$),
 and new \kl{statements} ($[[ stmt' ]]$),
-which are connected by a step in the operational semantics
+which are connected by a step in the dynamic semantics
 ($[[ < _t ; h + f ; stmt > -->  < _t ; heap ; stmt' > ]]$),
 if all top-level functions are annotated correctly,
 there exists a \kl{constraint context} ($[[ N' ]]$),
 sub-\kl{heap} ($[[ h' ]]$),
-and \kl[nRctx]{resource context} ($[[ nR' ]]$),
+and \kl(normalised){resource context} ($[[ nR' ]]$),
 such that the \kl{constraint context} is $[[ N ]]$ extended,
-the \kl{frame} is unaffected ($[[ heap ]] = [[ h' + f ]]$),
-the sub-\kl{heap} is well-typed ($[[ h' <= nR' ]]$),
+the frame is unaffected ($[[ heap ]] = [[ h' + f ]]$),
+the sub-\kl{heap is well-typed} ($[[ h' <= nR' ]]$),
 and the \kl[stmt]{statement} too
 ($[[ cdot ; cdot ; N' ; nR' |- stmt' <= ret ]]$).
 \end{theorem}

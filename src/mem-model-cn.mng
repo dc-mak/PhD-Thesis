@@ -5,17 +5,18 @@
 
 \margintoc{}
 
-I already mentioned some of the typing rules related to memory actions and
-pointer operations in \fancyref{sec:kernel-mem-action-ops}, but elided some of
-the details related to the memory object model. I will now explain those
-details via four key features: dynamic memory allocation and deallocation,
+In this chapter, I revisit the \kl{memory action} and \kl{memory operation}
+from \fancyref{sec:kernel-mem-action-ops}, and explain the \kl{memory object
+model} details I elided initially.
+
+I do so via four key features: dynamic memory allocation and deallocation,
 converting to and from byte representations (including support for unions),
 copying and comparing arrays of bytes, and lastly allocation liveness and
 bounds-checks.
 
-Along the way, I will also explain how I proved those rules sound with respect
+Along the way, I also explain how I proved those rules sound with respect
 to an updated model of \kl{ResCore} heaps. I do not prove that these rules are
-a sound abstraction above \kl{VIP}, though I will gesture towards why I believe
+a sound abstraction above \kl{VIP}, though I gesture towards why I believe
 this to be the case (\fancyref{sec:linking}).
 
 \section{\cinline{malloc} and \cinline{free}}
@@ -31,72 +32,71 @@ this to be the case (\fancyref{sec:linking}).
         deallocation.}\label{fig:cnvip-mem-action}
 \end{figure*}
 
-In \ActionAlloc{}, the memory action $[[alloc (pval1, pval2)]]$, for
-dynamically allocating memory, takes two operands. The first, $[[pval1]]$, is
-the alignment for the address of the newly created pointer. The second,
+In \ActionAlloc{}, the \kl{memory action} {\small $[[alloc (pval1, pval2)]]$},
+for dynamically allocating memory, takes two operands. The first, $[[pval1]]$,
+is the alignment for the address of the newly created pointer. The second,
 $[[pval2]]$, is the size of the allocation. The action itself consumes no
-resources from the context, and so needs an empty context with an $[[emp]]$
-resource term. Its return type expresses that it returns a pointer $[[yp]]$,
-which is constrained by $[[term]]$, whose first part of $[[term]]$,
-$[[aligned ( inj pval1, yp ) ]]$, says the pointer is aligned to $[[pval1]]$,
+\kl{resources from the context}, and so needs an empty context with an
+$[[emp]]$ \kl{resource term}. Its \kl{return type} expresses that it returns a
+pointer $[[yp]]$, which is constrained by $[[term]]$, whose first part, {\small
+$[[aligned ( inj pval1, yp ) ]]$}, says the pointer is aligned to $[[pval1]]$,
 and whose second part, $[[allocv [ yp . alloc_id ] = ( yp . addr , inj pval2 ) ]]$,
-says the allocation history maps the pointer's allocaton ID to the base
-address $[[ yp . addr ]]$ and length $[[ pval2 ]]$. The return type for this
-rule also expresses that it returns a logical array of bytes,
-$[[y]]$. This array is the output of an iterated points-to of bytes
-starting from the base pointer $[[yp]]$.%to $[[array_shift < byte > ( yp , inj pval2 - 1 )]]$.
-The points-to is indexed by the new C type $[[byte]]$, and is uninitialised
-$[[ Uninit ]]$, to prevent reading from the uninitialised memory in C.
-Alongside the iterated points-to, the return type also mentions
-$[[Alloc (yp.id) ( ( yp . addr,  inj pval2 ) )]]$. Though this looks similar to
-the constraint (and records the same bounds information), this is a token
-which is proof of \emph{liveness} of the allocation, and also permission
-to deallocate the newly created allocation.
+says the \kl{allocation history} maps the pointer's \kl{allocation ID} to
+the base address $[[ yp . addr ]]$ and length $[[ pval2 ]]$. The \kl{return
+type} also expresses that it returns a logical array of bytes, $[[y]]$. This
+array is the output of an \kl{iterated points-to} of bytes starting from the
+base pointer $[[yp]]$. The \kl{points-to} is indexed by the new C type
+$[[byte]]$, and is uninitialised $[[ Uninit ]]$, to prevent loading from it.
+Alongside the \kl{iterated points-to}, the \kl{return type} also mentions
+{\small $[[Alloc (yp.id) ( ( yp . addr,  inj pval2 ) )]]$}. Though this looks
+similar to the constraint (and records the same bounds information), this is a
+\kl(allocation){token} which is proof of \emph{liveness} of the allocation, and also
+\kl(allocation){permission} to deallocate the newly created allocation.
 
-In \ActionKillDynamic{}, all the resources are consumed rather than produced.
-As such, the memory action takes in a resource term and the base pointer of the
-allocation to deallocate: $[[ res_term | kill < dyn > ( pval ) ]]$. The length
-of the allocation is obtained from the type of the resource term, which must
-be a pair of an iterated points-to of bytes, and an allocation token. The length
-of the allocation $[[ oarg . len ]]$, obtained from the allocation token's
-output argument, allows the rule to check the ownership of the entire allocation
-has been returned without gaps. This is done in premise 4, where the SMT solver
-is asked to prove a quantified formula which, unlike assuming a quantified
-formula, remains decideable. The base address of the allocation token
-$[[ oarg . base ]]$, allows the rule to check that the address of the supplied
-pointer $[[ inj pval . addr ]]$ is in fact, the correct base address. The
-allocation ID $[[ term ]]$, allows the rule to check that the allocation ID of
-the base pointer of the iterated points-to $[[ ptrt . alloc_id ]]$ and of
-$[[ pval ]]$ all agree. The action just returns a unit value.
+In \ActionKillDynamic{}, all the \kl(type){resources} are consumed rather than
+produced. As such, the \kl{memory action} requires a \kl{resource term} and a
+base pointer: $[[ res_term | kill < dyn > ( pval ) ]]$. The length of the
+allocation is obtained from the type of the \kl{resource term}, which must be a
+pair of an \kl{iterated points-to} of bytes, and an \kl{allocation token}. The
+length of the allocation $[[ oarg . len ]]$, obtained from the \kl{allocation
+token's} output argument, allows the rule to check the \kl{ownership} of the
+entire allocation has been returned without gaps. This is done in premise 4,
+where the SMT solver is asked to prove a quantified formula (which, unlike
+assuming a quantified formula, is decidable). The base address of the
+\kl{allocation token} $[[ oarg . base ]]$, allows the rule to check that the
+address of the supplied pointer $[[ inj pval . addr ]]$ is in fact, the correct
+base address. The \kl{allocation ID} $[[ term ]]$, allows the rule to check
+that the \kl{allocation ID} of the base pointer of the \kl{iterated points-to}
+$[[ ptrt . alloc_id ]]$ and of $[[ pval ]]$ all agree. The action just returns
+a unit value.
 
 \section{Converting to and from bytes}\label{sec:convert-bytes}
 
 Note that the rules for loads and stores are unchanged. In particular,
-permission to read or write a location is enough to deduce its enclosing
-allocation is live.\sidenote{Ownership of out-of-bounds resources is equivalent
-to $\mathsf{false}$.}
+\kl{permission to read or write} a location is enough to deduce its enclosing
+allocation is live.\sidenote{\kl{Ownership} of out-of-bounds resources is
+equivalent to $\mathsf{false}$.}
 
-So how would one load or store other structured C types from dynamically
-allocated memory? Through new predicate operations to convert between ownership
-at another structured C type, and ownership of its representation as an array
-of bytes (\cref{fig:cnvip-to-from-bytes}). Converting \emph{to} the byte
-representation consumes a points-to at any C type, and produces iterated
-points-to at an array of bytes. Note that the initialisation status is
+So how does one load or store arbitrary C types from dynamically
+allocated memory? Via new \kl{predicate operations} to convert between
+\kl{ownership} at an arbitrary C type, and \kl{ownership} of its representation
+as an array of bytes (\cref{fig:cnvip-to-from-bytes}). Converting \emph{to} the byte
+representation consumes a \kl{points-to} at any C type, and produces an \kl{iterated
+points-to} at an array of bytes. Note that the initialisation status is
 preserved: if the consumed C type is a (fully initialised) struct, then the
 produced array of bytes is also fully initialised, including at padding bytes,
-but the value of the padding bytes will be constraints to be
+but the value of the padding bytes will be constrained to be
 \coreinline{Unspecified}. Converting \emph{from} the byte representation
 requires that all non-padding bytes are not-\coreinline{Unspecified}; this
-prevents reading uninitialised memory and is checked by premise 3, but is
+prevents loading from uninitialised memory and is checked by premise 3, but is
 otherwise as one would expect.
 
 I have implemented (but not formalised) memory operations to support casting
 between bytes and \cinline{unsigned
 char}.\sidenote{\href{https://github.com/rems-project/cn/commit/95c9a40b9e4184ad37519fe116678b877cbc6720}{CN\#95c9a40b}.}
-The cast from bytes forbids casting
-the \coreinline{Unspecified} value; the cast to bytes is guaranteed to fit
-within 8 bits by the Cerberus elaboration, by wrapping the value
-appropriately.
+The cast from bytes forbids casting the \coreinline{Unspecified} value; the
+cast to bytes is guaranteed to fit within 8 bits by an updated \kl{Cerberus
+elaboration}, by wrapping the value appropriately.
 
 \begin{figure*}[tp]
     \small
@@ -105,8 +105,8 @@ appropriately.
         \cndrulePredOpsXXToXXBytes{},
         \cndrulePredOpsXXFromXXBytes{}
     }
-    \caption{\kl{Kernel CN} typing rules for converting iterated ownership
-        of bytes to and from ownership of other C types.}\label{fig:cnvip-to-from-bytes}
+    \caption{\kl{Kernel CN} typing rules for converting \kl{iterated ownership}
+        of bytes to and from \kl{ownership} of other C types.}\label{fig:cnvip-to-from-bytes}
 \end{figure*}
 
 \section{Unions and padding}\label{sec:unions-padding}
@@ -122,8 +122,8 @@ appropriately.
 \end{figure*}
 
 If one has ownership of a pointer to a union, what should the type of the
-pointee be, in the specification language? A type-theoretic answer would be to
-model it as an algebraic datatype but the expressiveness of C unions means this
+pointee be, in the specification language? A type-theorist might
+suggest an algebraic datatype but the expressiveness of C unions means this
 confuses more than it clarifies. C unions support writing to one member and
 reading from another member at a different C type and size. How would using
 algebraic datatypes support this idiom? How is information written to padding
@@ -139,35 +139,35 @@ steep price: a loss of a straightforward, compositional reading of ownership of
 a struct containing a union. This is a non-starter since such an idiom is
 frequently used to encode tagged unions.
 
-To my pleasant surprise, approaching the problem from a memory object model
-lens, in particular considering it as an extension of the adding support for
-bytes and the ability to convert between them and other C types, yields an
-elegant and expressive solution, upon which the user can encode
-complex usage patterns for unions.
+To my pleasant surprise, approaching the problem from a \kl{memory object
+model} lens, by noticing that what is required of unions is similar to what is
+required of bytes, yields an elegant and expressive solution, upon which the
+user can encode complex usage patterns for unions.
 
-The solution is tripartite. First, represent ownership of a union as ownership
-of an array of bytes. Second, require a transformation of the resource context
-to permit reads and writes to a particular member. Third, record that the
-member came from a union in a new token in the resource context. In this
-manner, an array of bytes acts as a least upper bound of any possible set of
-members which preserves all the necessary information, including padding bytes
-and provenance information for pointers.
+The solution is tripartite. First, represent \kl{ownership} of a union as
+\kl{ownership} of an array of bytes. Second, require a transformation of the
+\kl{resource context} to permit reads and writes to a particular member. Third,
+record that the member came from a union in a \kl(padding){new token} in
+the resource context. In this manner, an array of bytes acts as a least upper
+bound of any possible set of members which preserves all the necessary
+information, including padding bytes and \kl{provenance} information for
+pointers.
 
-\cref{fig:cnvip-unions}, shows how to transform a union points-to to and from
-points-to for a member. Starting with a points-to to a union, we can select a
-particular member. The C type of the member is obtained by a lookup of the
-definition of the union by its tag in premise
+\cref{fig:cnvip-unions}, shows how to transform a union \kl{points-to} to and
+from \kl{points-to} for a member. Starting with a \kl{points-to} to a union, we
+can {\small $\cnkw{select}$} a particular member. The C type of the member is
+obtained by looking up the definition of the union from its tag in premise
 2.\sidenote{See~\cref{sec:metavars-grammar} for further details.} It then
 checks that the bytes are valid for that member (that is, not
-\coreinline{Unspecified} if a read permission is desired). If this is the case,
-the union points-to is transformed into a points-to for the member, and
-crucially, a token representing that the points-to came from a union. It can
-also, equivalently be thought of as a predicate representing ownership of the
-(potentially empty) padding bytes around the given member of a union, hence the
-name $[[ Padding < union tag, member > ]]$. The inverse transformation checks
-that the pointers of the points-to and padding resources belong to the same
-allocation at the correct offsets, and then updates the byte array with the
-byte representation of the pointee.
+\coreinline{Unspecified} if a \kl{read-write permission} is desired). If so, the
+union \kl{points-to} is transformed into a \kl{points-to} for the member, and
+crucially, a \intro[padding token]{token} representing that the \kl{points-to}
+came from a union. It can also equivalently be thought of as a predicate
+representing ownership of the (potentially empty) padding bytes around the
+given member of a union, hence the name $[[ Padding < union tag, member > ]]$.
+The inverse transformation checks that the pointers of the \kl{points-to} and
+\kl{padding resources} belong to the same allocation at the correct offsets,
+and then updates the byte array with the byte representation of the pointee.
 
 \section{\cinline{memcpy} and \cinline{memcmp}}
 
@@ -182,74 +182,76 @@ byte representation of the pointee.
         \cinline{memcmp}.}\label{fig:cnvip-memcpy-memcmp}
 \end{figure*}
 
-The typing rules for \cinline{memcpy} require iterated ownership of two
-contiguous arrays of \kl{memory bytes} of length $n$; it returns ownership of
-both, with the constraint that the value of the destination (first) is equal to
-that of the source (second). The iterations must be contiguous and of the same
-length to express the equality constraint on the values correctly.
+The typing rules for \cinline{memcpy} require \kl{iterated ownership} of two
+contiguous arrays of \kl{memory bytes} of length $n$; it returns
+\kl(iterated){ownership} of both, with the constraint that the value of the
+destination (first) is equal to that of the source (second). The iterations
+must be contiguous and of the same length to express the equality constraint on
+the values correctly.
 
-The typing rules for \cinline{memcmp} require iterated ownership of two
+The typing rules for \cinline{memcmp} require \kl{iterated ownership} of two
 contiguous arrays of \kl{memory bytes} of length $n$; like \cinline{memcpy}, it
-returns ownership of both, unlike \cinline{memcpy}, none of the bytes being
-compared must be \coreinline{Unspecified}, and the returned value is not
-straightforward to specify, because the concise or obvious specification would
-use quantifiers. Instead, I refer to a recursively defined logical function
-which constrains the result to be 0 if all bytes (excluding provenances) are
-equal and the difference between the first two unequal bytes (excluding
-provenances) otherwise.
+returns \kl(iterated){ownership} of both, but unlike
+\cinline{memcpy}, none of the bytes being compared must be
+\coreinline{Unspecified}, and the returned value is not straightforward to
+specify, because the concise or obvious specification would use quantifiers.
+Instead, I refer to a recursively defined logical function which constrains the
+result to be 0 if all bytes (excluding \kl{provenances}) are equal and the
+difference between the first two unequal bytes (excluding \kl{provenances})
+otherwise.
 
 \section{Checking pointer shifts}
 
 There are discrepancies between the PNVI-* rules for pointer shifts presented in
 \sidetextcite{lepigre2022vip} and \sidetextcite{memarian2022cerberus}, and the
-\kl{Cerberus source code}, which I have detailed in a table in
+\kl{Cerberus} source code, which I have detailed in
 \cref{fig:offset-confusion}.
 
-For \citeauthor{lepigre2022vip}, the omission of pure/permissive rules for is
-likely because they are not memory operations per se since they would be called
-from the pure fragment of Core, even though they are defined by the memory
-object model (because they are dependent on the representation of pointers). I
-suspect the lack of a liveness check for ISO array shifting is likely an error,
-since the other sources require it.
+For \citeauthor{lepigre2022vip}, the omission of any pure/permissive rules is
+likely because they are not \kl{memory operations} per se, since they would be
+called from the \kl{pure fragment of Core}, even though they are defined by the
+\kl{memory object model} (because they are dependent on the representation of
+pointers). I suspect the lack of a liveness check for \kl{ISO} array shifting
+is likely an error, since the other sources require it.
 
 For \citeauthor{memarian2022cerberus}, I suspect having a special case on
 \cinline{NULL} but not for 0-offset is likely an error, given the behaviour
 of the code.
 
 For the \kl{Cerberus} code, the pure/permissive member shift has a comment
-saying that member shifting a \cinline{NULL} pointer may be UB per the ISO
-standard, but is the assumed behaviour of some GCC torture tests. The result is
+saying that member shifting a \cinline{NULL} pointer may be \kl{UB} per the
+\kl{standard}, but is the assumed behaviour of some GCC torture tests. The result is
 \cinline{NULL} if the offset $n$ is zero, and is a pointer $(@\mathsf{empty},
 n)$ if the offset $n$ is non-zero. This behaviour is not controlled by any
 switch. My conjecture is that member shifting on \cinline{NULL} is merely
-allowed to be able to define \cinline{offsetof} as a macro.
+allowed to define \cinline{offsetof} as a macro. 
 
 The effectful version of member shifting, is actually only used by its CHERI
 switch, and is not relevant to capturing the ISO rule.
 
-Instead, \kl{Cerberus} enforces the checks required by the ISO
-rule by using the elaboration: every member shift is either (1) an lvalue or
-(2) if strict pointer arithmetic is enabled, guarded by a call to the memory
-operation \coreinline{PtrValidForDeref}. This ensures the initial pointer is
-strictly in bounds of a live allocation for a given C type; any subsequent
-shifts at that C type are thus guaranteed to remain in bounds.
+Instead, \kl{Cerberus} enforces the checks required by the \kl{ISO} rule via
+the elaboration. If strict pointer arithmetic is enabled, the member shift
+guarded by the \kl{memory operation} {\small $\cnkw{PtrValidForDeref}$}. This
+ensures the initial pointer is strictly in bounds of a live allocation for a
+given C type; any subsequent shifts at that C type are thus guaranteed to
+remain in bounds.
 
-Similarly, the effectful, ISO version of array shifting is controlled by the
-same switch; the elaboration only uses the memory operation strict pointer
-arithmetic is enabled, and uses the pure Core expression otherwise.
+Similarly, the effectful, \kl{ISO} version of array shifting is controlled by
+the same switch; the elaboration only uses the \kl{memory operation} if strict
+pointer arithmetic is enabled, and uses the \kl{pure Core expression}
+otherwise.
 
-For the purposes of formalisation, I chose the following behaviour for
-CN-VIP.\@
-% As I will discuss in~\fancyref{chap:impl-cnvip}, I need to adjust the
-% approach to work-around limitations of the \kl{CN} implementation.
+I chose the following behaviour for the \kl{CN-VIP} formalisation;
+I discuss the implementation in~\cref{sec:impl-array-member-shift}.
 
 \begin{itemize}
     \item Pure/permissive member shifts require the pointer to have a
-        provenance, but do not special-case for the \cinline{NULL} pointer.
-        If my conjecture is correct, then any cases which require this
-        may be replaced directly with \cinline{offsetof} as a builtin construct
-        (one which is already supported by \kl{Cerberus} and \kl{CN}).
-    \item ISO member shifts are not handled directly, because they
+        \kl{provenance}, but do not special-case for the \cinline{NULL}
+        pointer. If my conjecture is correct, then any cases which require this
+        may be replaced directly with \cinline{offsetof} as an in-built
+        construct (one which is already supported by \kl{Cerberus} and
+        \kl{CN}).
+    \item \kl{ISO} member shifts are not handled directly, because they
         do not show up as such in the elaboration. Instead, the rules
         for \MemopPtrValidForDeref{} and \MemopPtrUnsureForDeref{} allow the
         \kl{ResCore} program to reflect the presence or absence of a live and
@@ -257,11 +259,11 @@ CN-VIP.\@
         value.
     \item Pure/permissive array shifts require the pointer to have a
         provenance.
-    \item ISO array shifts require the resulting pointers to be in bounds of a
-        live allocation.
+    \item \kl{ISO} array shifts require the resulting pointers to be in bounds
+        of a live allocation.
 \end{itemize}
 
-\begin{figure*}[tpb]
+\begin{table*}[tpb]
   \begin{tabular}{ccccc}
   \toprule
    & \citeauthor{lepigre2022vip} incl.\ appendix & \citeauthor{memarian2022cerberus} & Cerberus code & CN-VIP \\% & VIP code \\
@@ -303,17 +305,16 @@ CN-VIP.\@
       the pointer must be neither \cinline{NULL} nor a function pointer.
       `bounds' means a bounds check on the resulting pointer. `liveness' means
       a liveness check on the allocation.}\label{fig:offset-confusion}
-\end{figure*}
+\end{table*}
 
 \section{Pointer liveness and bounds checks}
 
-Proof that a pointer is live takes one of two forms: either an allocation
-token, or a points-to, whose allocation ID matches that of the pointer. Once
-that is established, a pointer needs to be checked to ensure it is within
-bounds; unlike liveness, this fact only uses the SMT solver, and not the
-resource context. Both of these ideas are formalised in the judgements and
-rules shown in~\cref{fig:cnvip-liveness-bounds}, as is their use in the VIP
-primitive \cinline[breaklines]{copy_alloc_id}. It checks that the result is in
+Proof that a pointer is live takes one of two forms: either an \kl{allocation
+token}, or a \kl{points-to}, whose \kl{allocation ID} matches that of the
+pointer. Once that is established, a pointer needs to be checked to ensure it
+is within bounds; unlike liveness, this requires only the SMT solver. Both of
+these ideas, and their use in \cinline[breaklines]{copy_alloc_id}, are
+formalised in~\cref{fig:cnvip-liveness-bounds}. It checks that the result is in
 the bounds of the live allocation indicated by its argument. The judgements are
 also used in~\cref{fig:mem-model-dyn-ptr-relop}, where the rule for relational
 operators on pointers (excluding in/equality, handled separately) checks
@@ -349,7 +350,7 @@ whether each argument is in bounds of the same live allocation.
 % datatype with two cases, to sidestep any potential performance issues and make
 % additional complexity in specifications opt-in.
 %
-% Note that, in line with the C standard, the the PNVI-* code for casting
+% Note that, in line with the C standard, the PNVI-* code for casting
 % pointers to integers allows for casting pointers belonging to dead allocations,
 % or pointers with $@\mathsf{empty}$ provenances, whereas the formalised rules in
 % \citeauthor{memarian2022cerberus} erroneously do not mention this case. This
@@ -386,54 +387,52 @@ whether each argument is in bounds of the same live allocation.
 
 \section{CN-VIP soundness}\label{sec:cn-vip-soundness}
 
-There are few steps involved in extending the formalisation presented in
-\fancyref{chap:kernel-soundness} from using a concrete memory object model to
-\kl{CN-VIP}.
+Only a few steps are needed to update the formalisation presented in
+\fancyref{chap:kernel-soundness} to use \kl{CN-VIP}.
 
 \begin{enumerate}
     \item Extend the configuration of the dynamic semantics to be a step
-        relation between abstract \emph{states} and expressions, rather than
-        just \emph{heaps} and expressions.
+        relation between abstract \emph{\kl{states}} and expressions, rather than
+        just \emph{\kl{heaps}} and expressions.
     \item Extend the heap typing rules to incorporate the newly added
-        allocation history, $[[ Alloc ]]$ and $[[Padding < ct , member >]]$
-        tokens.
-    \item Update the proof of soundness for resource term reduction and pattern
-        matching, with the new rules.
+        allocation history, {\small $[[ Alloc ]]$ } and
+        {\small $[[Padding < ct , member >]]$} tokens.
+    \item Update the proof of soundness for \kl{resource term} reduction and
+        pattern-matching, with the new rules.
 \end{enumerate}
 
-I do not interpret and prove sound \kl{ResCore} abstract state and transitions
-above \kl{VIP} (with non-deterministic pointer equality, and more permissive
-pointer to integer casts), though I will explain informally why I believe this
-to be the case. Instead, I implement and empirically validate the design by
-adapting and running the \kl{VIP} test suite (\fancyref{sec:insufficiency}).
+I do not interpret and prove sound \kl{ResCore} abstract \kl{state} and
+transitions above \kl{VIP} (with non-deterministic pointer equality, and more
+permissive pointer to integer casts), though I will explain informally why I
+believe this to be the case. Instead, I implement and empirically validate the
+design by adapting and running the \kl{VIP} test suite
+(\fancyref{sec:insufficiency}).
 
 \subsection{Extending the dynamic semantics}
 
-In the typing rules, I modelled the allocation history as a single global
-logical variable $[[allocv]]$. This means that even morally
-closed programs have that variable free in explicit logical and resource terms.
-At the same time, because the allocation history is extended during the course
-of evaluating a \kl{ResCore} program, it is not a term which can be substituted
-once at the start of the program. Hence, the allocation history must
-be threaded through to any part of dynamic semantics which relies on checking
-constraints (in the empty context) using the SMT solver. At the point of
-calling, the allocation history is substituted in, with the most up to date
-information, to check the constraint as a closed term (\cref{fig:mem-model-dyn-smt}).
+I modelled the \kl{allocation history} as a single global \kl{logical variable}
+$[[allocv]]$. This means that even morally closed programs have that variable
+free in constraints and \kl{resource terms}. At the same time, because the
+\kl{allocation history} is extended during the course of evaluating a
+\kl{ResCore} program, it is not a term which can be substituted once at the
+start of the program. Hence, it is threaded throughout the dynamic semantics,
+and substituted in at the point of calling the SMT solver
+(\cref{fig:mem-model-dyn-smt}).
 
 \begin{marginfigure}
     \small%
     \cndefnSubsXXSMT{}
     \caption{Calls to the SMT solver are now extended to thread through the
-        changing allocation history.}\label{fig:mem-model-dyn-smt}
+        changing \kl{allocation history}.}\label{fig:mem-model-dyn-smt}
 \end{marginfigure}
 
-Only the \coreinline{create} and \coreinline{alloc} memory actions extend the
-allocation history, and so it and every grammar node containing it also
-includes the allocation history as part of its configuration, rather than
-threaded through the side. Note that because I split the intuitionistic part of
-the allocation history from the linear part, it does not get updated to record
-a dead allocation in the rule for \coreinline{kill}
-(\cref{fig:mem-model-dyn-create-kill}).
+Only the {\small $\cnkw{create}$} and {\small $\cnkw{alloc}$} extend the
+\kl{allocation history}, and so it and every \kl(effectful){expression}
+containing it also include the \kl{allocation history} as part of its
+configuration, rather than threaded through the side. Note that because I split
+the \kl{intuitionistic} part of the \kl{allocation history} from the
+\kl{linear} part, it does not get updated to record a dead allocation in the
+rule for {\small $\cnkw{kill}$} (\cref{fig:mem-model-dyn-create-kill}).
 
 \begin{figure*}
     \small%
@@ -446,23 +445,23 @@ a dead allocation in the rule for \coreinline{kill}
         \cndruleOpXXActionXXKillXXStatic{}
     }
     \endgroup%
-    \caption{The allocation history only tracks a mapping from IDs to a pair of
-        base address and size, so when an allocation is killed, existing entries
-        are not mutated.}\label{fig:mem-model-dyn-create-kill}
+    \caption{The \kl{allocation history} only tracks a mapping from IDs to a
+        pair of base address and size, so when an allocation is killed,
+        existing entries are not mutated.}\label{fig:mem-model-dyn-create-kill}
 \end{figure*}
 
-With the exception of threading through the allocation history, the rules for
-loads and stores are unchanged. The rules for converting ownership of objects
-into iterated ownership of memory bytes and vice versa are predicate
-operations, much like the ones for manipulating structs and fixed-length
-arrays. The rules for \coreinline{memcpy} and \coreinline{memcmp} are also as
-expected.
+With the exception of threading through the \kl{allocation history}, the rules
+for loads and stores are unchanged. The rules for converting \kl{ownership} of
+objects into \kl{iterated ownership} of memory bytes and vice versa are
+\kl{predicate operations}, much like the ones for manipulating structs and
+fixed-length arrays. The rules for {\small $\cnkw{memcpy}$} and {\small
+$\cnkw{memcmp}$} are also as expected.
 
-Pointer operations, including casts and \cinline[breaklines]{copy_alloc_id}, do
-not extend the allocation history, but do require the heap to check whether the
-supplied or resulting pointers belong to live allocations. They are agnostic of
-whether it is ownership or an \cninline{Alloc} token is provided as evidence
-(\cref{fig:mem-model-dyn-ptr-relop}).
+\kl{Pointer operations}, including casts and \cinline[breaklines]{copy_alloc_id}, do
+not extend the \kl{allocation history}, but do require the \kl{heap} to check
+whether the supplied or resulting pointers belong to live allocations. They are
+agnostic of whether it is \kl{ownership} or an {\small $\cnkw{Alloc}$} token is
+provided as evidence (\cref{fig:mem-model-dyn-ptr-relop}).
 
 \begin{figure*}
     \small%
@@ -480,125 +479,134 @@ whether it is ownership or an \cninline{Alloc} token is provided as evidence
 
 \subsection{State typing}
 
-Because the abstract state now includes an append-only allocation history, the
-typing rules for heaps (\cref{sec:heap-types}) needs to be generalised to
-include it. The main judgement involved in this is $[[alloct <= N]]$, which says
-that the allocation history $[[alloct]]$ is consistent
-with constraint context $[[N]]$. \cref{fig:alloc-typing} shows that it does so
-by checking if each constraint, with the allocation history substituted for the
-$[[allocv]]$, holds (under the empty context).
+\kl{State typing} is a generalisation of \kl{heap typing}
+(\cref{sec:heap-types}) to include the append-only \kl{allocation history}.
+
+First, the \kl{allocation history} needs to be ``well-constrained'':
+$[[alloct <= N]]$ (\cref{fig:alloc-typing}) means that each constraint 
+in $[[N]]$, with the \kl{allocation history} $[[alloct]]$ substituted for
+$[[allocv]]$, holds.
 
 \begin{marginfigure}
     \footnotesize%
     \raggedright%
     \cndefnAlloc{}%
-    \caption{Definition of a well-constrained allocation history \textemdash{}
-        $[[alloct]]$ is consistent with each constraint in context
-        $[[N]]$.}\label{fig:alloc-typing}
+    \caption{Definition of a well-constrained \kl{allocation history}
+        \textemdash{} $[[alloct]]$ is consistent with each constraint in
+        \kl(constraint){context} $[[N]]$.}\label{fig:alloc-typing}
 \end{marginfigure}
 
-The heap typing rule generalises similarly (\cref{fig:heap2-typing}). It
-substitutes the allocation history for $[[allocv]]$, and then
-types the heap exactly as before.
+\kl{Heap typing} generalises similarly (\cref{fig:heap2-typing}). It
+substitutes the \kl{allocation history} $[[alloct]]$ for $[[allocv]]$, and then
+checks the \kl{heap} exactly as before.
 
 \begin{marginfigure}
     \footnotesize%
     \raggedright%
     \cndefnHeapPP{}%
-    \caption{Definition of heap typing in the presence of a allocation history:
-        substitute the history into the heap and the type (\kl{normalised}
-        resource context) and type as before.}\label{fig:heap2-typing}
+    \caption{Definition of \kl(state){heap typing} in the presence of an
+        \kl{allocation history}: substitute the latter into the \kl{heap} and
+        the \kl{normalised resource context}, and proceed as
+        before.}\label{fig:heap2-typing}
 \end{marginfigure}
 
 \subsection{Updating the soundness proof}
 
-Recall that I defined resource term reduction and pattern matching in the
-dynamic semantics in a big-step style (\cref{sec:heap-types}). Whilst this
-intertwines the proofs for progress and type preservation, its advantage of
-modularity pays off now. The new constructs such as non-deterministic pointer
-equality, \coreinline{alloc}, dynamic \coreinline{kill}, \cinline{memcpy},
-\cinline{memcmp}\cinline{copy_alloc_id}, and the conversions to and from memory
-bytes, are just additional cases in the proof, the rest are merely updates. The
-updates are small because the additional constraints on the allocation history
-are easy to link across the static and dynamic semantics by the definition of
-allocation history typing. The bounds and liveness checks are similarly easy to
-link across the static and dynamic semantics by the definition of heap typing.
-The updated theorem statements are as below: the main differences are the use
-of the updated abstract state typing judgements, and the use of the $[[L0]] =
-[[allocv : _bt ]]$ environment, instead of the empty one, for logical
-variables. Updated proofs are in the appendix.
+Recall that I defined \kl{resource term reduction} and
+\kl(resource){pattern-matching} in a big-step style (\cref{sec:heap-types}).
+Whilst this intertwines the proofs for progress and type preservation, its
+advantage of modularity pays off now.
+
+The new constructs such as non-deterministic pointer equality, {\small
+$\cnkw{alloc}$}, dynamic {\small $\cnkw{kill}$}, {\small $\cnkw{memcpy}$},
+{\small $\cnkw{memcmp}$}, \cinline{copy_alloc_id}, and the conversions to and
+from memory bytes, are just additional cases in the proof, the rest are merely
+updates.
+
+The updates are small because the additional constraints on the \kl{allocation
+history} are easy to link across the static and dynamic semantics by the
+definition of \kl{allocation history typing}. The bounds and liveness checks
+are similarly easy to link across the static and dynamic semantics by the
+definition of \kl(state){heap typing}.
+
+The updated theorem statements are as below: the main differences is the use of
+\kl{state typing}, and the \kl{logical context} $[[L0]] = [[allocv : id_map ]]$.
+Updated proofs are in~\cref{subsec:res_term_progress}.
 
 \begin{theorem}[CN-VIP:\ progress and type preservation for resource terms]
-For all resource terms ($[[ res_term ]]$) closed which type check or synthesise
-($[[ cdot ; L0 ; N ; nR |- res_term <= res ]]$), and well-typed states
-($[[ alloct ; h <= N ; nR ]]$), there exists a resource value ($[[ res_val ]]$),
-context ($[[ nR' ]]$) and heap ($[[ h' ]]$), such that: the value is well-typed
-($[[ cdot ; L0 ; N ; nR' |- res_val <= res ]]$); the heap is well-typed
-($[[ alloct |- h' <= nR' ]]$), and for all frame-heaps ($[[ f ]]$), the resource term
-reduces to the resource value without affecting the frame-heap
-($[[ alloct | < h + f ; res_term > ||v < h' + f ; res_val > ]]$).
+For all `closed' \kl{resource terms} ($[[ res_term ]]$) which type \kl{check}
+or \kl{synthesise} ($[[ cdot ; L0 ; N ; nR |- res_term <= res ]]$), and
+\kl{well-typed states} ($[[ alloct ; h <= N ; nR ]]$), there exists a
+\kl{resource value} ($[[ res_val ]]$), \kl(normalised){context} ($[[ nR' ]]$)
+and \kl{heap} ($[[ h' ]]$), such that: the \kl(resource){value} is well-typed
+($[[ cdot ; L0 ; N ; nR' |- res_val <= res ]]$); the \kl{heap is well-typed}
+($[[ alloct |- h' <= nR' ]]$), and for all frame-\kl{heaps} ($[[ f ]]$), the
+\kl{resource term} reduces to the \kl{resource value} without affecting the
+frame-\kl{heap} ($[[ alloct | < h + f ; res_term > ||v < h' + f ; res_val > ]]$).
 \end{theorem}
 
 \begin{theorem}[Progress for ResCore]
-If a statement ($[[ stmt ]]$) is well-typed
-($[[ cdot ; L0 ; N ; nR |- stmt <= ret ]]$) and all computational patterns
-in it are exhaustive, then either it is a value ($[[ < ret_terms > ]]$), or it is
-unreachable, or for all well-typed states ($[[ s <= N ; nR ]]$)
-then there exists another state ($[[ s' ]]$) and expression ($[[ stmt' ]]$)
+If a \kl[stmt]{statement} ($[[ stmt ]]$) is well-typed
+($[[ cdot ; L0 ; N ; nR |- stmt <= ret ]]$) and all \kl{computational patterns}
+in it are exhaustive, then either it is a \kl(return){value} ($[[ < ret_terms > ]]$), or it is
+unreachable, or for all \kl{well-typed states} ($[[ s <= N ; nR ]]$)
+then there exists another \kl{state} ($[[ s' ]]$) and \kl[stmt]{statement} ($[[ stmt' ]]$)
 which is stepped to ($[[ < s ; stmt > --> < s' ; stmt' > ]]$)
-in the operational semantics.
+in the dynamic semantics.
 \end{theorem}
 
 \begin{theorem}[Type preservation for ResCore]
-For all closed and well-typed statements
+For all closed and well-typed \kl[stmt]{statements}
 ($[[ cdot ; L0 ; N ; nR |- stmt <= ret ]]$),
-well typed states ($[[ alloct ; h <= N ; nR ]]$),
-frame-heaps ($[[ f ]]$),
+\kl{well-typed states} ($[[ alloct ; h <= N ; nR ]]$),
+frame-\kl{heaps} ($[[ f ]]$),
 new states ($[[ alloct' ; h' ]]$),
 and new statements ($[[ stmt' ]]$),
-which are connected by a step in the operational semantics
+which are connected by a step in the dynamic semantics
 ($[[ < alloct ; h + f ; stmt > -->  < alloct' ; heap ; stmt' > ]]$),
 if all top-level functions are annotated correctly,
-there exists a constraint context ($[[ N' ]]$),
-sub-heap ($[[ h' ]]$),
-and resource context ($[[ nR' ]]$),
-such that the constraint context is extended
+there exists a \kl{constraint context} ($[[ N' ]]$),
+sub-\kl{heap} ($[[ h' ]]$),
+and \kl(normalised){resource context} ($[[ nR' ]]$),
+such that the \kl{constraint context} is extended
 % chktex-file 15
 ($[[ cdot ; L0 ; N ; cdot [= cdot ; L0 ; N' ; cdot ]]$), % chktex 9
 the frame is unaffected ($[[ heap ]] = [[ h' + f ]]$),
-the sub-state is well-typed ($[[ alloct' ; h' <= N' ; nR' ]]$),
-and the statement too
+the sub-\kl{state is well-typed} ($[[ alloct' ; h' <= N' ; nR' ]]$),
+and the \kl[stmt]{statement} too
 ($[[ cdot ; L0 ; N' ; nR' |- stmt' <= ret ]]$).
 \end{theorem}
 
 \subsection{Linking \kl{CN-VIP} to \kl{VIP}}\label{sec:linking}
 
-\kl{CN-VIP} departs from \kl{VIP} in due to the introduction of a new C type
-for bytes.
+By introducing a new C type for bytes, \kl{CN-VIP} departs from \kl{VIP}.
 
 Bytes are intended only for transforming C types to and from their
 representation, critical for supporting dynamic memory allocation and unions.
-Crucially, the transformation is solely at the resource level and is forbidden
-(by a modified \kl{Cerberus} elaboration), directly in the C source: bytes are
-abstract values from the perspective of a C programmer. Pointers to C types can
-be converted to and from pointers to bytes, but as values, bytes are new,
-neither pointer nor integer. Thus the soundess of the various integer and
-pointer memory operations are unaffected by their introdction.
+For the formalisation, I only support these transformation at the \kl(type){resource}
+level, but for the implementation, I went further, and added explicit casting
+to and from bytes and integers at the value level, as new \kl{memory
+operations} in the \kl{Cerberus elaboration}.
+
+Pointers to C types can be converted to and from pointers to bytes, but as
+values, bytes are new, neither pointer nor integer. Thus the soundness of the
+existing integer and pointer memory operations are unaffected by their
+introduction.
 
 Load and stores do deal with values, converting to and from their
 representation as memory bytes. The introduction of bytes in \kl{CN-VIP} may
-raise concerns about increasing expressivity beyond what is possible \kl{VIP},
-because bytes capture more information. In actuality, \kl{CN-VIP} bytes are
-$\sim$ related to \kl{VIP} \cinline{char} as follows: $\mathsf{unspec} \sim
-\mathsf{unspec}$, $(@\mathsf{empty}, a) \sim \mathit{Int}\,(a)$, and $(@i, a)
-\sim \mathit{Loc}\,(@i, a)$.
+raise concerns about increasing expressiveness beyond what is possible
+\kl{VIP}, because bytes capture more information. In actuality, \kl{CN-VIP}
+bytes are $\sim$ related to \kl{VIP} \cinline{char} as follows:
+$\mathsf{unspec} \sim \mathsf{unspec}$, $(@\mathsf{empty}, a) \sim
+\mathit{Int}\,(a)$, and $(@i, a) \sim \mathit{Loc}\,(@i, a)$.
 
-The addition of exposure tracking would complicate the relationship between
-\kl{CN-VIP} and \kl{VIP}: neither would be strictly more expressive than the
-other. The former is more restrictive for byte-related features, requiring
-\emph{more} annotations (explicit casts to and from bytes). The latter would be
-more restrictive for round-trip related features, requiring changes to the
-source program, by threading pointers in and using them from
+\kl{Exposure tracking} (not formalised or implemented) would complicate the
+relationship between \kl{CN-VIP} and \kl{VIP}: neither would be strictly more
+expressive than the other. The former is more restrictive for byte-related
+features, requiring \emph{more} annotations (explicit casts to and from bytes).
+The latter would be more restrictive for round-trip related features, requiring
+changes to the source program, by threading pointers through and using them in
 \cinline{copy_alloc_id}s.
 
 % Roundtrip values are also new values, neither pointers nor integers, and
@@ -614,25 +622,29 @@ source program, by threading pointers in and using them from
 
 \chapter{Epilogue on CN-VIP}\label{chap:epilogue-cn-vip}
 
-Having finished my discussion on the formalisation and implementation of
-\kl{CN-VIP}, I will now discuss the aftermath of transitioning the \kl{CN} test
-and tutorial code to using it. I will finish with a discussion on how future
-work could use the principles uncovered by my work to place the \kl{CN} memory
-model on more foundational and trustworthy footing.
+\margintoc%
+%
+In this chapter, I discuss the impact of transitioning the \kl{CN} test
+and tutorial suite to using \kl{CN-VIP}. I finish with a discussion on how
+future work could use the principles uncovered by \kl{CN-VIP} to make
+it and \kl{CN} overall more trustworthy.
 
 \section{Performance}\label{sec:vip-perf}
 
-\kl{CN-VIP} causes a significant hit to performance. The benchmarks on the
-\kl{CN} testsuite below show a 2\textendash{}3x slowdown, though this is
-imperfect because some tests are intended to fail in early stages such as
-parsing, desugaring or well-formedness checks.
+\kl{CN-VIP} degrades \kl{CN}'s performance significantly. The benchmarks on the
+\kl{CN} test suite (\cref{fig:vip-performance-hit2}) show a 2\textendash{}3x
+slowdown, though this is imperfect because some tests are intended to fail in
+early stages such as parsing, desugaring or well-formedness checks.
 
-\begin{figure}[h]
+\begin{figure*}[t]
     \centering
-    \includegraphics[width=\textwidth]{../misc/vip-performance-hit.png}
-    \caption{Sharp increase in execution time when enabling VIP, courtesy of
+    \includegraphics[width=1.5\textwidth]{figures/cnvip-performance.png}
+    \caption{Benchmarks for \kl{CN}'s test suite, with time in seconds on the
+        y-axis and commits on the x-axis. It shows a 2\textendash{}3x increase
+        in execution time when enabling \kl{CN-VIP}, followed by a 50\%
+        decrease for Z3 after an optimisation, courtesy of
         \url{https://rems-project.github.io/cerberus/dev/bench/}.}\label{fig:vip-performance-hit2}
-\end{figure}
+\end{figure*}
 
 % It is more fruitful to look at the tests individually, and see which ones
 % show a demonstrable slowdown when \kl{VIP} was enabled.
@@ -662,7 +674,7 @@ parsing, desugaring or well-formedness checks.
 %     \item division\_casting.c (Z3 <2x, CVC5 2x)
 %     \item reverse.c (Z3 6x, CVC5 5x)
 %     \item mask\_ptr.c (Z3 <2x, CVC5 3x)
-%     \item and\_or\_precedence.error.c (CVC5 <2x)
+%     \item and\_or\_precedence.error.c (CVC5 2x)
 %     \item get\_from\_arr.c (Z3 2x, CVC5 3x)
 %     \item enum\_and\_and.c (both 2x)
 %     \item simplify\_array\_shift.c (CVC5 5x, Z3 7x)
@@ -675,43 +687,43 @@ parsing, desugaring or well-formedness checks.
 %     \item Deriving constraints.
 % \end{enumerate}
 
-There are two main components to \kl{CN-VIP}: the pointer liveness checks, and
-the bounds checks. Disabling the liveness checks is simple and gives sensible
-timing information: tests which passed before will continue to do so; tests
-which failed because pointers could not be proved live are small ones which do
-not test anything afterwards. Disabling liveness has barely any impact on the
-total time taken (a slight increase, because of previously failing tests now
-passing) and so what remains is the bounds checks.
+The implementation of \kl{CN-VIP} has two primary components: the pointer
+liveness checks, and the bounds checks. Disabling the liveness checks is simple
+and gives sensible timing information: tests which passed before will continue
+to do so; tests which failed because pointers could not be proved live are
+small ones which do not test anything afterwards. Disabling liveness has barely
+any impact on the total time taken (a slight increase, because of previously
+failing tests now passing) and so what remains is the bounds checks.
 
 The bounds checks are easy to disable, but this does not lead to a fair
 comparison: of course we expect the version which checks less and unsoundly to
 go faster. Furthermore, any slowdown for bounds checks will be some mixture of
 the effect of derived constraints, and the complexity of the check itself.
 
-The above two facts combined\sidenote{And a few hours of experimentation}
-suggest a possible remedy: if any bounds checks can be replaced with checks in
-the resource context, then it may offer a substantial speed-up. Since ownership
-of a pointer is sufficient (but not necessary) to deduce bounds checks, we can
-replace some of those with checking the resource context for ownership.
+The above two facts combined suggest a possible remedy: if any bounds checks
+can be replaced with checks in the \kl{resource context}, then it may offer a
+substantial speed-up. Since \kl{ownership} of a pointer is sufficient (but not
+necessary) to deduce bounds checks, we can replace some of them with checks in
+the \kl{resource context} for \kl{ownership}.
 
 In particular, for member and array shifts, this is a good strategy, because
 often the shifting is done just before loading, for which ownership needs to be
 present regardless. The ownership check can be done first, and if it fails, the
 code will fall back to the slower, full check.
 
-The net result of this is a substantial speed-up of CN-VIP overall: a 3x
-slowdown is now less than 50\% slowdown, which although not ideal, is a
-worthwhile improvement. Although \kl{VIP} increases complexity and slows
-things down considerably, it did also provide a helpful equivalence which I
-exploited to improve execution time.
+The net result of this is a substantial mitigation \kl{CN-VIP} of the initial
+degradation, though only for Z3 and not CVC5: a 3x slowdown is now less than 2x
+slowdown. \kl{CN-VIP} gives an optimisation, but takes a long time regardless.
 
-This does beg the question: why is a linear lookup in the resource context
+This begs the question: why is a linear lookup in the \kl{resource context}
 faster than proving a pure SMT constraint? One possibility is that most
-equalities tested in resource lookup can be resolved syntactically without
-appeal to the solver. This may just be an empirical fact about most C programs,
-and although not very theoretically elegant, still useful. Another possibility
-is that the encoding of the allocation history bounds constraints is
-sub-optimal.
+equalities tested in \kl(type){resource} lookup can be resolved syntactically.
+Another possibility is that the encoding of pointer arithmetic (producing an
+unconstrained value for shifting on \coreinline{NULL}) and bounds-checks (based
+on pairwise disjointness for each points-to in the context) is sub-optimal. In
+practice, we have observed that, \emph{not} automatically deriving disjointness
+constraints can speed-up verification
+significantly.\sidenote{\url{https://github.com/rems-project/cn-pKVM-hyp-allocator/pull/13}} 
 
 It is possible to optimise further, for example, the \kl{Core} elaboration
 performs a \coreinline{PtrValidForDeref} check before every
@@ -722,31 +734,24 @@ could be exploited (with a switch) to improve performance of
 
 \section{Updating existing code}
 
-As I was developing \kl{CN-VIP}, I was testing it under a flag, adding new
-tests and updating existing ones. Generally, \kl{CN-VIP} is more strict than
-the previous model, and so it was easy to update tests in a
-backwards-compatible manner. Where VIP added new expressiveness, I added new
-tests, separate from the existing regression suite. Importantly, the new ones
-included a mix of positive and negative tests.
+I developed \kl{CN-VIP} piecemeal, gated by a flag. \kl{CN-VIP} is stricter
+than the previous concrete model, and so it was easy to update tests in a
+backwards-compatible manner. For new features, I added new tests (a mix of
+positive and negative ones), separate from the existing regression suite.
 
-To quantify the impact of \kl{CN-VIP} on existing code, I used the \kl{CN
-tutorial} examples. Unlike the regression suite, I left these untouched until
-the implementation was stable, out of fear of the tedium in updating more than
-two hundred small tests to handle the stricter rules.
-
-Thankfully, my fear did not materialise, as
-\href{https://github.com/rems-project/cn-tutorial/commit/9ee153e74d1b0fbdcb2802f2186d211ab6b2343b}{commit
-9ee153e7}, `Add support for VIP', demonstrates. Out of roughly 185 small,
+To quantify the impact of \kl{CN-VIP} on existing code, I used the (over 200)
+\kl{CN tutorial} examples. As the
+\href{https://github.com/rems-project/cn-tutorial/commit/9ee153e74d1b0fbdcb2802f2186d211ab6b2343b}{`Add
+support for VIP} commit demonstrates, out of roughly 185 small,
 ``working'' test cases, only 7 had to be updated.\sidenote{A limitation of the
     testing framework for the tutorial, and at the time, the \kl{CN} regression
     suite, is that it only checks return codes, not the whole output. So there
-    was no automated way of checking whether an already failing test starts
-failing for a different reason. I eventually fixed this
-(\href{https://github.com/rems-project/cerberus/pull/703}{Cerberus/\#703}) by
-capturing all output and automatically diffing it.} Four of them were
-related to casting integers to pointers, of which one was a round-trip which
-was not supported initially. All of them were updated using
-\cinline{copy_alloc_id}.
+    was no checking for the changes in the reason for a failing test, which I
+    later fixed
+    (\href{https://github.com/rems-project/cerberus/pull/703}{Cerberus\#703})
+    by capturing and automatically diffing all output.} Four of them were
+related to casting integers to pointers, of which one is a round-trip. All of
+them were updated using \cinline{copy_alloc_id}.
 
 % \inputminted[fontsize=\footnotesize,breaklines,firstline=10,lastline=68]{diff}{code/add_support_for_vip.patch}
 
@@ -762,74 +767,77 @@ decrementing rather than catching \kl{UB}, I amended the code to to sidestep
 \subsection{Non-deterministic pointer equality}\label{subsec:update-non-det-ptr-eq}
 
 The other set of examples were the approximately 81 C files (114 including
-headers) used in the \kl{CN tutorial}. Of these, 7 were intentionally broken in
-non-\kl{VIP} ways for pedagogical reasons, which I manually checked was
-preserved after the transition. Another 4 were intentionally without
+headers) used in the \kl{CN tutorial} itself. Of these, 7 were intentionally broken in
+non-\kl{CN-VIP} ways for pedagogical reasons, which I manually checked
+remained so after the switch. Another 4 were intentionally without
 annotations, of which 3 started to fail verification earlier because of
-\kl{VIP} related reasons (member shifting on a pointer not guaranteed to be
+\kl{CN-VIP} related reasons (member shifting on a pointer not guaranteed to be
 non-\cinline{NULL}). Of the remaining 70 C files (103 including headers), only
-2 predicate definitions (in headers) and 2 lemmas needed updating. The latter
-followed from the former because the lemmas inlined the definitions of
-the predicates.
+2 predicate definitions (in headers) and 2 \kl{lemmas} needed updating. The latter
+followed from the former because the \kl{lemmas} inlined the definitions of
+the \kl(user-defined){predicates}.
 
 % \inputminted[fontsize=\footnotesize,breaklines,firstline=108]{diff}{code/add_support_for_vip.patch}
 
-All those updates were related to excluding the non-deterministic
-case in pointer equality in a queue example.\sidenote{A detailed walk-through
-is available online:
-\url{https://rems-project.github.io/cn-tutorial/getting-started/case-studies/imperative-queues/}.}
+All those updates were related to excluding the \kl{non-deterministic
+case in pointer equality} in the queue example (\cref{chap:example-queue}).
+
 Specifically, because the implementation for the pop operation, and the C proof
-of an induction lemma to verify the push operation, both used C's pointer
-equality, the predicates for that datatype needed an additional constraint that
-address equality implied pointer equality for the relevant pointers. This is
-enough to assuage \kl{CN-VIP} that the non-deterministic pointer equality case
-is impossible. The constraint is sensible and the example still usable because
-the pointers refer to a node in a queue; thus, they need to be valid for
-dereferencing (not one-past), hence ruling out the possibility that they could
-have equal addresses and differing provenances.
+of an induction \kl{lemma} to verify the push operation, both used C's
+\kl(non-det){pointer equality}, the \kl(user-defined){predicates} for it needed
+to constrain the relevant pointers to ensure address equality implied pointer
+equality. This is enough to assuage \kl{CN-VIP} that the
+\kl(ptr-eq){non-deterministic} case is impossible. The constraint is sensible
+(and the example is still usable) because the pointers involved refer to a node
+in a queue; thus, they need to be valid for dereferencing (not \kl{one-past}),
+hence ruling out the possibility that they could have equal addresses and
+differing \kl{provenances}.
 
-\section{Lemma proofs within C}\label{sec:lemma-proof-c}
+\section{\kl{Lemma} proofs within C}\label{sec:lemma-proof-c}
 
-The \kl{CN tutorial} queue example requires the use of lemmas to prove the
+The \kl{CN tutorial} queue example requires the use of \kl{lemmas} to prove the
 appropriate facts for popping and pushing. I did not write the implementation
-for these examples, but I did verify them, including proofs of lemmas using C
+for these examples, but I did verify them, including proofs of \kl{lemmas} using C
 as a tactic language, with the caveat they do not have or check a termination
 metric on recursive C functions.
 
 The experience was humbling because I found it quite difficult; it took a few
-days work. This was mostly due to my lack of prior experience with separation
-logic proofs about basic data-structures such as linked list, and resulting
+days work. This was mostly due to my lack of prior experience with \kl{separation
+logic} proofs about basic data-structures such as linked lists, and resulting
 lack of intuition, however some of this did come down to deciphering often
-inscrutable counter-examples. If the target audience of \kl{CN} is competent
-programmers with little to no experience in verification, then the bar for
-usability and pedagogy needs to be accordingly high. A verification expert
-will find the tool rough around the edges but useful, but a novice will find
-it frustrating and miss the value of verification.
+inscrutable \kl{counter-examples}.
 
-Let \cinline{snoc} be the function which adds an element (by induction) to the
-back of a list. Because of its recursive definition, the SMT solver will be
-unable to prove facts about it. The lemma for popping below states that the head
-and the tail of a \cinline{snoc}'d list is the head of the
+% If the target audience of \kl{CN} is competent programmers with little to no
+% experience in verification, then the bar for usability and pedagogy needs to be
+% accordingly high. A verification expert will find the tool rough around the
+% edges but useful, but a novice will find it frustrating and miss the value of
+% verification.
+
+Let \cinline{snoc} be the \kl(CN){function} which adds an element to the back
+of a list. It is recursive, and so will require \kl[CN statement]{hints}
+from the user to prove facts about it. The \kl{lemma} for popping (below)
+states that the head and the tail of a \cinline{snoc}'d list is the head of the
 original list, and the \cinline{snoc} of the original tail. A limitation of the
-syntax \textemdash{} the inability to have an assertion about a resource in the
-middle of a function and bind its output \textemdash{} means that we are
-forced to mention resources to get a handle on the logical values of their
-output.
+syntax \textemdash{} the inability to have an assertion about a
+\kl(type){resource} in the middle of a C function and bind its output
+\textemdash{} means that we are forced to mention \kl(type){resources} to get a
+handle on the \kl{logical values} of their \kl(arg){output}.
 
 \cfile[fontsize=\footnotesize,breaklines,highlightlines={2-12}]{code/queue_pop_lemma.h} % chktex 8
 
-The lemma for pushing however (seen in the diff above), is more interesting,
-because it requires induction on a user-defined recursive resource predicate,
+The \kl{lemma} for pushing however (seen in the diff above), is more
+interesting, because it requires induction on a \kl{user-defined predicate},
 rather than a \kl{logical} (\kl{ghost}) data-structure. It says that if you
 have ownership of a list segment from pointers \cinline{front} to \cinline{p},
-and ownership of node \cinline{struct queue_cell} at \cinline{p}, then you can
-reinterpret that as ownership of a larger queue from \cinline{front} to
+and \kl{ownership} of node \cinline{struct queue_cell} at \cinline{p}, then you
+can reinterpret that as ownership of a larger queue from \cinline{front} to
 \cinline{p->next}, and interpret the \kl{logical} queue it represents as a
-\cinline{snoc} of the original queue and the payload \cinline{p->first}.
+\cinline{snoc} of the original queue and \cinline{p->first}.
 
-The lemma proved here includes an extra parameter and constraint on line 10 as
-a sanity check at the call site. It also includes ownership of the last node on
-line 11, which turns out to be necessary to prove the constraint on line 14.
+The \kl{lemma} proved here includes an extra parameter and constraint on line
+10 as a sanity check at the call site. It also includes \kl{ownership} of the
+last node on line 11, which turns out to be necessary to prove the constraint
+on line 14.
 
 \cfile[fontsize=\footnotesize,breaklines,firstline=3,lastline=29,highlightlines={7-18,22,26}]{code/queue_push_induction.c} % chktex 8
 
@@ -840,150 +848,148 @@ it can be seen as traversing the queue until the base case and adding the extra
 
 \begin{marginfigure}
     \cfile[fontsize=\footnotesize,breaklines,highlightlines={1-15}]{code/queue_aux.h} % chktex 8
-    \caption{\cninline{QueueAux} predicate which states ownership of a linked
-    list of \cinline{queue_cell}s from \cninline{front} inclusive to
-    \cninline{back} exclusive. The ownership for \cinline{back} is
-    not included because that needs to be claimed earlier for constant time
-    updates.}\label{fig:queue-aux-def}
+    \caption{\cninline{QueueAux} \kl(user-defined){predicate} which states
+        ownership of a linked list of \cinline{queue_cell}s from
+        \cninline{front} inclusive to \cninline{back} exclusive. The
+        \kl{ownership} for \cinline{back} is not included because that needs to
+        be claimed earlier for constant time updates.}\label{fig:queue-aux-def}
 \end{marginfigure}
 
-To be clear: \emph{this C lemma or proof is not intended to be executed at
+To be clear: \emph{this C \kl{lemma} or proof is not intended to be executed at
 runtime}. Indeed that would defeat the point of a queue with a pointer to the
 back for constant time pushing. Instead, it demonstrates that there is a class
-of resource lemmas that are provable without appeal to the underlying memory
-model.
+of resource \kl{lemmas} that are provable without appeal to the underlying
+{memory object model}.
 
-\section{Lemma proofs in a proof-assistant}\label{sec:lemma-prover}
+\section{\kl{Lemma} proofs in a proof-assistant}\label{sec:lemma-prover}
 
-There are however, lemmas which need to be proved outside of even the fragment
-expressible by C programs. Some of these work around limitations of using the
-decidable fragment of SMT theories, such as the mismatch between the intended
-finite arrays represented by resources, and the total maps used in decidable
-SMT theories (\cref{fig:byte-array-eq-lemma}). Using that, it would be possible
-to build support on merging array values. Non-SMT related examples have not
-come up quite yet, but it is difficult to rule them out and say they will never
-come up.
+In our use so far, the only use case that falls outside the aforementioned
+class of \kl{lemmas} it to work around the limitations of using the
+\kl{decidable fragment of SMT theories}, \eg{} the mismatch between the
+finite arrays represented by \kl{iterated predicates}, and the total maps used
+in \kl{decidable SMT theories} (\cref{fig:byte-array-eq-lemma}).
+
+% Using that, it would be possible to build support on merging array values.
+% Non-SMT related examples have not come up quite yet, but it is difficult to
+% rule them out and say they will never come up.
 
 \kl{CN} already has a mechanism, implemented by Thomas Sewell, for exporting
-lemmas about pure facts to Rocq; this was used extensively in an earlier version
-with integers instead of bit-vectors, to reason about the bit manipulations done
-by the \kl{buddy allocator} in \kl{pKVM} (\cref{chap:buddy}). It supports
-exporting pure facts involving datatypes too.
+\kl{lemmas} about pure facts to Rocq; this was used extensively in an earlier
+version \textemdash{} with integers instead of bit-vectors \textemdash{} to
+reason about the bit manipulations done by the \kl{buddy allocator} in
+\kl{pKVM} (\cref{chap:buddy}). It supports exporting pure facts involving
+datatypes too.
 
-This feature was extended by Amy Yin to support exporting and proving lemmas
+This feature was extended by Amy Yin to support exporting and proving \kl{lemmas}
 involving resources. Because of \kl{CN}'s aim (\cref{sec:cn-goals}) to behave
 like a decidable type system rather than a program logic, there will always be
-limits to the number of features that we would like to build into the type
-checker, and the degree of automation which is pragmatic.
+limits to the expressiveness of the type system, and the degree of automation
+which is pragmatic.
 
-At the same time, we would like the logic used for proving lemmas to be sound,
-so that we have assurance that users cannot use it subvert the rules enforced
-by the OCaml implementation. An obvious candidate for this is the
-Iris~\sidecite{jung2018iris} framework in Rocq, which allows users to define a
-separation logic and inherit many powerful proof rules based on that.
+At the same time, we would like the logic used for proving \kl{lemmas} to be
+consistent with the (intent of the) OCaml implementation, to prevent users from
+bypassing verification errors with a lemma. An obvious candidate for this is
+the Iris~\sidecite{jung2018iris} framework in Rocq, which allows users to
+define their own notion of resources and inherit many powerful proof rules
+based on that.
 
-However, the fundamental way that Iris works means that it requires an
-operational semantics over which to prove the basic primitives sound, on top of
-which other rules are defined. Note that the current resource lemma export and
-proof mechanism sidesteps this issue and focuses on translating function and
-predicate definitions and lemma statements.
+However, Iris requires an operational semantics over which to prove the basic
+primitives sound, on top of which other rules are defined. Note that the
+current resource \kl{lemma} export and proof mechanism sidesteps this issue and
+focuses on translating \kl(logical){function} and \kl{predicate definitions}
+and \kl{lemma} statements.
 
 Another impediment is that Iris is an \kl{affine} separation logic, whereas we
-would like to work in a linear setting. Whilst there does exist work which
-claims to have addressed this mismatch~\sidecite{bizjak2019iron}, it remains to
-be seen if it can be scaled for this use case.
+would like to work in a \kl{linear} setting, for which the work
+of~\sidetextcite{bizjak2019iron} might be useful.
 
-However, the idea of putting all of \kl{Core} and its dynamic semantics inside
-Rocq, would be a significant duplication of work (it is already implemented in
-\kl{Cerberus}) and difficult (in particular the highly non-compositional rules
-for $\cnkw{run}$/$\cnkw{save}$ and weak sequencing). The effort and risk is
-large and clear, and so far the the reward has not outweighed it. It seems as
-if supporting resource terms in lemmas pulls on a thread which drags with it
-all of \kl{Cerberus}, making the feature desirable but difficult to implement.
+However, putting \kl{Core} and its dynamic semantics inside Rocq, would be a
+significant duplication of work (it is already implemented in \kl{Cerberus})
+and difficult (in particular the highly non-compositional rules for
+$\cnkw{run}$/$\cnkw{save}$ and weak sequencing). The effort and risk is large
+and clear, but the reward is not so. Supporting \kl(type){resourceful}
+\kl{lemmas} seems to pull on a thread which drags with it all of \kl{Cerberus}.
 Is there an alternative?
 
-One approach that we discussed would be to make up a subset of the language
-which has enough features we care about to make the project feasible, without
-losing too much fidelity to \kl{Core}. It is not clear to me exactly how this
-would work, or integrate into the current project. Another approach would be to
-do a pen-and-paper proof of soundness and build our own logic, but as \kl{CN}
-is extended with more features such as concurrency and fractional permissions,
-this would reduplicate the work of the \emph{Iris} project instead that
-of \kl{Cerberus}.
+We considered using a ``faithful subset'' of \kl{Core} to make the project
+feasible, but how this would work, or integrate into the current project, was
+very unclear. We also considered just continuing with pen-and-paper proofs of
+soundness for richer logic, but the would just duplicate Iris, in a more
+error-prone manner.
 
 This impasse can be broken with a few observations:
 \begin{itemize}
-    \item Currently, resources and contexts are defined and interpreted only
-        with respect to a chosen memory object model.
-    \item A lemma is a purely ghost state operation, and so would entail
-        proving that the \emph{interpretation} of the sub-heap it consumes is
-        the same as the \emph{interpretation} of the sub-heap it produces.
+    \item Currently, \kl(type){resources} and \kl(resource){contexts} are
+        defined and interpreted only with respect to a chosen \kl{memory object
+        model}.
+    \item A \kl{lemma} is a purely ghost state operation (a ``view shift'' in Iris
+        terminology), and so would entail proving that the
+        \emph{interpretation} of the sub-\kl{heap} it consumes is the same as
+        the \emph{interpretation} of the sub-\kl{heap} it produces.
 \end{itemize}
 
-With this, a lemma is sound if the interpretations of its pre- and
-postconditions are equal. The interpretations are defined to be exactly as in
-\fancyref{sec:linking}.
+With this, a \kl{lemma} is sound if the interpretations of its \kl{pre-} and
+\kl{postconditions} are equal. The interpretations are defined to be exactly as
+in \fancyref{sec:linking}.
 
 \section{Better foundations for CN}\label{sec:better-foundations}
 
-Whilst this resolution to the problems raised by supporting lemmas soundly is
-pleasing, it does raise an uncomfortable question: if \kl{CN} \emph{users}
-should be prevented from introducing unsoundness via lemmas, should \kl{CN}
-\emph{implementers} be treated similarly?
+If \kl{CN} \emph{users} should be prevented from introducing unsoundness via
+\kl{lemmas}, should \kl{CN} \emph{implementers} be treated similarly
+for the implementation itself?
 
 Putting all of \kl{Core} and its dynamic semantics inside Rocq would be
-sufficient, but is it necessary? That is not where most critical bugs are
-likely to occur \textemdash{} most of Core is a relatively simple first order
-language, and the SMT solvers we use are well tested pieces of software. Hence
-while it is certainly possible the symbolic evaluation of sub-expressions and
-the constraint solving could be incorrect, it is not the most subtle and
-therefore error-prone parts of the system; that would be manipulating the
-resource context.
+sufficient, but is it necessary? I conjecture that neither symbolically
+evaluating \kl{Core}, nor using SMT solvers, are the most error-prone parts of
+the system: \kl{Core} is a relatively simple first order language, and the SMT
+solvers are better tested than \kl{CN}'s resource context manipulations.
 
-Yet, the ways in which \kl{CN} interacts with the resource context are very
-well defined, at least in principle, even if it is not delineated as such in
-the implementation.
-\begin{itemize}
-    \item At the start of a function, adding resources from the precondition to
-        the context.
-    \item At the end of a function, looking up and removing resources required
-        by the postcondition in the context (and ensuring no extra ones remain).
-    \item Before a function call, looking up and removing resources required
-        by the precondition of the callee.
-    \item After a function call, adding resources from the postcondition to the
-        context.
-    \item After a \coreinline{create*}, adding resources to the context.
-    \item After a \coreinline{kill*}, removing resources from the context.
-    \item Before a \coreinline{kill*}, \coreinline{load}, \coreinline{store}
-        and many pointer operations, looking up resources in the context.
-    \item After a \coreinline{store}, updating the resource context.
-    \item During any lookup, changing the syntactic structure of resources via
-        folding and unfolding predicates, decomposing and rebuilding pairs,
-        structs, fixed-length arrays and byte representations, and indexing and
-        splitting iterated predicates.
-\end{itemize}
+Those manipulations are well-defined, at least in principle, if not in the
+implementation: they are exactly the ones described by the grammar of
+\kl{ResCore} \kl{resource terms} (\cref{sec:res-terms}), plus adding and
+\kl(type){resources} to the \kl(resource){context}. This is promising, but
+\kl{let-normalising} \kl{Core} and adding \kl{explicit resource terms} is still
+impractical.
 
-This should be very familiar because \emph{these events are precisely the
-places where \kl{ResCore} requires resource term annotations: memory actions,
-memory operations, pattern matching, function calls and return values.}
-Furthermore, the possible changes on the syntactic structure of resources that
-could occur during a lookup are \emph{precisely the ones described by the
-grammar of resource terms} (\cref{sec:res-terms}), indeed that was what they
-were designed for.
+% \begin{itemize}
+%     \item At the start of a C function, add \kl(type){resources} from the
+%         \kl{precondition} to the \kl(resource){context}.
+%     \item At the end of a C function, check that the \kl(resource){context}
+%         and the \kl{postcondition} mention the same \kl(type){resources}.
+%     \item Before a C function call, find and remove from the
+%         \kl(resource){context} the \kl(type){resources} required by the
+%         \kl{precondition} of the callee.
+%     \item After a C function call, adding resources from the postcondition to the
+%         context.
+%     \item After a \coreinline{create*}, adding resources to the context.
+%     \item After a \coreinline{kill*}, removing resources from the context.
+%     \item Before a \coreinline{kill*}, \coreinline{load}, \coreinline{store}
+%         and many pointer operations, looking up resources in the context.
+%     \item After a \coreinline{store}, updating the resource context.
+%     \item During any lookup, changing the syntactic structure of resources via
+%         folding and unfolding predicates, decomposing and rebuilding pairs,
+%         structs, fixed-length arrays and byte representations, and indexing and
+%         splitting iterated predicates.
+% \end{itemize}
+%
+% This should be very familiar because \emph{these events are precisely the
+% places where \kl{ResCore} requires resource term annotations: memory actions,
+% memory operations, pattern matching, function calls and return values.}
+% Furthermore, the possible changes on the syntactic structure of resources that
+% could occur during a lookup are \emph{precisely the ones described by the
+% grammar of resource terms} (\cref{sec:res-terms}), indeed that was what they
+% were designed for.
+%
 
-We still need a feasible route to shift some of the trust out of the \kl{CN}
-implementation: let-normalising Core and extending the AST with explicit
-resource terms would be an impractically large refactor. A more realistic and
-gradual approach would be to instrument the \kl{CN} implementation as it
-currently stands, but to record a tree of traces of each of the events
-described above. Each event would correspond to a transition between pairs of
-\kl{CN-VIP} abstract states, upon which an Iris instantiation could be defined and
-proved sound. The logic could then be used to construct separation logic proofs
-for each path through the tree of events. The traces would need to record any
-logical facts proved using the solver, since those would turn into assumptions
-or proof obligations in Rocq.
-
-Indeed, the feasiblity of this approach has already been partly demonstrated
+A more realistic and gradual approach is to instrument the \kl{CN}
+implementation, but to record a tree of traces of the \kl{resource context}.
+Each event would correspond to a transition between pairs of \kl{CN-VIP}
+abstract \kl{states}, corresponding to one \kl{resource term}, upon which an
+Iris instantiation could be defined and proven sound. The instantiation could
+then be used to construct proofs that each path through the tree of events is
+sound. The traces would need to include logical facts proved using the solver,
+since those would turn into assumptions or proof obligations in Rocq. Indeed,
+the feasibility of this approach has already been partly demonstrated
 by~\sidetextcite{zaliva2025bridging}, which (as a first step) records and
 verifies all resource lookups and predicate unfolds in Rocq.
 
@@ -991,41 +997,34 @@ Once traces are verified, the boundary of trust would shift away from the
 pen-and-paper proofs discussed in this thesis, and towards trust in how well
 the OCaml implementation implements the theory. The next step would be to
 refactor the implementation so that it becomes impossible to manipulate the
-resource context without it being recorded in a trace. Thus the
+\kl{resource context} without it being recorded in a trace. Thus the
 instrumentation would not need to be updated every time the inference algorithm
-changes. The primitives would stay the same, just encapsulated at a
-higher-level, so for example an implementer could not just add or remove
-resources at arbitrary points during type checking, but only for the specific
-events given.
+changes.
 
-Once all the operations are encapsulated, we could replace the implementation
-with one defined in and extracted from Rocq. It would be an implementation of a
-resource context data-structure, with each operation on it corresponding
-to an event. The implementation of those events in terms of how they
-syntactically manipulate linear separation logic types/assertions would be
-proved correct with respect to a mechanised definition of the \kl{CN-VIP}
-memory model.
+Once all the manipulations are thus encapsulated, we could replace the
+implementation with one defined in and extracted from Rocq. It would be an
+implementation of a \kl{resource context} data-structure, with each operation
+on it corresponding to \kl{resource term}. The soundness of each operation
+would be proved correct with respect to a mechanised definition of \kl{CN-VIP}.
 
 At this stage, \kl{CN} implementers could experiment with different inference
-schemes with a strong safety net to make difficult any unsoundness. The
-mechanisation could be taken one step further and inference algorithms
-themselves could be mechanised, with proofs that they have desirable properties
-such as always ending in either a successful proof or a counter-example.
-Accomplishing this would require some non-trivial engineering to connect the
-proof-assistant to the SMT solver, used heavily by the inference algorithms.
+schemes with a strong safety net. The mechanisation could be taken one step
+further and inference algorithms themselves could be mechanised, with proofs
+that they have desirable properties such as always ending in either a
+successful proof or a counter-example. Accomplishing this would require some
+non-trivial engineering to connect the proof-assistant to the SMT solver, used
+heavily by the inference algorithms.
 
 At the point that even inference is mechanised, the remaining bases of trust
 would be (a) the SMT solver and (b) the accuracy of the traces. The former could be
 checked  by asking for certificates of proofs from the solver.\sidenote{Thus
 avoid the need to reimplement an SMT solver inside a proof assistant, even
-if it is only for decidable theories.} The latter would require \kl{Core} and
-its dynamic semantics, prioritising challenging aspects such as the loose
-evaluation order.
+if it is only for decidable theories.} The latter would require mechanising
+\kl{Core} and its dynamic semantics.
 
-Of course, mechanising any substantial system is a significant undertaking, and
-although extraction of verified code sounds nice, it may not be technically
-practical. Still, if possible, the latter is where I see most of the value
-coming from; a parallel implementation and proof would also work but that
-carries a risk of the two drifting apart over time. I also expect mechanisation
-to be increasingly valueable as more expressive features are added such as support
-for concurrency, higher-order resources, fractional permissions. % chktex 17
+Of course, mechanising anything is hard, and so extracting verified code from
+it. Still, if possible, the latter is what I judge most valuable; a parallel
+implementation and proof would also work but they would require a manual,
+trusted synchronising over time. I also expect mechanisation to be increasingly
+valuable as we add support for concurrency, higher-order resources, fractional
+permissions. % chktex 17 (from the soundness statements)
