@@ -80,17 +80,15 @@ argue for the soundness of pattern-matching
 \PredOpsFromBytes, \PredOpsSelect, \PredOpsForget,
 \ResChkPhi, \ResChkIfTrue, \ResChkIfFalse, \ActionLoad,
 \ActionStore, \ActionKillStatic, \ActionKillDynamic, \LiveOwned,
-\LiveAlloc, \BoundsCheck, \MemopIntFromRt, \MemopLiveFromRt, \MemopMemcpy, \MemopMemcmp.
+\LiveAlloc, \BoundsCheck, \MemopMemcpy, \MemopMemcmp.
 
 \subsection{Typing rules which change the context}\label{subsec:ctx_change_rules}
 
 \subsubsection{Rules which add constraints}
 \StmtIf.
 
-
 \subsubsection{Rules which add constraints and computational or logical variables}
-
-\StmtCase.\\
+\StmtCase.
 
 \subsubsection{Rules which restrict the resource context}
 
@@ -110,8 +108,7 @@ No-resource / ``pure'' rules: \IGCmpEq, \IGCmpLt, \IGCmpGt, \IGCmpNone,
 \PureValStruct, \PureExprPVal, \PureExprCtorIvXOR, \PureExprArrayShift,
 \PureExprMemberShift, \PureExprNot, \PureExprArithBinop, \PureExprRelBinop,
 \PureExprBoolBinop, \PureExprCall, \PureExprAssertUndef, \PureExprBoolToInteger,
-\PureExprWrapI, \PureStmtUB, \PureStmtPVal, \MemopPtrEq, \MemopIntFromRt,
-\MemopRtFromInt, \MemopRtFromPtr, \MemopUnsureFromRt, \MemopPtrUnsureForDeref,
+\PureExprWrapI, \PureStmtUB, \PureStmtPVal, \MemopPtrEq, \MemopPtrUnsureForDeref,
 \MemopPtrWellAligned, \ExprPure, \StmtPure.\\[\baselineskip]
 
 Resource-mentioning rules: \ResSynEmp, \ResSynVar, \ResSynVarSimp, \ResSynPred,
@@ -1857,34 +1854,6 @@ arbitrary (not normalised).
     \pf{} Similar to \MemopRelBinop, so step with
     \OpMemopPtrDiff/\OpMemopPtrDiffArr{} respectively.}}
 
-\step{<1>26}{\case{%
-    \MemopIntFromRt, \MemopRtFromInt.
-}{%
-    \pf{} Similar to \MemopPtrEq, but $[[pval]]$ is an $[[addr]]$ for \MemopRtFromInt.
-    Step with \OpMemopIntFromRt/\OpMemopRtFromInt{} respectively.}}
-
-\step{<1>27}{\case{%
-    \MemopRtFromPtr.
-}{%
-    \pf{} Similar to \MemopPtrEq, but $[[pval]]$ is a $[[ptr]]$.
-    Step with \OpMemopRtFromPtr{} respectively.}}
-
-\step{<1>28}{\case{%
-    \MemopLiveFromRt.
-}{%
-    \pf{} Similar to \MemopRelBinop, but just one $[[pval]]$ which is a $[[ptr]]$.
-    Step with \OpMemopLiveFromRt{} respectively.}}
-
-\step{<1>28a}{\case{%
-    \MemopUnsureFromRt.
-}{%
-    \pf{} Similar to \MemopRelBinop, but just one $[[pval]]$ which is a $[[ptr]]$.\\
-    If the $[[ inj ptr . addr != 0 ]]$ and the heap contains $[[ pred_term ( oarg) ]]$
-    which proves the pointer is in bounds of a live allocation, step with
-    \OpMemopAlsoLiveFromRt.\\
-    If the address is 0, or the pointer is not in bounds
-    of a live allocation, step with \OpMemopNullEmptyFromRt.}}
-
 \step{<1>29}{\case{%
     \MemopCopyAllocId.
 }{%
@@ -2468,23 +2437,6 @@ to deduce that $[[ nR' ]]$ can only be what you would have supplied anyways.
     \MemopPtrDiffArr, \MemopPtrDiff.
 }{%
     \pf{} Similar to \MemopRelBinop, but with \PureValObjInt.}}
-
-\step{<1>19}{\case{%
-    \MemopIntFromRt, \MemopRtFromInt, \MemopRtFromPtr.
-}{%
-    \pf{} Similar to \MemopPtrEq, but with an extra \SpineLog{} for \MemopRtFromInt{} and \MemopRtFromPtr.}}
-
-\step{<1>20}{\case{%
-    \MemopLiveFromRt.
-}{%
-    \pf{} Similar to \MemopRelBinop, but with \PureValObjPtr{} first.}}
-
-\step{<1>20a}{\case{%
-    \MemopUnsureFromRt.
-}{%
-    \pf{} Similar to \MemopRelBinop, but with \PureValObjPtr{} first, and an
-    extra \SpineLog{} for the allocation ID, for both \OpMemopAlsoLiveFromRt{}
-    and \OpMemopNullEmptyFromRt.}}
 
 \step{<1>21}{\case{%
     \MemopCopyAllocId.

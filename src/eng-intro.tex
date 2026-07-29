@@ -1,18 +1,13 @@
-So far I have discussed the formalisation of \kl{CN}
-(\fancyref{part:formalisation}), the formalisation and implementation of its
-memory model (\fancyref{part:mem-model}), \kl{CN-VIP}. In both those sections,
-guiding design choices and implementation decisions at each stage was the need
-to strike a balance of expressiveness, performance and ergonomics,
-fundamentally motivated by designing a \emph{capable} verification tool. Not
-only that, at several stages, the theory was able to inform or clarify
-implementation related issues, such as the complexity of adding new features,
-lifting existing restrictions, or substantially improving performance.
+So far I have focused on what it takes to build a \emph{capable} verification
+tool, a balance of expressiveness, performance and ergonomics. At several
+stages, the relevant theory was able to inform or clarify implementation
+related issues, such as adding new features (\S\ref{chap:inform-impl}), or
+mitigating performance degradation (\S\ref{chap:epilogue-cn-vip}).
 
-Now I will take a step back and focus more on what it takes to build
-a \emph{usable} verification tool. Though not as theoretically intriguing or
-elegant as some of the material in prior parts, this is where just as
-much, if not more, of the difficulty lies in achieving \kl{CN}'s goal of
-enabling kernel programmers to maintain proofs on implementations
+In this part, I focus more on what it takes to build a \emph{usable}
+verification tool. Though not as theoretically intriguing or elegant, this is
+where just as much, if not more, of the difficulty lies in achieving \kl{CN}'s
+goal of enabling kernel programmers to maintain proofs on implementations
 (\cref{sec:cn-goals}).
 
 In~\fancyref{chap:tree-carver}, I describe why and how I developed a tool to
@@ -70,21 +65,21 @@ for \kl{CN}, with an emphasis on how new projects can avoid several pitfalls.
 
 \margintoc{}
 
-In this chapter, I will explain why we need a tree-carver for C repositories;
-I will recount the mounting challenges we faced scaling \kl{Cerberus} to
-handle large repositories. After that, I will explain the features of C which
-make this a particularly challenging endeavour, mostly centred on macros and
-the C preprocessor. I will also explain the downsides of inputting preprocessed
-C code into verification tools such as \kl{CN}. Lastly, I will show how,
-extending prior work significantly, I built a Clang-based tool which meets
-almost all the requirements we sought, enough to no longer be the primary bottleneck
-to verifying code in large projects. Lastly, I will explain the
-limitations of the current approach (struct fields, cross-translation-unit
-carving), and ways this may be remedied in the future.
+In this chapter, I explain why we need a \kl{tree-carver} for C repositories. I
+recount the challenges we faced using \kl{Cerberus} in large repositories.
+After that, I explain the features of C which make \kl{tree-carving} a
+particularly challenging endeavour, mostly centred on macros and the C
+preprocessor. I also explain the downsides of inputting preprocessed C code
+into verification tools such as \kl{CN}. Lastly, I show how, by extending prior
+work significantly, I built a Clang-based tool which meets almost all the
+requirements we sought, enough to no longer be the primary bottleneck to
+verifying code in large projects. Lastly, I explain the limitations of the
+current approach (struct fields, cross-translation-unit carving), and ways this
+could be remedied in the future.
 
 \section{Need for tree-carving}
 
-Tree-carving is inspired by the idea of tree-shaking in dynamic languages.
+\kl{Tree-carving} is inspired by the idea of tree-shaking in dynamic languages.
 Given some root functions in a C file specified by the user, a tree-carver (a)
 copies the directory structure of all its transitive dependencies, excluding
 any unused files, and (b) within each remaining file, comments out all
@@ -129,32 +124,33 @@ untouched.
 % could get lost inside other comments, I also wrote a comment simplifier to undo
 % such nested comments.
 
-I will use the \kl{pKVM} page-table code as the motivation for the chapter.
-It lives in the folder \href{https://github.com/rems-project/linux/blob/pkvm-core-6.4/arch/arm64/kvm/hyp/pgtable.c}{arch/arm64/kvm/hyp/pgtable.c}, and consists of some simple
-functions like the one below, for converting a page-table entry to a physical
-address.
+I will use the \kl{pKVM} page-table code as the motivation and running example
+for \kl{tree-carving}. It lives at
+\href{https://github.com/rems-project/linux/blob/pkvm-core-6.4/arch/arm64/kvm/hyp/pgtable.c}{arch/arm64/kvm/hyp/pgtable.c},
+and consists of some simple functions like the one below, for converting a
+page-table entry to a physical address.
 
 % c-tree-carve -r kvm_pgtable_hyp_map arch/arm64/kvm/hyp/pgtable.c -n 0
 
 \cfile[fontsize=\footnotesize,breaklines,lastline=7]{code/pgtable.c}
 
-It also includes more complicated functions such the one below which uses function
-pointers, arguments, and flags in a struct to effectively create a closure, with
-which to call a parametric page-table walking function.
+It also includes more complicated functions such the one below which uses
+function pointers, arguments, and flags in a struct to effectively create a
+closure, with which to call a parametric page-table walking function.
 
 \cfile[fontsize=\footnotesize,breaklines,firstline=9]{code/pgtable.c}
 
 This code cannot be processed by \kl{Cerberus} because it uses features that
-Cerberus does not support. However, these features are not at
-all obvious from just looking at the code; one would expect the only features
-used are macro constants, and regular C declarations for types and functions.
+\kl{Cerberus} does not support. However, these features are not at all obvious
+from looking at the code; one would expect the only features used are macro
+constants, and regular C declarations for types and functions.
 
 Let us start with \cinline{KVM_PTE_ADDR_MASK}. This is defined using another
 macro, \cinline{GENMASK}.
 
 \cfile[fontsize=\footnotesize,breaklines,lastline=2]{code/kvm_pte_addr_mask.c}
 
-In turn, \cinline{GENMASK} is defined using two macros, in separate file. The
+In turn, \cinline{GENMASK} is defined using two macros, in a separate file. The
 second of these, \cinline{__GENMASK} is the one which defines the constant in
 the expected way as a bit-shifting expression. However, the first,
 \cinline{GENMASK_INPUT_CHECK}, relies on two other macros
@@ -168,11 +164,11 @@ understand how this works, and in any case, \kl{Cerberus} rejects it.
 
 \cfile[fontsize=\footnotesize,breaklines,firstline=16,lastline=23]{code/kvm_pte_addr_mask.c}
 
-The GCC built-in \cinline{__builtin_choose_expr} happens to take to expressions
-as its arguments, but in general this is not the case. For example,
-\cinline[breaklines,breakafter=_]{__builtin_types_compatible_p} takes two \emph{types} as
-its argument. Such built-ins require editing the parser and elaboration to
-support, and cannot be abstracted easily.
+The GCC built-in \cinline{__builtin_choose_expr} happens to take two
+expressions as its arguments, but in general this is not the case. For example,
+\cinline[breaklines,breakafter=_]{__builtin_types_compatible_p} takes two
+\emph{types} as its argument. Such built-ins require editing the parser and
+elaboration to support, and cannot be abstracted easily.
 
 Lastly, \cinline{BUILD_BUG_ON_ZERO} uses the expression to try to construct an
 anonymous struct with a bit-field of that size; since 0-width bit-fields are
@@ -186,65 +182,59 @@ involved, the trail of dependencies of macros across different files and the
 lack of \kl{Cerberus} front-end support for them makes them a non-starter to
 even ignore when verifying code with \kl{CN}.
 
-Remember, this is all just for
-\cinline{KVM_PTE_ADDR_MASK}. In this case, there is a simple workaround
-(redefine the \cinline{GENMASK} macro to not do any compile time checks). In
-general, it is not is not possible to tell if a particular part of the code is
-ignorable, or used by the code one wishes to verify. This is particularly
-inconvenient because it then becomes difficult to distinguish whether a
-particular feature is unavoidable and worth implementing in \kl{Cerberus}, or
-just an incidental block to parsing, but otherwise safely ignored.
+Remember, this is all just for \cinline{KVM_PTE_ADDR_MASK}. In this case, there
+is a simple workaround (redefine the \cinline{GENMASK} macro to not do any
+compile time checks). In general, it is not is not possible to tell if a
+particular part of the code is ignorable, or used by the code one wishes to
+verify. This is particularly inconvenient because it is difficult to tell
+whether a particular feature is unavoidable and must be implemented in
+\kl{Cerberus}, or just an incidental block to parsing, but otherwise safe to
+ignore.
 
 In other words, \emph{if parsing fails on a file, we are forced to implement
-the construct in the parser, regardless of whether or not is used later,}
-which is not an efficient use of engineering capacity. As seen above, Linux
-headers and macros frequently contain such constructs, so the issue persists
-even after preprocessing.
+the construct in the parser, regardless of whether or not is used later.} This
+is not an efficient use of engineering capacity. As seen above, Linux headers
+and macros frequently contain such constructs, so the issue persists even after
+preprocessing.
 
 \section{Challenging preprocessor and C features}
 
-One may think that preprocessing would sidestep this issue, because unused
-macros (and accompanying unsupported features) will not be pasted into the
-code.
+Preprocessing does not help here. Yes, unused features are not present in the
+preprocessed file, but used features lose too much information. Consider the
+\cinline{GENMASK} macro above. If expanded fully into each use site, the code
+would be littered with unsupported features. Its structure and dependency
+information, (\ie{} one part is is a compile-time check, and the other computes
+the mask) would be lost, making it harder to know what to redefine and where.
 
-Unfortunately, whilst this does avoid the myriad problems of doing dependency
-analysis on macros, it comes with trade-offs. Take the \cinline{GENMASK} macro
-above. If expanded fully into each use site, the code to verify would be
-littered with unsupported features. The structure of the macro and its
-dependency, (the fact that there is one part which is a compile-time check, and
-another which computes the expression we care about) would be lost, making it
-harder to spot what to redefine and where for the purposes of proof.
-
-Preprocessing would also corrupt source location information for
+Preprocessing also corrupts source location information for
 columns.\sidenote{Line directives keep the line information accurate, and
 comments can be preserved with the right options} Whilst this is already lost
 by the \kl{Cerberus} front-end, it would make it irrecoverable if \kl{Cerberus}
 were to upgrade its
 lexer.\sidenote{\href{https://github.com/rems-project/cerberus/issues/393}{Cerberus\#393}}
 
-Preprocessing will also flatten the directory structure on the original
-repository, making it more difficult to relate any output back to the code it
-came from. Initially, we assumed that this sort of dependency analysis would be
-quite expensive, so the idea was that a user would run the carving once,
-annotate the carved code, and then merge the changes back into the source
-repository, for which preserving file structure may be
-helpful.\sidenote{The alternative would be to create patches based on the line
-directives in the single preprocessed files.}
+Preprocessing also flattens the directory structure on the original repository,
+making it more difficult to relate any output back to the code it came from.
+Initially, we assumed that this sort of dependency analysis would be quite
+expensive, so imagined that users would run the carving once, annotate the
+carved code, and then merge the changes back into the source repository, for
+which preserving file structure may be helpful.\sidenote{The alternative would
+be to create patches based on the line directives in the single
+preprocessed files.}
 
-However, analysing a non-preprocessed file is also fraught with difficulty.
-Unfortunately, macros are not simply `find-and-replace' abstractions, but can
-support conditionals, defining, un-defining and re-defining, as well as be
-constructed dynamically with token-pasting. Macros are not stored as part of
-the abstract syntax tree and so whether or not it was possible to recover
-dependency information from them was an open question.
+On the other hand, analysing a non-preprocessed file is a fraught endeavour.
+Macros are not simply `find-and-replace' abstractions, but can support
+conditionals, defining, un-defining, re-defining, and be constructed
+dynamically with token-pasting. Macros are not stored as part of the abstract
+syntax tree, making it unclear whether it was possible to recover their
+dependency information.
 
 Aside from the preprocessor, C features such as forward declarations, also make
 dependency analysis challenging. For example, a struct can be forward-declared,
-code can mention or manipulate pointers to it (but not mention its fields), and
-only later do the fields need to be defined. Struct and union fields, typedefs,
-function names, types of function locals, arguments and returns, enums and
-their initialisers, and array size expressions all form part of the dependency
-chain.
+be manipulated by pointers to it (in code which does not mention its fields),
+and only later have its fields defined. Struct and union fields, typedefs,
+function names, function types, types of function local variables, enums,
+initialisers, and array size expressions all form part of the dependency chain.
 
 Lastly, on a practical level, C files, with all their includes, tend to be
 quite large, with examples from \kl{pKVM} easily reaching tens of thousands of
@@ -259,20 +249,19 @@ Below is a small input-output example which illustrates some of the features
 of the tree carver.
 
 First, a header file containing struct definitions (with some comments, as well
-as attributes). It also includes a block comments of different kinds, as well
+as attributes). It also includes block comments of different kinds, as well
 as a line comment.
 
 \cfile[fontsize=\footnotesize,breaklines]{code/input_struct_fields.h}
 
-The header is included by a simple C file. Note that the main function uses a
-macro, which must be retained in the output. It also uses comments, which must
-remain unaffected. It uses the \cinline{enum e1} and \cinline{struct s6} only
-indirectly, via function \cinline{f}. Furthermore, \cinline{struct s6} is used
-after its (forward) declaration, but before it is defined \textemdash{} the
-actual definition is used separately.  Only \cinline{s1_field} of
-\cinline{struct s1} is used, not \cinline{char UNUSED}. Additionally, the
-\cinline{enum e5} is referred to only via the use of the constant
-\cinline{THREE} in the type of the parameter to \cinline{g}.
+The header is included by a simple C file, with a main function which uses one
+of the macros from the header, and more comments. It uses the \cinline{enum e1}
+and \cinline{struct s6} only indirectly, via function \cinline{f}. Furthermore,
+\cinline{struct s6} is used after its (forward) declaration, but before it is
+defined \textemdash{} the actual definition is used separately.  Only
+\cinline{s1_field} of \cinline{struct s1} is used, not \cinline{char UNUSED}.
+Additionally, \cinline{enum e5} is referred to only via the constant
+\cinline{THREE} in parameter type of \cinline{g}.
 
 \cfile[fontsize=\footnotesize,breaklines]{code/input_struct_fields.c}
 
@@ -289,38 +278,37 @@ contents.
 ]
 \end{minted}
 
-Running the tree carver would result in a path to a directory being printed.
-Inside the directory, we would see the that all comments are preserved,
-as well as the file and directory structure, but unused lines are prefixed with
-\cinline{//-}.
+When run, the \kl{tree-carver} (if successful) prints a directory path. Inside
+the directory, we see the header with all comments preserved, but unused lines
+prefixed with \cinline{//-}.
 
 \cfile[fontsize=\footnotesize,breaklines]{code/output_struct_fields.h}
 
-Similarly in the C file, we see that the comments are correctly unaffected, but
-the macros, the \cinline{#include}, the functions and the used types are left
-uncommented, whereas the unused \cinline{typedef struct s6 s6} is commented out.
+Similarly, we see the C file with all comments preserved, but the unused
+\cinline{typedef struct s6 s6} is commented out. Everything else is the same:
+the macros, the \cinline{#include}, the functions and the used types.
 
 \cfile[fontsize=\footnotesize,breaklines]{code/output_struct_fields.c}
 
 \section{Implementation}
 
-As I mentioned earlier, the existence of tools such as clang-format, which
-handle formatting code in the presence of macros, and other Clang based tools
-for linting and refactoring, led me to suspect it may be possible to build such
-a tool using Clang.
+The existence of tools such as clang-format, which handle formatting code in
+the presence of macros, and other Clang based tools for linting and
+refactoring, led me to suspect it may be possible to build such a tool using
+Clang.
 
 The advantages of this would be excellent performance and compatibility with
-existing C code, given the amount of investment placed in these tools. Clang
-also gives good error messages in the presence of macros, including presenting
-how an error inside multiple chained ones presents itself, which indicated that
-dependency analysis on macros may be possible.
+existing C code, given Clang's maturity. Clang also gives good error messages
+in the presence of macros, including presenting how an error inside a chain of
+multiple expansions, which indicated that dependency analysis on macros may be
+possible.
 
 I owe a large debt to
 \href{https://github.com/logicmachine/cpp-simplifier}{logicmachine/cpp-simplifier}.
 The tool describes itself as a `C++ source simplifier for competitive programming',
 which `expands double-quoted inclusions and removes unused declarations'.
-This provide a very useful skeleton and an introduction to Clang's APIs, which
-enabled me to modify it in the following ways.
+This provided a very useful skeleton and an introduction to Clang's APIs, which
+I modified in the following ways. % RESUME here
 \begin{itemize}
     \item Add C constructs required for kvm\_pgtable\_walk in pgtable.c code.
     \item Support compilation databases.

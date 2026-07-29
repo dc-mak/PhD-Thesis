@@ -103,32 +103,32 @@ Each part of this thesis has a varying mix of those
 categories, which I will explain later in \fancyref{sec:contributions}.
 
 To put those parts into context, I will trace the history of
-the venerable \kl{C} programming language and of \kl{separation logic}.
+the venerable C programming language and of \kl{separation logic}.
 
 \section{Background}
 
 \subsection{The C programming language}\label{sec:c-lang}
 
 More than fifty years after its introduction, and despite competition from
-C++~\sidecite{isocpp1998} and Rust~\sidecite{rust}, \kl{C} remains in common use. Part
-of this is simply legacy: a lot of old and useful software is written in \kl{C}.
-However, most of this is due to the success \kl{C} had in meeting its initial design goals:
+C++~\sidecite{isocpp1998} and Rust~\sidecite{rust}, C remains in common use. Part
+of this is simply legacy: a lot of old and useful software is written in C.
+However, most of this is due to the success C had in meeting its initial design goals:
 
 \begin{itemize}
-    \item \textbf{Portability}. \kl{C} was designed to have a small set
+    \item \textbf{Portability}. C was designed to have a small set
         of defined behaviours, and leave several key choices as
-        \intro{undefined behaviour}s (UBs). This was to enable \kl{C} programs to
+        \intro{undefined behaviour}s (UBs). This was to enable C programs to
         exploit the advantages of different kinds of hardware to run quickly.
-    \item \textbf{Simplicity}. \kl{C} was designed to be concise and simple to
+    \item \textbf{Simplicity}. C was designed to be concise and simple to
         compile (in one pass if need be), so it was
         straightforward to write C compilers to support new hardware.
-    \item \textbf{Proximity to hardware}. \kl{C} was designed to be a `portable
+    \item \textbf{Proximity to hardware}. C was designed to be a `portable
         assembly', close to hardware, so that the programmer had precise
         control over the resources used (especially when CPUs were much slower
         and memory far more constrained).
 \end{itemize}
 
-As time went on, hardware became faster, by becoming more complex and so \kl{C}'s
+As time went on, hardware became faster, by becoming more complex and so C's
 proximity to it waned~\sidecite{chisnall2018c}. However, it continued to be
 used in performance critical code such as the Linux \kl{kernel}.
 \kl{Undefined behaviours}, originally to support portability, were
@@ -157,7 +157,7 @@ Assuming the address is guessed correctly, this program raises two questions:
 Does this program have \kl{undefined behaviour}, and if so, where and why? If it is
 compiled and executed, what will it print?
 
-If one is under the impression that \kl{C} pointers and integers are interchangeable,
+If one is under the impression that C pointers and integers are interchangeable,
 one may be surprised to learn (a) the program has \kl{undefined behaviour}, because
 the pointer \cinline{p} is not constructed in a ``reasonable'' way
 (\fancyref{chap:mem-model-explained}), (b) it can print 5, because the compiler
@@ -165,7 +165,7 @@ may assume that \cninline{p} cannot alias the local variable \cinline{i}, and
 thus perform constant propagation over the assignment.
 
 To optimise code, compilers assume that
-pointers in \kl{C} are \emph{not} completely concrete, and are only constructed in
+pointers in C are \emph{not} completely concrete, and are only constructed in
 ``reasonable'' ways. To support low-level idioms of
 \emph{computing} with pointers (incrementing, offsetting, casting to and from
 integers), compilers assume that pointers are \emph{not} completely abstract.
@@ -179,17 +179,17 @@ C~\sidecite{isoC1990}. The resolutions can be complex and subtle,
 because of conflicting preferences for performance, control and language
 simplicity, amongst application programmers, systems programmers and compiler
 writers. Making matters worse, as a prose document, the standard is
-ambiguous, and does not always reflect \intro{de facto} \kl{C}.
+ambiguous, and does not always reflect \intro{de facto} C.
 
 Given this, the \intro{Cerberus}
 project~\sidecite{memarian2022cerberus} aims to provide a formally defined,
-executable and \emph{empirically validated} semantics of \kl{C}, both \kl{ISO} and \kl{de
+executable and \emph{empirically validated} semantics of C, both \kl{ISO} and \kl{de
 facto}. We shall explain \kl{Cerberus}' particular advantages over other tools in
 \cref{sec:cerberus-core}.
 
 For now, it suffices to say that \kl{Cerberus} works by \emph{\kl{compositional}ly}
-elaborating \kl{C} into \intro{Core}, an \emph{executable} first-order
-functional language. It makes explicit many subtleties of \kl{C} such as
+elaborating C into \intro{Core}, an \emph{executable} first-order
+functional language. It makes explicit many subtleties of C such as
 integer promotion, loose evaluation order, and \kl{UB}.
 
 \kl{UB}s form the contract between the compiler and the programmer; this contract
@@ -207,7 +207,7 @@ find some classes of assumption violations, \kl{CN} included.}
 
 To demonstrate how to prove properties about imperative, memory manipulating programs,
 I will use a function which appends two linked lists of integers, as an example
-in both \kl{C} (\cref{fig:append-c}) and in a simple \kl{separation logic}
+in both C (\cref{fig:append-c}) and in a simple \kl{separation logic}
 (\cref{fig:append-annot}).
 
 \begin{figure}
@@ -611,11 +611,11 @@ ignore.} is a verification tool whose aspirational goal is to lower the prerequi
 for C verification from a Rocq~\sidecite{CDT2024} programmer who knows separation
 logic to a systems programmer who is proficient with
 functional programming.\sidenote{This pithy wording is courtesy of Neel
-Krishnaswami.} It is designed to be used on pre-existing \kl{C} programs
+Krishnaswami.} It is designed to be used on pre-existing C programs
 (not written for verification). First I will explain how it is \emph{used};
 then I will explain how it \emph{works}.
 
-When given a \kl{C} file, \kl{CN} ensures that (a) the input code is free of
+When given a C file, \kl{CN} ensures that (a) the input code is free of
 \kl{undefined behaviour}, and (b) correctly implements any specification
 written in \intro{annotations} in comments with an @ symbol \cinline{/*@..@*/}.
 For easy-to-explain, modular, and parallelisable proof-checking, annotations
@@ -892,7 +892,7 @@ My contributions in this part include:
         semantics (\cref{sec:cn-vip-soundness}).
     \item A walk-through of the implementation of \kl{CN-VIP}, along with the
         approach required to integrate it smoothly (\cref{chap:impl-cnvip}).
-    \item A roadmap on the integration of mechanised, sound resourceful lemmas
+    \item A roadmap on the integration of mechanised, sound resourceful \kl{lemmas}
         into \kl{CN} inspired by the design of \kl{CN-VIP}
         (\cref{sec:better-foundations}).
 \end{itemize}
@@ -1049,7 +1049,7 @@ and for formal machine-checked proof. They demonstrate all this on the
         beforehand.
 \end{itemize}
 
-\chapter{Example: queues in CN}
+\chapter{Example: queues in CN}\label{chap:example-queue}
 
 \margintoc{}
 
@@ -1156,7 +1156,7 @@ pointers to the front and back for constant time push and pop operations. I
 verify memory safety and functional correctness.
 
 I owe the idea, C implementation and initial proof structure for this example
-to Benjamin Pierce; the final proofs and lemmas involved are my work. The
+to Benjamin Pierce; the final proofs and \kl{lemmas} involved are my work. The
 example has two limitations. First, \cinline{malloc} and \cinline{free} are not
 supported, and so are stubbed as trusted functions. Second, the syntax for
 predicates does not allow for non-top-level-ifs, so it defines a new predicate
@@ -1358,10 +1358,10 @@ which is equal to \cninline[breaklines]|Cons {head:x, tail: Nil{}}| is equal to
 \cninline|snoc(Nil{}, x)|. This is because \cninline{snoc} is a % chktex 36
 a recursive function, and thus must be unfolded manually.
 
-In the non-singleton case, we need to manually apply a lemma, one which says
+In the non-singleton case, we need to manually apply a \kl{lemma}, one which says
 \cninline{snoc} commutes with \cninline{cons}. At the time, \kl{CN} could only
 pass logical (ghost) values by passing a resource and then binding its return
-values.  So, even though the lemma is a pure fact, to state it, we must thread
+values.  So, even though the \kl{lemma} is a pure fact, to state it, we must thread
 through resources, as shown below. The resources are preserved exactly, only
 the pure constraints on line 10\textendash{}12 are meaningful.
 
@@ -1398,11 +1398,11 @@ of this longer segment, is the \cninline{snoc} of the first two values.
 
 % \cfile[breaklines,lastline=11,highlightlines={2-10}]{code/queue_push.c} % chktex 8
 
-\section{Proofs of lemmas}
+\section{Proofs of \kl{lemmas}}
 
-\kl{CN} has in-progress support for export and proofs of resourceful lemmas,
+\kl{CN} has in-progress support for export and proofs of resourceful \kl{lemmas},
 which could be combined with recently added support for ghost arguments and
-planned support for ghost returns, to support lemmas which state pure facts
-(\cref{sec:lemma-prover}). However, as it turns out, for some lemmas, such as
+planned support for ghost returns, to support \kl{lemmas} which state pure facts
+(\cref{sec:lemma-prover}). However, as it turns out, for some \kl{lemmas}, such as
 the ones shown here, it is possible to give a proof in terms of a C function
 (\cref{sec:lemma-proof-c}).

@@ -6,36 +6,36 @@ Counts are `text + headers + captions`. **Own** is the prose directly under a he
 
 | Chapter | Total | Own |
 | :-- | --: | --: |
-| Introduction | **5998** | 16 |
+| Introduction | **5997** | 16 |
 | Example: queues in CN | **2797** | 52 |
-| Background: Cerberus and CN design | **6989** | 32 |
-| Kernel CN: Grammar | **4240** | 158 |
-| Kernel CN: Static semantics | **3854** | 340 |
-| Kernel CN: Proof of soundness | **1514** | 169 |
+| Background: Cerberus and CN design | **6997** | 32 |
+| Kernel CN: Grammar | **4247** | 158 |
+| Kernel CN: Static semantics | **3892** | 340 |
+| Kernel CN: Proof of soundness | **1522** | 169 |
 | Informing implementation discussions | **1267** | 142 |
-| An alternative presentation | **2073** | 92 |
-| Memory object models, explained | **6733** | 394 |
-| CN-VIP | **3292** | 118 |
-| Epilogue on CN-VIP | **3478** | 61 |
-| Tree-carving: Taming C Repositories | **2921** | 132 |
+| An alternative presentation | **2077** | 92 |
+| Memory object models, explained | **6739** | 395 |
+| CN-VIP | **3141** | 107 |
+| Epilogue on CN-VIP | **2843** | 45 |
+| Tree-carving: Taming C Repositories | **2817** | 125 |
 | Proof maintenance for pKVM buddy allocator | **3438** | 82 |
 | CN Comparison and Feedback | **4203** | 177 |
 | Not-so-great expectations | **5234** | 97 |
 | Future Directions | **3285** | 22 |
 | Conclusion | **1334** | 545 |
 
-| **Document total** | **62650** | |
+| **Document total** | **61830** | |
 
 ## Introduction
 
-**Chapter total: 5998** (own 16)
+**Chapter total: 5997** (own 16)
 
 | Section | Subsection | Total | Own |
 | :-- | :-- | --: | --: |
 | Context |  |  | 620 |
 | Thesis statement |  |  | 87 |
-| Background |  | 3633 | 1 |
-|  | The C programming language |  | 854 |
+| Background |  | 3632 | 1 |
+|  | The C programming language |  | 853 |
 |  | Verification with Separation Logic |  | 1615 |
 |  | CN: C, No bugs! |  | 1163 |
 | Contributions of this thesis |  | 1642 | 66 |
@@ -57,18 +57,18 @@ Counts are `text + headers + captions`. **Own** is the prose directly under a he
 
 ## Background: Cerberus and CN design
 
-**Chapter total: 6989** (own 32)
+**Chapter total: 6997** (own 32)
 
 | Section | Subsection | Total | Own |
 | :-- | :-- | --: | --: |
 | CN design goals and constraints |  |  | 980 |
 | Cerberus and Core for a usable and accurate C semantics |  |  | 266 |
-| Core grammar |  |  | 822 |
+| Core grammar |  |  | 828 |
 | Elaboration example: list append |  | 1258 | 997 |
 |  | Discussion |  | 261 |
 | Decidable refinements for retrofitting and counter-examples |  |  | 548 |
 | Bidirectionality for taming subtyping |  |  | 494 |
-| Linearity to manage (non-leaky) resources |  |  | 691 |
+| Linearity to manage (non-leaky) resources |  |  | 693 |
 | Section |  | 1111 | 517 |
 |  | Precise assertions |  | 594 |
 | Monadic syntax for mode-correctness |  |  | 374 |
@@ -76,48 +76,48 @@ Counts are `text + headers + captions`. **Own** is the prose directly under a he
 
 ## Kernel CN: Grammar
 
-**Chapter total: 4240** (own 158)
+**Chapter total: 4247** (own 158)
 
 | Section | Subsection | Total | Own |
 | :-- | :-- | --: | --: |
-| Kernel CN types |  |  | 572 |
-| Desugaring CN types into kernel types |  |  | 726 |
+| Kernel CN types |  |  | 576 |
+| Desugaring CN types into kernel types |  |  | 727 |
 | ResCore |  |  | 856 |
-| Permissions resource terms |  |  | 1037 |
+| Permissions resource terms |  |  | 1039 |
 | Core to ResCore example |  |  | 891 |
 
 ## Kernel CN: Static semantics
 
-**Chapter total: 3854** (own 340)
+**Chapter total: 3892** (own 340)
 
 | Section | Subsection | Total | Own |
 | :-- | :-- | --: | --: |
-| Contexts |  |  | 64 |
-| Pure values and expressions |  |  | 255 |
-| Pure statements |  |  | 199 |
-| Resource terms |  | 674 | 62 |
-|  | Synthesis for resource terms |  | 203 |
-|  | Synthesis for predicate operations |  | 140 |
-|  | Checking for resource terms |  | 269 |
-| Memory actions and pointer operations |  |  | 416 |
-| Spine judgement |  |  | 227 |
+| Contexts |  |  | 66 |
+| Pure values and expressions |  |  | 257 |
+| Pure statements |  |  | 201 |
+| Resource terms |  | 682 | 63 |
+|  | Synthesis for resource terms |  | 205 |
+|  | Synthesis for predicate operations |  | 141 |
+|  | Checking for resource terms |  | 273 |
+| Memory actions and pointer operations |  |  | 420 |
+| Spine judgement |  |  | 228 |
 | Effectful values and expressions |  |  | 69 |
-| pattern-matching |  |  | 375 |
-| Effectful statements |  |  | 126 |
-| Elaboration |  | 1109 | 533 |
-|  | Normalised resource contexts |  | 169 |
+| pattern-matching |  |  | 385 |
+| Effectful statements |  |  | 128 |
+| Elaboration |  | 1116 | 538 |
+|  | Normalised resource contexts |  | 171 |
 |  | Synthesising output arguments |  | 246 |
 |  | Synthesising indices for iterated predicates |  | 161 |
 
 ## Kernel CN: Proof of soundness
 
-**Chapter total: 1514** (own 169)
+**Chapter total: 1522** (own 169)
 
 | Section | Subsection | Total | Own |
 | :-- | :-- | --: | --: |
-| Substitution and contexts |  |  | 354 |
-| Heaps and their types |  |  | 501 |
-| Soundness |  |  | 490 |
+| Substitution and contexts |  |  | 359 |
+| Heaps and their types |  |  | 508 |
+| Soundness |  |  | 486 |
 
 ## Informing implementation discussions
 
@@ -134,7 +134,7 @@ Counts are `text + headers + captions`. **Own** is the prose directly under a he
 
 ## An alternative presentation
 
-**Chapter total: 2073** (own 92)
+**Chapter total: 2077** (own 92)
 
 | Section | Subsection | Total | Own |
 | :-- | :-- | --: | --: |
@@ -143,69 +143,69 @@ Counts are `text + headers + captions`. **Own** is the prose directly under a he
 | Implicit resource terms intertwine elaboration and typing |  |  | 146 |
 | Early-returns intertwine normalising, synthesising and checking |  |  | 255 |
 | Lack of let-normalisation requires join-points |  |  | 94 |
-| Discussion |  |  | 977 |
+| Discussion |  |  | 981 |
 
 ## Memory object models, explained
 
-**Chapter total: 6733** (own 394)
+**Chapter total: 6739** (own 395)
 
 | Section | Subsection | Total | Own |
 | :-- | :-- | --: | --: |
-| PNVI-ae-udi |  | 1184 | 47 |
+| PNVI-ae-udi |  | 1183 | 47 |
 |  | Provenance not tracked via integers |  | 623 |
 |  | Ae: Considering only exposed |  | 334 |
-|  | Udi: symbolic provenances for one-past |  | 180 |
+|  | Udi: symbolic provenances for one-past |  | 179 |
 | VIP: Verified Integer-Pointer Casts |  |  | 686 |
-| Design space |  | 4469 | 22 |
+| Design space |  | 4475 | 22 |
 |  | Symbolic provenances |  | 314 |
-|  | Exposure tracking |  | 382 |
-|  | Provenance in integers and bytes |  | 1063 |
+|  | Exposure tracking |  | 383 |
+|  | Provenance in integers and bytes |  | 1064 |
 |  | Non-deterministic pointer equality |  | 825 |
 |  | Allocation history |  | 360 |
-|  | SMT representations |  | 1264 |
+|  | SMT representations |  | 1268 |
 |  | Summary |  | 239 |
 
 ## CN-VIP
 
-**Chapter total: 3292** (own 118)
+**Chapter total: 3141** (own 107)
 
 | Section | Subsection | Total | Own |
 | :-- | :-- | --: | --: |
-| malloc and free |  |  | 369 |
-| Converting to and from bytes |  |  | 247 |
-| Unions and padding |  |  | 525 |
-| memcpy and memcmp |  |  | 155 |
-| Checking pointer shifts |  |  | 537 |
-| Pointer liveness and bounds checks |  |  | 143 |
-| CN-VIP soundness |  | 1198 | 133 |
-|  | Extending the dynamic semantics |  | 372 |
-|  | State typing |  | 130 |
-|  | Updating the soundness proof |  | 333 |
-|  | Linking CN-VIP to VIP |  | 230 |
+| malloc and free |  |  | 358 |
+| Converting to and from bytes |  |  | 249 |
+| Unions and padding |  |  | 508 |
+| memcpy and memcmp |  |  | 158 |
+| Checking pointer shifts |  |  | 523 |
+| Pointer liveness and bounds checks |  |  | 127 |
+| CN-VIP soundness |  | 1111 | 127 |
+|  | Extending the dynamic semantics |  | 325 |
+|  | State typing |  | 101 |
+|  | Updating the soundness proof |  | 322 |
+|  | Linking CN-VIP to VIP |  | 236 |
 
 ## Epilogue on CN-VIP
 
-**Chapter total: 3478** (own 61)
+**Chapter total: 2843** (own 45)
 
 | Section | Subsection | Total | Own |
 | :-- | :-- | --: | --: |
-| Performance |  |  | 480 |
-| Updating existing code |  | 524 | 284 |
-|  | Non-deterministic pointer equality |  | 240 |
-| Lemma proofs within C |  |  | 555 |
-| Lemma proofs in a proof-assistant |  |  | 644 |
-| Better foundations for CN |  |  | 1214 |
+| Performance |  |  | 511 |
+| Updating existing code |  | 452 | 219 |
+|  | Non-deterministic pointer equality |  | 233 |
+| Lemma proofs within C |  |  | 502 |
+| Lemma proofs in a proof-assistant |  |  | 519 |
+| Better foundations for CN |  |  | 814 |
 
 ## Tree-carving: Taming C Repositories
 
-**Chapter total: 2921** (own 132)
+**Chapter total: 2817** (own 125)
 
 | Section | Subsection | Total | Own |
 | :-- | :-- | --: | --: |
-| Need for tree-carving |  |  | 599 |
-| Challenging preprocessor and C features |  |  | 466 |
-| Demonstration |  |  | 263 |
-| Implementation |  |  | 1274 |
+| Need for tree-carving |  |  | 600 |
+| Challenging preprocessor and C features |  |  | 412 |
+| Demonstration |  |  | 232 |
+| Implementation |  |  | 1261 |
 | Limitations and future work |  |  | 187 |
 
 ## Proof maintenance for pKVM buddy allocator

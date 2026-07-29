@@ -45,7 +45,7 @@ imminently.} the provenance-aware \kl{memory object model} for
 C17,\sidenote{Detailed in technical standard ISO/IEC TS 6010:2025,
 and~\textcite{gustedt2022provenance}.} walks the fine line admirably. It is
 not entirely consistent with all observed behaviour, though in fairness, it
-seems unlikely that there is a consistent \kl[memory object model]{model} which
+seems unlikely that there is a consistent \kl(memory object){model} which
 would be. Its main shortcoming is its complexity: following its rules
 unassisted would stretch the cognitive capacity of any human.
 
@@ -58,8 +58,8 @@ changes to code and annotations are justifiable if it simplifies proofs.
 This is the motivation for \kl{VIP}~\sidecite{lepigre2022vip}, a \kl{memory
 object model} which is sound with respect to PNVI-ae-udi,\sidenote{Quoting from
 the paper, ``every PNVI-ae-udi step can be simulated by a VIP step, and
-that every step that raises \kl[UB]{undefined behaviour} in PNVI-ae-udi
-also raises \kl[UB]{undefined behaviour} in VIP.''} but simpler (it is fine to
+that every step that raises \kl{undefined behaviour} in PNVI-ae-udi
+also raises \kl{undefined behaviour} in VIP.''} but simpler (it is fine to
 reject more programs, \ie{} have more \kl{UB}). However, simpler does not mean
 trivial. \kl{VIP} is defined operationally as a step relation between concrete
 (\ie{} not symbolic) structured heaps, and the steps have complex premises.
@@ -69,7 +69,7 @@ My contribution in this part is the design, formalisation and implementation
 of \kl{CN-VIP}, the \kl{memory object model} of \kl{CN}.
 
 In \fancyref{chap:mem-model-explained}, I cover the necessary background for
-understanding \kl{VIP} and the \kl[memory object model]{model} itself, in
+understanding \kl{VIP} and the \kl(memory object){model} itself, in
 particular its representation of pointers and integers, and the idioms it
 supports. I also explain important and subtle complexities around \kl{round-trip}
 casts, \cinline{memcpy} and \cinline{memcmp}, which are handled in
@@ -105,7 +105,7 @@ transition.
 %
 From the perspective of \kl{Core} and \kl{ResCore}, the representation of
 pointers, integers and memory itself are left abstract, and \kl{memory actions}
-(\cref{fig:mem-action-intf}) and \kl[memory operations]{operations}
+(\cref{fig:mem-action-intf}) and \kl(memory){operations}
 (\cref{fig:mem-op-intf}) are defined by a \intro{memory interface}.
 
 \begin{figure}
@@ -333,8 +333,8 @@ disambiguated by the user}
 Restoring \kl{round-trip} casts for \kl{one-past} pointers requires an
 additional complication to the \kl{memory object model}: a \kl{symbolic
 provenances}. A \intro{symbolic provenance} is one which is mapped to a set of
-either one or two \kl{allocation IDs} via an additional \kl[symbolic
-map]{finite map} $\mathit{\color{violet}{S}}$.
+either one or two \kl{allocation IDs} via an additional \kl(symbolic){finite
+map} $\mathit{\color{violet}{S}}$.
 
 Thus, when an integer is cast to a \kl{one-past} pointer on the boundary
 between two live allocations, its \kl{provenance} is \kl{symbolic}, and is
@@ -544,7 +544,7 @@ implementation. I chose the latter.
 
 \kl{Exposure tracking} is another feature that \kl{PNVI-ae-udi} has but
 \kl{VIP} does not. Remember that \kl{exposure tracking} was devised to restrict
-the number of live allocations whose \kl[allocation IDs]{IDs} could be chosen
+the number of live allocations whose \kl(allocation){IDs} could be chosen
 for the provenance of a \kl{round-trip} cast.
 
 \kl{Exposure tracking} has the following advantages over \kl{VIP}.
@@ -680,7 +680,7 @@ This leads to even more options.
         \kl{provenance} via \cinline{memcpy}.\sidenote{Ideally,
             \cinline{memcpy} has a simple specification dealing with
             \kl{iterated ownerships} of bytes, and leave handling structured
-            values and \kl{resources} (and the accompanying polymorphism) to
+            values and \kl(type){resources} (and the accompanying polymorphism) to
             other parts of the type system.}
     \item \textbf{Add an extra constructor to the SMT representation of
         characters}. Support all aforementioned idioms, risking performance and
@@ -937,9 +937,9 @@ It is worth noting that ISO/IEC TS 6010:2025, the technical standard for a
 non-deterministic pointer equality and opts to use only address
 equality~\sidecite{gustedt2022provenance}.
 
-\subsection{Allocation history}\label{subsec:alloc-history}
+\subsection{\kl{Allocation history}}\label{subsec:alloc-history}
 
-The allocation history in \kl{VIP} and \kl{PNVI-ae-udi} is mostly append-only
+The \kl{allocation history} in \kl{VIP} and \kl{PNVI-ae-udi} is mostly append-only
 (new allocations are added, but old allocations are never removed) with the
 exception that when an allocation is {\small $\cnkw{kill}$}ed, a boolean flag
 in its entry (which is marked true when it is created) is set to false.
@@ -953,7 +953,7 @@ which requires knowing that an allocation is dead.
 In summary: bounds checks, some pointer operations, and {\small $\cnkw{kill}$},
 all require allocation information. Additionally, pointer operations and
 {\small $\cnkw{kill}$} require the allocation to be live (bounds checks do
-not). Only {\small $\cnkw{kill}$} mutates existing allocation history
+not). Only {\small $\cnkw{kill}$} mutates existing \kl{allocation history}
 entries (in \kl{VIP}).
 
 As such, in \kl{CN}, I chose to represent the bounds as \emph{constraints},
@@ -961,7 +961,7 @@ whereas I chose to represent liveness as an \emph{\kl{allocation token}}
 \cninline{Alloc}.
 
 For the former, the type system and programmers need a way to refer to the
-allocation history. It can be thought of as an implicit logical parameter
+\kl{allocation history}. It can be thought of as an implicit logical parameter
 passed into and out of every function, and so I model it with an initially
 unconstrained SMT variable. As \kl{CN} type checks a \kl{ResCore} program, it
 will learn constraints: either from creating new allocations, or from
@@ -1001,7 +1001,7 @@ Should \kl{provenances} be concrete? Any choice must respect how they are used
 \textemdash{} for querying whether two are equal; for querying whether two are
 distinct (only for non-deterministic pointer equality); for the
 non-$@\mathsf{empty}$ ones (\kl{allocation IDs}), used as keys into the
-allocation history (to lookup an allocation's base address and size).
+\kl{allocation history} (to lookup an allocation's base address and size).
 
 \paragraph{Empty \kl{provenance}.}%
 If the \kl{memory object model} uses the $@\mathsf{empty}$ \kl{provenance}
@@ -1071,7 +1071,7 @@ The \kl{standard}'s treatment of \cinline{NULL} is intended to allow for
 systems where 0 is a valid address, and all the \kl{memory object models}
 attempt to maintain this distinction by representing them as a distinct
 constructor in a datatype for pointers. Despite the fact that both the
-\kl{standard}, and the \kl[memory object models]{models} do couple 0 and
+\kl{standard}, and the \kl(memory object){models} do couple 0 and
 \cinline{NULL} in a few places,
 % Standard: Casting 0 literal to pointer is NULL, but what about 0 values e.g.
 %           from load, or evaluating (1-1)?
@@ -1079,7 +1079,7 @@ constructor in a datatype for pointers. Despite the fact that both the
 %           that abst(T*, _) function converts 0 bytes to NULL, instead of
 %           (@empty, 0).
 % PVI:      Definitely needs (@empty, 0) (integer?) to be distinct from NULL.
-I follow the lead of the \kl[memory object models]{models} and represent
+I follow the lead of the \kl(memory object){models} and represent
 \cinline{NULL} as a distinct constructor in a datatype for pointers.
 While implementing this, I observed a small but useful benefit of doing so.
 
@@ -1218,7 +1218,7 @@ These are the choices I made from the aforementioned options.
         test-suite from passing without additional annotations.
     \item \textbf{Later, support \kl{provenance} bytes via a new C type.} This makes
         their associated complexity and any performance penalties opt-in.
-    \item \textbf{Allocation history tracked in constraints.} This makes
+    \item \textbf{\kl{Allocation history} tracked in constraints.} This makes
         bounds checks easy to state and check.
     \item \textbf{Allocation liveness tracked in resources.} This leverages the
         existing resource context set up to manage allocations correctly and
