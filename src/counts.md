@@ -19,12 +19,12 @@ Counts are `text + headers + captions`. **Own** is the prose directly under a he
 | Epilogue on CN-VIP | **2843** | 45 |
 | Tree-carving: Taming C Repositories | **2609** | 125 |
 | Proof maintenance for pKVM buddy allocator | **3303** | 78 |
-| CN Comparison and Feedback | **4203** | 177 |
-| Not-so-great expectations | **5234** | 97 |
+| CN Comparison and Feedback | **4208** | 184 |
+| Not-so-great expectations | **5217** | 80 |
 | Future Directions | **3285** | 22 |
 | Conclusion | **1334** | 545 |
 
-| **Document total** | **61487** | |
+| **Document total** | **61475** | |
 
 ## Introduction
 
@@ -231,24 +231,24 @@ Counts are `text + headers + captions`. **Own** is the prose directly under a he
 
 ## CN Comparison and Feedback
 
-**Chapter total: 4203** (own 177)
+**Chapter total: 4208** (own 184)
 
 | Section | Subsection | Total | Own |
 | :-- | :-- | --: | --: |
-| Early allocator |  | 1883 | 49 |
-|  | Early allocator in CN |  | 326 |
-|  | Early allocator in VeriFast |  | 1273 |
-|  | Early allocator in Frama-C and RefinedC |  | 235 |
-| Other symbolic execution verifiers |  | 1185 | 119 |
-|  | Gillian-C |  | 479 |
-|  | Viper-based: VerCors and Gradual C0 |  | 335 |
-|  | Soteria-C |  | 252 |
-| Industry feedback |  |  | 875 |
+| Early allocator |  | 1886 | 72 |
+|  | Early allocator in CN |  | 333 |
+|  | Early allocator in VeriFast |  | 1248 |
+|  | Early allocator in Frama-C and RefinedC |  | 233 |
+| Other symbolic execution verifiers |  | 1186 | 119 |
+|  | Gillian-C |  | 477 |
+|  | Viper-based: VerCors and Gradual C0 |  | 337 |
+|  | Soteria-C |  | 253 |
+| Industry feedback |  |  | 869 |
 | Summary |  |  | 83 |
 
 ## Not-so-great expectations
 
-**Chapter total: 5234** (own 97)
+**Chapter total: 5217** (own 80)
 
 | Section | Subsection | Total | Own |
 | :-- | :-- | --: | --: |
