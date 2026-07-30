@@ -304,29 +304,29 @@ multiple expansions, which indicated that dependency analysis on macros may be
 possible.
 
 I owe a large debt to
-\href{https://github.com/logicmachine/cpp-simplifier}{logicmachine/cpp-simplifier}.
-The tool describes itself as a `C++ source simplifier for competitive programming',
-which `expands double-quoted inclusions and removes unused declarations'.
+\href{https://github.com/logicmachine/cpp-simplifier}{logicmachine/cpp-simplifier},
+a tool which describes itself as a `C++ source simplifier for competitive programming',
+that `expands double-quoted inclusions and removes unused declarations'.
 This provided a very useful skeleton and an introduction to Clang's APIs, which
-I modified in the following ways. % RESUME here
+I augmented to support the following features.
 \begin{itemize}
-    \item Add C constructs required for kvm\_pgtable\_walk in pgtable.c code.
-    \item Support compilation databases.
-    \item Support multiple, user-defined root functions.
-    \item Retain and reproduce the directory structure.
-    \item Support macro dependencies.
-    \item Comment out code instead of deleting it.
-    \item Simplify comments/recover CN annotations.
-    \item Retain all includes.
-    \item Validate input for top-level declarations.
+    \item C constructs required for kvm\_pgtable\_walk in pgtable.c code.
+    \item Compilation databases.
+    \item Multiple, user-defined root functions.
+    \item Reproducing the directory structure.
+    \item Macros and their dependencies.
+    \item Commented (instead of deleted) lines.
+    \item `Simplified' comments (to recover CN annotations).
+    \item Retaining all includes.
+    \item Validating input for top-level declarations.
 \end{itemize}
 
-The tree-carver tool I wrote is called `c-tree-carve'. It is actually two tools
+The \kl{tree-carver} tool I wrote is called \intro{`c-tree-carve'}. It is actually two tools
 in a trench coat, a `clang-tree-carve.exe' written in C++ for interfacing with
 Clang's APIs, and a `comment simplifier' written in OCaml, to recover CN
 annotations from line comment after the first tool has run.
 
-At the very least, c-tree-carve requires a compilation database (a
+The tool requires a compilation database (a
 compile\_commands.json file) and a source file named within that database. If
 the file is mentioned more than once within the database, then the tool
 requires the user to disambiguate which command they intend to run the tool
@@ -335,43 +335,41 @@ enabled, their values, the paths in which headers are searched, and the
 warnings emitted by the Clang front-end. If no root functions are specified,
 the tool uses all the functions declared in the file as roots, otherwise only
 the selected roots are used. There is also an optional debug flag which will
-trace out the declarations and macros traversed, with their source locations
+trace the declarations and macros traversed, with their source locations
 and their dependencies.
 
-With these options, the tree-carver sets up a ClangTool instance, which is
+With these options, the \kl{tree-carver} sets up a ClangTool instance, which is
 essentially an invocation to Clang as a user may given on the command line. The
 invocation is the combination of the command selected from the compilation
 database, plus an extra directive to Clang to store a detailed preprocessing
 record, which is necessary to analyse macro dependencies later. To run the
 invocation, the ClangTool is also given an instance of FrontendActionFactory.
 This is where I override the appropriate methods to ultimately produce a map
-from file names to a vector of bools, one for each line in the file to mark it
+from file names to a vector of \cinline{bool}s, one for each line in the file to mark it
 as present or absent. With that map, it is easy to output, in a new temporary
-directory, the source files but with the all but the relevant lines commented
-out.
+directory, the source files but with all but the relevant lines commented out.
 
 %\inputminted[breaklines,fontsize=\footnotesize]{cpp}{code/simplifier.cpp}
 
-The FrontendActionFactory creates an instance of an ASTFrontendAction, in which
-is the method I override. It adds a callback to the preprocessor to record
-\emph{all} macro expansions when the preprocessor is run. To run the
-preprocessor, validate the top-level declarations, traverse and mark each
-top-level declaration, requires execute the action on the super object, which
-in turn has one more overridden method. After that, with the preprocessing
-record, it is possible to find all macro expansions within a given source range
-(that of all declarations), and mark all macros and their dependencies as used.
-
-\inputminted[breaklines,fontsize=\footnotesize,lastline=35]{cpp}{code/reachability_analyzer.cpp}
-
-The overridden method in the super object is a handler for the translation unit
-as a whole, which takes as its sole argument a reference to an immutable
-ASTContext. This simply validates the top-level declarations, traverses the
-declarations, adds in any forward declarations required, and then marks the
-source ranges for all the declarations as kept lines. The code for traversing
-and marking is similar, but represent slightly different concerns and are
-currently separated to take into account the correction for forward
-declarations. Since performance has not been an issue in practice, the
-increased readability and maintainability has been worth the separation.
+% The FrontendActionFactory creates an instance of an ASTFrontendAction, in which
+% is the method I override. It adds a callback to the preprocessor to record
+% \emph{all} macro expansions. To run the preprocessor, top-level
+% declaration validation, traversal, and marking, requires execute the action on the super object, which
+% in turn has one more overridden method. After that, with the preprocessing
+% record, it is possible to find all macro expansions within a given source range
+% (that of all declarations), and mark all macros and their dependencies as used.
+%
+% \inputminted[breaklines,fontsize=\footnotesize,lastline=35]{cpp}{code/reachability_analyzer.cpp}
+%
+% The overridden method in the super object is a handler for the translation unit
+% as a whole, which takes as its sole argument a reference to an immutable
+% ASTContext. This simply validates the top-level declarations, traverses the
+% declarations, adds in any forward declarations required, and then marks the
+% source ranges for all the declarations as kept lines. The code for traversing
+% and marking is similar, but represent slightly different concerns and are
+% currently separated to take into account the correction for forward
+% declarations. Since performance has not been an issue in practice, the
+% increased readability and maintainability has been worth the separation.
 
 %\inputminted[breaklines,fontsize=\footnotesize,firstline=37]{cpp}{code/reachability_analyzer.cpp}
 
@@ -379,7 +377,7 @@ I shall now describe, at a high level, how I analysed dependencies for macros.
 As far as I am aware, this aspect of the tool is novel and difficult
 to reproduce with other approaches short of implementing a custom preprocessor.
 The first step is to accurately capture the source range for macro definitions,
-because these can space multiple lines, and the default source ranges for macro
+because these can span multiple lines, and the default source ranges for macro
 definitions do not capture the range one would expect.\sidenote{The range ends
 \emph{before} the start of the last token, rather than including the end of
 it.} Doing so is straightforward with a overridden method to handle each macro
@@ -506,89 +504,96 @@ fields.
 \margintoc{}
 
 The \kl{pKVM} hypervisor is intended to provide isolation between virtual
-machines, protecting both the guest from the host and vice versa. It is also
-intended to support creating and destroying virtual machines dynamically, and
-so one of its key features it needs to implement is memory management. It
-implements a \kl{buddy allocator}~\cite{knowlton1965fast} to manage the pages it
-allocates. The example is discussed in~\textcite{pulte2023cn}, so I will focus
-only on my experience in updating the code.
+machines, protecting the guest and the host from each other. It is also
+intended to support creating and destroying virtual machines dynamically, for
+which it needs to support memory management. It implements this using a
+\kl{buddy allocator}~\cite{knowlton1965fast}, verifying which is discussed
+in~\textcite{pulte2023cn}, so in this chapter, I focus only on my experience in
+updating the verification to handle subsequent code changes.
 
 \section{Successful update to intrusive free lists}
 
-The major code change is easy to describe. The \intro{buddy allocator} maintains a
-doubly-linked list of free pages (per order). Initially, the pointers for these
-were stored externally to the free pages, but an update to the code changed it
-so that the pointers were stored intrusively, in the free pages themselves.
+The \intro{buddy allocator} maintains a doubly-linked list of free pages (per
+order). Initially, the pointers for these were stored externally to the free
+pages, but an update\sidenote{\href{https://github.com/rems-project/linux/commit/914cde58a03cc5eef858db34687433e17d0e44be}{Linux 914cde58}.} changed it so that the pointers were stored
+intrusively, in the free pages themselves.
 
-I found updating the proof for this to be challenging, mostly due to \kl{CN}'s
-error reporting, which I will explain later, but also partly due to a lack
-of experience and resulting intuition around the code and its predicates.
-With significant help, I was able to make worthwhile progress on it.
+I found it challenging to update the verification correspondingly, mostly due
+to \kl{CN}'s error reporting, which I will explain later, and partly due to a
+lack of experience and resulting intuition around the code and its
+\kl(CN){predicates}. Nonetheless, with significant help, I was able to
+progress.
 
-The \kl{pKVM} \kl{buddy allocator} is a challenging piece of code to understand and
-verify. It shifts between physical and virtual addresses frequently, and I
-found this difficult to follow. At the time, the original proof did not have or
-use helper functions, so tracking the complex arithmetic and different `types'
-(metadata, index into metadata, physical address, virtual address),
-was confusing. Ownership of the pages was initially indexed by its physical
-address; ownership of the metadata is indexed by a value computed from a page's
-address.
+The \kl{pKVM} \kl{buddy allocator} shifts between physical and virtual
+addresses frequently, which I found difficult to follow. The original proof did
+not have or use helper functions, so I also found it difficult to distinguish
+different `types' (metadata, index into metadata, physical address, virtual
+address) and the arithmetic to switch between them. Ownership of the pages was
+initially indexed by its physical address; ownership of the metadata is indexed
+by a value computed from a page's address.
 
-On top of this, ownership for the pages is sparse, based on conditions
-expressed in the metadata, hence, ownership of both are needed to perform any
-operations such as coalescing two buddy pages of the same order, adding a page
-or removing one. In addition to the addresses computable from an index, the
-free pages are also aliased via a per-order doubly-linked free list. This is
-where freed pages are added, and from whence allocated pages are removed.
+Two additional challenges make working with the (free) pages difficult. First,
+their ownership is sparse, based on its metadata (\eg{} \cinline{refcount ==
+0}). So, to perform any operations (coalescing two buddy pages of the same
+order, adding a page or removing one), one needs ownership of both the pages
+and the metadata. Second, the owned pages are also \emph{aliased} via a
+per-order doubly-linked free list, where freed pages are added, and from whence
+allocated pages are removed. The proof uses complex quantified constraints to
+assert this aliasing.
 
-Aside from the mechanics of moving fields and ownership from one part of the
-code to another, the update also highlighted some unhelpful assumption made in
-the initial verification, which meant going back, fixing the issue, and then
-redoing the efforts thus far. Although some aspects of the implementation could
-be encapsulated in helper functions, and working from leaf functions up was
-helpful in making worthwhile progress, eventually I hit the limits of my
-cognitive capabilities and of \kl{CN}'s abstractions and error reporting.
+Initially, we thought the proof update would be a straightforward move of
+fields and ownership from one part of the code to another. This was not the
+whole story, because of the physical address indexing mentioned earlier. The
+cleanest way to fix this was to edit the initial verification (before the code
+changes), and then replaying the subsequent work on top.
+
+Although some aspects of the implementation could be encapsulated
+in helper functions, and working from leaf functions up was helpful in making
+progress, eventually I hit the limits of my abilities and of \kl{CN}'s
+abstractions and error reporting.
 
 \subsection{Carving and integrated the upstream code}
-I did the update before I had a functioning tree carver, and so I had to
-manually carve out and integrate the upstream changes into the pre-existing
-\kl{buddy allocator} proof. This was slow and tedious. It was also occasionally
-error-prone, because although clang and Cerberus were helpful to sanity check
-the new cutdown version, they would not complain if annotations were missing.
 
-At the time, we did not support top-level \kl{CN} definitions in comments, and
-so all the definitions (which were scattered inline, not factored out into a
-separate header) made using clang difficult, since they had to be manually
-commented out, and then uncommented later to use \kl{CN}.
+I did the update before I had a functioning \kl{tree-carver}, and so I manually
+carved and integrated the upstream changes into the initial \kl{buddy
+allocator} proof. This was slow and tedious.
+
+It was also occasionally error-prone. At the time, we did not support top-level
+\kl{CN} definitions in comments, and so had to comment them out before feeding
+the files to Clang or \kl{Cerberus} as sanity checks. This was made even
+tougher because all the definitions were scattered inline, instead of being
+factored out into a separate header.
 
 In total, carving out and grafting the updated code took around 3 weeks.
 
 \subsection{Deleting old fields}
-I started by commenting out all the instances where struct fields had been
-removed (forward/backward pointers deleted from the metadata array). I
-was able to do this and verify one of the functions, `hyp\_put\_page'
-in approximately 1 week.
 
-This change was straightforward to propagate in specifications because CN
-reliably showed errors where non-existent fields were accessed. It was less
-clear, as someone new to the code and its invariants, what the required
-adjustments to the invariants needed to be. Surprisingly, I could leave this
-until later \textemdash{} the changes were close to dependency leaf nodes, and
-the original design and use of the resource and logical predicate definitions
-(on the non-leaf functions) did a good job of encapsulating their details.
+I started by commenting out all the instances where struct fields had been
+removed, deleting mentions of forward/backward pointers from elements of the
+metadata array. I was able to do this and verify one of the functions,
+`hyp\_put\_page' in approximately 1 week.
+
+Propagating this change to \kl(CN){specifications} was straightforward because
+\kl{CN} reliably complained when they mentioned non-existent fields. It was
+less clear, as someone new to the code and its invariants, what how to update
+the allocator invariants. Surprisingly, I could leave this until later
+\textemdash{} the changes were close to dependency leaf nodes, and the original
+design and use of the \kl(logical){functions} and \kl(CN){predicates} (on the
+non-leaf functions) encapsulated such details well.
 
 \subsection{Adding new fields}
 
-After propagating the removed fields, my progress slowed significantly. The
-next steps required understanding the code and \kl{CN} far more deeply, namely
-understanding \textemdash{} and then writing the correct predicates for
-\textemdash{} free pages with intrusive doubly-linked list pointers. Thomas
-Sewell, who worked on the initial proof, wrote the first draft of the new
-predicate to describe such pages. This took him about a day; the new predicate
-had new output values (for the previous and next pointers), and propagating
-this took me about 2 weeks. I also consulted with the Christopher Pulte, who
-also worked on the inital proof, who advised on further refinements, which took
-another 2 weeks to propagate.
+After removing the struct fields, my progress slowed significantly. The next
+steps required understanding \textemdash{} and then writing the correct
+\kl(CN){predicates} for \textemdash{} free pages with intrusive doubly-linked
+list pointers. Thomas Sewell, who worked on the initial proof, wrote the first
+draft of the new \kl(CN){predicate} to describe such
+pages.\href{https://github.com/rems-project/cn-pKVM-buddy-allocator-case-study/commit/a029b41b0fd06b0ae8a28c8576d467e69dd69b38}{Buddy
+a029b41b} This took him a day; the new \kl(CN){predicate} had new output values
+(for the previous and next pointers), and propagating them took me about 2
+weeks. I also consulted with the Christopher Pulte, who also worked on the
+initial proof, who advised on further refinements, which took another 2 weeks
+to propagate.
 
 % This change removed the use of the
 % `vmemmap\_b\_wf` logical function, and constraining the indices for which
@@ -597,26 +602,24 @@ another 2 weeks to propagate.
 
 \subsection{Physical to virtual address}
 
-During the update, an issue around resource management which was previously
-obscured became clearer: the code was using virtual addresses to read the
-intrusive list pointers, and thus implicitly claiming ownership of the pages
-via the \emph{virtual} rather than physical addresses.
+As mentioned earlier, the original \kl(CN){iterated ownership} for the (free)
+pages was claimed via the \emph{physical} address. This was inconsequential
+because no code read or wrote to the pages. However, after the update, the code
+was reading and writing the intrusive, doubly-linked list nodes in the pages,
+and was using the \emph{virtual} addresses to do so.
 
-Unfortunately, the original verification claimed ownership for the pages via
-the physical addresses. This was fine in the orignal proof and code, because
-the pages were never read from; but it is impossible to convince \kl{CN} that
-loading a struct from a virtual address whilst it has ownership of the
-distantly related physical one, since that would collapse the distinction and
-transformations between them.
+\kl{CN} does not have support taking ownership at a physical address but
+reading and writing from a virtual one; it knows nothing of such a distinction,
+it only matters what the code does.
 
-The remedy to this was to go back and update the original proof to consistently
-use ownership via virtual addresses, in anticipation of the forthcoming
-changes. Additional \kl{CN} features might have made such an update easier. For
-example, better integration of function-like macros would name conversions
-between physical and virtual addresses (instead of using plain arithmetic). Or,
-numeric type-classes would make conflating physical and virtual address a base
-type error in specifications. Fixing and then rebasing these changes, alongside
-cosmetic changes, took one month.
+The cleanest way to fix this was to edit the initial verification (before the
+code changes), and then replaying the subsequent work on top. This would have
+been easier had the original specifications used named conversion functions to
+switch between physical and virtual addresses (instead of inlining all
+arithmetic). More ambitiously, if the specification language had numeric
+type-classes, then conflating the two would have raised a base type error.
+Fixing and then rebasing these changes, alongside cosmetic changes, took one
+month.
 
 \subsection{Helper functions}
 
@@ -624,7 +627,7 @@ After the rebase, I verified two new helper functions. The first of these takes
 a pointer to a free page's metadata, converts it into the virtual address for
 the free page itself, and then deletes the page from the doubly-linked free
 list it is in. The second is similar, but adds the page to a specified
-double-linked free list.
+doubly-linked free list.
 
 Their specifications were verbose, but not too challenging \textemdash{} the
 standard list functions they wrapped up were already verified in the previous
@@ -635,35 +638,35 @@ pointer.
 For verification, it was useful to add an extra wrapper around each these
 helper functions, which expressed the addition/removal in higher-level
 invariants used by the main functions. To express those invariants, the
-verification helpers needed an extra logical parameter, but since
-\kl{CN} does not currently support those (when not derived from program
-variables), the parameter was reified into the C code (but ignored in the
-body).
+verification helpers needed an extra logical parameter (one not derived from
+program variables), but since \kl{CN} did not support them at the time, the
+parameter was reified (and ignored) in the code.
 
 \subsection{Indexing and signed bit-vector division}
 
-The main predicate of the \kl{buddy allocator} claims a contiguous iterated
-ownership of page metadata, and \emph{sparse} iterated ownership of the pages
-themselves, specifically the free pages (determined by the metadata).
+The main \kl(CN){predicate} of the \kl{buddy allocator} claims contiguous
+\kl{iterated ownership} of page metadata, and \emph{sparse} \kl{iterated
+ownership} of the free pages themselves (determined by the metadata, \eg{}
+\cinline{refcount == 0}). The \kl{output arguments} of these two are arrays.
 
-As I mentioned before, the code assumes that it can dereference the contents of
-pages via their \emph{virtual} addresses. So this gives two seemingly equally
-valid choices on how to \emph{index} the iteration that iteration. It could
-either be indexed according to the same scheme as the metadata, or it could be
-indexed by a \emph{virtual index}. The latter is more natural to write, since
-the base virtual index is always 0, and the base virtual address is always 0,
-and was the initial choice for expressing this.
+The \kl(predicate){iteration} (and the resulting \kl{output argument} array)
+can be indexed in two different ways. One, it could be indexed starting from a
+`virtual index' of 0, with virtual address 0 as the base pointer. Or two, it
+could be indexed identically to the metadata, with virtual address of physical
+address 0 as the base pointer. The former seemed more natural and was the
+original choice. 
 
-However, this quickly became unwieldy as logical expressions using the
-\emph{outputs} of these differently indexed arrays need to convert between the
-two consistently and correctly. Not only was this not the case, lurking beneath
-the conversion was a division of a signed bit-vector in Z3, which folklore
-suggests is ill-advised for performance.\sidenote{I thank Thomas Sewell for
-alerting me to this; though in this instance, it is not clear this was the
-bottleneck.} Hence, the penultimate step to verifying the code was
-standardising these indices and avoiding the possibility of signed bit-vector
-division (rerouting to avoid the bottom path in~\cref{fig:buddy-negative-div}),
-which took about 1 week.
+However, this meant the logical metadata array and the free page array followed
+different indexing conventions. However, the two needed to be indexed in sync
+frequently, to express the allocator's complex invariants, and this was very
+error-prone. Additionally, the conversion relied on dividing a signed integer
+in Z3, which folklore suggests is ill-advised for performance.
+
+Hence, the penultimate step to verifying the code was standardising these
+indices\sidenote{\href{https://github.com/rems-project/cn-pKVM-buddy-allocator-case-study/commit/ba4927306268b647c5afb59593b3b86557f94722}{Buddy
+ba492730}, suggested and written by Thomas Sewell.} and avoiding the
+possibility of signed bit-vector division (rerouting to avoid the bottom path
+in~\cref{fig:buddy-negative-div}), which took about 1 week.
 
 \begin{figure}[h]
 % https://q.uiver.app/#q=WzAsNSxbMCwwLCJcXHRleHRzZnt2LiBhZGRyfSJdLFswLDIsIlxcdGV4dHNme3YuIGluZGV4fSJdLFsyLDIsIlxcdGV4dHNme3AuIGluZGV4fSJdLFsyLDAsIlxcdGV4dHNme3AuIGFkZHJ9Il0sWzQsMiwiXFx0ZXh0c2Z7bm9kZX0iXSxbMSwyLCJcXHRleHRzZnsrIG9mZnNldCAvIFBBR0VcXF9TSVpFfSIsMCx7ImNvbG91ciI6WzAsNjAsNjBdfSxbMCw2MCw2MCwxXV0sWzAsMSwiXFx0ZXh0c2Z7LyBQQUdFXFxfU0laRX0iXSxbMywyLCJcXHRleHRzZnsvIFBBR0VcXF9TSVpFfSIsMCx7ImNvbG91ciI6WzEyMCw2MCw2MF19LFsxMjAsNjAsNjAsMV1dLFswLDMsIlxcdGV4dHNmeysgb2Zmc2V0fSIsMix7ImNvbG91ciI6WzEyMCw2MCw2MF19LFsxMjAsNjAsNjAsMV1dLFsyLDQsIlxcdGV4dHNme25vZGUgLSB2bWVtbWFwfSIsMix7ImN1cnZlIjoxfV0sWzIsNCwiXFx0ZXh0c2Z7XFwmdm1lbW1hcFtcXF9dfSIsMCx7ImN1cnZlIjotMX1dXQ==
@@ -688,10 +691,10 @@ which took about 1 week.
 
 \subsection{Stuck in complexity}
 
-After I had finished verifying the leaf and the intermediate functions, I
+After I finished verifying the leaf and the intermediate functions, I
 became stuck because of the sheer complexity and unfamiliarity of the top-level
-predicate, as well as usability issues I will cover soon.\sidenote{I had also
-started work on the tree carver, which was much more tractable and appealing.}
+\kl(CN){predicate}, as well as usability issues I will cover soon.\sidenote{I had also
+started work on the \kl{tree-carver}, which was much more tractable and appealing.}
 
 Thomas Sewell took over and completed the updated proofs at this stage. The key
 insight was to generalise the main invariant so it could express the absence of
@@ -701,21 +704,20 @@ of the code; this took 2 weeks.
 
 \section{Successful update to experimental VIP}
 
-Towards the end of the update to support the intrusive free lists, I started
-working up updating the \kl{buddy allocator} proof to an early version of the
-\kl{VIP} implementation. In this early version, pointers were augmented with an
-allocation ID, and the typing rules were updated to handle this. I had
-implemented a flag for turning \kl{VIP} behaviour on and off, and also
-non-deterministic pointer equality; I had yet to implement a separate
-\cinline{NULL} constructor in the SMT representation of pointers, or pointer
-liveness and bounds checks.
+Towards the end of the above work, I began to update the \kl{buddy allocator}
+verification to work with an early version of \kl{CN-VIP}. This version added
+\kl{provenance} to pointers, \kl{non-deterministic pointer equality}, and
+specification language terms for \cinline[breaklines]{copy_alloc_id}, member
+shifting, and array shifting; it did not have \cinline{NULL} pointers, or
+pointer liveness/bounds checks. I used a flag to gate these changes.
 
-The modifications I made concerned only integer-to-pointer casts:
+With this version of \kl{CN-VIP}, the updated verification now checked all
+pointer arithmetic, integer-to-pointer casts, and \kl{provenance} equality
+where necessary. This required changing:
 \begin{itemize}
-    \item Changed all integer-to-pointer casts in the specifications to use,
-        array or member shifting, or \cinline{copy_alloc_id}.
-    \item Changed the pointer to the base of the metadata array from an integer
-        to a pointer.
+    \item Integer-to-pointer casts in the specifications to array shifting,
+        member shifting, or \cinline{copy_alloc_id}.
+    \item The integer base address of the metadata array to be a pointer.
         %\cinline{u64 __hyp_vmemmap} to \cinline{struct hyp_page *__hyp_vmemmap}.
         In the absence of support for round-trip casts, this small change gave
         the frequently used pointer a valid allocation ID\@.
@@ -725,8 +727,8 @@ The modifications I made concerned only integer-to-pointer casts:
 \end{itemize}
 
 Given the pervasiveness of computed pointers in the code and specifications,
-the changes were extensive but straightforward. The updated proof was backwards
-compatible: it passed both with and without the early \kl{VIP} rules enabled.
+the changes were extensive but straightforward. The updated verification was
+backwards compatible: it passed both with and without the flag enabled.
 
 \section{Failed update to support bit-vectors}\label{sec:buddy-failed-bv}
 
@@ -739,15 +741,15 @@ compatible: it passed both with and without the early \kl{VIP} rules enabled.
 % (undecidable) non-linear arithmetic. This prompted an overhaul of \kl{CN} to
 % work with bit-vectors as its fundamental integer type.
 
-The \kl{VIP} update was intentionally small and early, so that I could iterate
-on it frequently and incrementally, whilst keeping the hero example of \kl{CN}
-functional at each step.
+The \kl{CN-VIP} update was intentionally small and early. I intended to iterate
+on it frequently and incrementally, keeping the \kl{buddy allocator}
+verification passing at each stage.
 
-This did not pan out due to a substantial change to \kl{CN}: switching the
-representation of integers from mathematical integers to fixed-width bit
-vectors. In short, the change made verifying the \kl{buddy allocator} at at least
-50x slower, and, remarkably, this went unnoticed for a long time. The reasons
-for this will become clear in the following takeaways.
+I failed in doing this because \kl{CN} switched its SMT representation of C
+integers from mathematical integers to fixed-width bit vectors. This made
+verifying the \kl{buddy allocator} at at least 50x slower, and, remarkably,
+this went unnoticed for a long time. The reasons for this will become clear in
+the following takeaways.
 
 \section{Key takeaways}
 
@@ -758,46 +760,45 @@ for this will become clear in the following takeaways.
 \subsection{Features}\label{subesc:takeaway-features}
 
 \paragraph{Tutorials are indispensable (completed).} The \kl{buddy allocator}
-verification is complex, and learning it without building up intuition for
-separation logic and how to operate \kl{CN} made the process unnecessarily
+verification is complex, and learning it without an intuition for
+\kl{separation logic} and how to operate \kl{CN} made the process unnecessarily
 difficult. This has been remedied with the introduction of the \kl{CN
 tutorial}~\sidecite{pulte2024tutorial}.
 
-\paragraph{Tree carving is indispensable (completed).} Manually carving and
-grafting the code took a significant amount of time (3 weeks), once again
-demonstrating the need and usefulness of the tree carver as an integral part of
-any usable C verification tool.
+\paragraph{\kl{Tree-carving} is indispensable (completed).} Manually carving
+and grafting the code took a significant amount of time (3 weeks), once again
+demonstrating the need and usefulness of the \kl{tree-carver} as an integral
+part of any usable C verification tool.
 
 \paragraph{Functions should be checked in dependency order.}
-From the get go, the default order in which \kl{CN} checked its functions was
-unhelpful. Ideally, one would like it to start with leaf functions and then
-work its way up, but instead the user must figure out and maintain the
-dependency structure in their head when planning the proof effort, and manually
-select the functions to verify one at a time.
+The default order in which \kl{CN} checks its functions is unhelpful. Ideally,
+one would like it to start with leaf functions and then work its way up, but
+instead the user must figure out and maintain the dependency structure in their
+head when planning the proof, and manually select the functions to verify one
+at a time.
 
 \paragraph{Function-like macros represent real abstractions (worked-around).}
 The \kl{buddy allocator} code uses function-like macros heavily to convert
 between a pointer to metadata, an index into metadata, a physical address and a
 virtual address. Ideally there would be some way of automatically converting
-such macros into logical (ghost) functions, but this is difficult because
+such macros into \kl{logical (ghost) functions}, but this is difficult because
 macros can and do refer to global variables. Instead of converting macros to
-logical functions, it may be more fruitful to simply expand their use in
+\kl{logical functions}, it may be more fruitful to simply expand their use in
 specifications, but macros are not expanded in comments, where \kl{CN}'s
 annotations live.\sidenote{This is close to essential for maintaining
 compatibility with existing C tool chains.} \kl{CN} does have an experimental
-feature for lifting a C function into a logical one, with the idea being that
-writing a C function around a macro call is an option sometimes. All this being
-said, even if by hand, the benefit of defining logical equivalents of
+feature for lifting a C function into a \kl(function){logical} one. That
+said, even if by hand, the benefit of defining \kl(function){logical} equivalents of
 function-like macros is worthwhile for the readability, reliability and
 maintainability it brings.
 
 \paragraph{Constant-like macros also represent real abstractions
-(worked-around).} I spent a bit of time removing magic constants prevalent in
-the original proof. Part of this was just human inconsistency, part of this was
+(worked-around).} I spent substantial time removing magic constants prevalent in
+the original proof. Part of this was just human inconsistency, part was
 two syntactic limitations of an earlier version of \kl{CN}. The first was that
 in that in top-level definitions, one could write \cninline{sizeof<struct
 hyp_page>}, but not in the specifications. The second was that step sizes in
-iterated predicates must be integer literals (rather than \cninline{sizeof<>}
+\kl{iterated predicates} must be integer literals (rather than \cninline{sizeof<>}
 expressions). This was exacerbated by the fact that the size of \cinline{struct
 hyp_page} shrank between the versions from 32 to 4, and the size of its
 \cinline{.order} field shrank from \cinline{u32} to \cinline{u8}.
@@ -825,14 +826,14 @@ C code by adding unused parameters to support proof would not be acceptable in
 almost all large, real-world code bases. Reifying ghost parameters complicates
 specifications in tangible ways too: adding a page to the free list requires
 converting a metadata pointer into a virtual address, and doing so requires
-appropriate range constraints. Without ghost parameters and arguments, the only
-way to get the values for those constraints is to pass in ownership of a struct
-containing them (and then constrain that the value has not changed, which is
-easy to forget and painful to debug). However, the same struct also contains
-ownership of the per-order free list array, which contains the \emph{other}
-parameter of the function. Using that parameter requires ownership, and so if
-one is not careful, naively adding an extra parameter can lead to a claiming
-ownership of the same location twice.\sidenote{See
+appropriate range constraints. The values for these constraints lives in a 
+separate struct, which, without ghost parameters and arguments, must be passed
+via pointer (and then asserted to not change, which is easy to forget and
+painful to debug). However, the same struct also contains
+\kl(iterated){ownership} of the per-order free list array, which contains the \emph{other}
+parameter of the function. Using that parameter requires \kl{ownership}, and so
+if one is not careful, naively adding an extra parameter can lead to a claiming
+\kl{ownership} of the same location twice.\sidenote{See
 \href{https://github.com/rems-project/cn-pKVM-buddy-allocator-case-study/commit/3363734d706a90a4674c44fa36dd0babcf93b084}{commit
 3363734}.} Spotting this error requires some deep familiarity with \kl{CN}.
 Ghost arguments have since been implemented by Dimitrios Economou.
@@ -857,13 +858,13 @@ checks.
 \subsection{Handling large changes}\label{subsec:handling-large-changes}
 
 \paragraph{Substantial changes should be opt-in/gated underneath a flag.}
-\kl{CN}'s transition to bit-vectors was to support reasoning about \kl{pKVM}'s
+\kl{CN} transitioned to bit-vectors to support reasoning about \kl{pKVM}'s
 page table code, which manipulated bits extensively, without resorting to
-lemmas everywhere. The changes required to the code were pervasive, and because
-we incorrectly assumed the \kl{buddy allocator} verification would be easy to
-port, there was no desire to deliver the feature piecemeal and opt-in. This was
-a costly error, not only for updating the \kl{buddy allocator} verification,
-but also for maintaining \kl{CN}'s speed.
+lemmas frequently. We incorrectly assumed the \kl{buddy allocator} verification
+would be easy to port and underestimated how pervasive the change would be.
+The transition was not opt-in, which ended up being a costly error, not only
+for updating the \kl{buddy allocator} verification, but also for maintaining
+\kl{CN}'s speed.
 
 \paragraph{Syntax changes should be opt-in/gated underneath a flag.} The update
 to bit-vectors changed the syntax of integer types too, and this was tedious to
@@ -871,12 +872,12 @@ update manually. Either refactoring tools for specifications need to be
 developed to assist with this, or changes need to be brought in less abruptly.
 
 \paragraph{Constraints on bit-vectors should exclude overflow.} With integers,
-it is possible to constraint $a$ by constraining $a \times{} 4096$, with bit
-vectors, it is not. Thus, by default, specifications on bit-vectors parameters
-(including addresses of pointers) need to be phrased in terms of the original
-variables rather than on subsequent expressions which could overflow. This also
-hints a relatively simple scheme for translating specifications on integers
-into bit-vectors (\cref{sec:integers-bitvectors}).
+it is possible to constrain $a$ by constraining $a \times{} 4096$, with
+bit-vectors, it is not. Thus, by default, specifications on bit-vectors
+parameters (including addresses of pointers) need to be phrased in terms of the
+original variables rather than on subsequent expressions which could overflow.
+This also hints a relatively simple scheme for translating specifications on
+integers into bit-vectors (\cref{sec:integers-bitvectors}).
 
 \subsection{Error messages}
 
@@ -886,11 +887,11 @@ elaboration is compositional, this does not mean that accurate and helpful error
 messages come for free. For example, it is very helpful to relate source
 location of generated variables to that of the expressions they are
 binding.\sidenote{\href{https://github.com/rems-project/cerberus/issues/270}{Cerberus\#270}.}
-Aside from that, in earlier versions of \kl{CN}, the main datatype
-for representing SMT terms did not carry source location information. Which
-made it very difficult to track down which part of a pre- or postcondition was
-failing, or which sub-term in a large expression was not well-formed. This also
-fed into making counter-examples much less useful.
+Aside from that, earlier versions of \kl{CN}, did not carry source location
+information inside its SMT terms. This made it very difficult to track down
+which part of a \kl{pre-} or \kl{postcondition} was failing, or which sub-term
+in a large expression was not well-formed. This also fed into making
+\kl{counter-examples} much less useful.
 
 \paragraph{Aliasing, and conditionally aliasing variables need to be presented
 clearly.} For example, the list manipulation functions take arguments which may
@@ -903,7 +904,7 @@ can get confusing.
 % might think, with the C *next being (next == prev ? *prev : *next) in CN.
 
 \paragraph{Counter-examples should be related to what the user wrote.} CN's
-presentation of counter-example models was and remains unhelpful, though
+presentation of \kl{counter-examples} was and remains unhelpful, though
 improvements to the naming scheme for automatically generated variables, and
 outputting sub-terms as well as top-level failed constraints, did blunt the
 impact slightly. Whilst I changed the debug printing of index terms in failed
@@ -918,24 +919,28 @@ counter-example model values.
 % to the source.
 
 \paragraph{Counter-examples should be minimal and consistent.} Another source
-of confusion is that counter-examples are neither minimal, nor consistent: all
-variables are assigned a value, values irrelevant to counter-example may not be
-consistent with the constraints, and it is not possible to query the solve to
-determine which variables are relevant, and which may be safely ignored.
+of confusion is that \kl{counter-examples} are neither minimal, nor consistent:
+all variables are assigned a value, values irrelevant to \kl{counter-example}
+may not be consistent with the constraints. The
+\href{https://github.com/Z3Prover/z3/issues/3964}{`unsat-core'} feature of Z3,
+or the
+\href{https://cvc5.github.io/blog/2024/04/15/interfaces-for-understanding-cvc5.html}{`model
+core'} feature of CVC5, may be useful for this.
 
 \paragraph{Counter-examples should be easy to understand.} Values in
-counter-examples can be quite large and thus difficult to parser and check
-mentally. A trick I learned from Thomas Sewell was to constrain integer values
-to be small in the precondition of functions failing to verify. For instance,
-set the physical/virtual offset to 0 and limit the pool to a tiny range of
-small memory addresses. This makes counter-examples more manageable and should
-be automated.
+counter-examples can be quite large and thus difficult to read. A trick I
+learned from Thomas Sewell was to constrain integer values
+to be small in the \kl{precondition} of functions failing to verify. For
+instance, set the physical/virtual offset to 0 and limit the pool to a tiny
+range of small memory addresses. This makes counter-examples more manageable
+and could be automated.
 
 \paragraph{Counter-examples should be interactive.} With small values, minimal
 models and good relatability to the source, it should be possible to make
-counter-examples interactive, such as stepping through the program, or tracing
-out the shape of the symbolic heap (ideally graphically) to make it much easier
-to visualise where a user's intuitions and assumption do not match the code's.
+\kl{counter-examples} interactive, such as stepping through the program, or
+tracing the shape of the symbolic heap graphically, to visualise where a user's
+intuitions and assumption do not match the
+code's~\sidecite{karmios2026gillian}.
 
 \paragraph{Counter-examples with iterated resources and quantified constraints
 need special care.} In particular, it it is tricky to debug
