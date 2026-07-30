@@ -17,14 +17,14 @@ Counts are `text + headers + captions`. **Own** is the prose directly under a he
 | Memory object models, explained | **6739** | 395 |
 | CN-VIP | **3141** | 107 |
 | Epilogue on CN-VIP | **2843** | 45 |
-| Tree-carving: Taming C Repositories | **2817** | 125 |
-| Proof maintenance for pKVM buddy allocator | **3438** | 82 |
+| Tree-carving: Taming C Repositories | **2609** | 125 |
+| Proof maintenance for pKVM buddy allocator | **3303** | 78 |
 | CN Comparison and Feedback | **4203** | 177 |
 | Not-so-great expectations | **5234** | 97 |
 | Future Directions | **3285** | 22 |
 | Conclusion | **1334** | 545 |
 
-| **Document total** | **61830** | |
+| **Document total** | **61487** | |
 
 ## Introduction
 
@@ -198,36 +198,36 @@ Counts are `text + headers + captions`. **Own** is the prose directly under a he
 
 ## Tree-carving: Taming C Repositories
 
-**Chapter total: 2817** (own 125)
+**Chapter total: 2609** (own 125)
 
 | Section | Subsection | Total | Own |
 | :-- | :-- | --: | --: |
 | Need for tree-carving |  |  | 600 |
 | Challenging preprocessor and C features |  |  | 412 |
 | Demonstration |  |  | 232 |
-| Implementation |  |  | 1261 |
+| Implementation |  |  | 1053 |
 | Limitations and future work |  |  | 187 |
 
 ## Proof maintenance for pKVM buddy allocator
 
-**Chapter total: 3438** (own 82)
+**Chapter total: 3303** (own 78)
 
 | Section | Subsection | Total | Own |
 | :-- | :-- | --: | --: |
-| Successful update to intrusive free lists |  | 1477 | 357 |
-|  | Carving and integrated the upstream code |  | 128 |
-|  | Deleting old fields |  | 125 |
-|  | Adding new fields |  | 113 |
-|  | Physical to virtual address |  | 193 |
-|  | Helper functions |  | 174 |
-|  | Indexing and signed bit-vector division |  | 271 |
-|  | Stuck in complexity |  | 116 |
-| Successful update to experimental VIP |  |  | 221 |
-| Failed update to support bit-vectors |  |  | 92 |
-| Key takeaways |  | 1566 | 2 |
-|  | Features |  | 900 |
-|  | Handling large changes |  | 204 |
-|  | Error messages |  | 460 |
+| Successful update to intrusive free lists |  | 1421 | 365 |
+|  | Carving and integrated the upstream code |  | 106 |
+|  | Deleting old fields |  | 121 |
+|  | Adding new fields |  | 114 |
+|  | Physical to virtual address |  | 175 |
+|  | Helper functions |  | 172 |
+|  | Indexing and signed bit-vector division |  | 253 |
+|  | Stuck in complexity |  | 115 |
+| Successful update to experimental VIP |  |  | 204 |
+| Failed update to support bit-vectors |  |  | 83 |
+| Key takeaways |  | 1517 | 2 |
+|  | Features |  | 865 |
+|  | Handling large changes |  | 195 |
+|  | Error messages |  | 455 |
 
 ## CN Comparison and Feedback
 
