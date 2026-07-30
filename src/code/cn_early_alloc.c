@@ -22,7 +22,7 @@ void * hyp_early_alloc_page(void *arg)
 /*@ requires cur + 4096 <= end @*/
 /*@ requires take E = EarlyAlloc((pointer) cur, end) @*/
 /*@ ensures take E2 = EarlyAlloc((pointer) cur, end) @*/
-/*@ ensures take Z = each(integer j; ((integer) return) <= j && j < ((integer) return) + 4096){ Byte(((pointer) 0)+(j*1)) } @*/
+/*@ ensures take Z = each(integer j; ((integer) return) <= j && j < ((integer) return) + 4096){ ByteV(((pointer) 0)+(j*1), 0) } @*/
 /*@ ensures cur == {cur}@start + 4096; {end}unchanged @*/
 {
         /*CN*/ /*@ unpack EarlyAlloc((pointer) cur, end); @*/
@@ -33,7 +33,7 @@ void * hyp_early_alloc_page(void *arg)
 		cur = ret;
 		return NULL;
 	}
-	/* clear_page((void*)ret); */
+	clear_page((void*)ret);
 
         /*CN*/ /*@ pack EarlyAlloc((pointer) cur, end); @*/
 	return (void *)ret;

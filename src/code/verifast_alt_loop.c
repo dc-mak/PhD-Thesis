@@ -6,7 +6,7 @@ fixpoint_auto list<t> create<t>(int n, t x)
   decreases n;
 { return n <= 0 ? nil : cons(x, create(n-1, x)); }
 
-// This is the key lemma (and also slows down verification A LOT
+// This is the key lemma (and also slows down verification A LOT)
 lemma_auto void if_zero_then_nil<t>(list<t> a)
   requires 0 == length(a);
   ensures a == nil;
