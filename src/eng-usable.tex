@@ -360,7 +360,7 @@ time assertions must be self-framing (include all permissions to evaluate the
 heap accesses in the assertion).
 
 Viper has the VerCors~\sidecite{blom2017vercors} front-end which supports
-annotations on OpenCL/OpenMP/C code. \sidetextcite{blom2017vercors} says
+annotations on OpenCL/OpenMP/C code. \sidetextcite{blom2017vercors} say
 `Support for basic features of the C and C++ languages works similar to the
 verification of those features in Java'. Programs are annotated with
 specifications and are then `encoded into the internal format of VerCors,
@@ -387,9 +387,9 @@ experimental proof-of-concept one for \kl{CN}.
 Soteria-\kl{CN}\sidenote{\url{https://github.com/soteria-tools/soteria-cn}} uses
 \kl{MuCore}, and can be up to 50x faster than \kl{CN} on small tests cases for
 singly- and doubly-linked lists. The speed-up seems to \emph{increase} with the
-size of the program, though \kl{iterated predicates}, inductive datatypes and \kl{pure
-functions} are unsupported, so bigger and more representative examples may not
-be so impressive.
+size of the program, though \kl{iterated predicates}, inductive datatypes and
+\kl(CN){pure functions} are unsupported, so bigger and more representative
+examples may not be so impressive.
 
 Soteria-C uses Cerberus' Ail rather than Core, because Ail retains more
 of the original program structure and thus makes it easier to spot and apply
@@ -410,10 +410,10 @@ care, the explicitness of \kl{Core} can be a downside.
 
 My stated thesis is that building a verification tool for C which can handle
 low-level systems programming is within reach: two parts engineering and one
-part theory (\S\ref{sec:thesis-stmt}). The aspirational goal of \kl{CN} is to
+part theory (\cref{sec:thesis-stmt}). The aspirational goal of \kl{CN} is to
 bring the cost of C verification down from ``a Rocq programmer who knows
 separation logic to a systems programmer who is proficient with functional
-programming''~(\S\ref{sec:cn-intro}). This simultaneously ambitious from a
+programming''~(\cref{sec:cn-intro}). This simultaneously ambitious from a
 research stand-point, but timid from an industry stand-point, even for systems
 programmers who are willing to walk-the-talk with regards to correctness.
 
@@ -537,13 +537,11 @@ to the next chapter.
 
 \margintoc{}
 
-In the last chapter, I compared \kl{CN} to some relevant tools in the space. I
-also presented industry feedback on \kl{CN}. Based on my
-experience of having worked on programming language tooling both in industry
-and in academia, I will synthesise the two and lay out achievable standards of
-usability for \kl{CN} \emph{going forward}, with an emphasis on how \emph{new
-projects} can avoid several pitfalls. Only where I explicitly say so are
-the suggestions intended to be retrospective.
+In this chapter, I synthesise some lessons from the previous chapter's
+comparison of \kl{CN} to similar tools, and industry feedback. I lay out
+achievable standards of usability for \kl{CN} \emph{going forward}, with an
+emphasis on how \emph{new projects} can avoid several pitfalls. Only where I
+explicitly say so are the suggestions intended to be retrospective.
 
 \section{Work backwards from examples}
 
@@ -572,9 +570,9 @@ verifying simpler and more conventional examples, such as those now in the
 
 With only slight irony, my point is that \emph{test-driven development is
 exceptionally useful when implementing a verification tool}. This bore out in
-my experience in implementing \kl{VIP}: writing examples and informally but
-rigorously working through how they ought to be specified and helped enormously
-in guiding my intuitions and highlighting problems early on, and I conjecture a
+my experience in implementing \kl{CN-VIP}: writing examples, and informally (but
+rigorously) working through how they ought to be specified, helped enormously
+in guiding my intuitions and highlighting problems early on. I conjecture a
 broader range of smaller examples escalating to the \kl{buddy allocator} would
 have been similarly helpful.
 
@@ -585,8 +583,8 @@ pre-empt by more careful design at the start, for example, the change in
 inference
 scheme,\sidenote{\href{https://github.com/rems-project/cerberus/commit/7c2c0a364a4373e4eb109f32d01cc9584f51e81f}{Cerberus
 7c2c0a36.} This was motivated by reducing the annotation burden for folding
-and unfolding predicates, which turned out to be heavier than annotation
-saved by inferring indices.}, or the switch to the monadic syntax
+and unfolding predicates, which turned out to be heavier than the annotations
+saved by inferring indices.}, or the switch to the \kl{monadic syntax}
 (\cref{sec:monadic-syntax}), there are a few design decisions which might
 have benefited from some scrutiny prior to implementation.
 
@@ -604,43 +602,37 @@ have benefited from some scrutiny prior to implementation.
 
 By default, \kl{Cerberus} elaborates calls to C functions by allocating and
 initialising parameters \emph{at the call site} and then \emph{passing
-pointers} to the temporary objects to the callee. This %
-leads to very verbose and awkward specifications, where functions had to (a)
-claim ownership of their parameters and (b) promise they did not modify them so
-that the objects at the call-site remained unaffected.
+pointers} to the temporary objects to the callee. This leads to very verbose
+and awkward specifications, where functions had to (a) claim ownership of their
+parameters and (b) promise they did not modify them so that the objects at the
+call-site remained unaffected.
 
-This eventually became intolerable enough to realise that what needed to change
-was not the specifications but the
-elaboration.\sidenote{\href{https://github.com/rems-project/cerberus/commit/772173d6432c86b029fd1bb993b8dc83b80c96c0}{Cerberus
-772173d6}} Of course, this required changes to \kl{CN}
-too,\sidenote{\href{https://github.com/rems-project/cerberus/commit/186e4e42a75cad2222d441ce608fc1dc84cc7b98}{Cerberus
-186e4e42}} to handle the changed elaboration. Ultimately, this resulted in
-duplicated effort. Had we spent some time looking at small sample \k{Core}
-programs, and testing out a formalism on it, we might have anticipated the
-issue sooner.
-
+This was verbose and error-prone, so we changed the
+elaboration\sidenote{\href{https://github.com/rems-project/cerberus/commit/772173d6432c86b029fd1bb993b8dc83b80c96c0}{Cerberus
+772173d6}} and \kl{CN}\sidenote{\href{https://github.com/rems-project/cerberus/commit/186e4e42a75cad2222d441ce608fc1dc84cc7b98}{Cerberus
+186e4e42}} correspondingly, resulting in duplicated effort. Had we spent some
+time looking at small sample \k{Core} programs, and testing out a formalism on
+it, we might have anticipated the issue sooner.
 
 \subsection{Error reporting}
 
 Most of the time, \emph{any} programming language tool will be fed an incorrect
 or incomplete program. The standard approach to dealing with this is to layer
-the program's stages such that only well-formed programs pass from one stage to
+a tool's stages such that only well-formed programs pass from one stage to
 the next. Within the context of \kl{CN}, the main stages are:
 \begin{itemize}
-    \item Parsing
-    \item Desugaring
-    \item Elaboration of C into \kl{Core}
+    \item parsing,
+    \item desugaring,
+    \item elaboration of C into \kl{Core},
     % \item Translation of \kl{Core} to $\mu$\kl{Core}
-    \item Base type/well-formed specification checks
-    \item Per-function constraint and resource inference and checking.
+    \item base type/well-formed specification checks, and
+    \item per-function constraint and resource inference and checking.
 \end{itemize}
 
-Such a strategy is understandable, indeed it makes the system more robust
-because each phase assumes the invariants ensured by the previous, and
-establishes new ones. It makes the implementer's job easier, but as important
-as that is, it is quite likely the cumulative user time will dominate
-cumulative implementer time in the long run: code is written once, read many
-times, and used orders of magnitude more.
+Such a strategy is understandable, and makes the system robust because each
+phase assumes the invariants ensured by the previous, and establishes new ones.
+It also makes the implementer's job easier. However it worth remembering, the
+code is written once, read a lot, and used orders of magnitude more.
 
 The problem is that users (rightfully) expect to be able to get feedback on
 their program at multiple stages of development, and getting one error at a
@@ -654,19 +646,18 @@ even in the presence of errors from the first; it would be very impressive if
 \emph{within the function it was checking}, or even just in other parts of the
 program.
 
-This is likely unrealistic for \kl{CN}, because of the amount of re-engineering
-it would require in the \kl{Cerberus} front-end. A realistic goal for \kl{CN}
-is to raise the lower bar of recovery, by designing each step such that:
+This is unrealistic for \kl{CN}, because it would require substantial
+re-engineering in the \kl{Cerberus} front-end. A realistic goal
+is to raise the lower bar of recovery, by designing each step such that
 \emph{it avoids stopping at the first error}. For example, up until relatively
 recently, \kl{CN} stopped at the first error in the first failing function,
 \emph{even though it was designed to support per-function checking}.
 
-It would be ironic, if, in advocating support for multiple errors, I insisted
-that the best way to achieve this was a full rewrite of everything starting
-from the parser. And so, below I conjecture a process which I believe can be
-applied in an incremental way to existing projects, which allows developers
-to reap the benefits of multiple errors in proportion to the amount of
-time they are willing to spend on it.
+It should be possible to retrofit and improve \kl{CN}'s incremental
+error-handling, without resorting to a full rewrite of the implementation
+starting from the parser. Below, I conjecture a process which could be
+applied in an incremental way to existing projects, so the benefit is 
+proportional to the effort invested.
 \begin{itemize}
     \item Pick the most important stage.
     \item For every (or each important) sort, a \emph{hole}
@@ -674,9 +665,9 @@ time they are willing to spend on it.
     \item Update the rest of the stage to handle this hole.
     \item If the subsequent stage supports holes, consider joining them up.
 \end{itemize}
-If, like in \kl{CN} proof mode, the last (semantic analysis) stage is
-the most interesting and expensive one, this suggests working backwards through
-each stage.
+If, like in \kl{CN} proof mode, the last (semantic analysis) stage is the most
+interesting and expensive one, this suggests working backwards through each
+stage.
 
 To be clear, I am not talking about \emph{incrementalising} \kl{CN}, though
 support for holes could make this easier. And I am not saying that \kl{CN}
@@ -684,17 +675,18 @@ should have been formalised or implemented with an elegant system for
 the maximum amount of error recovery and collection.
 
 What I am saying is that for every \kl{CN} annotation, there is an opportunity
-to support multiple errors through multiple stages (and dependency analysis,
-and feature gating), and there are concrete benefits to writing code to with
+to support multiple errors through multiple stages, dependency analysis, and
+feature gating, and that there are concrete benefits to writing code to with
 this in mind from the start.
 
-Consider failed the bit-vector update for the \kl{buddy allocator}
+Consider the failed bit-vector update for the \kl{buddy allocator}
 (\cref{sec:buddy-failed-bv}). One of its major pain points was (tediously)
-switching \emph{every integer in every datatype, function,
-predicate, and pre/postcondition} to a bit-vector; without this, despite
-being designed for \emph{per-function} checking, \kl{CN} would stop at the
-first integer/bit-vector mismatch. On just this update, a few extra weeks of
-implementation effort early on would have saved \emph{months} of scarce time:
+switching \emph{every integer in every datatype, \kl(CN){function},
+\kl(CN){predicate}, and \kl(CN){pre/postcondition}} to a bit-vector; without
+this, despite being designed for \emph{\kl{per-function}} checking, \kl{CN}
+would stop at the first integer/bit-vector mismatch. On just this update, a few
+extra weeks of implementation effort early on would have saved \emph{months} of
+scarce time:
 \begin{itemize}
     \item manually calculating the dependency structure, starting at the
         leaves, and commenting out everything else,
@@ -707,7 +699,7 @@ to investigating and guiding the theory and implementation of multiple
 errors for \kl{CN} in the future.
 \begin{itemize}
     \item \citetitle{zhao2024total}~\sidecite{zhao2024total}.
-        This paper defines a bidirectional gradual
+        This paper defines a \kl{bidirectional} gradual
         type system for types and expressions (including holes), and a total
         procedure to mark expressions with \emph{all possible} type errors. It
         then adds constraint solving on top of the type holes, so that
@@ -717,15 +709,16 @@ errors for \kl{CN} in the future.
         to all of the above.
     \item \citetitle{spies2024quiver}~\sidecite{spies2024quiver}.
         This paper also uses a two way flow of
-        information familiar from bidirectional type checking, but describes it
-        using terms more standard in separation logic circles: \emph{abductive
-        deductive verification}. It symbolically evaluates a program using a
-        context of separation logic assertions, proving everything it can and
-        assuming everything it cannot. The specifications (`predicate
-        transformers') they infer are analogous to \kl{CN}'s function types.
-        The relevance of this paper is its similar domain to \kl{CN}.
+        information familiar from \kl{bidirectional} type checking, but describes it
+        using \kl{separation logic} terminology: generalising bi-abductive reasoning
+        to \emph{abductive deductive verification}. It symbolically evaluates a
+        program using a context of \kl{separation logic} assertions, proving
+        everything it can and assuming everything it cannot. The specifications
+        (`predicate transformers') it infers are analogous to \kl{CN}'s
+        \kl(CN){function types}. The relevance of this paper is its similar
+        domain to \kl{CN}.
 \end{itemize}
-Though designing such calculi in this way may seem like it increases the amount
+Though designing calculi in this way may seem like it increases the amount
 of work involved for reporting errors, in actuality, it simply makes
 implementation-related error reporting \emph{explicit in the formalism}.
 
@@ -739,7 +732,7 @@ used to A-normalise, but does not any
 more,\sidenote{\href{https://github.com/rems-project/cerberus/commit/21808139bda2ee320756c71eb22dbd57d0986f97}{Commit
 21808139}.} because it was difficult to relate such variables to \kl{Core}
 expressions. The situation has improved a bit with more helpful auto-generated
-names and no A-normalising, but the solution is ad hoc, and the gap between
+names and no A-normalising, but the solution is \adhoc{}, and the gap between
 \kl{Core} and C still remains.
 
 Whilst I have some ideas on how to improve the situation,\sidenote{Low-hanging
@@ -747,23 +740,23 @@ Whilst I have some ideas on how to improve the situation,\sidenote{Low-hanging
     they are binding
     (\href{https://github.com/rems-project/cerberus/issues/270}{Cerberus
 \#270}).} a systematic treatment of source location information through
-elaboration would be helpful to understand what it would mean, and what is
-required for maximal source location accuracy. A suitable theory would provide
+elaboration would be helpful to understand what it would mean to have, and what is
+required for, maximal source location accuracy. A suitable theory would provide
 guidance on the different kinds of source locations, (points, ranges, cursors,
 preprocessed, elaborated, fresh/dummy) and how they should be preserved in
 different manipulations, such as alpha-renaming and substitution and (partial)
 evaluation. An important feature would be accurately tracking the origins of
 new source locations \emph{from within the implementing code}, because it is
 quite confusing and difficult to debug a bad source location. Ideally, it would
-also explore how one might track which terms have valid locations in a type
-system such as OCaml's or Haskell's.
+also explore how one might track which terms have valid locations in a rich type
+system like OCaml's or Haskell's.
 
 \section{Software engineering}
 
-\kl{CN} has been developed for around 5 years at the time of writing. It has
-had multiple contributors, some of whom have left the project now. As such,
-it benefits from good software engineering practices like any other project.
-There are many such things, so I will focus on the important ones.
+\kl{CN} has been developed for around 6 years at the time of writing. It has
+had multiple contributors, some of whom have left the project now. Like any
+project, it benefits from good software engineering practices; here, I focus on
+the important ones.
 
 \subsection{Test for any visible regressions}
 
@@ -777,19 +770,18 @@ merged in to the main branch.
 
 Regression testing should not only capture the ability of the program to
 execute with or without errors, but also \emph{the output} in \emph{both} of
-those cases. If a test is intended to fail before a \kl{VIP}-related change,
+those cases. If a test is intended to fail before a \kl{CN-VIP}-related change,
 and it continues to fail after the change, it is often good to check that it is
-failing \emph{for the same reason} (we would not a division-by-zero test
-changing its behaviour after a change to the memory-object model).
+failing \emph{for the same reason} (\eg{}, we would not a division-by-zero test
+changing its behaviour after a change to the \kl{memory object model}).
 
 To assist with this, I wrote a small but increasingly sophisticated Python
 script\sidenote{\href{https://github.com/rems-project/cerberus/pull/703}{Cerberus\#703}.}
-to run a given program, in a particular configuration (consisting a name, a
+to run a given program, in a particular configuration (consisting of a name, a
 filter on file names, and arguments to the program) and capture and check the
 return codes and all the output, against a pre-existing file. If there is a
 difference, the program will raise an error, and also provide a diff the
-developer can apply \emph{across some or all of the affected files} if the
-change is expected.
+developer can apply \emph{across the affected files} if the change is expected.
 
 \subsection{Profile early and often, at the right level}\label{subsec:profile}
 
@@ -799,12 +791,12 @@ change is expected.
 % on performant SMT solvers with decidable queries has not paid off quite as
 % well as we would have liked.
 
-A slow heavily-automated verification tool is basically an unusable
-verification tool, and the lack of good performance measurement makes it
-difficult to understand why \kl{CN} is slow and how to fix it.
+A slow heavily-automated verification tool is effectively unusable, and a lack
+of good measurement makes it difficult to understand why \kl{CN} is slow and
+how to fix it.
 
-Prior measurements were ad hoc but revealed that most of the time is spent in
-the solver, which we believe to still be the case. However, we need better
+Prior measurements were \adhoc{}, and revealed that most of the time is spent
+in the solver, which we believe to still be the case. However, we need better
 granularity on the subject, to answer the following.
 \begin{itemize}
     \item What is the distribution of times per call to the solver?
@@ -812,22 +804,21 @@ granularity on the subject, to answer the following.
 \end{itemize}
 
 We have some performance benchmarking now, enough to demonstrate that enabling
-\kl{VIP} is slow and soundly reducing bounds checks\sidenote{By replacing them
+\kl{CN-VIP} is slow and soundly reducing bounds checks\sidenote{By replacing them
 with liveness checks.} reduces execution time (\cref{sec:vip-perf}). However, we
 do not have good insight into why this is the case. The measurements
-are noisy and coarse \textemdash{} the script measures the total execution
-time for running each regression test once, when what we need are answers to
-the aforementioned questions.
+are noisy and coarse \textemdash{} the script only measures the total execution
+time for running each regression test once.
 
 As I mentioned before, performance remains the main reason that it is nigh-on
-impossible to update the \kl{pKVM} \kl{buddy allocator} to verify after \kl{CN}'s
+impossible to update the \kl{pKVM} \kl{buddy allocator} verification after \kl{CN}'s
 bit-vector update (\cref{sec:buddy-failed-bv}). \kl{CN} is still an order of
 magnitude slower than we would like or expect it to be, and so fixing this, and
-setting up infrastructure prevent backsliding, is a key priority.
+setting up infrastructure to prevent backsliding, is a key priority.
 
 \subsection{Error with pride, do not crash}\label{sec:error-msgs}
 
-I will beging this sub-section with a quote from Sean Chen, co-shepherd
+I will begin this sub-section with a quote from Sean Chen, co-shepherd
 of the Rust Error Handling Working Group~\sidecite{chen2020anatomy}.
 
 \begin{quote}
@@ -862,37 +853,36 @@ whereas Rust is a mainstream project. And so, I will adjust my recommendations
 accordingly.
 
 \paragraph{Use rich datatypes for errors.} \kl{CN} inherits many of Cerberus'
-error message datatypes, but also explanations, which quote the standard.
-Whilst that is extremely impressive, most users will not understand the jargon
-of the standards committee (\cref{fig:lsp-extra}), and so these need to be
-hidden by default, and eventually translated into language more friendly to C
-programmers. The fact that these are represented by a datatype makes it easy to
-add this functionality later. It is better to add more information and not use
-it than it is to plumb that information through later.
+error message datatypes and explanations, which quote the standard. Whilst that
+is extremely impressive, most users will not understand the \kl{standard's}
+jargon (\cref{fig:lsp-extra}), and so it needs to be hidden by default, and
+eventually translated into more accessible language. The fact that these are
+represented by a datatype makes it easy to add this functionality later. It is
+better to add more information and not use it than it is to plumb that
+information through later.
 
 \begin{figure}[htp]
     \includegraphics{figures/lsp-structs9-hover.png}
     \includegraphics{figures/lsp-structs9-inline.png}
     \includegraphics{figures/lsp-structs9-problems.png}
     \caption{LSP server and client I prototyped using \kl{CN}'s temperamental
-    JSON output. Rather unhelpfully, it quotes the \kl{ISO} standard's jargon
+    JSON output. Rather unhelpfully, it quotes the \kl{standard's} jargon
     rather than explaining signed integers may not overflow.}\label{fig:lsp-extra}
 \end{figure}
 
 \paragraph{Avoid showing crashes and backtraces.} \kl{CN} does an admirable job
 on controlling the effects exposed by various parts of the code by wrapping
-most effectful operations in a typing monad.\sidenote{This comes with its own
-trade-offs.} However, there are a few cases which result in crashes which
-are predictable and avoidable if the intent is there from the beginning. The
-most important reason for this is that \emph{the output from \kl{CN} can and
-will be used by other tooling, to provide editor services and
-GUIs}.\sidenote{For example,
+most effectful operations in a typing monad. However, there are a few cases
+which result in crashes which are predictable and avoidable if the intent is
+there from the beginning. The most important reason for this is that \emph{the
+output from \kl{CN} can and will be used by other tooling, to provide editor
+services and GUIs}.\sidenote{For example,
 \href{https://github.com/rems-project/cerberus/issues/286}{cn \-\-json
 can produce non-JSON output (Cerberus\#286)} and
 \href{https://github.com/rems-project/cerberus/issues/221}{Flycheck
 support (Cerberus\#221)}.}\label{sn:gui-issues} At the time of writing, there are 185 uses of
 \ocamlinline{failwith} and 297 uses \ocamlinline{assert} in the code
-base, all of which can cause backtraces, and make it difficult for
+base, all of which can print backtraces, and make it difficult for
 tools to build on top of \kl{CN}. Whilst it is possible to work
 around this, by calling into \kl{CN} as an OCaml library instead,
 this increases the overhead of developing tooling for \kl{CN}.
@@ -919,18 +909,17 @@ producing beautiful and intuitive GUIs from the start \textemdash{} that
 depends on the resources available and priorities of the project.
 
 What I am saying is that clear visibility is a trait of good software, and
-unstructured debug output, whilst occasionally helpful, is rarely the first,
-main or correct tool for this job. Instead, it makes much more sense to record
+unstructured debug output, whilst occasionally helpful, is rarely the correct
+tool for this job. Instead, it makes much more sense to record
 the sequence of actions and their effects at each step, in a reasonably
 structured format so that (a) its output format can be wholly separated from the
 recording and (b) processing the output can be wholly separated from both.
 
-Structured logging is \emph{especially} useful in the presence of monadic OCaml
-code, which removes all useful information from any backtraces, and inverted
-control flow with explicit continuations, and manipulating state and contexts.
-Whilst there is some ad hoc logging for recording the memory actions, used
-for the HTML output, a disciplined logging scheme would facilitate the
-following.
+Structured logging is \emph{especially} useful in the presence of mutating
+state, monadic OCaml code (which removes all useful information from any
+backtraces), and inverted control flow with explicit continuations. Whilst
+there is some \adhoc{} logging for recording \kl{memory actions}, used for the
+HTML output, a disciplined logging scheme would facilitate the following.
 \begin{itemize}
     \item Profiling the solver (\cref{subsec:profile}).
     \item Validating resource inference (\cref{sec:better-foundations}).
@@ -947,8 +936,8 @@ prototyped (\cref{fig:lsp-state,fig:lsp-extra}).
 \begin{figure*}[tp]
     \includegraphics{figures/lsp-structs9-state.png}
     \caption{LSP server and client I prototyped using \kl{CN}'s temperamental
-        JSON output. It shows the counter-example for why signed integer
-        addition may cause UB.}\label{fig:lsp-state}
+        JSON output. It shows the \kl{counter-example} for why signed integer
+        addition may cause \kl{UB}.}\label{fig:lsp-state}
 \end{figure*}
 
 \subsection{Miscellaneous}
@@ -956,7 +945,7 @@ prototyped (\cref{fig:lsp-state,fig:lsp-extra}).
 There are a myriad of other small but useful practices which have or would have
 been useful regarding \kl{CN}'s development.
 \begin{itemize}
-    \item Gate substantial changes to \kl{CN} underneath a flag. Whilst this
+    \item Gate substantial changes underneath a flag. Whilst this
         does risk making the code more complex, and accruing unused flags and
         options, the cost of breaking updates is too high, which I discussed in
         depth in \fancyref{subsec:handling-large-changes}.
@@ -993,18 +982,18 @@ been useful regarding \kl{CN}'s development.
 % throughout the core datatype in \kl{CN}, as well as fixing the lexer and
 % parser to be more robust and have extensible error messages.
 
-Source location information is the fundamental building block of a useful error
+Source location information is the cornerstone of a useful error
 message, without which an error is close to useless. Unfortunately, early
-versions of \kl{CN} did not give this crucial data its due leading to an
+versions of \kl{CN} did not give this crucial data its due, leading to an
 incredibly poor user experience. This is all the more disappointing because
 within the OCaml ecosystem, the \kl{Menhir} parser generator makes getting this
 sort of thing right a lot easier than one might initially
 expect~\sidecite{pottier2016reachability}.
 
-\subsection{Keep lexer and parser simple}
+\subsection{Keep the lexer and parser simple}
 
 Initially, support for \kl{CN}
-annotations in comments was implemented with reference to lots of global
+annotations in comments was implemented by relying on global
 mutable state.\sidenote{A feature of ocamllex that seems to be
 under-appreciated is that each rule is an OCaml function and can be passed
 arbitrary parameters, thus avoid the need to use global mutable state.}
@@ -1035,7 +1024,8 @@ Once source locations are accurately recorded by the front-end, then it is
 important to use them in later stages. Initially, \kl{CN}'s core term type,
 used for representing SMT terms, did not support source location information.
 This made for a very poor and frustrating user experience in common cases, such
-as ill-formed terms, or failing constraints in a specification or a predicate.
+as ill-formed terms, or failing constraints in a \kl(CN){specification} or a
+\kl(CN){predicate.}
 
 Because the type representing this term was large, and used in many places,
 this made adding the location information after the fact much more tedious and
@@ -1053,14 +1043,15 @@ former, \emph{a bad source location is worse than no source location}, for both
 the user, and the developer who has to debug it later. Hence, missing source
 location information is preferable, \textbf{so long as it documents where in
 the implementation code} the missing location comes from. Here is an example,
-were a resource request has failed. Below is an error message which says that
-ownership of a local is not available at function exit. This means that either
-some predicate is not being unfolded enough, or that a function claimed
-ownership without returning it. Ideally, the error would point to where this
-local was declared, where it disappeared, and the definition of that field of
-in that struct. In the absence of all that information, it is safer to (a) not
-attempt to display any location at all or (b) if a dummy one must be provided,
-point to where in the implementation this dummy location originates.
+were a \kl{resource request} has failed. Below is an error message which says that
+\kl{ownership} of a local is not available at function exit. This means that either
+some \kl(user-defined){predicate} is not being unfolded enough, or that a
+function claimed \kl{ownership} without returning it. Ideally, the error would
+point to where this local was declared, where it disappeared, and the
+definition of that field of in that struct. In the absence of all that
+information, it is safer to (a) not attempt to display any location at all or
+(b) if a dummy one must be provided, point to where in the implementation this
+dummy location originates.
 
 \begin{minted}[fontsize=\footnotesize,linenos,numbersep=6pt,breaklines]{text}
 tests/cn/reverse.error.c:124:3: error: Missing resource for de-allocating
@@ -1078,7 +1069,7 @@ Initially, a parse error in \kl{CN} would simply signal `unexpected token' and
 exit with no other information, except a ballpark source location which was
 sometimes right. This was less than helpful for a number of reasons, most
 notably not telling the user what token \emph{was} expected. It is possible to
-\emph{generate} very inelegant, but informative parse error messages based on
+\emph{generate} inelegant, but informative parse error messages based on
 the error message format output by
 \kl{Menhir}.\sidenote{\url{https://gallium.inria.fr/~fpottier/menhir/manual.html\#sec\%3Amessages\%3Aformat}}
 
@@ -1112,10 +1103,10 @@ case.\sidenote{\href{https://github.com/rems-project/cerberus/issues/245}{Cerber
 Details of how best to do so are in the \kl{Menhir} manual, along with
 examples and links to how \kl{CompCert} uses it for its C parser (proof that
 the approach can be scaled). For the cases I did not auto-generate, I
-output an message which says that an error message is missing for the state
+output a message which says that an error message is missing for the state
 (identified by a number), and that it can be added in the stated file. In any
 case, I set up \kl{Menhir} to show exactly where and between which tokens
-parsing failed, which is often enough for experienced users to fix the syntax.
+parsing failed, which is often enough for experienced users to fix errors.
 \kl{Menhir} also provides functionality to check and merge its auto-generated
 error messages with existing ones, so that the latter can be preserved despite
 changes to the grammar.
@@ -1134,28 +1125,27 @@ relevancy, or present the error message (with the wrong location) in terms of
 the original code, retaining relevancy but not accuracy. \kl{CN} currently does
 the latter, and given the fact that macros do often represent constants, or
 function-like abstractions~(\cref{subesc:takeaway-features}), we would also
-like to have them supported in \kl{CN} as well.
+like to have them supported in \kl(CN){specifications} as well.
 
 There are no easy solutions to this,\sidenote{Even CompCert just calls a
 user-specified preprocessor.} but it appears to be a solvable problem. For
 example, there maybe ways to coax GCC or Clang to output debug tokens whilst
 preprocessing a file, which could be input to a custom lexer which takes the
-tokens \emph{and the source location information} output and connects it to the
+tokens \emph{and the source location information} and connects it to the
 \kl{Cerberus} front-end. Or, one could write a Clang plugin, or use the Boost
 pre-processing library Wave to attempt a similar trick, with more control over
 the resulting format. In both cases, it looks like it should be possible to
 preserve comments too, but this will not allow running the preprocessor
-\emph{inside} \kl{CN} annotations.
+\emph{inside} \kl{CN annotations}.
 
-It may however, be feasible to implement a custom C preprocessor. What makes
-this feasible is the existence of a relatively straightforward pseudo-code
-algorithm by Dave Prosser, \emph{which formed the basis of the prose
-    specification of macro expansion in the C89/ANSI C
-standard}~\sidecite{prosser1986complete}. This algorithm is annotated and
-explained~\sidecite{spinellis2008complete} by the author of the CScout
-refactoring browser for C~\sidecite{spinellis2010cscout}, Diomodis
-Spinellis, who was struggling to implement a C preprocessor correctly for about
-five years, before finding a reference to an algorithm by Dave Prosser.
+It may however, be feasible to implement a custom C preprocessor, using a
+relatively straightforward pseudo-code algorithm by Dave Prosser, \emph{which
+formed the basis of the prose specification of macro expansion in the C89/ANSI
+C standard}~\sidecite{prosser1986complete}. This algorithm is annotated and
+explained~\sidecite{spinellis2008complete}
+by~\sidetextcite{spinellis2010cscout}, the author of the CScout refactoring
+browser for C, who was struggling to implement a C preprocessor correctly for
+about five years, before finding a reference to an algorithm by Dave Prosser.
 Spinellis could not find the algorithm, so he emailed Prosser who
 obliged.\sidenote{\url{https://www.spinellis.gr/blog/20060626/}}
 
@@ -1177,41 +1167,46 @@ error occurs inside a chain of expansions), due to a limitation of \kl{Menhir}.
 
 \section{Process counter-examples smartly}\label{sec:counter-ex}
 
-Whilst counter-examples have the potential to be very useful for explaining
-abstract proof errors, their use in \kl{CN} is far from that currently.
-The criteria represent real usability issues we have encountered with
-counter-examples, but it is not clear to me how achievable they are.
-In the idea world, we would aim for `dynamic witnesses for static errors',
-as described in~\sidetextcite{seidel2016dynamic}.
+Whilst \kl{counter-examples} have the potential to be very useful for explaining
+abstract proof errors, currently they do not live up to that in \kl{CN}.
+I wrote the criteria below based on real usability issues we have encountered
+with counter-examples, but it is not clear to me how achievable they are. The
+\href{https://github.com/Z3Prover/z3/issues/3964}{`unsat-core'} feature of Z3,
+or the
+\href{https://cvc5.github.io/blog/2024/04/15/interfaces-for-understanding-cvc5.html}{`model
+core'} feature of CVC5, may be relevant. In the idea world, we would aim
+for `dynamic witnesses for static errors', as described
+in~\sidetextcite{seidel2016dynamic}.
 \begin{itemize}
-    \item \textbf{Multiple counter-examples may need to be shown.}
-        If there is more than one predicate in the context with a matching
-        name, but unequal arguments, then the counter-example will be of
-        the most recent failure. A user is unable to understand why a resource
-        did not match one of the ones in the middle based on the presented
-        values.
+    \item \textbf{Multiple \kl{counter-examples} may need to be shown.}
+        If there is more than one \kl(CN){predicate} in the context with a
+        matching name, but unequal arguments, then the counter-example will be of
+        the most recent failure. A user is unable to understand why a
+        \kl(CN){resource} did not match one of the ones in the middle based on
+        the presented values.
     \item \textbf{Unconstrained/irrelevant variables should be excluded from the
-        counter-example.} A given error will have many variables irrelevant
-        to the whole program state, but the counter-example will give
-        assignments to all of them, without saying which ones are directly
-        relevant. This makes the user work harder to filter out irrelevant details.
-    \item \textbf{Counter-examples should be consistent.} The counter-examples
-        need not be consistent with respect to the irrelevant variables, and this
-        can be confusing to the user too.
-    \item \textbf{Counter-example variables should be easy to relate to
-        program variables.} Currently, counter-example variables are presented
-        in terms of symbolic variables \emph{from the precondition} of the
-        function rather the values of the program variables at the point
-        of failure. This means the user has to trace and work out values
-        at that point for themselves.
-    \item \textbf{Counter-example variables should be easy to relate to
-        \emph{prior source steps}.} In general, the counter-examples represents
-        the failure at the \emph{latest} step, and what users would like would
-        be to see how a counter-example would evolve \emph{at every step
-        leading to that}.
-    \item \textbf{Counter-example values should be small.} Large numbers in
-        counter-examples are difficult to comprehend. Ideally counter-examples
-        would be rephrased in terms of smaller numbers which are easy to read
-        and track mentally.
+        \kl{counter-example}.} A given error will have many variables
+        irrelevant to the whole program state, but the \kl{counter-example}
+        will give assignments to all of them, without saying which ones are
+        directly relevant. This makes the user work harder to filter out
+        irrelevant details.
+    \item \textbf{\kl{Counter-examples} should be consistent.} The
+        \kl{counter-examples} are not consistent with respect to the
+        irrelevant variables, and this can be confusing to the user too.
+    \item \textbf{\kl{Counter-example} variables should be easy to relate to
+        program variables.} Currently, \kl{counter-example} variables are
+        presented in terms of symbolic variables \emph{from the
+        \kl{precondition}} of the function rather the values of the program
+        variables at the point of failure. This means the user has to trace and
+        work out values at that point for themselves.
+    \item \textbf{\kl{Counter-example} variables should be easy to relate to
+        \emph{prior source steps}.} In general, the \kl{counter-examples}
+        represents the failure at the \emph{latest} step, and what users would
+        like would be to see how a \kl{counter-example} would evolve \emph{at
+        every step leading to that}.
+    \item \textbf{\kl{Counter-example} values should be small.} Large numbers
+        in \kl{counter-examples} are difficult to comprehend. Ideally
+        \kl{counter-examples} would be rephrased in terms of smaller numbers
+        which are easy to read and track mentally.
 \end{itemize}
 
