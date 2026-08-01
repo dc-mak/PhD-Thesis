@@ -6,8 +6,8 @@ Counts are `text + headers + captions`. **Own** is the prose directly under a he
 
 | Chapter | Total | Own |
 | :-- | --: | --: |
-| Introduction | **5997** | 16 |
-| Example: queues in CN | **2797** | 52 |
+| Introduction | **5983** | 16 |
+| Example: queues in CN | **2793** | 49 |
 | Background: Cerberus and CN design | **6997** | 32 |
 | Kernel CN: Grammar | **4247** | 158 |
 | Kernel CN: Static semantics | **3892** | 340 |
@@ -16,42 +16,42 @@ Counts are `text + headers + captions`. **Own** is the prose directly under a he
 | An alternative presentation | **2077** | 92 |
 | Memory object models, explained | **6739** | 395 |
 | CN-VIP | **3141** | 107 |
-| Epilogue on CN-VIP | **2843** | 45 |
+| Epilogue on CN-VIP | **2847** | 45 |
 | Tree-carving: Taming C Repositories | **2609** | 125 |
 | Proof maintenance for pKVM buddy allocator | **3303** | 78 |
-| CN Comparison and Feedback | **4208** | 184 |
-| Not-so-great expectations | **5217** | 80 |
-| Future Directions | **3285** | 22 |
-| Conclusion | **1334** | 545 |
+| CN Comparison and Feedback | **4213** | 184 |
+| Not-so-great expectations | **5099** | 57 |
+| Future Directions | **3249** | 17 |
+| Conclusion | **1276** | 493 |
 
-| **Document total** | **61475** | |
+| **Document total** | **61254** | |
 
 ## Introduction
 
-**Chapter total: 5997** (own 16)
+**Chapter total: 5983** (own 16)
 
 | Section | Subsection | Total | Own |
 | :-- | :-- | --: | --: |
 | Context |  |  | 620 |
-| Thesis statement |  |  | 87 |
-| Background |  | 3632 | 1 |
-|  | The C programming language |  | 853 |
-|  | Verification with Separation Logic |  | 1615 |
-|  | CN: C, No bugs! |  | 1163 |
-| Contributions of this thesis |  | 1642 | 66 |
+| Thesis statement |  |  | 84 |
+| Background |  | 3622 | 1 |
+|  | The C programming language |  | 852 |
+|  | Verification with Separation Logic |  | 1609 |
+|  | CN: C, No bugs! |  | 1160 |
+| Contributions of this thesis |  | 1641 | 66 |
 |  | Formalisation of CN |  | 236 |
 |  | Memory object model: design, formalisation and implementation |  | 231 |
 |  | Engineering: will the real-world C, please stand up? |  | 326 |
-|  | Contributions in published papers |  | 783 |
+|  | Contributions in published papers |  | 782 |
 
 ## Example: queues in CN
 
-**Chapter total: 2797** (own 52)
+**Chapter total: 2793** (own 49)
 
 | Section | Subsection | Total | Own |
 | :-- | :-- | --: | --: |
 | CN Syntax |  |  | 370 |
-| Queue definitions |  |  | 779 |
+| Queue definitions |  |  | 778 |
 | Queue implementation |  |  | 797 |
 | Proofs of lemmas |  |  | 799 |
 
@@ -185,7 +185,7 @@ Counts are `text + headers + captions`. **Own** is the prose directly under a he
 
 ## Epilogue on CN-VIP
 
-**Chapter total: 2843** (own 45)
+**Chapter total: 2847** (own 45)
 
 | Section | Subsection | Total | Own |
 | :-- | :-- | --: | --: |
@@ -194,7 +194,7 @@ Counts are `text + headers + captions`. **Own** is the prose directly under a he
 |  | Non-deterministic pointer equality |  | 233 |
 | Lemma proofs within C |  |  | 502 |
 | Lemma proofs in a proof-assistant |  |  | 519 |
-| Better foundations for CN |  |  | 814 |
+| Better foundations for CN |  |  | 818 |
 
 ## Tree-carving: Taming C Repositories
 
@@ -231,7 +231,7 @@ Counts are `text + headers + captions`. **Own** is the prose directly under a he
 
 ## CN Comparison and Feedback
 
-**Chapter total: 4208** (own 184)
+**Chapter total: 4213** (own 184)
 
 | Section | Subsection | Total | Own |
 | :-- | :-- | --: | --: |
@@ -239,58 +239,58 @@ Counts are `text + headers + captions`. **Own** is the prose directly under a he
 |  | Early allocator in CN |  | 333 |
 |  | Early allocator in VeriFast |  | 1248 |
 |  | Early allocator in Frama-C and RefinedC |  | 233 |
-| Other symbolic execution verifiers |  | 1186 | 119 |
+| Other symbolic execution verifiers |  | 1187 | 119 |
 |  | Gillian-C |  | 477 |
 |  | Viper-based: VerCors and Gradual C0 |  | 337 |
-|  | Soteria-C |  | 253 |
-| Industry feedback |  |  | 869 |
+|  | Soteria-C |  | 254 |
+| Industry feedback |  |  | 873 |
 | Summary |  |  | 83 |
 
 ## Not-so-great expectations
 
-**Chapter total: 5217** (own 80)
+**Chapter total: 5099** (own 57)
 
 | Section | Subsection | Total | Own |
 | :-- | :-- | --: | --: |
-| Work backwards from examples |  |  | 183 |
-| Design with a formalism |  | 1353 | 90 |
-|  | Calling conventions affect syntax |  | 146 |
-|  | Error reporting |  | 857 |
+| Work backwards from examples |  |  | 181 |
+| Design with a formalism |  | 1288 | 91 |
+|  | Calling conventions affect syntax |  | 125 |
+|  | Error reporting |  | 812 |
 |  | Elaborate with care |  | 260 |
-| Software engineering |  | 1715 | 54 |
-|  | Test for any visible regressions |  | 247 |
-|  | Profile early and often, at the right level |  | 228 |
-|  | Error with pride, do not crash |  | 643 |
-|  | Log, do not debug |  | 297 |
-|  | Miscellaneous |  | 246 |
-| Get source locations right |  | 1560 | 76 |
-|  | Keep lexer and parser simple |  | 105 |
+| Software engineering |  | 1664 | 45 |
+|  | Test for any visible regressions |  | 245 |
+|  | Profile early and often, at the right level |  | 213 |
+|  | Error with pride, do not crash |  | 629 |
+|  | Log, do not debug |  | 288 |
+|  | Miscellaneous |  | 244 |
+| Get source locations right |  | 1549 | 74 |
+|  | Keep the lexer and parser simple |  | 104 |
 |  | Investigate strange source locations |  | 109 |
-|  | Actually use source locations once you have them |  | 390 |
-|  | Write parser error messages if feasible |  | 375 |
-|  | Consider a custom pre-processor |  | 505 |
-| Process counter-examples smartly |  |  | 326 |
+|  | Actually use source locations once you have them |  | 393 |
+|  | Write parser error messages if feasible |  | 373 |
+|  | Consider a custom pre-processor |  | 496 |
+| Process counter-examples smartly |  |  | 360 |
 
 ## Future Directions
 
-**Chapter total: 3285** (own 22)
+**Chapter total: 3249** (own 17)
 
 | Section | Subsection | Total | Own |
 | :-- | :-- | --: | --: |
-| Inferring frames |  |  | 962 |
-| Weak sequencing |  |  | 613 |
-| Join-points |  |  | 491 |
-| Integers and bit-vectors |  |  | 484 |
-| Higher-order predicates |  |  | 310 |
-| Predicate definition checks |  |  | 403 |
+| Inferring frames |  |  | 917 |
+| Weak sequencing |  |  | 642 |
+| Join-points |  |  | 494 |
+| Integers and bit-vectors |  |  | 474 |
+| Higher-order predicates |  |  | 300 |
+| Predicate definition checks |  |  | 405 |
 
 ## Conclusion
 
-**Chapter total: 1334** (own 545)
+**Chapter total: 1276** (own 493)
 
 | Section | Subsection | Total | Own |
 | :-- | :-- | --: | --: |
 | More expressiveness |  |  | 213 |
-| More performance |  |  | 250 |
+| More performance |  |  | 244 |
 | More user-friendliness |  |  | 326 |
 
