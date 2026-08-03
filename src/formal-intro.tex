@@ -317,24 +317,24 @@ Next are the constructs related to sequencing. A more precise treatment
 of this is given later in \fancyref{sec:weak-seq}. As per
 \sidetextcite{memarian2022cerberus}, \emph{Each use of an action is either
 ``positive'' (the default case) or ``negative'' (if the action appears in the
-syntax as the operand of the $\cnkw{neg()}$ operator)}.
+syntax as the operand of the \sm{\cnkw{neg()}} operator)}.
 \begin{itemize}
-    \item $\cnkw{neg}(\cnnt{action})$ marks side
+    \item \sm{\cnkw{neg}(\cnnt{action})} marks side
         effects (see text to note~\ref{sn:side-effect}).
-    \item $\cnkw{unseq}(E_1, \ldots, E_n)$ is unsequenced evaluation of each
+    \item \sm{\cnkw{unseq}(E_1, \ldots, E_n)} is unsequenced evaluation of each
         sub-expression.
-    \item $\cnkw{let}\ \cnkw{strong}\ \cnnt{pat}\ \cnkw{=}\ \cnnt{E}_1
-        \ \cnkw{in}\ \cnnt{E}_2$ sequences all memory actions performed by
-        $\cnnt{E}_1$ before those performed by $\cnnt{E}_2$.
-    \item $\cnkw{let}\ \cnkw{weak}\ \cnnt{pat}\ \cnkw{=}\ \cnnt{E}_1
-        \ \cnkw{in}\ \cnnt{E}_2$ only only sequences positive memory actions of
-        $\cnnt{E}_1$ before those performed by $\cnnt{E}_2$. In other words,
-        any negative memory actions ($\cnkw{neg}(\cnnt{action})$) performed by
-        $\cnnt{E}_1$ are unsequenced with respect to all memory actions
-        performed by $\cnnt{E}_2$. A race only occurs if unsequenced memory
+    \item \sm{\cnkw{let}\ \cnkw{strong}\ \cnnt{pat}\ \cnkw{=}\ \cnnt{E}_1
+        \ \cnkw{in}\ \cnnt{E}_2} sequences all memory actions performed by
+        \sm{\cnnt{E}_1} before those performed by \sm{\cnnt{E}_2}.
+    \item \sm{\cnkw{let}\ \cnkw{weak}\ \cnnt{pat}\ \cnkw{=}\ \cnnt{E}_1
+        \ \cnkw{in}\ \cnnt{E}_2} only only sequences positive memory actions of
+        \sm{\cnnt{E}_1} before those performed by \sm{\cnnt{E}_2}. In other words,
+        any negative memory actions (\sm{\cnkw{neg}(\cnnt{action})}) performed by
+        \sm{\cnnt{E}_1} are unsequenced with respect to all memory actions
+        performed by \sm{\cnnt{E}_2}. A race only occurs if unsequenced memory
         actions have overlapping footprints (\cref{sec:weak-seq}), and is
         deemed \kl{UB}.
-    \item $\cnkw{bound}(\cnnt{E})$ evaluates its argument $\cnnt{E}$ and
+    \item \sm{\cnkw{bound}(\cnnt{E})} evaluates its argument \sm{\cnnt{E}} and
         then clears its footprint (\cref{sec:weak-seq}). It marks the
         boundary of a C expression as a statement.
 \end{itemize}
@@ -351,16 +351,16 @@ found, with \coreinline{ccall()} using the memory interface to do so. % chktex 3
 The (thread-local) Core operational semantics is defined in
 \textcite{memarian2022cerberus}; I present the key rules below.
 It is a small-step transition from a configuration to either undefined
-behaviour or a new configuration: $\langle h, E, \kappa
-\rangle \rightarrow (\textsc{Undef} \mid{} \langle h', E', \kappa' \rangle)$,
-for a heap $h$, effectful expression $E$, and stack $\kappa$ (list of
-evaluation contexts $C$). These steps rely on evaluating pure expressions (in a
-big-step style) to either undefined behaviour or a value $\cnnt{pce} \Downarrow
-(\textsc{Undef} \mid{} \cnnt{value})$.
+behaviour or a new configuration: \sm{\langle h, E, \kappa
+\rangle \rightarrow (\textsc{Undef} \mid \langle h', E', \kappa' \rangle)},
+for a heap \sm{h}, effectful expression \sm{E}, and stack \sm{\kappa} (list of
+evaluation contexts \sm{C}). These steps rely on evaluating pure expressions (in a
+big-step style) to either undefined behaviour or a value \sm{\cnnt{pce} \Downarrow
+(\textsc{Undef} \mid \cnnt{value})}.
 
-For example, \coreinline{pcall()} pushes the enclosing evaluation context $C$ % chktex 36
-on to the stack $\kappa$, evaluates its arguments into values, looks up the
-function body $E$, substitutes the parameters for the values, and then executes
+For example, \coreinline{pcall()} pushes the enclosing evaluation context \sm{C} % chktex 36
+on to the stack \sm{\kappa}, evaluates its arguments into values, looks up the
+function body \sm{E}, substitutes the parameters for the values, and then executes
 the body.
 
 {\small%
@@ -388,9 +388,9 @@ continuations with default arguments. This is the aforementioned \cinline{goto}-
 operator, which is used to elaborate C's iteration and
 \cinline{goto} statements.
 \begin{itemize}
-    \item $\cnnt{id}$ is the name, also referred to as the label.
-    \item $x_1, \ldots, x_n$ are parameters which in scope in $E$.
-    \itemAP{} $e_1, \ldots, e_n$ are \intro{default arguments} for those parameters.
+    \item \sm{\cnnt{id}} is the name, also referred to as the label.
+    \item \sm{x_1, \ldots, x_n} are parameters which in scope in \sm{E}.
+    \itemAP{} \sm{e_1, \ldots, e_n} are \intro{default arguments} for those parameters.
 \end{itemize}
 
 \textbf{The label of \coreinline{save()} expression is scoped to its % chktex 36
@@ -420,19 +420,19 @@ thread-local reductions.}
 {\small%
 \[
 \inferrule[{[Save]}]
-  { \cncomp{\cnnt{pce}_i \Downarrow{} \cnnt{value}_i}{i} }
+  { \cncomp{\cnnt{pce}_i \Downarrow \cnnt{value}_i}{i} }
   { \cnkw{save} \, \cnnt{id} \left( \cncomp{x_i \cnkw{:=} \cnnt{pce}_i}{i} \right) \, \cnkw{in} \, \cnnt{E}
     \rightsquigarrow \left[ \cncomp{ \cnnt{value}_i / x_i }{i} \right] E }
 \]}
 
 Reaching the same \coreinline{save()} via a \coreinline{run()}  % chktex 36
 is more complicated. Like a \coreinline{pcall()}, it evaluates its arguments % chktex 36
-into values and looks up the label $\cnnt{id}$. The $\mathrm{labelmap}$ is
+into values and looks up the label \sm{\cnnt{id}}. The \sm{\mathrm{labelmap}} is
 precomputed on a per-procedure basis by \kl{Cerberus} during elaboration.
 Unlike \coreinline{pcall()}, the result of the lookup is \emph{a context} % chktex 36
-$C_{\cnnt{id}}$ and an expression $E_{\cnnt{id}}$. It substitutes the values
-for the parameters in $E_\cnnt{id}$, \emph{discards the current context} $C$,
-and uses $C_\cnnt{id}$ instead. All the while, the stack $\kappa$ is unchanged.
+\sm{C_{\cnnt{id}}} and an expression \sm{E_{\cnnt{id}}}. It substitutes the values
+for the parameters in \sm{E_\cnnt{id}}, \emph{discards the current context} \sm{C},
+and uses \sm{C_\cnnt{id}} instead. All the while, the stack \sm{\kappa} is unchanged.
 
 {\small%
 \[
@@ -669,7 +669,7 @@ dynamic semantics.
     \small%
     \centering
     \begin{mathpar}
-        \inferrule{ }{\Gamma{} \vdash{} \cnkw{undef} (\cnnt{UB\_name})\Leftarrow{} \cnnt{T}}
+        \inferrule{ }{\Gamma \vdash \cnkw{undef} (\cnnt{UB\_name})\Leftarrow \cnnt{T}}
     \end{mathpar}
     \caption{Checking rule for the \coreinline{undef()} pure expression as % chktex 36
     mentioned in \textcite[p91]{memarian2022cerberus}.}\label{fig:core-ub-typing}
@@ -709,12 +709,12 @@ whilst retaining erasure is known as \intro{refinement
 types}~\sidecite{jhala2021refinement}.
 
 When using such types, we do not want the user to provide proofs for obvious
-deductions, such as $x \geq 5 \wedge x < 4 \Rightarrow \bot$. Unfortunately,
+deductions, such as \sm{x \geq 5 \wedge x < 4 \Rightarrow \bot}. Unfortunately,
 first-order logic with arithmetic is undecidable: type checking may not
 terminate on certain programs. Given that there are real-world programming
 languages\sidenote{\href{https://hacklang.org/}{Hack},
 \href{https://forums.swift.org/t/swift-type-checking-is-undecidable/39024/34}{Swift},
-and F$^*$~\cite{swamy2016dependent}.}\margincite{swamy2016dependent} which have
+and F\sm{^*}~\cite{swamy2016dependent}.}\margincite{swamy2016dependent} which have
 undecidable type systems, but work fine in practice, is this a problem?
 
 Whilst `decidable' does include exponential or NP-complete time complexity, we
@@ -727,8 +727,8 @@ proxy.
 
 \kl{CN} ensures decidability by restricting its use of quantifiers as per the
 \intro{liquid types}~\sidecite{rondon2008liquid} approach. In practice, this means (a)
-all quantifiers must track program values (function arguments for $\forall$,
-return values for $\exists$) and (b) constraints sent to the SMT solver are
+all quantifiers must track program values (function arguments for \sm{\forall},
+return values for \sm{\exists}) and (b) constraints sent to the SMT solver are
 free of quantifiers. When this too restrictive, \kl{CN} offers a lemma
 mechanism (\cref{sec:lemma-prover}) to export and prove facts in the
 Rocq~\sidecite{CDT2024} proof assistant.
@@ -748,28 +748,28 @@ when should it be used?
 
 \begin{marginfigure}
   \begin{mathpar}
-      \inferrule{\Gamma{} \vdash{} e \mathrel{{:}} \{\, x \mid{} \phi (x) \,\}  \\ \phi (x) \Rightarrow{} \phi' (x) }
-                {\Gamma{} \vdash{} e \mathrel{{:}} \{\, x \mid{} \phi' (x) \,\}}
+      \inferrule{\Gamma \vdash e \mathrel{{:}} \{\, x \mid \phi (x) \,\}  \\ \phi (x) \Rightarrow \phi' (x) }
+                {\Gamma \vdash e \mathrel{{:}} \{\, x \mid \phi' (x) \,\}}
   \end{mathpar}
   \caption{Subsumption rule using for a system with subset types and logical
-      implication $\Rightarrow$ as the subtyping relation.}\label{fig:subsumption}
+      implication \sm{\Rightarrow} as the subtyping relation.}\label{fig:subsumption}
 \end{marginfigure}
 
 Revisiting~\cref{fig:dead-code}, imagine a type system where contexts
-$\Gamma$ are either $\cdot$ or $\Gamma, \{\, x \mid \phi (x) \,\}$, and
-$\phi$ represents some constraint on $x$. In particular, we are not
+\sm{\Gamma} are either \sm{\cdot} or \sm{\Gamma, \{\, x \mid \phi (x) \,\}}, and
+\sm{\phi} represents some constraint on \sm{x}. In particular, we are not
 accumulating \kl{path conditions} in the context, just the variables and their
 subset types. We would like to prove that function \mintinline{py}{gt_zero}
-satisfies its postcondition, $ \{\, \mathsf{ret} \mid \mathsf{ret} > 0 \,\} $
+satisfies its postcondition, \sm{\{\, \mathsf{ret} \mid \mathsf{ret} > 0 \,\}}
 without raising an exception.
 
-Working forwards, we start with a type $\{\, \mathsf{x} \mid \top
-\,\}$. Inside the function, we are checking both branches because we cannot
+Working forwards, we start with a type \sm{\{\, \mathsf{x} \mid \top
+\,\}}. Inside the function, we are checking both branches because we cannot
 statically rule one out. In the true case, we \emph{refine} the type to
-$\{\, \mathsf{x} \mid \mathsf{x} \geq 5 \,\}$. The subsumption rule is not
-syntax-directed, so we are free to apply it now. Doing so, we have have $\{\,
-\mathsf{x} \mid \mathsf{x} > 0 \,\}$, because $\mathsf{x} \geq 5 \Rightarrow
-\mathsf{x} > 0$. Unfortunately this means we cannot rule out the
+\sm{\{\, \mathsf{x} \mid \mathsf{x} \geq 5 \,\}}. The subsumption rule is not
+syntax-directed, so we are free to apply it now. Doing so, we have have \sm{\{\,
+\mathsf{x} \mid \mathsf{x} > 0 \,\}}, because \sm{\mathsf{x} \geq 5 \Rightarrow
+\mathsf{x} > 0}. Unfortunately this means we cannot rule out the
 \cinline{else}-branch and the exception within.
 
 Whilst quite contrived, it illustrates the importance of knowing when and how
@@ -801,7 +801,7 @@ between synthesis and checking (\cref{fig:simple-bidir}).
     \begin{tabular}{l@{}l@{ }l@{ }l}
     \cncom{types}       & $T$      & $\mathrel{{\Colon}{=}}$ & $\cnkw{unit} \mid{} T_1 \rightarrow{} T_2$ \\
     \cncom{expressions} & $e$      & $\mathrel{{\Colon}{=}}$ & $x \mid{} \cnkw{()} \mid{} (e {:} T) \mid{} \lambda{} x.\ e \mid{} e_1\ e_2$ \\
-    \cncom{context}     & $\Gamma$ & $\mathrel{{\Colon}{=}}$ & $\cdot \mid{} \Gamma{}, x {:} T$ \\
+    \cncom{context}     & $\Gamma$ & $\mathrel{{\Colon}{=}}$ & $\cdot \mid{} \Gamma, x {:} T$ \\
     \\
     \multicolumn{2}{l}{%
         \multirow{2}{*}{%
@@ -818,33 +818,33 @@ between synthesis and checking (\cref{fig:simple-bidir}).
     \end{tabular}
     \and
     \inferrule[{[Var]}]
-        {(x {:} T) \in{} \Gamma}
-        { \Gamma{} \vdash{} x \synths{T}}
+        {(x {:} T) \in \Gamma}
+        { \Gamma \vdash x \synths{T}}
     \and
     \inferrule[{[Sub]}]
-        { \Gamma{} \vdash{} e \synths{T_1} \and T_1 \cnkw{<:} T_2}
-        { \Gamma{} \vdash{} e \checks{T_2}}
+        { \Gamma \vdash e \synths{T_1} \and T_1 \cnkw{<:} T_2}
+        { \Gamma \vdash e \checks{T_2}}
     \and
     \inferrule[{[Annot]}]
-        { \Gamma{} \vdash{} e \checks{T} }
-        { \Gamma{} \vdash{} (e {:} T) \synths{T} }
+        { \Gamma \vdash e \checks{T} }
+        { \Gamma \vdash (e {:} T) \synths{T} }
     \and
     \inferrule[{[$\cnkw{unit}$I]}]
         { }
-        { \Gamma{} \vdash{} \cnnt{()} \checks{\cnkw{unit}} }
+        { \Gamma \vdash \cnnt{()} \checks{\cnkw{unit}} }
     \and
-    \inferrule[{[$\rightarrow{}$I]}]
-        { \Gamma{}, x {:} T_1 \vdash{} e \checks{ T_2 } }
-        { \Gamma{} \vdash{} \lambda{} x.\ e \checks{ T_1 \rightarrow{} T_2}}
+    \inferrule[{[$\rightarrow$I]}]
+        { \Gamma, x {:} T_1 \vdash e \checks{ T_2 } }
+        { \Gamma \vdash \lambda x.\ e \checks{ T_1 \rightarrow T_2}}
     \and
-    \inferrule[{[$\rightarrow{}$E]}]
-        { \Gamma{} \vdash{} e_1 \synths{T_1 \rightarrow{} T_2} \and \Gamma{} \vdash{} e_2 \checks{T_2}}
-        { \Gamma{} \vdash{} e_1\ e_2 \synths{T_2}}
+    \inferrule[{[$\rightarrow$E]}]
+        { \Gamma \vdash e_1 \synths{T_1 \rightarrow T_2} \and \Gamma \vdash e_2 \checks{T_2}}
+        { \Gamma \vdash e_1\ e_2 \synths{T_2}}
     \end{mathpar}
     \endgroup%
     \caption{Simple \intro{bidirectional} type system, adapted
     from~\cite{dunfield2021bidir}.  Note that it splits the traditional
-    $\Gamma{} \vdash{} e : T$ judgement, into two mutually recursive judgements,
+    $\Gamma \vdash e : T$ judgement, into two mutually recursive judgements,
     one for \intro[synthesis]{synthesising} a type and one for checking a type.
     %
     % Here, introduction forms for $\cnkw{unit}$ and $\rightarrow$
@@ -880,19 +880,19 @@ enabled by \emph{substructural} rules, known as \intro{contraction},
 \begin{marginfigure}
   \begin{mathpar}
       \inferrule[{[Weakening]}]{
-          \Delta{}, A \vdash{} C
+          \Delta, A \vdash C
       }{
-          \Delta{} \vdash{} C}
+          \Delta \vdash C}
       \\
       \inferrule[{[Contraction]}]{
-          \Delta{}, A, A \vdash{} C
+          \Delta, A, A \vdash C
       }{
-          \Delta{}, A \vdash{} C}
+          \Delta, A \vdash C}
       \\
       \inferrule[{[Exchange]}]{
-          \Delta_1, B, A, \Delta_2 \vdash{} C
+          \Delta_1, B, A, \Delta_2 \vdash C
       }{
-          \Delta_1, A, B, \Delta_2 \vdash{} C}
+          \Delta_1, A, B, \Delta_2 \vdash C}
     \\
   \end{mathpar}
   \caption{Substructural sequent calculus rules.}\label{fig:substructural}
@@ -905,14 +905,14 @@ assumptions, such as plain or refinement types, can be used without
 restriction.
 \begin{itemize}
     \item Duplicating assumptions relies on the fact that
-        $A \Rightarrow A \wedge A$ in \kl{intuitionistic} logic. However, the
-        same is not true for $\ast{}$ in separation logic:
-        $A \nRightarrow A \ast{} A$. This is because assertions have their
+        \sm{A \Rightarrow A \wedge A} in \kl{intuitionistic} logic. However, the
+        same is not true for \sm{\ast} in separation logic:
+        \sm{A \nRightarrow A \ast A}. This is because assertions have their
         semantics defined with reference to a heap. For example, a heap
-        satisfies $A_1 \ast{} A_2$ iff it can be split into two disjoint
-        sub-heaps which satisfy $A_1$ and $A_2$ separately. If $A = (x
-        \mapsto{} y)$, then there is one heap satisfying $A$, but none
-        for $A \ast{} A$.
+        satisfies \sm{A_1 \ast A_2} iff it can be split into two disjoint
+        sub-heaps which satisfy \sm{A_1} and \sm{A_2} separately. If \sm{A = (x
+        \mapsto y)}, then there is one heap satisfying \sm{A}, but none
+        for \sm{A \ast A}.
     \item Forgetting assumptions relies on whether the user cares about memory
         leaks or not (the C standard does not make memory leaks an
         error). The intended use of \kl{CN} in resource constrained settings
@@ -949,27 +949,27 @@ automated (see \cref{sec:elaboration}). I refer that automation to as
   \begin{mathpar}
       %\inferrule[Declarative Var]{
       %}{
-      %    x {:} t \vdash{} x {:} t}
+      %    x {:} t \vdash x {:} t}
       %\\
       %\inferrule[Algorithmic Var]{
       %}{
-      %    \Gamma{} , x {:} t \vdash{}  x {:} t \dashv{} \Gamma'}
+      %    \Gamma , x {:} t \vdash  x {:} t \dashv \Gamma'}
       %\\
       %\{\, x {:} t \,\} = \Gamma' - \Gamma
       %\\
       \inferrule[{[Declarative Pair]}]{
-          \Delta_1 \vdash{} e_1 {:} T_1
+          \Delta_1 \vdash e_1 {:} T_1
           \and
-          \Delta_2 \vdash{} e_2 {:} T_2
+          \Delta_2 \vdash e_2 {:} T_2
       }{
-          \Delta_1, \Delta_2 \vdash{} (e_1, e_2) {:} T_1 \times{} T_2}
+          \Delta_1, \Delta_2 \vdash (e_1, e_2) {:} T_1 \times T_2}
       \\
       \inferrule[{[Algorithmic Pair]}]{
-          \Gamma_1 \vdash{} e_1 {:} T_1 \dashv{} \Gamma_2
+          \Gamma_1 \vdash e_1 {:} T_1 \dashv \Gamma_2
           \\
-          \Gamma_2 \vdash{} e_2 {:} T_2 \dashv{} \Gamma_3
+          \Gamma_2 \vdash e_2 {:} T_2 \dashv \Gamma_3
       }{
-          \Gamma_1 \vdash{} (e_1, e_2) {:} T_1 \times{} T_2 \dashv{} \Gamma_3}
+          \Gamma_1 \vdash (e_1, e_2) {:} T_1 \times T_2 \dashv \Gamma_3}
       \\
       \Delta_1 = \Gamma_2 - \Gamma_1 \and \Delta_2 = \Gamma_3 - \Gamma_2
   \end{mathpar}
@@ -999,7 +999,7 @@ Prima facie, \kl{separation logic} types are in tension with \kl{liquid types}.
 The former supports arbitrary quantifiers, which are often sufficient to write
 expressive specifications to prove the absence of \kl{UB} and full functional
 correctness; the latter restricts quantifiers to ones corresponding to program
-values (function arguments for $\forall$, and return values for $\exists$), to
+values (function arguments for \sm{\forall}, and return values for \sm{\exists}), to
 avoid sending quantified constraints to the SMT solver.
 
 Alongside automating obvious proofs (using an SMT solver), and automating
@@ -1018,24 +1018,24 @@ proof sketch of integer linked list append from
     \centering
     \begin{align*}
         \mathrm{list} &(\mathsf{p}, l) \mathrel{{=}^\mathrm{def}} \\
-                      &\mathsf{emp} \ast{} (\mathsf{p} = \mathsf{NULL} \wedge{} l = []) \\
-                      &\vee{} \exists{} \; {head}, \; {tl}, \mathsf{p\_tail}.\\
-                      &\vee{} \exists{} \; {head}, \; {tl}, \mathsf{p\_tail}.\\
-                      &\qquad (\mathsf{p} \mapsto{} {head}) \\
-                      &\qquad \ast{} (\mathsf{p} + 1 \mapsto{} \mathsf{p\_tail}) \\
-                      &\qquad \ast{} \mathrm{list} (\mathsf{p\_tail}, {tl}) \\
-                      &\qquad \ast{} l = {head} {:}{:} {tl}
+                      &\mathsf{emp} \ast (\mathsf{p} = \mathsf{NULL} \wedge l = []) \\
+                      &\vee \exists \; {head}, \; {tl}, \mathsf{p\_tail}.\\
+                      &\vee \exists \; {head}, \; {tl}, \mathsf{p\_tail}.\\
+                      &\qquad (\mathsf{p} \mapsto {head}) \\
+                      &\qquad \ast (\mathsf{p} + 1 \mapsto \mathsf{p\_tail}) \\
+                      &\qquad \ast \mathrm{list} (\mathsf{p\_tail}, {tl}) \\
+                      &\qquad \ast l = {head} {:}{:} {tl}
     \end{align*}%
     \caption{Definition of a recursive list predicate in a simple separation
         logic.}\label{fig:list-pred-formal}
 \end{marginfigure}
 
 We see that, the specification (implicitly) quantifies over pointers
-$\mathsf{xs}$ and $\mathsf{ys}$, corresponding to the function arguments. It
-also quantifies over \emph{logical} or \kl{ghost} lists $l_1$ and $l_2$.
+\sm{\mathsf{xs}} and \sm{\mathsf{ys}}, corresponding to the function arguments. It
+also quantifies over \emph{logical} or \kl{ghost} lists \sm{l_1} and \sm{l_2}.
 Following a strict \kl{liquid typing} discipline would mean the user would have
 to manually instantiate them at each call site (line 9). The user would also
-have to do the same for the existential quantifiers of the $\mathrm{list}$
+have to do the same for the existential quantifiers of the \sm{\mathrm{list}}
 predicate of \cref{fig:list-pred-formal}, when folding it (line 12).
 
 \begin{figure}[h]
@@ -1047,7 +1047,7 @@ predicate of \cref{fig:list-pred-formal}, when folding it (line 12).
 % \sidenote{I will discuss quantifiers related to array reasoning in \cref{sec:it-array}.}
 
 This is irksome because because the arguments to \mintinline{py}{append}, and
-the first argument to $\mathrm{list}$, uniquely determine all the required
+the first argument to \sm{\mathrm{list}}, uniquely determine all the required
 instantiations at lines 9 and 12 respectively. So, a simple inference scheme
 would be to scan the context for predicates which match part of the goal based
 on shape and \emph{computational} arguments, and instantiate any quantifiers
@@ -1056,21 +1056,21 @@ based on its remaining arguments.
 In this instance, when calling \mintinline{py}{append(xs->tail, ys)}, % chktex 36
 such an inference scheme would
 \begin{enumerate}
-    \item Delay instantiating $l_1$ and $l_2$.
-    \item Note that the precondition requires $\mathrm{list}(\mathsf{xs}',
-        l_1)$ and $\mathrm{list}(\mathsf{ys}', l_2)$.
-    \item Check the context for a match with $\mathrm{list}(\mathsf{xs}',
-        \_)$.\sidenote{Checking whether two symbolic terms are equal can be
+    \item Delay instantiating \sm{l_1} and \sm{l_2}.
+    \item Note that the precondition requires \sm{\mathrm{list}(\mathsf{xs}',
+        l_1)} and \sm{\mathrm{list}(\mathsf{ys}', l_2)}.
+    \item Check the context for a match with \sm{\mathrm{list}(\mathsf{xs}',
+        \_)}.\sidenote{Checking whether two symbolic terms are equal can be
         automated with an SMT solver.}
-    \item Find $\mathrm{list}(\mathsf{xs}', l_1')$.
-    \item Select $[l_1' / l_1]$ as its instantiation.
-    \item Repeat similarly for $\mathsf{ys}$ and $l_2'$.
+    \item Find \sm{\mathrm{list}(\mathsf{xs}', l_1')}.
+    \item Select \sm{[l_1' / l_1]} as its instantiation.
+    \item Repeat similarly for \sm{\mathsf{ys}} and \sm{l_2'}.
 \end{enumerate}
 
 This is a cute idea, but it glosses over several details, such as
 \begin{enumerate}
     \item Are such assertions characterisable, and if so, how?
-    \item Can such a scheme handle disjunction, $ P \vee{} Q$?
+    \item Can such a scheme handle disjunction, \sm{P \vee Q}?
     \item Are assertions where \kl{computational} arguments uniquely determine
         \kl{logical} arguments, expressive enough for realistic code?
     \item What is the correct atomic predicate to look up in a context?
@@ -1096,8 +1096,8 @@ connection to modes has not been understood.}%
 
 \begin{definition}[Precise assertions]%
 \label{def:precise-assertion}
-    \AP{} An assertion $Q$ is \intro{precise} iff, for all stores $s$, and heaps
-    $h$, there is at most one $h' \subseteq{} h$ such that $h' \in [\![ Q ]\!] (s)$.
+    \AP{} An assertion \sm{Q} is \intro{precise} iff, for all stores \sm{s}, and heaps
+    \sm{h}, there is at most one \sm{h' \subseteq h} such that \sm{h' \in [\![ Q ]\!] (s)}.
 
     In other words, if a \kl{precise} assertion holds on a subheap, then it
     does so uniquely.
@@ -1143,24 +1143,24 @@ precise (\cref{fig:list-pred-formal}).
 \small%
 \begin{mathpar}
     \mathsf{true}
-    \and \mathsf{emp} \vee{} \mathsf{x} \mapsto{} 42
-    \and \mathsf{x} \mapsto{} 3 \vee{} \mathsf{y} \mapsto{} 7
-    \and \exists \; \mathsf{p}.\ \mathsf{p} \mapsto{} 1
+    \and \mathsf{emp} \vee \mathsf{x} \mapsto 42
+    \and \mathsf{x} \mapsto 3 \vee \mathsf{y} \mapsto 7
+    \and \exists \; \mathsf{p}.\ \mathsf{p} \mapsto 1
     \and \exists \; \mathsf{p}.\ \mathrm{list}(\mathsf{p}, l).
 \end{mathpar}
 \caption{Examples of im\kl{precise} assertions.}\label{fig:imprecise}
 \end{marginfigure}
 
 How so? Informally, the two arms of the disjunction make assertions which are
-disjoint on \emph{both} the value of the computational parameter $\mathsf{p}$
-\emph{and} on the shape of the heap; one branch says $\mathsf{p} =
-\mathsf{NULL}$ and the heap will be $\mathsf{empty}$, whereas the other branch
-guarantees that (implicitly) $\mathsf{p} \neq \mathsf{NULL}$ and that the heap
+disjoint on \emph{both} the value of the computational parameter \sm{\mathsf{p}}
+\emph{and} on the shape of the heap; one branch says \sm{\mathsf{p} =
+\mathsf{NULL}} and the heap will be \sm{\mathsf{empty}}, whereas the other branch
+guarantees that (implicitly) \sm{\mathsf{p} \neq \mathsf{NULL}} and that the heap
 will have \emph{at least two} heap cells. The cells' locations, and thus the
-values they point to, $\mathsf{head}$ and $\mathsf{p\_tail}$, are wholly
-determined by $\mathsf{p}$, even though they are existentially quantified. This
-means the recursive call is also precise, and why ${tl}$ is also (recursively)
-wholly determined by $\mathsf{p}$, despite also being existentially quantified.
+values they point to, \sm{\mathsf{head}} and \sm{\mathsf{p\_tail}}, are wholly
+determined by \sm{\mathsf{p}}, even though they are existentially quantified. This
+means the recursive call is also precise, and why \sm{{tl}} is also (recursively)
+wholly determined by \sm{\mathsf{p}}, despite also being existentially quantified.
 
 This style of reasoning, of starting with computational parameters, and
 ensuring that all existentially quantified values are wholly determined by
@@ -1197,7 +1197,7 @@ more convenient.
 
 We can use \intro{modes} to ensure that we can infer quantifier instantiations.
 Start with separation logic predicates, and label their arguments as either
-$\mathsf{in}$puts or $\mathsf{out}$puts, as shown in \cref{fig:mode-pred}. In
+inputs or outputs, as shown in \cref{fig:mode-pred}. In
 the scope of each quantifier, for each predicate, check the mode of each
 parameter matches the mode of each argument. Computational arguments are
 considered inputs. If a quantified variable is used in an input position, it
@@ -1207,18 +1207,18 @@ must also be used elsewhere in an output position.
     \centering
     \small%
     \begin{align*}
-        \_ \mapsto{} \_ \:&: \mathrm{Loc}^{\mathsf{in}} \times \mathrm{Value}^{\mathsf{out}} \rightarrow \mathrm{Prop} \\
+        \_ \mapsto \_ \:&: \mathrm{Loc}^{\mathsf{in}} \times \mathrm{Value}^{\mathsf{out}} \rightarrow \mathrm{Prop} \\
         \mathrm{list} \:&: \mathrm{Loc}^{\mathsf{in}} \times \mathrm{IntList}^{\mathsf{out}} \rightarrow \mathrm{Prop}
     \end{align*}
     \caption{Modes on separation logic predicates.}\label{fig:mode-pred}
 \end{marginfigure}
 
 Revisiting the second disjunct of \cref{fig:list-pred-formal}, the
-quantified variable $\mathsf{p\_tail}$, occurs in $\mathrm{list}
-(\mathsf{p\_tail}, {tl})$ in the input position, but this is fine because it also
-occurs in the output position in $\mathsf{p} + 1 \mapsto{} \mathsf{p\_tail}$.
-However, in the example from \cref{fig:imprecise}, $\exists \; \mathsf{xs}. \
-\mathrm{list}(\mathsf{xs},l)$ is badly moded because $\mathsf{xs}$ occurs in an
+quantified variable \sm{\mathsf{p\_tail}}, occurs in \sm{\mathrm{list}
+(\mathsf{p\_tail}, {tl})} in the input position, but this is fine because it also
+occurs in the output position in \sm{\mathsf{p} + 1 \mapsto \mathsf{p\_tail}}.
+However, in the example from \cref{fig:imprecise}, \sm{\exists \; \mathsf{xs}. \
+\mathrm{list}(\mathsf{xs},l)} is badly moded because \sm{\mathsf{xs}} occurs in an
 input position, but nowhere else in an output.
 
 Ensuring that quantifiers preserve \kl{precision} in assertions by
@@ -1235,22 +1235,22 @@ ghost state, and discussions with our users suggest that adding quantifiers and
 An elegant solution to both inscrutable mode rules, and the problem of
 disjunctions mentioned earlier, is to change the perspective on
 \cref{fig:mode-pred}~\sidecite{krishnaswami2022monadic}. A predicate
-$\mathrm{list} : \mathrm{Loc} \times \mathrm{IntList} \rightarrow
-\mathrm{Prop}$, considered set-theoretically is just $\mathcal{P} (\mathrm{Loc}
-\times \mathrm{IntList})$, which is isomorphic to $\mathrm{Loc} \rightarrow
-\mathcal{P} (\mathrm{IntList})$. Unlike the initial form, which gave ``equal
+\sm{\mathrm{list} : \mathrm{Loc} \times \mathrm{IntList} \rightarrow
+\mathrm{Prop}}, considered set-theoretically is just \sm{\mathcal{P} (\mathrm{Loc}
+\times \mathrm{IntList})}, which is isomorphic to \sm{\mathrm{Loc} \rightarrow
+\mathcal{P} (\mathrm{IntList})}. Unlike the initial form, which gave ``equal
 weighting'' to input and outputs, this form makes the input role of
-$\mathrm{Loc}$ and the output role of $\mathrm{IntList}$, inside a covariant
+\sm{\mathrm{Loc}} and the output role of \sm{\mathrm{IntList}}, inside a covariant
 powerset monad, very natural.
 
 \begin{marginfigure}
     \small%
     \begin{align*}
         &\llbracket \_ \rrbracket \::\: \tau \rightarrow (\tau \rightarrow \mathsf{Prop}) \\
-        &\llbracket \mathsf{return}\ t \rrbracket = \lambda a.\ t = a \wedge{} \mathsf{emp} \\
-        &\llbracket \mathsf{Own(t)} \rrbracket = \lambda a.\ t \mapsto{} a \\
+        &\llbracket \mathsf{return}\ t \rrbracket = \lambda a.\ t = a \wedge \mathsf{emp} \\
+        &\llbracket \mathsf{Own(t)} \rrbracket = \lambda a.\ t \mapsto a \\
         &\llbracket \mathsf{let\ x} = e; e' \rrbracket \\
-        &\: = \lambda a.\ \exists \; x.\ \llbracket e \rrbracket x \ast{} \llbracket e' \rrbracket a \\
+        &\: = \lambda a.\ \exists \; x.\ \llbracket e \rrbracket x \ast \llbracket e' \rrbracket a \\
         &\llbracket \mathsf{if}\ t\ \mathsf{then}\ e\ \mathsf{else}\ e' \rrbracket \\
         &\: = \lambda a.\  \left( t \wedge \llbracket e \rrbracket a \right) \vee \left( \neg \; t \wedge \llbracket e' \rrbracket a \right)
     \end{align*}
@@ -1259,13 +1259,13 @@ powerset monad, very natural.
 \end{marginfigure}
 
 This notational transformation turns \emph{mode correctness} into
-\emph{variable scoping}, when one interprets let-bindings $\mathsf{let\ x} = e;
-e'$ as monadic bindings inside a covariant powerset monad. It also enforces the
+\emph{variable scoping}, when one interprets let-bindings \sm{\mathsf{let\ x} = e;
+e'} as monadic bindings inside a covariant powerset monad. It also enforces the
 disjointness of computational values and the shape of the heap mentioned
-earlier with the $\mathsf{if}\ t\ \mathsf{then}\ e\ \mathsf{else}\ e'$
+earlier with the \sm{\mathsf{if}\ t\ \mathsf{then}\ e\ \mathsf{else}\ e'}
 construct. Thus, all logical quantifiers can be \emph{inferred} without
 backtracking, and branching assertions can be checked similarly:
-check $e$ if you can can prove $t$, or check $e'$ if you can prove $\neg\;t$.
+check \sm{e} if you can can prove \sm{t}, or check \sm{e'} if you can prove \sm{\neg\;t}.
 
 \section{\kl[iterated]{Iterated} separating conjunctions to handle arrays}\label{sec:it-array}
 
@@ -1281,25 +1281,25 @@ to massage the available assumptions into a usable form.
 but with restrictions to ensure only quantifier-free SMT queries. They are
 introduced and eliminated as follows.
 \begin{itemize}
-\item $ \cnkw{each}  \left(  \beta \,  \cnmv{x} \, ;  \cnnt{iguard}
+\item \sm{\cnkw{each}  \left(  \beta \,  \cnmv{x} \, ;  \cnnt{iguard}
     \right)\, \left\{  { \alpha }  \left(  \cnkw{array\_shift} \, \langle
     \tau  \rangle  \left(  { y_p }  \cnsym{,}  \cnmv{x}  \right)  \cnsym{,}
-    \cnnt{iargs}  \right)  \, \right\} $. % chktex 25
+    \cnnt{iargs}  \right)  \, \right\}}. % chktex 25
 \begin{itemize}
-    \item $\beta$ is the type of the quantifier (usually % chktex 25
+    \item \sm{\beta} is the type of the quantifier (usually % chktex 25
         \cninline{u64}).
-    \item $\cnmv{x}$ is the iterated variable. \item $\cnnt{iguard}$ is the index
+    \item \sm{\cnmv{x}} is the iterated variable. \item \sm{\cnnt{iguard}} is the index
         guard, a boolean-valued logical/SMT expression on the iterated variable
-        $\cnmv{x}$.
-    \item ${ \alpha }$ is the name of a predicate.
-    \item $\cnkw{array\_shift} \, \langle  \tau  \rangle  \left(  { y_p }  \cnsym{,}  \cnmv{x}  \right)$ is \kl{CN} syntax for C % chktex 25
-        pointer-arithmetic ${ y_p } \,  \mathbin{ \symtt{+} }  \, \cnmv{x}$ where the base pointer ${ y_p }$
-        has C type $\tau  \cnsym{*}$. This requires the first argument of any
-        ${ \alpha }$ to be a pointer.
-    \item $\cnnt{iargs}$ is a list of logical/SMT arguments.
+        \sm{\cnmv{x}}.
+    \item \sm{{ \alpha }} is the name of a predicate.
+    \item \sm{\cnkw{array\_shift} \, \langle  \tau  \rangle  \left(  { y_p }  \cnsym{,}  \cnmv{x}  \right)} is \kl{CN} syntax for C % chktex 25
+        pointer-arithmetic \sm{{ y_p } \,  \mathbin{ \symtt{+} }  \, \cnmv{x}} where the base pointer \sm{{ y_p }}
+        has C type \sm{\tau  \cnsym{*}}. This requires the first argument of any
+        \sm{{ \alpha }} to be a pointer.
+    \item \sm{\cnnt{iargs}} is a list of logical/SMT arguments.
 \end{itemize}
 \item The user must explicitly declare which indices can be moved in or out
-    with a `$\cnkw{focus}\ \alpha,\ \cnnt{term}\cnkw{;}$'
+    with a `\sm{\cnkw{focus}\ \alpha,\ \cnnt{term}\cnkw{;}}'
     \kl{CN statement}.
 \end{itemize}
 
