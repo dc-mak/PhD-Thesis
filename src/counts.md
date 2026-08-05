@@ -21,10 +21,10 @@ Counts are `text + headers + captions`. **Own** is the prose directly under a he
 | Proof maintenance for pKVM buddy allocator | **3303** | 78 |
 | CN Comparison and Feedback | **4213** | 184 |
 | Not-so-great expectations | **5099** | 57 |
-| Future Directions | **3249** | 17 |
+| Future Directions | **3248** | 16 |
 | Conclusion | **1276** | 493 |
 
-| **Document total** | **61254** | |
+| **Document total** | **61253** | |
 
 ## Introduction
 
@@ -273,7 +273,7 @@ Counts are `text + headers + captions`. **Own** is the prose directly under a he
 
 ## Future Directions
 
-**Chapter total: 3249** (own 17)
+**Chapter total: 3248** (own 16)
 
 | Section | Subsection | Total | Own |
 | :-- | :-- | --: | --: |
