@@ -269,7 +269,7 @@ embedded into the latter.
 
 The \kl(Core){pure fragment} forbids memory operations, but
 does include the effect of undefined behaviour explicitly with the
-\coreinline{undef()} operator. It handles % chktex 36
+\coreinline{undef} operator. It handles
 things like implicit type conversions or bounded arithmetic. As visible from the
 grammar, the pure part is very much a first-order functional language with
 recursive functions, with some C-specific constructs such as pointer
@@ -308,7 +308,7 @@ and \kl(Core){effectful fragments} is unrelated to the distinction between expre
 statements in C:\ both are elaborated into effectful expressions (for example,
 \coreinline{PtrEq} which tests for pointer equality).
 
-I will discuss \coreinline{memop()} in more detail in % chktex 36
+I will discuss \coreinline{memop} in more detail in
 \fancyref{chap:mem-model-explained}. For now it suffices to say that the
 operations are effects, part of the memory interface \kl{Core} uses to abstract
 over different memory object models.
@@ -317,7 +317,7 @@ Next are the constructs related to sequencing. A more precise treatment
 of this is given later in \fancyref{sec:weak-seq}. As per
 \sidetextcite{memarian2022cerberus}, \emph{Each use of an action is either
 ``positive'' (the default case) or ``negative'' (if the action appears in the
-syntax as the operand of the \sm{\cnkw{neg()}} operator)}.
+syntax as the operand of the \sm{\cnkw{neg}} operator)}.
 \begin{itemize}
     \item \sm{\cnkw{neg}(\cnnt{action})} marks side
         effects (see text to note~\ref{sn:side-effect}).
@@ -339,14 +339,14 @@ syntax as the operand of the \sm{\cnkw{neg()}} operator)}.
         boundary of a C expression as a statement.
 \end{itemize}
 
-The \coreinline{par()} construct is for spawning threads. The % chktex 36
-\coreinline{nd()} construct models non-determinism as required or % chktex 36
+The \coreinline{par} construct is for spawning threads. The
+\coreinline{nd} construct models non-determinism as required or
 implied by aspects of the standard.
 
-The \coreinline{ccall()} and \coreinline{pcall()} constructs are for % chktex 36
+The \coreinline{ccall} and \coreinline{pcall} constructs are for
 calling elaborated C functions and \kl{Core} procedures (effectful functions)
 respectively. They differ only in how the name of the procedure to be called is
-found, with \coreinline{ccall()} using the memory interface to do so. % chktex 36
+found, with \coreinline{ccall} using the memory interface to do so.
 
 The (thread-local) Core operational semantics is defined in
 \textcite{memarian2022cerberus}; I present the key rules below.
@@ -358,7 +358,7 @@ evaluation contexts \sm{C}). These steps rely on evaluating pure expressions (in
 big-step style) to either undefined behaviour or a value \sm{\cnnt{pce} \Downarrow
 (\textsc{Undef} \mid \cnnt{value})}.
 
-For example, \coreinline{pcall()} pushes the enclosing evaluation context \sm{C} % chktex 36
+For example, \coreinline{pcall} pushes the enclosing evaluation context \sm{C}
 on to the stack \sm{\kappa}, evaluates its arguments into values, looks up the
 function body \sm{E}, substitutes the parameters for the values, and then executes
 the body.
@@ -372,7 +372,7 @@ the body.
    \rightarrow \left< h , \left[ \cncomp{\cnnt{value}_i / x_i}{i} \right] E , C \Colon \kappa \right> }
 \]}
 
-Conversely, \coreinline{return()} pops an evaluation context off of the stack, % chktex 36
+Conversely, \coreinline{return} pops an evaluation context off of the stack,
 applies it to the returned value, and proceeds with the resulting expression.
 
 {\small%
@@ -383,7 +383,7 @@ applies it to the returned value, and proceeds with the resulting expression.
     \rightarrow \langle h, C [\cnkw{pure}(\cnnt{value})] , \kappa \rangle }
 \]}
 
-The \coreinline{save()} operator is \kl{Core}'s way of introducing named % chktex 36
+The \coreinline{save} operator is \kl{Core}'s way of introducing named
 continuations with default arguments. This is the aforementioned \cinline{goto}-like
 operator, which is used to elaborate C's iteration and
 \cinline{goto} statements.
@@ -393,24 +393,24 @@ operator, which is used to elaborate C's iteration and
     \itemAP{} \sm{e_1, \ldots, e_n} are \intro{default arguments} for those parameters.
 \end{itemize}
 
-\textbf{The label of \coreinline{save()} expression is scoped to its % chktex 36
+\textbf{The label of \coreinline{save} expression is scoped to its
 enclosing \kl{Core} procedure.} This means there are three ways of reaching
 one.
 
 \begin{itemize}
-    \item Forward jump, with a \coreinline{run()} operator. % chktex 36
-    \item Backwards jump, with a \coreinline{run()} operator. % chktex 36
+    \item Forward jump, with a \coreinline{run} operator.
+    \item Backwards jump, with a \coreinline{run} operator.
     \item No jump, via evaluation of the enclosing expression.
 \end{itemize}
 
-A \coreinline{save()} expression evaluates by instantiating % chktex 36
+A \coreinline{save} expression evaluates by instantiating
 and substituting its parameters in its body. The instantiation
 depends on how the expression was reached. If it was via the
-\coreinline{run()} operator, then the instantiation is % chktex 36
+\coreinline{run} operator, then the instantiation is
 with the arguments of the same. If it was via the enclosing expression,
 then the instantiation is with the \kl{default arguments}.
 
-Formally, \coreinline{save()} (reached normally, via its enclosing % chktex 36
+Formally, \coreinline{save} (reached normally, via its enclosing
 expression) evaluates its default arguments into values and then substitutes
 those values into its body.\sidenote{Since this does not
 manipulate the heap or the stack, it is phrased purely as expression
@@ -425,11 +425,11 @@ thread-local reductions.}
     \rightsquigarrow \left[ \cncomp{ \cnnt{value}_i / x_i }{i} \right] E }
 \]}
 
-Reaching the same \coreinline{save()} via a \coreinline{run()}  % chktex 36
-is more complicated. Like a \coreinline{pcall()}, it evaluates its arguments % chktex 36
+Reaching the same \coreinline{save} via a \coreinline{run} 
+is more complicated. Like a \coreinline{pcall}, it evaluates its arguments
 into values and looks up the label \sm{\cnnt{id}}. The \sm{\mathrm{labelmap}} is
 precomputed on a per-procedure basis by \kl{Cerberus} during elaboration.
-Unlike \coreinline{pcall()}, the result of the lookup is \emph{a context} % chktex 36
+Unlike \coreinline{pcall}, the result of the lookup is \emph{a context}
 \sm{C_{\cnnt{id}}} and an expression \sm{E_{\cnnt{id}}}. It substitutes the values
 for the parameters in \sm{E_\cnnt{id}}, \emph{discards the current context} \sm{C},
 and uses \sm{C_\cnnt{id}} instead. All the while, the stack \sm{\kappa} is unchanged.
@@ -444,7 +444,7 @@ and uses \sm{C_\cnnt{id}} instead. All the while, the stack \sm{\kappa} is uncha
 \]}
 
 \textbf{For our purposes, the most important thing is that while control flows
-into \coreinline{ccall()}, \coreinline{pcall()} and \coreinline{run()}, it % chktex 36
+into \coreinline{ccall}, \coreinline{pcall} and \coreinline{run}, it
 only returns from the first two and not the last.}
 
 \section{Elaboration example: list append}\label{sec:append-core}
@@ -460,7 +460,7 @@ local variables.
 In \kl{Core}, the pointer value passed into the function, and the mutable storage
 for it, are separated syntactically. The parameters have type
 \coreinline{loaded pointer}, where \coreinline{loaded t} is either a
-\coreinline{Specified(v:t)} or an \coreinline{Unspecified} value % chktex 36
+\coreinline{Specified(v:t)} or an \coreinline{Unspecified} value
 (an option monad for potentially uninitialised values read from memory). The
 result of the function has type \coreinline{eff (loaded t)} where
 \coreinline{eff t} is a value of type \coreinline{t} produced with effects
@@ -469,7 +469,7 @@ result of the function has type \coreinline{eff (loaded t)} where
 \corefile[firstline=3, lastline=4]{code/append_plain.core}
 
 To keep the C function elaboration \kl{compositional}, especially for early returns,
-\kl{Cerberus} adds a single \coreinline{save()} % chktex 36
+\kl{Cerberus} adds a single \coreinline{save}
 expression to declare a return label (here, \coreinline{ret_430}) \emph{at the
 end of each procedure}. Any part of the procedure may thus \emph{forward jump}
 to the return label because, as mentioned earlier, \textbf{labels are scoped to
@@ -478,17 +478,17 @@ their enclosing procedure.}
 Like C labels, \kl{Core} labels can be reached by evaluating the enclosing
 expression as well as being jumped to. In the first case, the arguments to the
 label still need to be given a value; these default values are defined by the
-right-hand-side of the \coreinline{:=}, here an \coreinline{undef()} % chktex 36
+right-hand-side of the \coreinline{:=}, here an \coreinline{undef}
 value because it is \kl{UB} to reach the end of a function with a non-void
 return type without returning a value.
 
 \corefile[firstline=147, lastline=148]{code/append_plain.core}
 
-The \coreinline{create()} and \coreinline{store()} operations are % chktex 36
+The \coreinline{create} and \coreinline{store} operations are
 \kl{memory actions}; they produce values of type \coreinline{eff pointer} and
-\coreinline{eff unit} respectively. The \coreinline{create()} action % chktex 36
+\coreinline{eff unit} respectively. The \coreinline{create} action
 takes an integer (for constraining the alignment of the
-resulting pointer), and a C type. \coreinline{Ivalignof(τ)} is an % chktex 36
+resulting pointer), and a C type. \coreinline{Ivalignof(τ)} is an
 integer value constructor which carries a C type τ; in C, the
 alignment of a type is an implementation-defined value and using an abstract
 constructor allows the elaboration to be agnostic of such choices.
@@ -522,9 +522,9 @@ code.
 This elaborates into the following true-branch in Core. First, the value
 \coreinline{ys} is loaded from memory. Core marks the boundary of a \emph{full
 expression} (§6.8p4), such as the optional expression of a return statement,
-using the \coreinline{bound()} operator. After that is one % chktex 36
-\coreinline{kill()} per live local variable. Lastly there is a % chktex 36
-\coreinline{run()} to the return label \coreinline{ret_430}. % chktex 36
+using the \coreinline{bound} operator. After that is one
+\coreinline{kill} per live local variable. Lastly there is a
+\coreinline{run} to the return label \coreinline{ret_430}.
 
 \corefile[firstline=48, lastline=56]{code/append_plain.core}
 
@@ -541,19 +541,19 @@ the local variable.
 
 Next is getting the pointer for the C function to be called; elsewhere, lines
 67\textendash{}68 are bound to \coreinline{a_447} to be used in
-\coreinline{ccall()} later. % chktex 36
+\coreinline{ccall} later.
 
 \corefile[firstline=67, lastline=68]{code/append_plain.core}
 
 The first argument is \cinline{xs->tail}. In Core, that is represented by a
-\coreinline{load()} of \cinline{&xs}, a case-split on the loaded value % chktex 36
-(\kl{UB} if it is \coreinline{Unspecified}), a \coreinline[breaklines]{member_shift()}, % chktex 36
-and then another \coreinline{load()}. Elsewhere, lines 71\textemdash{}81 % chktex 36
+\coreinline{load} of \cinline{&xs}, a case-split on the loaded value
+(\kl{UB} if it is \coreinline{Unspecified}), a \coreinline[breaklines]{member_shift},
+and then another \coreinline{load}. Elsewhere, lines 71\textemdash{}81
 are bound to \coreinline{a_454}.
 
 \corefile[firstline=71, lastline=81]{code/append_plain.core}
 
-The second argument is \cinline{ys}; in Core that is just a \coreinline{load()} % chktex 36
+The second argument is \cinline{ys}; in Core that is just a \coreinline{load}
 of \cinline{&ys}. Elsewhere, lines 83\textendash{}84 bound to
 \coreinline{a_461}.
 
@@ -571,7 +571,7 @@ ccall("struct int_list* (*) (struct int_list*, struct int_list*)",
       a_461 (* ys *))
 \end{corecode}
 
-Elsewhere, the \coreinline{ccall()} is bound to \coreinline{a_445}, % chktex 36
+Elsewhere, the \coreinline{ccall} is bound to \coreinline{a_445},
 which is then stored at \cinline{&new_tail} (in Core, just
 \coreinline{new_tail}).
 
@@ -582,13 +582,13 @@ of the first list.
 
 \cfile[firstline=12, lastline=12]{code/append_plain.c}
 
-In Core, \cinline{xs->tail} is elaborated into a \coreinline{load()} % chktex 36
+In Core, \cinline{xs->tail} is elaborated into a \coreinline{load}
 and a member shift in lines 110\textemdash{}118. Elsewhere, those lines are
 are bound to \coreinline{a_472}.
 
 \corefile[firstline=110, lastline=118]{code/append_plain.core}
 
-The right-hand-side is just a \coreinline{load()} from \cinline{&new_tail} % chktex 36
+The right-hand-side is just a \coreinline{load} from \cinline{&new_tail}
 (which in Core, is just \coreinline{new_tail}) in lines 122\textemdash{}123.
 Elsewhere, those lines are bound to \coreinline{a_479}.
 
@@ -611,10 +611,10 @@ Finally, there's the return statement at the end of the function.
 \cfile[firstline=13, lastline=13]{code/append_plain.c}
 
 In Core, this is elaborated into the following. First, a
-\coreinline{load()}, enclosed in a \coreinline{bound()} operator % chktex 36
+\coreinline{load}, enclosed in a \coreinline{bound} operator
 to mark the boundary of the \emph{full expression} (§6.8p4) inside the return
-statement. After that is one \coreinline{kill()} per live  % chktex 36
-local variable. Lastly there is a \coreinline{run()} to the % chktex 36
+statement. After that is one \coreinline{kill} per live 
+local variable. Lastly there is a \coreinline{run} to the
 return label \coreinline{ret_430} mentioned earlier.
 
 \corefile[firstline=132, lastline=140]{code/append_plain.core}
@@ -671,18 +671,18 @@ dynamic semantics.
     \begin{mathpar}
         \inferrule{ }{\Gamma \vdash \cnkw{undef} (\cnnt{UB\_name})\Leftarrow \cnnt{T}}
     \end{mathpar}
-    \caption{Checking rule for the \coreinline{undef()} pure expression as % chktex 36
+    \caption{Checking rule for the \coreinline{undef} pure expression as
     mentioned in \textcite[p91]{memarian2022cerberus}.}\label{fig:core-ub-typing}
 \end{marginfigure}
 
-For example, \coreinline{undef()} checks against any type % chktex 36
+For example, \coreinline{undef} checks against any type
 (\cref{fig:core-ub-typing}).\margincite{memarian2022cerberus}
 This is because \kl{UB} terminates the dynamic
 semantics; it does not return control. Remember, a valid C program is one which
 has no \kl{UB}, but such a type system cannot guarantee its absence.
 
 To do that, we need to enrich the context to track the (control flow) path
-conditions. Then, the typing rule for \coreinline{undef()} would % chktex 36
+conditions. Then, the typing rule for \coreinline{undef} would
 require that the context be inconsistent (able to prove false), meaning
 the expression is unreachable. To illustrate this, consider a trivial example
 of nested \mintinline{py}{if} statements in \cref{fig:dead-code}.
@@ -1314,7 +1314,7 @@ This enables a few convenient features.
     \item Iterated separating conjunctions can be split along an arbitrary
         guard automatically:
         for guard \cninline{A = 0i32 <= i && i < 10i32} and guard
-        \cninline[breaklines]{B = A && mod(i, 2i32) == 0i32}, % chktex 36
+        \cninline[breaklines]{B = A && mod(i, 2i32) == 0i32},
         the subtraction is simply \cninline{A && !B}. Note that the split % chktex 26
         does not have to be contiguous.
 \end{itemize}
