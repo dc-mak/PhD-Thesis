@@ -32,42 +32,42 @@ this to be the case (\fancyref{sec:linking}).
         deallocation.}\label{fig:cnvip-mem-action}
 \end{figure*}
 
-In \ActionAlloc{}, the \kl{memory action} {\small $[[alloc (pval1, pval2)]]$},
-for dynamically allocating memory, takes two operands. The first, $[[pval1]]$,
+In \ActionAlloc{}, the \kl{memory action} \sm{[[alloc (pval1, pval2)]]},
+for dynamically allocating memory, takes two operands. The first, \sm{[[pval1]]},
 is the alignment for the address of the newly created pointer. The second,
-$[[pval2]]$, is the size of the allocation. The action itself consumes no
+\sm{[[pval2]]}, is the size of the allocation. The action itself consumes no
 \kl{resources from the context}, and so needs an empty context with an
-$[[emp]]$ \kl{resource term}. Its \kl{return type} expresses that it returns a
-pointer $[[yp]]$, which is constrained by $[[term]]$, whose first part, {\small
-$[[aligned ( inj pval1, yp ) ]]$}, says the pointer is aligned to $[[pval1]]$,
-and whose second part, $[[allocv [ yp . alloc_id ] = ( yp . addr , inj pval2 ) ]]$,
+\sm{[[emp]]} \kl{resource term}. Its \kl{return type} expresses that it returns a
+pointer \sm{[[yp]]}, which is constrained by \sm{[[term]]}, whose first part,
+\sm{[[aligned ( inj pval1, yp ) ]]}, says the pointer is aligned to \sm{[[pval1]]},
+and whose second part, \sm{[[allocv [ yp . alloc_id ] = ( yp . addr , inj pval2 ) ]]},
 says the \kl{allocation history} maps the pointer's \kl{allocation ID} to
-the base address $[[ yp . addr ]]$ and length $[[ pval2 ]]$. The \kl{return
-type} also expresses that it returns a logical array of bytes, $[[y]]$. This
+the base address \sm{[[ yp . addr ]]} and length \sm{[[ pval2 ]]}. The \kl{return
+type} also expresses that it returns a logical array of bytes, \sm{[[y]]}. This
 array is the output of an \kl{iterated points-to} of bytes starting from the
-base pointer $[[yp]]$. The \kl{points-to} is indexed by the new C type
-$[[byte]]$, and is uninitialised $[[ Uninit ]]$, to prevent loading from it.
+base pointer \sm{[[yp]]}. The \kl{points-to} is indexed by the new C type
+\sm{[[byte]]}, and is uninitialised \sm{[[ Uninit ]]}, to prevent loading from it.
 Alongside the \kl{iterated points-to}, the \kl{return type} also mentions
-{\small $[[Alloc (yp.id) ( ( yp . addr,  inj pval2 ) )]]$}. Though this looks
+\sm{[[Alloc (yp.id) ( ( yp . addr,  inj pval2 ) )]]}. Though this looks
 similar to the constraint (and records the same bounds information), this is a
 \kl(allocation){token} which is proof of \emph{liveness} of the allocation, and also
 \kl(allocation){permission} to deallocate the newly created allocation.
 
 In \ActionKillDynamic{}, all the \kl(type){resources} are consumed rather than
 produced. As such, the \kl{memory action} requires a \kl{resource term} and a
-base pointer: $[[ res_term | kill < dyn > ( pval ) ]]$. The length of the
+base pointer: \sm{[[ res_term | kill < dyn > ( pval ) ]]}. The length of the
 allocation is obtained from the type of the \kl{resource term}, which must be a
 pair of an \kl{iterated points-to} of bytes, and an \kl{allocation token}. The
-length of the allocation $[[ oarg . len ]]$, obtained from the \kl{allocation
+length of the allocation \sm{[[ oarg . len ]]}, obtained from the \kl{allocation
 token's} output argument, allows the rule to check the \kl{ownership} of the
 entire allocation has been returned without gaps. This is done in premise 4,
 where the SMT solver is asked to prove a quantified formula (which, unlike
 assuming a quantified formula, is decidable). The base address of the
-\kl{allocation token} $[[ oarg . base ]]$, allows the rule to check that the
-address of the supplied pointer $[[ inj pval . addr ]]$ is in fact, the correct
-base address. The \kl{allocation ID} $[[ term ]]$, allows the rule to check
+\kl{allocation token} \sm{[[ oarg . base ]]}, allows the rule to check that the
+address of the supplied pointer \sm{[[ inj pval . addr ]]} is in fact, the correct
+base address. The \kl{allocation ID} \sm{[[ term ]]}, allows the rule to check
 that the \kl{allocation ID} of the base pointer of the \kl{iterated points-to}
-$[[ ptrt . alloc_id ]]$ and of $[[ pval ]]$ all agree. The action just returns
+\sm{[[ ptrt . alloc_id ]]} and of \sm{[[ pval ]]} all agree. The action just returns
 a unit value.
 
 \section{Converting to and from bytes}\label{sec:convert-bytes}
@@ -75,7 +75,7 @@ a unit value.
 Note that the rules for loads and stores are unchanged. In particular,
 \kl{permission to read or write} a location is enough to deduce its enclosing
 allocation is live.\sidenote{\kl{Ownership} of out-of-bounds resources is
-equivalent to $\mathsf{false}$.}
+equivalent to \sm{\mathsf{false}}.}
 
 So how does one load or store arbitrary C types from dynamically
 allocated memory? Via new \kl{predicate operations} to convert between
@@ -155,7 +155,7 @@ pointers.
 
 \cref{fig:cnvip-unions}, shows how to transform a union \kl{points-to} to and
 from \kl{points-to} for a member. Starting with a \kl{points-to} to a union, we
-can {\small $\cnkw{select}$} a particular member. The C type of the member is
+can \sm{\cnkw{select}} a particular member. The C type of the member is
 obtained by looking up the definition of the union from its tag in premise
 2.\sidenote{See~\cref{sec:metavars-grammar} for further details.} It then
 checks that the bytes are valid for that member (that is, not
@@ -164,7 +164,7 @@ union \kl{points-to} is transformed into a \kl{points-to} for the member, and
 crucially, a \intro[padding token]{token} representing that the \kl{points-to}
 came from a union. It can also equivalently be thought of as a predicate
 representing ownership of the (potentially empty) padding bytes around the
-given member of a union, hence the name $[[ Padding < union tag, member > ]]$.
+given member of a union, hence the name \sm{[[ Padding < union tag, member > ]]}.
 The inverse transformation checks that the pointers of the \kl{points-to} and
 \kl{padding resources} belong to the same allocation at the correct offsets,
 and then updates the byte array with the byte representation of the pointee.
@@ -183,14 +183,14 @@ and then updates the byte array with the byte representation of the pointee.
 \end{figure*}
 
 The typing rules for \cinline{memcpy} require \kl{iterated ownership} of two
-contiguous arrays of \kl{memory bytes} of length $n$; it returns
+contiguous arrays of \kl{memory bytes} of length \sm{n}; it returns
 \kl(iterated){ownership} of both, with the constraint that the value of the
 destination (first) is equal to that of the source (second). The iterations
 must be contiguous and of the same length to express the equality constraint on
 the values correctly.
 
 The typing rules for \cinline{memcmp} require \kl{iterated ownership} of two
-contiguous arrays of \kl{memory bytes} of length $n$; like \cinline{memcpy}, it
+contiguous arrays of \kl{memory bytes} of length \sm{n}; like \cinline{memcpy}, it
 returns \kl(iterated){ownership} of both, but unlike
 \cinline{memcpy}, none of the bytes being compared must be
 \coreinline{Unspecified}, and the returned value is not straightforward to
@@ -221,8 +221,8 @@ of the code.
 For the \kl{Cerberus} code, the pure/permissive member shift has a comment
 saying that member shifting a \cinline{NULL} pointer may be \kl{UB} per the
 \kl{standard}, but is the assumed behaviour of some GCC torture tests. The result is
-\cinline{NULL} if the offset $n$ is zero, and is a pointer $(@\mathsf{empty},
-n)$ if the offset $n$ is non-zero. This behaviour is not controlled by any
+\cinline{NULL} if the offset \sm{n} is zero, and is a pointer \sm{(@\mathsf{empty},
+n)} if the offset \sm{n} is non-zero. This behaviour is not controlled by any
 switch. My conjecture is that member shifting on \cinline{NULL} is merely
 allowed to define \cinline{offsetof} as a macro. 
 
@@ -231,7 +231,7 @@ switch, and is not relevant to capturing the ISO rule.
 
 Instead, \kl{Cerberus} enforces the checks required by the \kl{ISO} rule via
 the elaboration. If strict pointer arithmetic is enabled, the member shift
-guarded by the \kl{memory operation} {\small $\cnkw{PtrValidForDeref}$}. This
+guarded by the \kl{memory operation} \sm{\cnkw{PtrValidForDeref}}. This
 ensures the initial pointer is strictly in bounds of a live allocation for a
 given C type; any subsequent shifts at that C type are thus guaranteed to
 remain in bounds.
@@ -395,8 +395,8 @@ Only a few steps are needed to update the formalisation presented in
         relation between abstract \emph{\kl{states}} and expressions, rather than
         just \emph{\kl{heaps}} and expressions.
     \item Extend the heap typing rules to incorporate the newly added
-        allocation history, {\small $[[ Alloc ]]$ } and
-        {\small $[[Padding < ct , member >]]$} tokens.
+        allocation history, \sm{[[ Alloc ]]} and
+        \sm{[[Padding < ct , member >]]} tokens.
     \item Update the proof of soundness for \kl{resource term} reduction and
         pattern-matching, with the new rules.
 \end{enumerate}
@@ -411,7 +411,7 @@ design by adapting and running the \kl{VIP} test suite
 \subsection{Extending the dynamic semantics}
 
 I modelled the \kl{allocation history} as a single global \kl{logical variable}
-$[[allocv]]$. This means that even morally closed programs have that variable
+\sm{[[allocv]]}. This means that even morally closed programs have that variable
 free in constraints and \kl{resource terms}. At the same time, because the
 \kl{allocation history} is extended during the course of evaluating a
 \kl{ResCore} program, it is not a term which can be substituted once at the
@@ -426,13 +426,13 @@ and substituted in at the point of calling the SMT solver
         changing \kl{allocation history}.}\label{fig:mem-model-dyn-smt}
 \end{marginfigure}
 
-Only the {\small $\cnkw{create}$} and {\small $\cnkw{alloc}$} extend the
+Only the \sm{\cnkw{create}} and \sm{\cnkw{alloc}} extend the
 \kl{allocation history}, and so it and every \kl(effectful){expression}
 containing it also include the \kl{allocation history} as part of its
 configuration, rather than threaded through the side. Note that because I split
 the \kl{intuitionistic} part of the \kl{allocation history} from the
 \kl{linear} part, it does not get updated to record a dead allocation in the
-rule for {\small $\cnkw{kill}$} (\cref{fig:mem-model-dyn-create-kill}).
+rule for \sm{\cnkw{kill}} (\cref{fig:mem-model-dyn-create-kill}).
 
 \begin{figure*}
     \small%
@@ -454,13 +454,13 @@ With the exception of threading through the \kl{allocation history}, the rules
 for loads and stores are unchanged. The rules for converting \kl{ownership} of
 objects into \kl{iterated ownership} of memory bytes and vice versa are
 \kl{predicate operations}, much like the ones for manipulating structs and
-fixed-length arrays. The rules for {\small $\cnkw{memcpy}$} and {\small
-$\cnkw{memcmp}$} are also as expected.
+fixed-length arrays. The rules for \sm{\cnkw{memcpy}} and \sm{\cnkw{memcmp}}
+are also as expected.
 
 \kl{Pointer operations}, including casts and \cinline[breaklines]{copy_alloc_id}, do
 not extend the \kl{allocation history}, but do require the \kl{heap} to check
 whether the supplied or resulting pointers belong to live allocations. They are
-agnostic of whether it is \kl{ownership} or an {\small $\cnkw{Alloc}$} token is
+agnostic of whether it is \kl{ownership} or an \sm{\cnkw{Alloc}} token is
 provided as evidence (\cref{fig:mem-model-dyn-ptr-relop}).
 
 \begin{figure*}
@@ -483,9 +483,9 @@ provided as evidence (\cref{fig:mem-model-dyn-ptr-relop}).
 (\cref{sec:heap-types}) to include the append-only \kl{allocation history}.
 
 First, the \kl{allocation history} needs to be ``well-constrained'':
-$[[alloct <= N]]$ (\cref{fig:alloc-typing}) means that each constraint 
-in $[[N]]$, with the \kl{allocation history} $[[alloct]]$ substituted for
-$[[allocv]]$, holds.
+\sm{[[alloct <= N]]} (\cref{fig:alloc-typing}) means that each constraint 
+in \sm{[[N]]}, with the \kl{allocation history} \sm{[[alloct]]} substituted for
+\sm{[[allocv]]}, holds.
 
 \begin{marginfigure}
     \footnotesize%
@@ -497,7 +497,7 @@ $[[allocv]]$, holds.
 \end{marginfigure}
 
 \kl{Heap typing} generalises similarly (\cref{fig:heap2-typing}). It
-substitutes the \kl{allocation history} $[[alloct]]$ for $[[allocv]]$, and then
+substitutes the \kl{allocation history} \sm{[[alloct]]} for \sm{[[allocv]]}, and then
 checks the \kl{heap} exactly as before.
 
 \begin{marginfigure}
@@ -517,9 +517,9 @@ Recall that I defined \kl{resource term reduction} and
 Whilst this intertwines the proofs for progress and type preservation, its
 advantage of modularity pays off now.
 
-The new constructs such as non-deterministic pointer equality, {\small
-$\cnkw{alloc}$}, dynamic {\small $\cnkw{kill}$}, {\small $\cnkw{memcpy}$},
-{\small $\cnkw{memcmp}$}, \cinline{copy_alloc_id}, and the conversions to and
+The new constructs such as non-deterministic pointer equality, \sm{\cnkw{alloc}},
+dynamic \sm{\cnkw{kill}}, \sm{\cnkw{memcpy}},
+\sm{\cnkw{memcmp}}, \cinline{copy_alloc_id}, and the conversions to and
 from memory bytes, are just additional cases in the proof, the rest are merely
 updates.
 
@@ -530,51 +530,51 @@ are similarly easy to link across the static and dynamic semantics by the
 definition of \kl(state){heap typing}.
 
 The updated theorem statements are as below: the main differences is the use of
-\kl{state typing}, and the \kl{logical context} $[[L0]] = [[allocv : id_map ]]$.
+\kl{state typing}, and the \kl{logical context} \sm{[[L0]] = [[allocv : id_map ]]}.
 Updated proofs are in~\cref{subsec:res_term_progress}.
 
 \begin{theorem}[CN-VIP:\ progress and type preservation for resource terms]
-For all `closed' \kl{resource terms} ($[[ res_term ]]$) which type \kl{check}
-or \kl{synthesise} ($[[ cdot ; L0 ; N ; nR |- res_term <= res ]]$), and
-\kl{well-typed states} ($[[ alloct ; h <= N ; nR ]]$), there exists a
-\kl{resource value} ($[[ res_val ]]$), \kl(normalised){context} ($[[ nR' ]]$)
-and \kl{heap} ($[[ h' ]]$), such that: the \kl(resource){value} is well-typed
-($[[ cdot ; L0 ; N ; nR' |- res_val <= res ]]$); the \kl{heap is well-typed}
-($[[ alloct |- h' <= nR' ]]$), and for all frame-\kl{heaps} ($[[ f ]]$), the
+For all `closed' \kl{resource terms} (\sm{[[ res_term ]]}) which type \kl{check}
+or \kl{synthesise} (\sm{[[ cdot ; L0 ; N ; nR |- res_term <= res ]]}), and
+\kl{well-typed states} (\sm{[[ alloct ; h <= N ; nR ]]}), there exists a
+\kl{resource value} (\sm{[[ res_val ]]}), \kl(normalised){context} (\sm{[[ nR' ]]})
+and \kl{heap} (\sm{[[ h' ]]}), such that: the \kl(resource){value} is well-typed
+(\sm{[[ cdot ; L0 ; N ; nR' |- res_val <= res ]]}); the \kl{heap is well-typed}
+(\sm{[[ alloct |- h' <= nR' ]]}), and for all frame-\kl{heaps} (\sm{[[ f ]]}), the
 \kl{resource term} reduces to the \kl{resource value} without affecting the
-frame-\kl{heap} ($[[ alloct | < h + f ; res_term > ||v < h' + f ; res_val > ]]$).
+frame-\kl{heap} (\sm{[[ alloct | < h + f ; res_term > ||v < h' + f ; res_val > ]]}).
 \end{theorem}
 
 \begin{theorem}[Progress for ResCore]
-If a \kl[stmt]{statement} ($[[ stmt ]]$) is well-typed
-($[[ cdot ; L0 ; N ; nR |- stmt <= ret ]]$) and all \kl{computational patterns}
-in it are exhaustive, then either it is a \kl(return){value} ($[[ < ret_terms > ]]$), or it is
-unreachable, or for all \kl{well-typed states} ($[[ s <= N ; nR ]]$)
-then there exists another \kl{state} ($[[ s' ]]$) and \kl[stmt]{statement} ($[[ stmt' ]]$)
-which is stepped to ($[[ < s ; stmt > --> < s' ; stmt' > ]]$)
+If a \kl[stmt]{statement} (\sm{[[ stmt ]]}) is well-typed
+(\sm{[[ cdot ; L0 ; N ; nR |- stmt <= ret ]]}) and all \kl{computational patterns}
+in it are exhaustive, then either it is a \kl(return){value} (\sm{[[ < ret_terms > ]]}), or it is
+unreachable, or for all \kl{well-typed states} (\sm{[[ s <= N ; nR ]]})
+then there exists another \kl{state} (\sm{[[ s' ]]}) and \kl[stmt]{statement} (\sm{[[ stmt' ]]})
+which is stepped to (\sm{[[ < s ; stmt > --> < s' ; stmt' > ]]})
 in the dynamic semantics.
 \end{theorem}
 
 \begin{theorem}[Type preservation for ResCore]
 For all closed and well-typed \kl[stmt]{statements}
-($[[ cdot ; L0 ; N ; nR |- stmt <= ret ]]$),
-\kl{well-typed states} ($[[ alloct ; h <= N ; nR ]]$),
-frame-\kl{heaps} ($[[ f ]]$),
-new states ($[[ alloct' ; h' ]]$),
-and new statements ($[[ stmt' ]]$),
+(\sm{[[ cdot ; L0 ; N ; nR |- stmt <= ret ]]}),
+\kl{well-typed states} (\sm{[[ alloct ; h <= N ; nR ]]}),
+frame-\kl{heaps} (\sm{[[ f ]]}),
+new states (\sm{[[ alloct' ; h' ]]}),
+and new statements (\sm{[[ stmt' ]]}),
 which are connected by a step in the dynamic semantics
-($[[ < alloct ; h + f ; stmt > -->  < alloct' ; heap ; stmt' > ]]$),
+(\sm{[[ < alloct ; h + f ; stmt > -->  < alloct' ; heap ; stmt' > ]]}),
 if all top-level functions are annotated correctly,
-there exists a \kl{constraint context} ($[[ N' ]]$),
-sub-\kl{heap} ($[[ h' ]]$),
-and \kl(normalised){resource context} ($[[ nR' ]]$),
+there exists a \kl{constraint context} (\sm{[[ N' ]]}),
+sub-\kl{heap} (\sm{[[ h' ]]}),
+and \kl(normalised){resource context} (\sm{[[ nR' ]]}),
 such that the \kl{constraint context} is extended
 % chktex-file 15
-($[[ cdot ; L0 ; N ; cdot [= cdot ; L0 ; N' ; cdot ]]$), % chktex 9
-the frame is unaffected ($[[ heap ]] = [[ h' + f ]]$),
-the sub-\kl{state is well-typed} ($[[ alloct' ; h' <= N' ; nR' ]]$),
+(\sm{[[ cdot ; L0 ; N ; cdot [= cdot ; L0 ; N' ; cdot ]]}), % chktex 9
+the frame is unaffected (\sm{[[ heap ]] = [[ h' + f ]]}),
+the sub-\kl{state is well-typed} (\sm{[[ alloct' ; h' <= N' ; nR' ]]}),
 and the \kl[stmt]{statement} too
-($[[ cdot ; L0 ; N' ; nR' |- stmt' <= ret ]]$).
+(\sm{[[ cdot ; L0 ; N' ; nR' |- stmt' <= ret ]]}).
 \end{theorem}
 
 \subsection{Linking \kl{CN-VIP} to \kl{VIP}}\label{sec:linking}
@@ -597,9 +597,9 @@ Load and stores do deal with values, converting to and from their
 representation as memory bytes. The introduction of bytes in \kl{CN-VIP} may
 raise concerns about increasing expressiveness beyond what is possible
 \kl{VIP}, because bytes capture more information. In actuality, \kl{CN-VIP}
-bytes are $\sim$ related to \kl{VIP} \cinline{char} as follows:
-$\mathsf{unspec} \sim \mathsf{unspec}$, $(@\mathsf{empty}, a) \sim
-\mathit{Int}\,(a)$, and $(@i, a) \sim \mathit{Loc}\,(@i, a)$.
+bytes are \sm{\sim} related to \kl{VIP} \cinline{char} as follows:
+\sm{\mathsf{unspec} \sim \mathsf{unspec}}, \sm{(@\mathsf{empty}, a) \sim
+\mathit{Int}\,(a)}, and \sm{(@i, a) \sim \mathit{Loc}\,(@i, a)}.
 
 \kl{Exposure tracking} (not formalised or implemented) would complicate the
 relationship between \kl{CN-VIP} and \kl{VIP}: neither would be strictly more
@@ -906,7 +906,7 @@ of~\sidetextcite{bizjak2019iron} might be useful.
 However, putting \kl{Core} and its dynamic semantics inside Rocq, would be a
 significant duplication of work (it is already implemented in \kl{Cerberus})
 and difficult (in particular the highly non-compositional rules for
-$\cnkw{run}$/$\cnkw{save}$ and weak sequencing). The effort and risk is large
+\sm{\cnkw{run}}/\sm{\cnkw{save}} and weak sequencing). The effort and risk is large
 and clear, but the reward is not so. Supporting \kl(type){resourceful}
 \kl{lemmas} seems to pull on a thread which drags with it all of \kl{Cerberus}.
 Is there an alternative?
