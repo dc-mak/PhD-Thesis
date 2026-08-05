@@ -10,8 +10,8 @@ technical limitations.
 
 \section{Inferring frames}\label{sec:inferring-frames}
 
-Recall the \kl{Core} operators for expressing most control-flow: {\small
-$\cnkw{run}$} and {\small $\cnkw{save}$}, first presented
+Recall the \kl{Core} operators for expressing most control-flow:
+\sm{\cnkw{run}} and \sm{\cnkw{save}}, first presented
 in~\fancyref{sec:core-grammar}.
 
 These very general constructs are used by \kl{Cerberus}' elaboration into
@@ -30,8 +30,8 @@ There are two problems with this approach.
 \begin{enumerate}
     \item \textbf{Inlining slows down performance and duplicates
         work.}\sidenote{\href{https://github.com/rems-project/cerberus/issues/289}{Cerberus\#289.}}
-        The transformation from \kl{Core} with {\small $\cnkw{run}$}
-        and {\small $\cnkw{save}$} to \kl{Core} with non-recursive runs
+        The transformation from \kl{Core} with \sm{\cnkw{run}}
+        and \sm{\cnkw{save}} to \kl{Core} with non-recursive runs
         inlined and recursive runs hoisted to the top induces some impressive
         code bloat. A nested-loop
         example,\sidenote{\href{https://github.com/rems-project/cerberus/issues/938}{Cerberus\#938.}}
@@ -44,10 +44,10 @@ There are two problems with this approach.
         \href{https://github.com/rems-project/cerberus/issues/443}{Cerberus\#443}.}
 \end{enumerate}
 
-The reason for this is the \kl{Core} dynamics for the {\small $\cnkw{run}$}
-operator: the current continuation $C$ is discarded, and the continuation
-$C_\cnnt{id}$, associated with the label $\cnnt{id}$, is obtained from a
-\emph{pre-computed} $\mathrm{labelmap}$, and resumed.
+The reason for this is the \kl{Core} dynamics for the \sm{\cnkw{run}}
+operator: the current continuation \sm{C} is discarded, and the continuation
+\sm{C_\cnnt{id}}, associated with the label \sm{\cnnt{id}}, is obtained from a
+\emph{pre-computed} \sm{\mathrm{labelmap}}, and resumed.
 
 {\small%
 \[
@@ -60,10 +60,10 @@ $C_\cnnt{id}$, associated with the label $\cnnt{id}$, is obtained from a
 
 Its associated (\kl{ResCore}) typing rule is as follows. Note that because
 control-flow does not return to this point in the program, the \kl{return type} is
-{\small$\cnkw{false} \wedge \cnkw{I}$}, even if, for example, a program is entering and
+\sm{\cnkw{false} \wedge \cnkw{I}}, even if, for example, a program is entering and
 exiting a loop in a well-bracketed way. This means the
 precondition of the label must consume \emph{all} resources from the context
-of a {\small $\cnkw{run}$}.
+of a \sm{\cnkw{run}}.
 
 {\small%
 \[
@@ -80,8 +80,8 @@ upon loop exit. The situation compounds for each level of loop nesting:
 invariants of all enclosing loops must be manually threaded through by the user
 (see~\href{https://github.com/rems-project/cerberus/issues/913}{Cerberus\#931}).
 The problem holds for all \kl{Core} labels, but only manifests itself at loops
-since \kl{CN} inlines all labels whose bodies do not recursively {\small
-$\cnkw{run}$} to themselves.
+since \kl{CN} inlines all labels whose bodies do not recursively
+\sm{\cnkw{run}} to themselves.
 
 Whilst we considered handling `well-behaved' switches and loops with new,
 special-case constructs in \kl{Core}, I did not find this idea intellectually
@@ -95,17 +95,17 @@ scoping} as \emph{lexical scoping}.
 
 \begin{quote}
 \emph{%
-In particular, a variable $x$ is considered to be in scope at a specific point
-$P$ if and only if all execution paths from the program’s entry point to $P$
-pass through a definition $D$ for $x$. In this case, we say that the definition
-$D$ \emph{strictly dominates} $P$. The relation on basic blocks ``$A$ strictly
-dominates $B$'' intersected with ``$A$ is a direct predecessor of $B$'' forms a
+In particular, a variable \sm{x} is considered to be in scope at a specific point
+\sm{P} if and only if all execution paths from the program’s entry point to \sm{P}
+pass through a definition \sm{D} for \sm{x}. In this case, we say that the definition
+\sm{D} \emph{strictly dominates} \sm{P}. The relation on basic blocks ``\sm{A} strictly
+dominates \sm{B}'' intersected with ``\sm{A} is a direct predecessor of \sm{B}'' forms a
 tree called the \emph{dominance tree} of the [control-flow graph].}
 \end{quote}
 
 More specifically, transform \kl{Core} programs with
-{\small $\cnkw{save}\ \cnnt{id}\ (x\, {:}{=}\, \cnnt{pce})\ \cnkw{in}\ E$},
-into \emph{operationally equivalent ones} using {\small $\cnkw{where}$}
+\sm{\cnkw{save}\ \cnnt{id}\ (x\, {:}{=}\, \cnnt{pce})\ \cnkw{in}\ E},
+into \emph{operationally equivalent ones} using \sm{\cnkw{where}}
 expressions:
 {\small\[
         \cnnt{E}\ \cnkw{where}\ \left( \cncomp{\cnnt{id}_i\ (x_i {:} \beta_i).\ E_i}{i} \right).
@@ -116,14 +116,14 @@ in~\href{https://github.com/rems-project/cerberus/pull/1005}{Cerberus\#1005};
 it will be merged in soon. Explaining and justifying the transformation is
 beyond the scope of this chapter.
 
-Labels $\cnnt{id}_i$ are in scope in \emph{entry} expression $E$, and in each
-$E_i$, allowing for mutual
+Labels \sm{\cnnt{id}_i} are in scope in \emph{entry} expression \sm{E}, and in each
+\sm{E_i}, allowing for mutual
 recursion, but are encapsulated from the enclosing expression. This is unlike
-\kl{Core}'s {\small $\cnkw{save}$} operator, whose label is in scope of
-the enclosing \emph{procedure}. Variables defined in entry expression $E$ are
+\kl{Core}'s \sm{\cnkw{save}} operator, whose label is in scope of
+the enclosing \emph{procedure}. Variables defined in entry expression \sm{E} are
 not in scope
-in $E_i$, which are parameterised over (for simplicity) a single variable
-$x_i$. Most importantly, the enclosing expression is its \emph{frame}, and
+in \sm{E_i}, which are parameterised over (for simplicity) a single variable
+\sm{x_i}. Most importantly, the enclosing expression is its \emph{frame}, and
 unlike in \kl{Core}, is preserved in the dynamic semantics.
 
 % {\small%
@@ -143,19 +143,19 @@ unlike in \kl{Core}, is preserved in the dynamic semantics.
     \rightarrow \left< h , C_1 \left[ \left[ \cnnt{value} / x \right] E\ \cnkw{where}\ l \right], \kappa \right> }
 \]}
 
-A {\small$\cnkw{where}$} expression is a context {\small$\cnnt{C} \,
-{:}{=} \, \ldots \mid C\ \cnkw{where}\ l$}, and {\small$l$} is a short-hand for
-the family of labels {\small$\cncomp{\cnnt{id}_i\ (x_i {:} \beta_i).\
-E_i}{i}$}. When {\small$\cnkw{run}$}ning to a label, we search the context for
-its definition $l$ and jump to its body with parameter substituted {\small
-$[\cnnt{value} / x] E$}, keeping the enclosing context $C_1$, but discarding
-the intervening context {\small$C_2$}, in a style reminiscent of checked
+A \sm{\cnkw{where}} expression is a context \sm{\cnnt{C} \,
+{:}{=} \, \ldots \mid C\ \cnkw{where}\ l}, and \sm{l} is a short-hand for
+the family of labels \sm{\cncomp{\cnnt{id}_i\ (x_i {:} \beta_i).\
+E_i}{i}}. When \sm{\cnkw{run}}ning to a label, we search the context for
+its definition \sm{l} and jump to its body with parameter substituted
+\sm{[\cnnt{value} / x] E}, keeping the enclosing context \sm{C_1}, but discarding
+the intervening context \sm{C_2}, in a style reminiscent of checked
 exceptions.
 
 Note that, \sidetextcite{ghalayini2024denotational} stratify their language
-into statements and expressions; their {\small$\cnkw{where}$} construct is a
-statement, but here, a {\small$\cnkw{pure}(\cnnt{value})$} expression exits a
-{\small$\cnkw{where}$} expression.
+into statements and expressions; their \sm{\cnkw{where}} construct is a
+statement, but here, a \sm{\cnkw{pure}(\cnnt{value})} expression exits a
+\sm{\cnkw{where}} expression.
 
 {\small%
 \[
@@ -165,19 +165,19 @@ statement, but here, a {\small$\cnkw{pure}(\cnnt{value})$} expression exits a
     \rightarrow \left< h , \cnkw{pure}(\cnnt{value}), \kappa \right> }
 \]}
 
-A consequence of the transformation of {\small$\cnkw{save}$}-\kl{Core} programs
-to {\small$\cnkw{where}$}-\kl{Core} programs is that each label is either a
+A consequence of the transformation of \sm{\cnkw{save}}-\kl{Core} programs
+to \sm{\cnkw{where}}-\kl{Core} programs is that each label is either a
 loop back-edge, a join-point from an if-expression, or a C source label. To
-state typing rules for {\small$\cnkw{where}$}-expressions, we need two ingredients.
+state typing rules for \sm{\cnkw{where}}-expressions, we need two ingredients.
 \begin{enumerate}
-  \item \emph{Ordered} resource contexts {\small $\mathcal{W}$}, to mirror the
-      {\small$\cnkw{where}$}-contexts in the dynamics. These will consist of
-      \kl{linear} \kl{resource contexts} {\small $\mathcal{R}$}, separated by label
-      definitions $l$ as ordering markers.
-  \item Preconditions {\small$\cnnt{fun}$} and {\small$\cnnt{fun}_i$}
-      for the entry expression {\small $E$}, and each label {\small
-      $\cnnt{id}_i$} respectively, which end in
-      {\small$\cnkw{false} \wedge \cnkw{I}$}.
+  \item \emph{Ordered} resource contexts \sm{\mathcal{W}}, to mirror the
+      \sm{\cnkw{where}}-contexts in the dynamics. These will consist of
+      \kl{linear} \kl{resource contexts} \sm{\mathcal{R}}, separated by label
+      definitions \sm{l} as ordering markers.
+  \item Preconditions \sm{\cnnt{fun}} and \sm{\cnnt{fun}_i}
+      for the entry expression \sm{E}, and each label
+      \sm{\cnnt{id}_i} respectively, which end in
+      \sm{\cnkw{false} \wedge \cnkw{I}}.
 \end{enumerate}
 
 {\small%
@@ -197,13 +197,13 @@ state typing rules for {\small$\cnkw{where}$}-expressions, we need two ingredien
   { \mathcal{C}; \mathcal{L}; \Phi; \mathcal{R} \Colon \mathcal{W} \vdash{} \cnnt{fun}.\ E\ \cnkw{where}\  l \Leftarrow \cnnt{ret} }
 \]}
 
-I can also sketch a typing rule for {\small$\cnkw{run}$}s. First, any
+I can also sketch a typing rule for \sm{\cnkw{run}}s. First, any
 \kl(CN){resources} in the intervening depths would need to disposed, for
 example, removing the storage for block-local variables. Second, the
-$\cnnt{spine}$ would be checked against the function type $\cnnt{fun}$
-(obtained via a lookup of the label $\cnnt{id}$ in the ordered resource
+\sm{\cnnt{spine}} would be checked against the function type \sm{\cnnt{fun}}
+(obtained via a lookup of the label \sm{\cnnt{id}} in the ordered resource
 context). Note, only the \kl{resources} up to the
-{\small$\cnkw{where}$}-expression need to be consumed, everything above it is
+\sm{\cnkw{where}}-expression need to be consumed, everything above it is
 `framed' when checking the label body.
 
 {\small%
@@ -219,7 +219,7 @@ context). Note, only the \kl{resources} up to the
 As in~\arefpart{formalisation}, the above rules are phrased over a
 hypothetical, explicitly annotated \kl{ResCore} with this new construct. Whilst
 the setup enables inferring frames for a label, inferring
-\kl(CN){preconditions} {\small$\cnnt{fun}$} depends on the label type. A loop
+\kl(CN){preconditions} \sm{\cnnt{fun}} depends on the label type. A loop
 back-edge will be annotated with the loop invariant. A join-point from an
 if-expression can bifurcate type checking as currently, or handled as described
 later (\cref{sec:join-points}). C source labels can be handled by analogy to
@@ -238,35 +238,35 @@ actions. Quoting at length from \sidetextcite{memarian2022cerberus}:
 \emph{%
 Each use of an action is either ``positive'' (the default case) or
 ``negative'' (if the action appears in the syntax as the operand of the
-$\cnkw{neg()}$ operator). [..] Intuitively, a \kl{Core} action is negative
+\sm{\cnkw{neg()}} operator). [..] Intuitively, a \kl{Core} action is negative
 when it elaborates what the C standard calls a ``side-effect'' (as opposed to
 value computations), that is, memory accesses which are not directly used for
 producing the value of a C expression. This is for example, the store
 performed by a postfix increment operator.}
 \end{quote}
 
-The {\small$\cnkw{let}\ \cnkw{strong}\ \cnnt{pat}\ \cnkw{=}\ \cnnt{E}_1\ \cnkw{in}\
-\cnnt{E}_2$} construct sequences all memory actions performed by {\small$\cnnt{E}_1$}
-before those performed by {\small$\cnnt{E}_2$}. However, {\small$\cnkw{let}\ \cnkw{weak}$} only
-sequences positive memory actions similarly; in other words, for {\small$\cnkw{let}\
-\cnkw{weak}\ \cnnt{pat} = \cnnt{E}_1\ \cnkw{in}\ \cnnt{E}_2$}, any
-negative memory actions performed by {\small$\cnnt{E}_1$} are unsequenced with respect
-to all memory actions performed by {\small$\cnnt{E}_2$}. A \emph{race} occurs if
+The \sm{\cnkw{let}\ \cnkw{strong}\ \cnnt{pat}\ \cnkw{=}\ \cnnt{E}_1\ \cnkw{in}\
+\cnnt{E}_2} construct sequences all memory actions performed by \sm{\cnnt{E}_1}
+before those performed by \sm{\cnnt{E}_2}. However, \sm{\cnkw{let}\ \cnkw{weak}} only
+sequences positive memory actions similarly; in other words, for \sm{\cnkw{let}\
+\cnkw{weak}\ \cnnt{pat} = \cnnt{E}_1\ \cnkw{in}\ \cnnt{E}_2}, any
+negative memory actions performed by \sm{\cnnt{E}_1} are unsequenced with respect
+to all memory actions performed by \sm{\cnnt{E}_2}. A \emph{race} occurs if
 unsequenced memory actions have overlapping footprints, and is deemed \kl{UB}.
 
 The formalisation and implementation of weak sequencing is complex. Here, I
 offer a simpler presentation which I conjecture is equivalent and then offer
 few remarks on how to adapt \kl{CN}'s \kl{resource types} to fit it.
 
-A footprint {\small$\cnnt{fp}$} of an action is the range of bytes in memory it touches.
-Like actions, footprints can be positive {\small${\color{red}\cnkw{pos}(\cnnt{fp})}$}
-or negative {\small${\color{red}\cnkw{neg}(\cnnt{fp})}$}. A set of such footprints is
-called an annotation {\small${\color{red}A}$}, and I use the notation
-{\small${\color{red}A^{-}}$} to denote all the negative footprints in {\small${\color{red}A}$}
-and {\small${\color{red}A^{+}}$} for all the positive ones.
+A footprint \sm{\cnnt{fp}} of an action is the range of bytes in memory it touches.
+Like actions, footprints can be positive \sm{{\color{red}\cnkw{pos}(\cnnt{fp})}}
+or negative \sm{{\color{red}\cnkw{neg}(\cnnt{fp})}}. A set of such footprints is
+called an annotation \sm{{\color{red}A}}, and I use the notation
+\sm{{\color{red}A^{-}}} to denote all the negative footprints in \sm{{\color{red}A}}
+and \sm{{\color{red}A^{+}}} for all the positive ones.
 
-Negative actions step to a new {\small$\cnkw{delay}(\cnnt{actions}, \cnnt{E})$}
-construct, where {\small$\cnnt{actions}$} is a set. Note that the heap {\small$h$}
+Negative actions step to a new \sm{\cnkw{delay}(\cnnt{actions}, \cnnt{E})}
+construct, where \sm{\cnnt{actions}} is a set. Note that the heap \sm{h}
 does not change (yet).
 
 {\small%
@@ -284,9 +284,9 @@ does not change (yet).
 
 The dynamics of this construct allow reducing either one of the actions in
 the set, or the expression inside at any time; the latter because it counts as
-a context {\small$\cnnt{C} \, {:}{=} \, \ldots \mid \cnkw{delay}(\cnnt{actions}, C)$}.
-All {\small$\cnkw{delay}$}ed actions are negative, and all negative actions evaluate to
-{\small$\cnkw{Unit}$} (since they are side effects) and so the result of the action is
+a context \sm{\cnnt{C} \, {:}{=} \, \ldots \mid \cnkw{delay}(\cnnt{actions}, C)}.
+All \sm{\cnkw{delay}}ed actions are negative, and all negative actions evaluate to
+\sm{\cnkw{Unit}} (since they are side effects) and so the result of the action is
 ignored. The footprint is unnecessary as per the previous rule.
 
 {\small%
@@ -302,8 +302,8 @@ ignored. The footprint is unnecessary as per the previous rule.
       \langle h', \cnkw{delay}(\cnnt{actions}, E), \kappa \rangle }
 \]}
 
-The next ingredient is a {\small$\cnkw{disj}({\color{red}A}, E)$} construct, which is
-used to check if {\small${\color{red}A}$} races with {\small$E$}.
+The next ingredient is a \sm{\cnkw{disj}({\color{red}A}, E)} construct, which is
+used to check if \sm{{\color{red}A}} races with \sm{E}.
 
 {\small%
 \[
@@ -322,12 +322,12 @@ used to check if {\small${\color{red}A}$} races with {\small$E$}.
       \rangle }
 \]}
 
-The construct is used for weak sequencing, and is also a context {\small$\cnnt{C} \,
-{:}{=} \, \ldots \mid \cnkw{disj}({\color{red}A}, C)$}, allowing for the
+The construct is used for weak sequencing, and is also a context \sm{\cnnt{C} \,
+{:}{=} \, \ldots \mid \cnkw{disj}({\color{red}A}, C)}, allowing for the
 expression inside to reduce. Splitting the annotations, placing the positive
-ones on the outside and the negative ones in a {\small$\cnkw{disj}$} ensures the
-negative actions which \emph{were} part of evaluating {\small$\cnkw{pure}(\cnnt{value})$} are
-treated as if unsequenced with {\small$E$}, \ie{} required to not race.
+ones on the outside and the negative ones in a \sm{\cnkw{disj}} ensures the
+negative actions which \emph{were} part of evaluating \sm{\cnkw{pure}(\cnnt{value})} are
+treated as if unsequenced with \sm{E}, \ie{} required to not race.
 
 {\small%
 \[
@@ -347,7 +347,7 @@ treated as if unsequenced with {\small$E$}, \ie{} required to not race.
       \rangle }
 \]}
 
-Nested {\small$\cnkw{delay}$}s can be combined by taking the union of their action sets.
+Nested \sm{\cnkw{delay}}s can be combined by taking the union of their action sets.
 
 {\small%
 \[
@@ -359,8 +359,8 @@ Nested {\small$\cnkw{delay}$}s can be combined by taking the union of their acti
       \langle h, \cnkw{delay}(\cnnt{actions}_1 \cup \cnnt{actions}_2, E), \kappa \rangle }
 \]}
 
-Crucially, {\small$\cnkw{delay}$}s can be hoisted out of {\small$\cnkw{let}\ \cnkw{weak}$},
-{\small$\cnkw{unseq}$}, {\small$\cnkw{disj}$} and annotated {\small$\prescript{\color{red}A}{}{E}$}
+Crucially, \sm{\cnkw{delay}}s can be hoisted out of \sm{\cnkw{let}\ \cnkw{weak}},
+\sm{\cnkw{unseq}}, \sm{\cnkw{disj}} and annotated \sm{\prescript{\color{red}A}{}{E}}
 expressions. The rule for the first is given below, and the rest follow a
 similar pattern.
 
@@ -382,34 +382,34 @@ similar pattern.
       \rangle }
 \]}
 
-Notably absent, {\small$\cnkw{let}\ \cnkw{strong}$} or {\small$\cnkw{bound}$} expressions
-\emph{do not} permit hoisting {\small$\cnkw{delay}$}s out of them. This forces any
+Notably absent, \sm{\cnkw{let}\ \cnkw{strong}} or \sm{\cnkw{bound}} expressions
+\emph{do not} permit hoisting \sm{\cnkw{delay}}s out of them. This forces any
 delayed actions to be evaluated and any races to checked before proceeding.
 
 Though unusual, the constructs and rules are simple. The hoisting behaviour of
-{\small$\cnkw{delay}(\cnnt{actions}, E)$} is reminiscent of the outward
+\sm{\cnkw{delay}(\cnnt{actions}, E)} is reminiscent of the outward
 propagation of an algebraic effect~\sidecite{pretnar2015an}, and the barrier
-behaviour of a {\small$\cnkw{let}\ \cnkw{strong}$} or {\small$\cnkw{bound}$}
+behaviour of a \sm{\cnkw{let}\ \cnkw{strong}} or \sm{\cnkw{bound}}
 expression is similar to a handler.
 
 One straightforward approach to typing this would be to take advantage of the fact
 that negative actions are only ever used for stores. Thus, in addition to
-indexing the points-to predicate $\cnkw{Owned}$ by the C type ($\tau$) and the
-initialisation status ($✓$, $\uninitCross$), we track whether it is
+indexing the points-to predicate \sm{\cnkw{Owned}} by the C type (\sm{\tau}) and the
+initialisation status (\sm{✓}, \sm{\uninitCross}), we track whether it is
 \emph{delayed} or an \emph{immediate}. Next, we annotate each resource in the
 context with a usage annotation (we need 0 and 1 at the very least). With that,
 the typing rules
 become:
 \begin{itemize}
-    \item Negative stores consume an immediate {\small$\cnkw{Owned}$}, but return a
+    \item Negative stores consume an immediate \sm{\cnkw{Owned}}, but return a
         delayed one (with usage 1).
-    \item {\small$\cnkw{let}\ \cnkw{weak}$} marks all delayed, usage 1
-        {\small$\cnkw{Owned}$}s returned by {\small$E_1$} with usage 0 for
-        checking {\small$E_2$}.
-    \item {\small$\cnkw{let}\ \cnkw{strong}$} marks all delayed, usage 0
-        {\small$\cnkw{Owned}$}s returned by {\small$E_1$} with usage 1 for
-        checking {\small$E_2$}.
-    \item A bound expression changes all delayed {\small$\cnkw{Owned}$}s
+    \item \sm{\cnkw{let}\ \cnkw{weak}} marks all delayed, usage 1
+        \sm{\cnkw{Owned}}s returned by \sm{E_1} with usage 0 for
+        checking \sm{E_2}.
+    \item \sm{\cnkw{let}\ \cnkw{strong}} marks all delayed, usage 0
+        \sm{\cnkw{Owned}}s returned by \sm{E_1} with usage 1 for
+        checking \sm{E_2}.
+    \item A bound expression changes all delayed \sm{\cnkw{Owned}}s
         returned by its argument expression into immediate ones.
 \end{itemize}
 
@@ -428,11 +428,11 @@ contexts} after an if-expression and (b) defining how to handle resource
 lookup/inference with \kl{conditional-resources} in the context whilst avoiding
 performance slowdown.
 
-Assume a judgement of the form $\Phi ; \mathcal{R} \vdash E \dashv \cnnt{term}
-\mathrel{\&} \Phi' ; \mathcal{R}'$ where $\Phi$ is the input constraint
-context, $\mathcal{R}$ is the input resource context, context, $E$ is the input
-\kl{Core} expression, $\cnnt{term}$ is the output symbolic evaluation of the
-\kl{Core} expression, $\Phi' ; \mathcal{R}'$ are the output constraint and
+Assume a judgement of the form \sm{\Phi ; \mathcal{R} \vdash E \dashv \cnnt{term}
+\mathrel{\&} \Phi' ; \mathcal{R}'} where \sm{\Phi} is the input constraint
+context, \sm{\mathcal{R}} is the input resource context, context, \sm{E} is the input
+\kl{Core} expression, \sm{\cnnt{term}} is the output symbolic evaluation of the
+\kl{Core} expression, \sm{\Phi' ; \mathcal{R}'} are the output constraint and
 resource contexts respectively (to reduce clutter, I am omitting variable
 environments).
 
@@ -462,9 +462,9 @@ primary benefit is to reduce work later.
 
 The problem then becomes how to use a conditional-resource in the context.
 Specifically, how to handle the below situation without resorting to an
-exponential blow-up. Inputs are constraints $\Phi$, resources $\mathcal{R}$ and
-the requested resource $r$. Outputs are the remaining lookup $\mathcal{R}'$,
-and the leftover context $\mathcal{R}''$ after a partially successful lookup.
+exponential blow-up. Inputs are constraints \sm{\Phi}, resources \sm{\mathcal{R}} and
+the requested resource \sm{r}. Outputs are the remaining lookup \sm{\mathcal{R}'},
+and the leftover context \sm{\mathcal{R}''} after a partially successful lookup.
 
 {\small%
 \[
@@ -474,7 +474,7 @@ and the leftover context $\mathcal{R}''$ after a partially successful lookup.
 The first thing to check would be \emph{nominal} equality. A conditional
 resource may come from what a user wrote (in a \kl(CN){specification} or a
 \kl(CN){predicate definition}) and so can be identified as an anonymous
-\kl(CN){predicate} of sorts: $\cnnt{\#loc}\;(\ldots)$. In this case, it would
+\kl(CN){predicate} of sorts: \sm{\cnnt{\#loc}\;(\ldots)}. In this case, it would
 suffice to check equality on source location and arguments.
 
 {\small%
@@ -488,7 +488,7 @@ suffice to check equality on source location and arguments.
 \]}
 
 If the nominal equality fails, the next thing to check would be
-\emph{structural} equality, if $\cnnt{pce}_1 \leftrightarrow \cnnt{pce}_2$,
+\emph{structural} equality, if \sm{\cnnt{pce}_1 \leftrightarrow \cnnt{pce}_2},
 then the check can recurse on both branches.
 
 {\small%
@@ -505,7 +505,7 @@ then the check can recurse on both branches.
            \rightsquigarrow \cdot ; \mathcal{R} }
 \]}
 
-And similarly for $\cnnt{pce}_1 \leftrightarrow \neg \cnnt{pce}_2$. If a
+And similarly for \sm{\cnnt{pce}_1 \leftrightarrow \neg \cnnt{pce}_2}. If a
 two-sided match fails, then the next thing to check would be a one-sided
 structural equality.
 
@@ -521,9 +521,9 @@ structural equality.
            \\ \quad \rightsquigarrow (\cnkw{if}\ \cnkw{pce}_2\ \cnkw{emp}\ \cnkw{else}\ \mathcal{R}_{22}) ; \mathcal{R} }
 \]}
 
-Similarly we can test $\cnnt{pce}_1 \rightarrow \neg \cnnt{pce}_2$, $\neg
-\cnnt{pce}_1 \rightarrow \cnnt{pce}_2$ or $\neg \cnnt{pce}_1 \rightarrow \neg
-\cnnt{pce}_2$, and proceed accordingly.
+Similarly we can test \sm{\cnnt{pce}_1 \rightarrow \neg \cnnt{pce}_2}, \sm{\neg
+\cnnt{pce}_1 \rightarrow \cnnt{pce}_2} or \sm{\neg \cnnt{pce}_1 \rightarrow \neg
+\cnnt{pce}_2}, and proceed accordingly.
 
 If all of these fail, then the inference fails, or requires the user to give
 explicit permission to split on the condition of the resource and duplicate the
@@ -563,10 +563,10 @@ example, with the \kl{buddy allocator}, but need to be called from the bit-vecto
 world, and sometimes vice-versa.
 
 Integers are unbounded and bit-vectors are bounded. Mapping from bit-vectors to
-integers is straightforward: insert {\small$\cnnt{term} \mod 2^k$} as needed, as long
+integers is straightforward: insert \sm{\cnnt{term} \mod 2^k} as needed, as long
 as one accepts the resulting expression may not being decidable (represented
-with uninterpreted functions): $x \times y$ in bit-vectors will be
-{\small$\mathrm{mul\_uf}(x,y) \mod 2^{64}$} in integers. We can apply this
+with uninterpreted functions): \sm{x \times y} in bit-vectors will be
+\sm{\mathrm{mul\_uf}(x,y) \mod 2^{64}} in integers. We can apply this
 transformation and get an expression which will give the same answer.
 
 Going from integers to bit-vectors is difficult because the process is
@@ -578,10 +578,10 @@ world', `bit-vector world', and then define a mapping from an expression in the
 former, to a pair of an in-bounds constraint and equivalent expression and in
 the latter.
 
-Let $\beta$ be the \kl{base types} in the bounded bit-vector world. Let $\iota$
-be the \kl{base types} in the unbounded integer world. Let {\small$\cnkw{num}
-\mathrel{{:}{=}} \cnkw{int} \mid \cnkw{bit}$} be a parameter for the following.
-Let {\small$\cnnt{term}_{\cnkw{num}}$} be the grammar of SMT terms,
+Let \sm{\beta} be the \kl{base types} in the bounded bit-vector world. Let \sm{\iota}
+be the \kl{base types} in the unbounded integer world. Let \sm{\cnkw{num}
+\mathrel{{:}{=}} \cnkw{int} \mid \cnkw{bit}} be a parameter for the following.
+Let \sm{\cnnt{term}_{\cnkw{num}}} be the grammar of SMT terms,
 parameterised over the choice of integers or bit-vectors.
 
 {\small%
@@ -593,15 +593,15 @@ parameterised over the choice of integers or bit-vectors.
 f(t^1_{\cnkw{num}}, \ldots, t^n_{\cnkw{num}})
 \end{align*}}
 
-Under this convention, terms {\small$t_{\cnkw{int}} {:} \iota$} and
-{\small$t_{\cnkw{bit}} {:} \beta$}. I use {\small$b$} for formulas of boolean type:
-{\small$b_{\cnkw{bit}} {:} \cnkw{bool}$}.
+Under this convention, terms \sm{t_{\cnkw{int}} {:} \iota} and
+\sm{t_{\cnkw{bit}} {:} \beta}. I use \sm{b} for formulas of boolean type:
+\sm{b_{\cnkw{bit}} {:} \cnkw{bool}}.
 
-Let {\small$\mathrm{Decls}$} be a context with declaration types of \kl(CN){pure SMT functions}. The judgement
-{\small$\mathrm{Decls} ; \Gamma \vdash t_{\cnkw{int}} \Rightarrow \iota$}  means that
-under declarations {\small$\mathrm{Decls}$} and context {\small$\Gamma$}, expression in the
-source integer world {\small$t_{\cnkw{int}}$} has type {\small$\iota$}. {\small$\mathrm{Decls}$} is a
-map from function names to function types, {\small$\Gamma$} is a map from parameters
+Let \sm{\mathrm{Decls}} be a context with declaration types of \kl(CN){pure SMT functions}. The judgement
+\sm{\mathrm{Decls} ; \Gamma \vdash t_{\cnkw{int}} \Rightarrow \iota}  means that
+under declarations \sm{\mathrm{Decls}} and context \sm{\Gamma}, expression in the
+source integer world \sm{t_{\cnkw{int}}} has type \sm{\iota}. \sm{\mathrm{Decls}} is a
+map from function names to function types, \sm{\Gamma} is a map from parameters
 and local variables to types.
 
 {\small%
@@ -612,7 +612,7 @@ and local variables to types.
 \]}
 
 For the target bit-vector world, the setup is similar, except recursive
-functions, also have named recursive constraints, named {\small$f_b$}.
+functions, also have named recursive constraints, named \sm{f_b}.
 
 Note that the bottom-rule has \emph{two} function definitions: the first one is
 the \kl{precondition}, assuming which, the second gives the same result as the
@@ -638,10 +638,10 @@ original (integer-world) function.
      \end{matrix}} }
 \]}
 
-I will use {\small$\rightsquigarrow$} to define a mapping from the integer
+I will use \sm{\rightsquigarrow} to define a mapping from the integer
 world to the pair of bounds-constraint and expression in the bit-vector world.
-For example, the mapping between types, from {\small$\iota$} to
-{\small$\beta$}, could be as below.
+For example, the mapping between types, from \sm{\iota} to
+\sm{\beta}, could be as below.
 
 {\small
 \begin{align*}
@@ -665,8 +665,8 @@ For typing judgements, variables are typed with a lookup in the context.
 
 Typing for binary operations is translated by inserting no-overflow
 constraints.\sidenote{\url{https://github.com/Z3Prover/z3/discussions/5138\#discussioncomment-544642}}
-I will omit the kind annotation on terms to reduce syntactic noise, using $t$
-for $t_{\cnkw{num}}$ and $t'$ for $t_{\cnkw{bit}}$. The context should also
+I will omit the kind annotation on terms to reduce syntactic noise, using \sm{t}
+for \sm{t_{\cnkw{num}}} and \sm{t'} for \sm{t_{\cnkw{bit}}}. The context should also
 make it clear which is intended.
 
 {\small%
@@ -692,8 +692,8 @@ the same for the body, which may refer to the bound variable.
 \]}
 
 Typing for if-expressions is translated as follows. The evaluation of the
-branch condition $t'_1$ is constrained by $b_1$, and the evaluation of each
-branch is constrained similarly. Note that the precondition refers to $t'_1$
+branch condition \sm{t'_1} is constrained by \sm{b_1}, and the evaluation of each
+branch is constrained similarly. Note that the precondition refers to \sm{t'_1}
 too.
 
 {\small%
@@ -750,20 +750,20 @@ similar in spirit to the aforementioned translation from integers to
 bit-vectors.
 
 One way to solve this is by introducing the distinction at the base type level.
-Pure base types are {\small$\beta$}, resourceful ones could be
-{\small$\cnkw{res}\,\beta$}, and the SMT-related ones could be
-{\small$\cnkw{smt}\,\beta$}. Note that this can be merely an internal
+Pure base types are \sm{\beta}, resourceful ones could be
+\sm{\cnkw{res}\,\beta}, and the SMT-related ones could be
+\sm{\cnkw{smt}\,\beta}. Note that this can be merely an internal
 representation to make it easier to specify type inference and checking, it
 does not need to affect the surface syntax that the user sees.
 
-Terms of type {\small$\cnkw{res}\,\beta$} can be interpreted as maps into \kl{separation
-logic} propositions, {\small$\beta \rightarrow \mathsf{Prop}^\mathsf{SL}$}, as mentioned
-in~\cref{fig:monad-sl}. Terms of {\small$\cnkw{smt}\,\beta$} are instead interpreted as
-a \emph{pairs} {\small$\beta \times \mathsf{Prop}^\mathsf{SMT}$}. Consider the
-aforementioned term grammar extended with {\small$\cnkw{assert}(b)$}. A full treatment
+Terms of type \sm{\cnkw{res}\,\beta} can be interpreted as maps into \kl{separation
+logic} propositions, \sm{\beta \rightarrow \mathsf{Prop}^\mathsf{SL}}, as mentioned
+in~\cref{fig:monad-sl}. Terms of \sm{\cnkw{smt}\,\beta} are instead interpreted as
+a \emph{pairs} \sm{\beta \times \mathsf{Prop}^\mathsf{SMT}}. Consider the
+aforementioned term grammar extended with \sm{\cnkw{assert}(b)}. A full treatment
 would involve a typed translation similar to that for the integer-to-bit-vector
-translation, particularly to get the type $\beta$ for translating
-{\small$\cnkw{assert}(b)$} to {\small$\cnkw{default}\,\beta$}, but I present a sketch below.
+translation, particularly to get the type \sm{\beta} for translating
+\sm{\cnkw{assert}(b)} to \sm{\cnkw{default}\,\beta}, but I present a sketch below.
 
 {\small%
 \begin{align*}
