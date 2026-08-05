@@ -20,7 +20,7 @@ integers).
 \kl{Cerberus} factors out the representation of pointers, and the choice of
 rules for manipulating them, into a \emph{memory interface}
 (\cref{fig:effectful-core-grammar}), consisting of memory operations
-$\mathit{memop}$ and memory $\mathit{actions}$. A \intro{memory object
+\sm{\mathit{memop}} and memory \sm{\mathit{actions}}. A \intro{memory object
 model}\sidenote{Named so to distinguish it from a memory model in a concurrency
 setting.} is an implementation of that interface.
 
@@ -165,9 +165,9 @@ Assuming the address is guessed correctly, this program raises two questions:
 Does this program have \kl{undefined behaviour}, and if so, where and why? If
 it is compiled and executed, what will it print?
 
-Indeed, it does, at the store on line 8. Stores require non-$@\mathsf{empty}$
+Indeed, it does, at the store on line 8. Stores require non-\sm{@\mathsf{empty}}
 provenance but line 7 triggers the second rule in~\cref{fig:pnvi-ival-to-pval},
-resulting in \cinline{p} having $@\mathsf{empty}$ \kl{provenance}. It can print 5,
+resulting in \cinline{p} having \sm{@\mathsf{empty}} \kl{provenance}. It can print 5,
 because the compiler may assume that \cninline{p} cannot alias the local
 variable \cinline{i}, and thus perform constant propagation over the
 assignment.
@@ -200,17 +200,17 @@ descriptive as each part signals a particular design choice.
 \subsection{Provenance not tracked via integers}
 
 For the purposes of defining the dynamic semantics of the \kl{memory object model},
-each pointer can be thought of as either $\mathsf{NULL}$ or a \emph{pair} of an
-address $a$ and an \kl{provenance} $\pi$. The address is simply what programmers
+each pointer can be thought of as either \sm{\mathsf{NULL}} or a \emph{pair} of an
+address \sm{a} and an \kl{provenance} \sm{\pi}. The address is simply what programmers
 might be familiar with as `the pointer', which, unlike the \kl{provenance}, may be
 inspected or manipulated directly from the C program at runtime. From the
 perspective of separation logic verification, the \kl{provenance} can be thought of
 as the ghost part of a pointer, but it does play an integral part of the model
 of memory I will outline next.
 
-\intro{Provenances} are either $@\mathsf{empty}$, or \kl{allocation IDs} $@i$ for integer
-$i$. \intro{Allocation IDs} are allocated fresh globally for every new allocation, and
-thus guaranteed to be unique. An \intro{allocation history} $\mathit{A}$ is a
+\intro{Provenances} are either \sm{@\mathsf{empty}}, or \kl{allocation IDs} \sm{@i} for integer
+\sm{i}. \intro{Allocation IDs} are allocated fresh globally for every new allocation, and
+thus guaranteed to be unique. An \intro{allocation history} \sm{\mathit{A}} is a
 partial map indexed by \kl{allocation IDs}, which tracks their base address, size,
 and liveness. The pointer resulting from successfully creating a fresh
 allocation is a pair of base address and the \kl{allocation ID}\@. When an
@@ -220,28 +220,28 @@ which I will ignore because it is not relevant to the key concepts.
 
 The \kl{allocation history} merely tracks information about the allocation as a
 whole; to track values of what resides in those allocations, \kl{PNVI-ae-udi}
-also uses a memory $M$ as part of the abstract state. This is not just a map
+also uses a memory \sm{M} as part of the abstract state. This is not just a map
 from addresses to bytes, but to pairs of a (potentially empty) provenance and a
-concrete 8-bit byte or $\mathsf{unspec}$ value for uninitialised or padding
+concrete 8-bit byte or \sm{\mathsf{unspec}} value for uninitialised or padding
 bytes.\sidenote{There is an additional component, an optional \intro{pointer
-    index} (an integer $j$ or $\mathsf{none}$) which stores which part of a
-    pointer a byte came from, to forbid a (non-$@\mathsf{empty}$) provenance
+    index} (an integer \sm{j} or \sm{\mathsf{none}}) which stores which part of a
+    pointer a byte came from, to forbid a (non-\sm{@\mathsf{empty}}) provenance
     mismatch in the bytes of pointers. I ignore it because I assume (a)
     different pointers types all have the same size and (b) provenance is
     \emph{not} tracked via integers. Condition (a) relies on the rule for
     stores forbidding unaligned writes for pointers (which it does). Condition
-    (b) relies on integers being stored with $@\mathsf{empty}$ provenance at
+    (b) relies on integers being stored with \sm{@\mathsf{empty}} provenance at
     the memory byte level. The latter covers \cinline{memcpy} for parts of
     pointers, which the standard (§7.23.2.1\#2) specifies as a copy of characters (which
     are integer values).}\label{sn:ignore-ptr-index}
 
-Reading from and writing to memory is done via the {\small $\cnkw{load}$} and
-{\small $\cnkw{store}$} actions, at a specific C type, and these actions handle
+Reading from and writing to memory is done via the \sm{\cnkw{load}} and
+\sm{\cnkw{store}} actions, at a specific C type, and these actions handle
 structured \kl{Core} values, not sequences of bytes. Marshalling between the
-two is handled via $\mathrm{repr}$ and $\mathrm{abst}$ functions. So for
-example, a pointer $(@i, a)$ as a value is going to be stored as a sequence of
-bytes in memory based on its address $a$, each byte with its provenance
-$@i$.\sidenote{There is also an optional \kl{pointer index} for each byte's
+two is handled via \sm{\mathrm{repr}} and \sm{\mathrm{abst}} functions. So for
+example, a pointer \sm{(@i, a)} as a value is going to be stored as a sequence of
+bytes in memory based on its address \sm{a}, each byte with its provenance
+\sm{@i}.\sidenote{There is also an optional \kl{pointer index} for each byte's
 position in the pointer, see note~\ref{sn:ignore-ptr-index}.}
 
 One frequently used idiom is casting a pointer to
@@ -267,7 +267,7 @@ therefore must somehow choose a provenance.
 
 One choice of provenance for the result of an integer-to-pointer cast
 is the \kl{allocation ID} of an allocation which is live at the time of the
-cast, whenever the address is within its footprint (and $@\mathsf{empty}$
+cast, whenever the address is within its footprint (and \sm{@\mathsf{empty}}
 otherwise).
 
 Whilst this is a reasonable choice, some members of the \kl{memory object
@@ -311,7 +311,7 @@ that allocation
 The `within that allocation' is key because \intro{one-past} pointers
 (frequently used to compare against the exclusive end of an allocation) would
 be assigned the \kl{allocation ID} of a live adjacent object, or
-$@\mathsf{empty}$ if there is no such thing. In either case, this would break
+\sm{@\mathsf{empty}} if there is no such thing. In either case, this would break
 the \kl{round-trip} property for \kl{one-past} pointers.
 
 \kl{Exposure} is why uncommenting line 6
@@ -319,7 +319,7 @@ in~\cref{fig:mem-model-ptr-from-int} \emph{removes} \kl{UB}. When line 6 is
 commented out, the allocation of the local variable \cinline{int i} remains
 \emph{un\kl{exposed}}, so the pointer \cinline{int *p} cast from the integer
 \cinline{j} on line 7, gets the empty provenance. Hence by line 8, the
-dereference is of a pointer with $@\mathsf{empty}$ provenance, and thus is
+dereference is of a pointer with \sm{@\mathsf{empty}} provenance, and thus is
 \kl{UB}.
 
 When line 6 is uncommented, the allocation of the local variable \cinline{int
@@ -334,7 +334,7 @@ Restoring \kl{round-trip} casts for \kl{one-past} pointers requires an
 additional complication to the \kl{memory object model}: a \kl{symbolic
 provenances}. A \intro{symbolic provenance} is one which is mapped to a set of
 either one or two \kl{allocation IDs} via an additional \kl(symbolic){finite
-map} $\mathit{\color{violet}{S}}$.
+map} \sm{\mathit{\color{violet}{S}}}.
 
 Thus, when an integer is cast to a \kl{one-past} pointer on the boundary
 between two live allocations, its \kl{provenance} is \kl{symbolic}, and is
@@ -390,7 +390,7 @@ are annotated with the pointer whose provenance it must use. This is relaxed to
 support a limited form of the \kl{round-trip} property: only integer values
 which were cast from pointers, with no intervening operations, can be
 \kl{round-trip} cast back to pointers. Any intervening operation on that
-integer (including adding 0) will result in an $@\mathsf{empty}$ provenance
+integer (including adding 0) will result in an \sm{@\mathsf{empty}} provenance
 when cast to a pointer.
 
 This restriction is sufficient to remove both \kl{exposure tracking} and
@@ -416,12 +416,12 @@ provenance the resulting pointer must use (with the appropriate checks).
 \kl{VIP abstract state}, and a translation into \kl{PNVI-ae-udi}.
 The former is achieved via a very limited form of tracking
 provenances via integers. Integer values in \kl{VIP} are a
-datatype with two constructors: $\mathit{Loc}\,(@i, a) \mid \mathit{Int}\,(z \in
-\mathbb{Z})$. Casts from pointers $(@i, a)$ to integers just embed the pointer
-into the $\mathit{Loc}$ constructor, and casts back to pointers just take the
+datatype with two constructors: \sm{\mathit{Loc}\,(@i, a) \mid \mathit{Int}\,(z \in
+\mathbb{Z})}. Casts from pointers \sm{(@i, a)} to integers just embed the pointer
+into the \sm{\mathit{Loc}} constructor, and casts back to pointers just take the
 value out (\cref{fig:vip-ival-to-pval}). If the integer value has any
-intervening operations, only the integer parts (the address $a$ in
-$\mathit{Loc}$, the payload $z$ in $\mathit{Int}$) are projected and used, any
+intervening operations, only the integer parts (the address \sm{a} in
+\sm{\mathit{Loc}}, the payload \sm{z} in \sm{\mathit{Int}}) are projected and used, any
 provenance is forgotten (\cref{fig:vip-arith-binop}). If the integer has no
 provenance, then \cinline{copy_alloc_id} can be used to give it one
 (\cref{fig:vip-copy-alloc-id}).
@@ -461,10 +461,10 @@ of~\cref{fig:mem-model-ptr-from-int}. Using the same reasoning as
 in~\cref{subsec:address-exposed}, this code has no \kl{UB} under
 \kl{PNVI-ae-*}. In \kl{VIP} however, it does have \kl{UB}: line 8 is an
 \textsc{intFromPtr} cast which results in \cinline{uintptr_t k} holding
-\kl{VIP} integer value $\mathit{Loc}\,(@i, x)$, but \cinline{int j} has
-\kl{VIP} integer value $\mathit{Int}\,(x)$, meaning \cinline{int *p} has
-pointer value $(@\mathsf{empty}, x)$. Uncommenting line 11 would mean
-\cinline{p} is $(@i, x)$ instead, and make the program legal under \kl{VIP}.
+\kl{VIP} integer value \sm{\mathit{Loc}\,(@i, x)}, but \cinline{int j} has
+\kl{VIP} integer value \sm{\mathit{Int}\,(x)}, meaning \cinline{int *p} has
+pointer value \sm{(@\mathsf{empty}, x)}. Uncommenting line 11 would mean
+\cinline{p} is \sm{(@i, x)} instead, and make the program legal under \kl{VIP}.
 
 \begin{marginfigure}
     \raggedright%
@@ -662,14 +662,14 @@ work identically, and should be valid to replace with a call to the library
 \cinline{memcpy} as a compiler optimisation.
 
 In both \kl{VIP} and \kl{PNVI-ae-udi}, all these use-cases are supported by
-having the abstract bytes in the abstract memory $M$ store not just the byte
+having the abstract bytes in the abstract memory \sm{M} store not just the byte
 value (or \coreinline{Unspecified}) but also a \kl{provenance}. Pointer bytes
 can be individually overwritten, but so long as one is untouched (or
 \kl{exposed}), the original \kl{provenance} can be recovered. Unions with a
 pointer field can be supported similarly. Library and user-defined
 \cinline{memcpy} read and write the abstract bytes as characters
 (§7.23.2.1\#2), which are integer values, thus \kl{exposing} (tracked in
-\kl{VIP} via the $\mathit{Loc}$ constructor) their allocations along the way.
+\kl{VIP} via the \sm{\mathit{Loc}} constructor) their allocations along the way.
 
 This leads to even more options.
 \begin{itemize}
@@ -712,7 +712,7 @@ seem to support quite different low-level C idioms. This confluence happens
 because:
 \begin{itemize}
     \item In \kl{VIP} (unlike in \kl{PNVI-ae-udi}), \kl{round-trip} casts are made
-        possible by byte-level provenance (to preserve the $\mathit{Loc}$
+        possible by byte-level provenance (to preserve the \sm{\mathit{Loc}}
         constructor through loads and stores).
     \item Both idioms seem to reflect a \emph{more general \kl{round-trip}} property
         of casting (part of) a pointer to another representation and back.
@@ -762,7 +762,7 @@ Therefore, when the pointers of an \cinline{==} have equal addresses but
 distinct \kl{provenances}, the result will be non-deterministically true or
 false (\cref{fig:nd-ptr-eq}). In practice, this will only happen if one of the
 pointers is \kl{one-past}, or out-of-bounds as the result of permissive
-array/member shift, or has an $@\mathsf{empty}$ provenance as the result of a
+array/member shift, or has an \sm{@\mathsf{empty}} provenance as the result of a
 cast from an integer.
 
 \begin{figure*}
@@ -805,7 +805,7 @@ cast from an integer.
     are equal but \kl{provenances} are distinct (captured by the fourth case), the
     result of \cinline{==} operator will be non-deterministically either true or
     false. \textcolor{violet}{Parts specific to \kl{PNVI-ae-udi}, relating to
-    \kl{symbolic provenances} $\iota$ are coloured in violet}.
+    \kl{symbolic provenances} \sm{\iota} are coloured in violet}.
     \textcolor{red}{Parts which break monotonicity with respect to the
     $@\mathsf{empty}$ \kl{provenance} are highlighted in red}.}\label{fig:nd-ptr-eq}
 \end{figure*}
@@ -879,16 +879,16 @@ appendix, the authors assume strict (address-only) pointer equality rule for bot
 \kl{VIP} and \kl{PNVI-ae-udi}. This means they sidestep the issue I present
 next.
 
-The issue is that, as stated, $@\mathsf{empty}$ \kl{provenances} do not lead to
+The issue is that, as stated, \sm{@\mathsf{empty}} \kl{provenances} do not lead to
 strictly more \kl{UB} under \kl{PNVI-ae-udi}, and the proof of soundness of
 \kl{VIP} relies on this property. The example
 in~\cref{fig:non-det-ptr-eq-problem} illustrates this problem.\sidenote{ As
 mentioned in
 \href{https://github.com/rems-project/cerberus/issues/954}{Cerberus\#954}, the
 Cerberus implementation and formalisation differ in how they treat
-$(@\mathsf{empty}, a) == (@\mathsf{empty}, a)$. The Cerberus implementation
-treats it as always $\mathsf{true}$, whereas the Cerberus formalisation treats
-it as always $\mathsf{false}$. Both are problematic as
+\sm{(@\mathsf{empty}, a) == (@\mathsf{empty}, a)}. The Cerberus implementation
+treats it as always \sm{\mathsf{true}}, whereas the Cerberus formalisation treats
+it as always \sm{\mathsf{false}}. Both are problematic as
 per~\cref{fig:ptr-eq-hasse}, but need opposite if-conditions (\cinline{p != q} % chktex 26
 and \cinline{p == q}, respectively) for their counter-examples
 (\cref{fig:non-det-ptr-eq-problem}).}
@@ -908,27 +908,27 @@ and \cinline{p == q}, respectively) for their counter-examples
 \end{figure}
 
 Both examples construct two pointers, \cinline{p} and \cinline{q}, with the
-same address. In one version, both have $@\mathsf{empty}$ \kl{provenances}
-(lines 10 and 11), and in the other, \cinline{p} has a non-$@\mathsf{empty}$
+same address. In one version, both have \sm{@\mathsf{empty}} \kl{provenances}
+(lines 10 and 11), and in the other, \cinline{p} has a non-\sm{@\mathsf{empty}}
 \kl{provenance} (uncommenting line 12). If the pointers are ``equal'', the true
 branch\sidenote{But the false branch for the Cerberus implementation.} will
-trigger \kl{UB} with \cinline{*q}, since \cinline{q} has $@\mathsf{empty}$
-\kl{provenance} and loads require a non-$@\mathsf{empty}$, live \kl{allocation
+trigger \kl{UB} with \cinline{*q}, since \cinline{q} has \sm{@\mathsf{empty}}
+\kl{provenance} and loads require a non-\sm{@\mathsf{empty}}, live \kl{allocation
 ID}\@.
 
-When \cinline{p} and \cinline{q} both have $@\mathsf{empty}$ \kl{provenance},
+When \cinline{p} and \cinline{q} both have \sm{@\mathsf{empty}} \kl{provenance},
 the test is always \cinline{false},\sidenote{But always \cinline{true} in the
 implementation.} and so the \kl{UB} load is never triggered. However, when
-\cinline{p} has a non-$@\mathsf{empty}$ \kl{provenance}, the value of the
+\cinline{p} has a non-\sm{@\mathsf{empty}} \kl{provenance}, the value of the
 condition is non-deterministically \cinline{true} or \cinline{false}, and so
 both branches of the if-statement could run, and the whole program is deemed to
 have \kl{UB}.
 
 I solved this issue by adjusting the rule for pointer equality so that the
-$(@\mathsf{empty}, a) == (@\mathsf{emtpy}, a)$ case is also non-deterministic.
+\sm{(@\mathsf{empty}, a) == (@\mathsf{emtpy}, a)} case is also non-deterministic.
 This is both mathematically elegant, and beneficial for the \kl{CN}
 implementation because, in most cases\sidenote{Except for memory bytes,
-see~\fancyref{subsec:smt-rep}.} $@\mathsf{empty}$ \kl{provenances} can be
+see~\fancyref{subsec:smt-rep}.} \sm{@\mathsf{empty}} \kl{provenances} can be
 represented in the SMT solver problem as fresh unconstrained \kl{allocation IDs},
 rather than requiring a datatype with two separate constructors.
 
@@ -941,7 +941,7 @@ equality~\sidecite{gustedt2022provenance}.
 
 The \kl{allocation history} in \kl{VIP} and \kl{PNVI-ae-udi} is mostly append-only
 (new allocations are added, but old allocations are never removed) with the
-exception that when an allocation is {\small $\cnkw{kill}$}ed, a boolean flag
+exception that when an allocation is \sm{\cnkw{kill}}ed, a boolean flag
 in its entry (which is marked true when it is created) is set to false.
 
 An allocation being live is important for some pointer operations, such as
@@ -950,10 +950,10 @@ live allocation. For other operations, the operands must still satisfy a bounds
 check, but whether the allocation is live is irrelevant. There is no operation
 which requires knowing that an allocation is dead.
 
-In summary: bounds checks, some pointer operations, and {\small $\cnkw{kill}$},
+In summary: bounds checks, some pointer operations, and \sm{\cnkw{kill}},
 all require allocation information. Additionally, pointer operations and
-{\small $\cnkw{kill}$} require the allocation to be live (bounds checks do
-not). Only {\small $\cnkw{kill}$} mutates existing \kl{allocation history}
+\sm{\cnkw{kill}} require the allocation to be live (bounds checks do
+not). Only \sm{\cnkw{kill}} mutates existing \kl{allocation history}
 entries (in \kl{VIP}).
 
 As such, in \kl{CN}, I chose to represent the bounds as \emph{constraints},
@@ -987,7 +987,7 @@ tracking any disjointness would add complexity for little benefit.
 
 \kl{Memory object models} are defined over concrete values and executions, but
 \kl{CN} computes over symbolic values, and the translation from the former to
-the latter is non-trivial, I will explain shortly with $@\mathsf{empty}$
+the latter is non-trivial, I will explain shortly with \sm{@\mathsf{empty}}
 provenances.
 
 \paragraph{Addresses.}%
@@ -1000,18 +1000,18 @@ variables, without the use of lemmas).
 Should \kl{provenances} be concrete? Any choice must respect how they are used
 \textemdash{} for querying whether two are equal; for querying whether two are
 distinct (only for non-deterministic pointer equality); for the
-non-$@\mathsf{empty}$ ones (\kl{allocation IDs}), used as keys into the
+non-\sm{@\mathsf{empty}} ones (\kl{allocation IDs}), used as keys into the
 \kl{allocation history} (to lookup an allocation's base address and size).
 
 \paragraph{Empty \kl{provenance}.}%
-If the \kl{memory object model} uses the $@\mathsf{empty}$ \kl{provenance}
+If the \kl{memory object model} uses the \sm{@\mathsf{empty}} \kl{provenance}
 monotonically with respect to \kl{UB}, then it may be represented
 as an unconstrained \kl{allocation ID}.\@ Currently, there are two places where
 this is not the case. The first is non-deterministic pointer equality
 (\cref{subsec:non-det-ptr-eq}), but this is easy to fix. The second is in
 recovering \kl{provenance} from bytes: this is important to support, but is
 limited only to bytes, which can be represented as a distinct C type. Thus
-$@\mathsf{empty}$ \kl{provenances} can be represented as unconstrained
+\sm{@\mathsf{empty}} \kl{provenances} can be represented as unconstrained
 \kl{allocation IDs} for pointers, and represented as an option type for bytes.
 
 % Still, we can entertain how one might
@@ -1031,7 +1031,7 @@ $@\mathsf{empty}$ \kl{provenances} can be represented as unconstrained
 % \end{itemize}
 
 \paragraph{Non-empty \kl{provenances} (\kl{allocation IDs}).}%
-As for non-$@\mathsf{empty}$ \kl{provenances} (\kl{allocation IDs}), it is
+As for non-\sm{@\mathsf{empty}} \kl{provenances} (\kl{allocation IDs}), it is
 simplest to model them symbolically, and leave it to the user to
 constrain them to be equal or distinct.
 
@@ -1097,7 +1097,7 @@ This constraint excludes the counter-intuitive (and non-deterministic) case of
 the \kl{provenances} being distinct but the addresses equal.\sidenote{Stated another
 way, it can be seen as a promise that neither of the pointers are \kl{one-past}
 pointers, nor out-of-bounds as the result of a permissive array/member shift,
-nor have an $@\mathsf{empty}$ \kl{provenance} as a result of a cast from an
+nor have an \sm{@\mathsf{empty}} \kl{provenance} as a result of a cast from an
 integer. A sufficient (but not necessary) condition for this is that both
 pointers are strictly within bounds of their allocations.} Whilst \kl{CN} aims
 to minimise obvious annotations, this one seems difficult to avoid due to the
@@ -1105,8 +1105,8 @@ inherited complexity of pointer equality tests, and the complexity with
 tracking \kl{allocation and ID} disjointness in the type system.
 
 Programmers test whether pointers are \cinline{NULL} far more that they test
-whether they are equal. If \cinline{NULL} is represented by $(@\mathsf{empty},
-0)$, then (in the presence of permissive array/member offsets, since the other
+whether they are equal. If \cinline{NULL} is represented by \sm{(@\mathsf{empty},
+0)}, then (in the presence of permissive array/member offsets, since the other
 cases cannot apply) such checks would need constraints too. A distinct
 \coreinline{NULL} constructor obviates this need.
 
@@ -1149,7 +1149,7 @@ The SMT representation for this (in OCaml syntax) is
 \coreinline[breaklines]{type byte = (u8 * alloc_id option) option}. The outer
 \coreinline{option} captures whether the byte is from initialised or
 uninitialised memory. The inner option captures the fact \kl{provenance} may be
-recovered from bytes if all non-$@\mathsf{empty}$ \kl{provenances} agree with each
+recovered from bytes if all non-\sm{@\mathsf{empty}} \kl{provenances} agree with each
 other, which is not a monotonic operation.
 
 The choice of bytes feeds two birds with one scone because it also hints at how
@@ -1185,7 +1185,7 @@ but is still necessary to reconstruct the union from its members.
 \paragraph{Permissive array and member offsets.}%
 In \kl{VIP} and \kl{PNVI-ae-udi}, array and member offsets are only defined on
 pointers with a \kl{provenance}. Permissive member shifts are defined for
-\cinline{NULL} pointers; they result in a pointer with an $@\mathsf{empty}$
+\cinline{NULL} pointers; they result in a pointer with an \sm{@\mathsf{empty}}
 \kl{provenance}, and the \cinline{offsetof} value in the address. However, when
 encoding these operations in SMT problems, such offsetting needs to be total,
 defined on all values. The operation is morally partial, but is used in a total
