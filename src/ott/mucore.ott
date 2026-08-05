@@ -240,6 +240,7 @@ grammar
     | IvAND         :: :: ivAND       {{ com bitwise AND                    }} % : ctype -> integer -> integer -> integer
     | IvOR          :: :: ivOR        {{ com bitwise OR                     }} % : ctype -> integer -> integer -> integer
     | IvXOR         :: :: ivXOR       {{ com bitwise XOR                    }} % : ctype -> integer -> integer -> integer
+    | Specified     :: :: specified
     | Unspecified   :: :: unspecified
     | Ivfromfloat   :: :: ivfromfloat
     | Fvfromint     :: :: fvfromInt
@@ -589,6 +590,12 @@ grammar
 
 grammar
 
+  kill_kind :: 'Kill_kind_' ::=
+    | dyn :: :: dynamic
+    | ct  :: :: static
+
+grammar
+
   cpat {{ tex \cnnt{pat} }} :: 'CPat_' ::= {{ com Core patterns }}
     | id : base_type                 ::  :: var
     | _x  : base_type                 ::  :: wild
@@ -639,7 +646,7 @@ grammar
     | create_object ( pce1 , pce2 )           ::  :: create_object
     | create_read_only ( pce1 , pce2 , pce3 ) ::  :: create_read_only
     | create_region ( pce1 , pce2 )           ::  :: create_region
-    | kill ( pce1 )                           ::  :: kill
+    | kill ( kill_kind , pce )                ::  :: kill
     | store ( pce1 , pce2 , pce3 )            ::  :: store
     | load ( pce1 , pce2 )                    ::  :: load
     | seq_rmw ( pce1 , pce2 , x .: pce3 )     ::  :: seq_rmw
@@ -741,10 +748,6 @@ grammar
     | res_term :: :: res_term {{ tex \outpol{ [[res_term]] } }}
 
 grammar
-
-  kill_kind :: 'Kill_kind_' ::=
-    | dyn :: :: dynamic
-    | ct  :: :: static
 
   action :: 'Action_' ::= {{ com memory actions }}
     | create < ct > ( pval )         ::  :: create {{ com allocate bytes for $[[ct]]$ object, aligned to $[[pval]]$     }}

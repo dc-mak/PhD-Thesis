@@ -193,12 +193,12 @@ explaining the core ideas behind
 framework which translates \kl{CN} specifications to C. It includes global
 variables, mutable function parameters, block-scoped local variables, and early
 return, but omits loops and unstructured control flow such as \cinline{goto}.
-Expressions and statements are unified into a single construct $[[e]]$, and evaluation
+Expressions and statements are unified into a single construct \sm{[[e]]}, and evaluation
 is fixed to be left-to-right. The only MiniC types are integers or pointers
 (with free conversion between the two), so there is no structured data such as
 structs or arrays. Notably, \kl{MiniC} includes taking the address of
 variables and dereferencing arbitrary expressions; indirect assignment is also
-supported via $[[*lve]]$. Its expression grammar is shown in
+supported via \sm{[[*lve]]}. Its expression grammar is shown in
 \cref{fig:minic-grammar}.
 
 \begin{figure*}[tp]
@@ -223,7 +223,7 @@ focusing here on typing rules for \kl{MiniCN}.
 The specification language for \kl{MiniC}, is a simplified version of the
 surface syntax of \kl{CN} (\cref{fig:surface-cn-syntax}). The simplifications
 are to (a) equate pointers and integers, (b) assume that all
-$\cnkw{Owned}$s are always initialised, (c) ignore any other C types,
+\sm{\cnkw{Owned}}s are always initialised, (c) ignore any other C types,
 including structs and arrays, and (d) ignore iterated predicates. Using this, I
 define \kl{MiniCN} as the typing rules for \kl{MiniC} using this simplified
 specification language.
@@ -246,31 +246,31 @@ destruction). This is visible in the \textsc{Mini\_Prove*} judgement in
     \caption{Proving an $[[Owned<init, ct>]]$ specification in \kl{MiniCN}.}\label{fig:minicn-spine}
 \end{figure*}
 
-The typing context includes: $[[Vc]]$ for variables (computational and
-logical), a constraint context $[[Phi]]$, and a resource context $[[Rc]]$.
-Remember that all values are integers so we do not track types in the $[[Vc]]$
-context, nor on any binders. The judgement accumulates contexts $[[Vc']];
-[[Phi']]; [[Rc']]$ whilst checking specification $[[spec]]$. It produces a
-specification value $[[sval]]$, a context for new variables $[[Vc'']]$, a
-context for new constraints learned $[[Phi'']]$, a context of used resources
-$[[Rc1]]$, and a context for leftover resources $[[Rc2]]$. I chose this more
+The typing context includes: \sm{[[Vc]]} for variables (computational and
+logical), a constraint context \sm{[[Phi]]}, and a resource context \sm{[[Rc]]}.
+Remember that all values are integers so we do not track types in the \sm{[[Vc]]}
+context, nor on any binders. The judgement accumulates contexts \sm{[[Vc']];
+[[Phi']]; [[Rc']]} whilst checking specification \sm{[[spec]]}. It produces a
+specification value \sm{[[sval]]}, a context for new variables \sm{[[Vc'']]}, a
+context for new constraints learned \sm{[[Phi'']]}, a context of used resources
+\sm{[[Rc1]]}, and a context for leftover resources \sm{[[Rc2]]}. I chose this more
 complex accumulating style to mirror the tail-recursive style of the
 specification dynamic semantics.
 
 The rule for checking ownership marks the resource in the context
-($[[ id1 |-> id2 ]]$) as used\sidenote{I marked the resources as used and delete
+(\sm{[[ id1 |-> id2 ]]}) as used\sidenote{I marked the resources as used and delete
 them at the use site, instead of deleting them along the way, to mirror the
-dynamic semantics here too.} if the requested location $[[term]]$ is proven to
-be equal $[[Rc1 , Phi /\ Phi1 => term = id1]]$. Unlike the system
+dynamic semantics here too.} if the requested location \sm{[[term]]} is proven to
+be equal \sm{[[Rc1 , Phi /\ Phi1 => term = id1]]}. Unlike the system
 presented in~\cref{sec:elaboration}, the resource context here is not guaranteed
 to be normalised, so this must be done lazily before each call to the SMT
 solver.\sidenote{Recall that $[[id |-> _x  * id' |-> _x]]$ implies $[[id != id']]$.}
 This is accomplished via the premise
-$[[ [ Vc, Vc' ] , Rc , Phi /\ Phi' |- simplify ( cdot , Rc , cdot ) ~> Vc1 , Rc1 , Phi1 ]]$,
-which says that assuming variables $[[ [Vc, Vc'] ]]$, constraints $[[Phi /\ Phi']]$,
-and resource context $[[Rc]]$, simplify $[[Rc]]$ (expand all determined
-conditional resources) to produce new variables $[[Vc1]]$,
-new constraints $[[Phi1]]$, and updated resources $[[Rc1]]$.
+\sm{[[ [ Vc, Vc' ] , Rc , Phi /\ Phi' |- simplify ( cdot , Rc , cdot ) ~> Vc1 , Rc1 , Phi1 ]]},
+which says that assuming variables \sm{[[ [Vc, Vc'] ]]}, constraints \sm{[[Phi /\ Phi']]},
+and resource context \sm{[[Rc]]}, simplify \sm{[[Rc]]} (expand all determined
+conditional resources) to produce new variables \sm{[[Vc1]]},
+new constraints \sm{[[Phi1]]}, and updated resources \sm{[[Rc1]]}.
 
 \section{Implicit resource terms intertwine elaboration and typing}\label{sec:minicn-implicit}
 
@@ -285,12 +285,12 @@ terms} or quantifier instantiations in the syntax.
 As such, the rules for proving (and assuming) a specification compute
 quantifier instantiations on-the-fly. This is why, in addition to outputting a
 modified resource context, the judgement also outputs a specification value
-$[[sval]]$, as well as the additional constraints learnt (and additional
+\sm{[[sval]]}, as well as the additional constraints learnt (and additional
 variables used). This is best demonstrated in \cref{fig:minicn-spine-take},
-where premise 1 says that $[[return term]]$ is the result of proving and
-evaluating $[[spec]]$, and premise 2 says that given extra variable $[[id]]$,
-and an extra constraint $[[id = term]]$, the rest of the specification
-$[[spec']]$ evaluates to $[[sval]]$.
+where premise 1 says that \sm{[[return term]]} is the result of proving and
+evaluating \sm{[[spec]]}, and premise 2 says that given extra variable \sm{[[id]]},
+and an extra constraint \sm{[[id = term]]}, the rest of the specification
+\sm{[[spec']]} evaluates to \sm{[[sval]]}.
 
 \begin{figure}[tpbh]
     \ContinuedFloat{}
@@ -303,20 +303,20 @@ $[[spec']]$ evaluates to $[[sval]]$.
 \section{Early-returns intertwine normalising, synthesising and checking}\label{sec:minicn-early}
 
 Because expressions and statements are a single construct in \kl{MiniC}, and
-statements include {\small $\cnkw{return}$} statements, any expression could
+statements include \sm{\cnkw{return}} statements, any expression could
 potentially have its evaluation interrupted by a nested early-return.
 The typing judgement for expressions needs to take this into account, so in
 addition to \kl{synthesising} symbolic values for sub-expressions, it also needs to
-thread a postcondition $[[spec]]$ for \kl{checking} a return expression
+thread a postcondition \sm{[[spec]]} for \kl{checking} a return expression
 (\cref{fig:minicn-return}).
 
-The judgement expresses the fact that given the context $[[Vc]]; [[Phi]];
-[[Rc]]$, and \kl{postcondition} $[[y]] .\: [[spec]]$, the expression $[[e]]$
-symbolically evaluates to $[[id1]]$, with new variables $[[Vc1]]$, new
-constraints $[[Phi1]]$, and updated resources $[[Rc1]]$. Remember that
-$[[id1]]$ is a fresh variable and that the \kl{postcondition} $[[spec]]$ is
-defined with respect to the return value bound to $[[y]]$, hence the constraint
-$[[y = id1 ]]$ for evaluating $[[spec]]$.
+The judgement expresses the fact that given the context \sm{[[Vc]]; [[Phi]];
+[[Rc]]}, and \kl{postcondition} \sm{[[y]] .\: [[spec]]}, the expression \sm{[[e]]}
+symbolically evaluates to \sm{[[id1]]}, with new variables \sm{[[Vc1]]}, new
+constraints \sm{[[Phi1]]}, and updated resources \sm{[[Rc1]]}. Remember that
+\sm{[[id1]]} is a fresh variable and that the \kl{postcondition} \sm{[[spec]]} is
+defined with respect to the return value bound to \sm{[[y]]}, hence the constraint
+\sm{[[y = id1 ]]} for evaluating \sm{[[spec]]}.
 
 \begin{figure*}[tpb]
     \ContinuedFloat*
@@ -332,7 +332,7 @@ $[[y = id1 ]]$ for evaluating $[[spec]]$.
 For the sake of simplicity, the \kl{synthesised} value of each sub-expression
 is represented by a fresh variable and constrained in the output constraint
 context. In the case of a return expression, the fresh variable remains
-unconstrained and the output context has `$\mathsf{false}$' added to it, to
+unconstrained and the output context has `\sm{\mathsf{false}}' added to it, to
 allow any ancestor expression to continue typing correctly.
 
 \begin{figure*}[tpb]
@@ -383,21 +383,21 @@ become substantially more complex in the absence of key features of
 \kl{ResCore}. This would extend to the proof of soundness too, because the
 input and output contexts would not remain the same as an expression evaluates.
 
-For concision, I will write $\Omega$ to represent all the contexts combined.
-For typing a binary operation, $\Omega_0 \vdash e_1 + e_2 \dashv \Omega_2$, the
-premises would be $\Omega_0 \vdash e_1 \dashv \Omega_1$ and $\Omega_1 \vdash e_2
-\dashv \Omega_2$.\sidenote{The rules I presented are not exactly in this format,
+For concision, I will write \sm{\Omega} to represent all the contexts combined.
+For typing a binary operation, \sm{\Omega_0 \vdash e_1 + e_2 \dashv \Omega_2}, the
+premises would be \sm{\Omega_0 \vdash e_1 \dashv \Omega_1} and \sm{\Omega_1 \vdash e_2
+\dashv \Omega_2}.\sidenote{The rules I presented are not exactly in this format,
 outputting a delta of contexts rather than new ones. I believe
 the basic approach remains the same.}
 
-Suppose then that $e_1 \rightarrow e_1'$. To prove that $e_1' + e_2$ is
-well-typed, we would have to show $\Omega_0' \vdash e_1' \dashv \Omega_1'$ and
-$\Omega_1' \vdash e_2 \dashv \Omega_2'$. This uses different contexts to the
-$\Omega_0$, $\Omega_1$ and $\Omega_2$ in the initial well-typed assumption.  To
+Suppose then that \sm{e_1 \rightarrow e_1'}. To prove that \sm{e_1' + e_2} is
+well-typed, we would have to show \sm{\Omega_0' \vdash e_1' \dashv \Omega_1'} and
+\sm{\Omega_1' \vdash e_2 \dashv \Omega_2'}. This uses different contexts to the
+\sm{\Omega_0}, \sm{\Omega_1} and \sm{\Omega_2} in the initial well-typed assumption.  To
 strengthen the induction hypothesis, one would need to define a relationship
-$\sqsupseteq$ between contexts, along with a weakening lemma which stated that
-if $\Omega_A \sqsupseteq \Omega_A'$ and $\Omega_A \vdash e \dashv \Omega_B$ then
-$\Omega_A' \vdash e \dashv \Omega_B'$ where $\Omega_B \sqsupseteq \Omega_B'$. % chktex 23
+\sm{\sqsupseteq} between contexts, along with a weakening lemma which stated that
+if \sm{\Omega_A \sqsupseteq \Omega_A'} and \sm{\Omega_A \vdash e \dashv \Omega_B} then
+\sm{\Omega_A' \vdash e \dashv \Omega_B'} where \sm{\Omega_B \sqsupseteq \Omega_B'}. % chktex 23
 % We would then need to apply this to the inductive cases, by demonstrating
 % $\Omega_0 \sqsupseteq \Omega_0'$ and $\Omega_1 \sqsupseteq \Omega_1'$.
 
