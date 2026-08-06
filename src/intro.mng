@@ -38,7 +38,7 @@ As such, kernels are critical bits of a precarious tower of
 abstractions, since they need to be both \emph{fast} \textemdash{} any
 latency here compounds throughout the whole system \textemdash{} and
 \emph{secure} \textemdash{} since any vulnerability here could crash or leak
-data throughout the whole system. They are \emph{by necessity}, low-level
+data throughout the whole system. They are \emph{by necessity}, \kl{low-level}
 software, and need to be written in programming languages which expose lots of
 control to the programmer.
 However, more human control means more chance for human error. Historically,
@@ -53,8 +53,8 @@ greatly.
 Whilst most of the commentary, including the root cause
 analysis~\sidecite{rca2024crowdstrike}, emphasised the need for better testing
 and better deployment strategies,
-\emph{what} to test, and more importantly \emph{what is missing} in the tests
-are only sufficiently clear with hindsight.
+\emph{what} to test, and more importantly \emph{what is missing} in the tests,
+is only sufficiently clear with hindsight.
 
 \begin{quote}
 \emph{%
@@ -94,7 +94,7 @@ effort.
 \section{Thesis statement}\label{sec:thesis-stmt}
 
 In this thesis, I argue that building a verification tool for C, which can
-handle low-level programming, is two parts engineering, and one part theory.
+handle \kl{low-level} programming, is two parts engineering, and one part theory.
 Little of the theory is novel or complex, but its application at scale presents
 new challenges and insights.
 % The proportions do not correspond to three different topics, which fit neatly
@@ -166,7 +166,7 @@ thus perform constant propagation over the assignment.
 
 To optimise code, compilers assume that
 pointers in C are \emph{not} completely concrete, and are only constructed in
-``reasonable'' ways. To support low-level idioms of
+``reasonable'' ways. To support \kl{low-level} idioms of
 \emph{computing} with pointers (incrementing, offsetting, casting to and from
 integers), compilers assume that pointers are \emph{not} completely abstract.
 Compilers must be conservative in such assumptions. Even though there is
@@ -181,14 +181,14 @@ simplicity, amongst application programmers, systems programmers and compiler
 writers. Making matters worse, as a prose document, the standard is
 ambiguous, and does not always reflect \intro{de facto} C.
 
-Given this, the \intro{Cerberus}
+Given this, the \kl{Cerberus}
 project~\sidecite{memarian2022cerberus} aims to provide a formally defined,
 executable and \emph{empirically validated} semantics of C, both \kl{ISO} and \kl{de
 facto}. I shall explain \kl{Cerberus}' particular advantages over other tools
 in~\cref{sec:cerberus-core}.
 
 For now, it suffices to say that \kl{Cerberus} works by \emph{\kl{compositional}ly}
-elaborating C into \intro{Core}, an \emph{executable} first-order
+elaborating C into \kl{Core}, an \emph{executable} first-order
 functional language. It makes explicit many subtleties of C such as
 integer promotion, loose evaluation order, and \kl{UB}.
 
@@ -386,7 +386,7 @@ which permitted it~\sidecite{popek1977notes}.
 
 The problem was solved
 by~\sidetextcite{reynolds2002separation,ishtiaq2001BI,o2001local}, with the
-introduction of \intro{separation logic}, featuring a new \intro{separating
+introduction of \intro{separation logic}, featuring a new \kl{separating
 conjunction}~\sm{\ast}, and a version of the rule of constancy which is sound,
 known as the \intro{frame rule} (\cref{fig:simple-sep-logic}).
 
@@ -619,7 +619,7 @@ When given a C file, \kl{CN} ensures that (a) the input code is free of
 \kl{undefined behaviour}, and (b) correctly implements any specification
 written in \intro{annotations} in comments with an @ symbol \cinline{/*@..@*/}.
 For easy-to-explain, modular, and parallelisable proof-checking, annotations
-are written and checked for each function.
+are written and checked \intro{for each function}.
 
 This means that even in the absence of annotations, code is being checked for
 \kl{undefined behaviour}. Incrementing a signed integer triggers an error message
@@ -673,15 +673,13 @@ thus guarantees the function will not have \kl{UB}, no matter what the context.
 This is because whilst \kl{preconditions} are \emph{assumed} inside the function
 being verified, they must be \emph{proven} when calling it.
 
-%% RESUME here
-
 We see this in~\cref{fig:call-incr}. In
 the first function, from \cinline{y <= 100i32},\sidenote{Integer literals are
 written with a type annotation.} \kl{CN} deduces \cinline[breaklines]{y <=
 MAXi32()}\sidenote{This is a \kl{subtyping} relation, and integrating it
 smoothly relies on \kl{bidirectional} type checking (\S\ref{sec:bidir-subtyping};
 \S\ref{chap:kernel-statics}).} which permits the call to \cinline{increment};
-In the second function, \kl{CN} raises an error because
+in the second function, \kl{CN} raises an error because
 \cinline{INT_MAX}~$\nless$~\cinline{MAXi32()}.
 
 \begin{figure}[h]
@@ -767,14 +765,14 @@ Within the loop, writing to a \cninline{W}/\cninline{RW} transforms it into a
         CN.}\label{fig:init-arr-rev}
 \end{figure}
 
-\kl{CN} allows users to define \kl{datatypes}, such as \cninline{i32} lists, and
+\kl{CN} allows users to define \intro{datatypes}, such as \cninline{i32} lists, and
 recursive \kl{functions}, such as \cninline{i32} list \cninline{append}, using the
 syntax \cninline{function [rec]}. Note that arguments of constructors are
 named, not positional.
 
 \cfile[breaklines,firstline=6,lastline=15,highlightlines={6-8,10-15}]{code/append_annot.c} % chktex 8
 
-Lastly, \kl{CN} allows users to define \intro{predicates}, such as the list
+Lastly, \kl{CN} allows users to define \intro(CN){predicates}, such as the list
 predicate of~\cref{fig:list-pred}, using \cninline{RW} predicates as building
 blocks. Curiously, the syntax looks like a procedure definition for traversing
 the list (tracing the heaplet in which it resides), and constructing the ghost
@@ -830,7 +828,7 @@ Within this, my contributions are three-fold: \fancyref{part:formalisation},
 
 \subsection{Formalisation of \kl{CN}}
 
-\kl{CN}'s \kl{proof mode} was primarily developed by Christopher Pulte and
+\kl{CN}'s proof mode was primarily developed by Christopher Pulte and
 Thomas Sewell, using the \kl{pKVM} hypervisor's \kl{buddy allocator}
 as its guiding test. The \kl{buddy allocator} is challenging to verify due to
 its frequent use of aliasing computed pointers and random-accessed
@@ -847,7 +845,7 @@ My contributions in this part include:
 \begin{itemize}
     \item A formalisation of the link between the surface syntax of \kl{CN} and
         the more traditional presentation used in this thesis (\S\ref{chap:formal-background}).
-    \item \kl{ResCore}: a let-normal form of as subset of \kl{Cerberus}' \kl{Core}
+    \item \kl{ResCore}: a \kl{let-normal} form of as subset of \kl{Cerberus}' \kl{Core}
         with reified resources and book-keeping (\S\ref{chap:kernel-grammar}).
     \item \kl{Kernel CN}: A formal definition of a bidirectional,
         \kl{separation logic}, \kl{refinement type} system for \kl{ResCore}
@@ -1002,7 +1000,7 @@ computational interpretation.
     system based on the above.
 \item \textbf{A simple formalisation of the runtime ownership testing scheme.}
     I do not discuss this further in this thesis.
-\item A description of \intro{Fulminate}, \kl{CN}'s specification testing mode, and
+\item A description of \kl{Fulminate}, \kl{CN}'s specification testing mode, and
     the host of additional issues and engineering required to make it work for a
     substantial fragment of C.
 \item \textbf{A demonstration of the scheme on non-trivial examples, including
