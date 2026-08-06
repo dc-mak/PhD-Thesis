@@ -8,7 +8,7 @@
 \kl{CN} and \kl{Kernel} CN have different grammars. This is because \kl{CN} is
 intended to be used by C programmers, whereas \kl{Kernel} CN is for type
 theorists. The primary differences are (a) \kl{CN} is implemented over (a
-version of) \kl{Core}, whereas the \kl{kernel} is defined over a let-normalised
+version of) \kl{Core}, whereas the \kl{kernel} is defined over a \kl{let-normalised}
 \kl{ResCore}, and (b) \kl{CN}'s grammar of types is close to the surface syntax
 and each construct serves many purposes; the \kl{kernel}'s grammar of types is
 more traditional and each construct only serves one purpose.
@@ -75,8 +75,8 @@ required by function specifications.
 
 Recall specifications are defined within the
 scope of either C function parameters, or of predicate parameters.
-\cref{fig:func-pred-def} shows this; it also shows the grammar of \kl{function
-types} \sm{[[ fon ]]} which represent both \kl{pre-} and \kl{postconditions}, and \kl{return
+\cref{fig:func-pred-def} shows this; it also shows the grammar of \intro{function
+types} \sm{[[ fon ]]} which represent both \kl{pre-} and \kl{postconditions}, and \intro{return
 types} \sm{[[ ret ]]}, which represent \kl{postconditions}. The structure of the types
 makes explicit the implicit scoping of the surface syntax. Function parameters
 \sm{[[ct]] [[id]]} are mapped to \sm{[[ pi x : to_base ( ct ) .: fon ]]}.
@@ -122,11 +122,11 @@ For ease of implementation and formalisation, we do not have branching for \kl{p
 and \kl{postconditions} and \kl(type){function}/\kl{return types}. This does not affect
 expressiveness because such branching can be embedded into \kl{resource types}. Note
 that in the formalisation, the branching is not restricted to the top-level in
-predicate definitions, but can occur directly in function types, and can be
+\kl(kernel){predicate definitions}, but can occur directly in \kl{function types}, and can be
 arbitrarily nested. This makes defining predicates to represent tagged unions
 more succinct, and allows for opening predicates in more cases.
 
-\intro{Predicates} \sm{[[ pred ]]} and \intro{iterated predicates} \sm{[[ ipred ]]} are simple
+\intro(kernel){Predicates} \sm{[[ pred ]]} and \kl(kernel){iterated predicates} \sm{[[ ipred ]]} are simple
 \sm{[[ pred_term ]]} and \sm{[[ipred_term]]} with output arguments,
 as seen in~\cref{fig:kernel-ipred}.
 I will explain why I factored out \sm{[[pred_term]]} and \sm{[[ipred_term]]} in
@@ -218,7 +218,7 @@ such terms.
 
 \cref{fig:prepost-to-kernel} shows the setup for desugaring \kl{CN} types into
 \kl{Kernel CN}. It either starts with the C functions, which map their
-parameters into computational variables in function types (\UserFuncToFun), or
+parameters into computational variables in \kl{function types} (\UserFuncToFun), or
 with \kl{predicate definitions}, which map their parameters into essentially a
 \sm{\lambda}-abstraction over a resource type (\UserPredToRes). To be clear, this
 is merely quantifying over pure (SMT) terms in the type, rather than any
@@ -294,7 +294,7 @@ a \kl{predicate} (\UserSpecToResPred) or an \kl{iterated predicate}
 
 Having covered types, the second piece of the formalisation is (program) terms,
 the grammar for which is a \kl{let-normal} form of the \kl{Core} grammar
-(\cref{fig:pure-core-grammar,fig:effectful-core-grammar}). By \kl{let-normal}, I
+(\cref{fig:pure-core-grammar,fig:effectful-core-grammar}). By \intro{let-normal}, I
 mean \kl{A-normal}~\sidecite{flanagan1993essence} form closed under
 substitution.
 
@@ -302,7 +302,7 @@ Specifically, the grammar syntactically stratifies values and
 expressions from which we would like to \emph{synthesise} type information, and
 statements against which we would like to \emph{check} a
 given type. This applies to both pure and effectful fragments, leading to a
-four-fold distinction in the let-normal form of the grammar. Pure values
+four-fold distinction in the \kl{let-normal} form of the grammar. Pure values
 expressions are sub-terms of both pure statements and effectful expressions; in
 turn, both of those are sub-terms of effectful expressions.
 
@@ -360,8 +360,9 @@ a single value, branches produce multiple values, expressions which do not
 return produce no
 values.\sidenote{\href{https://github.com/rems-project/cerberus/issues/730}{Cerberus\#730}.}.
 The monadic bind would handle control-flow explosion automatically.
-Indeed, \kl{Gillian}~\sidecite{ayoun2024gillian} implements symbolic execution
-monadically; and \kl{Gradual C0} is separately formalised using
+Indeed, \kl{Gillian}~\sidecite{ayoun2024gillian} and
+Katamaran~\sidecite{keuchel2022verified} implement symbolic execution
+monadically; \kl{Gradual C0} is separately formalised using
 non-deterministic inference rules for its soundness
 proof~\sidecite{zimmerman2024sound}.
 
