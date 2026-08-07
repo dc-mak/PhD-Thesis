@@ -14,8 +14,8 @@ VST~\cite{appel2011verified}, due to lack of time and expertise for a fair
 comparison. Part of this comparison was featured in~\textcite{pulte2023cn},
 including the annotation overhead and execution times.
 
-After that, I will compare \kl{CN} in more general terms to \kl{symbolic
-execution} tools which have some connection to C.
+After that, I will compare \kl{CN} in more general terms to symbolic
+execution tools which have some connection to C.
 
 Lastly, I will discuss some feedback from industry partners. As an academic,
 some of it seems unreasonable, but as an ex-industry professional, the
@@ -212,7 +212,7 @@ of features required for verifying real-world code, such as the following.
     \item Function types in struct fields.
     \item Taking the address of local variables.
     \item Expressive/accurate pointer provenance (it has basic support).
-    \item \kl{UB} or unspecified values for uninitialised reads.
+    \item \kl{UB} or \kl{unspecified} values for uninitialised reads.
 \end{itemize}
 Reflecting more broadly, what lessons can we apply to \kl{CN} from this brief
 comparison? We see that \kl{separation logic}, \kl{moded} \kl(CN){recursive
@@ -240,7 +240,7 @@ novices.
 
 Whereas \kl{VeriFast} is most similar to \kl{CN}, \kl{Frama-C} and
 \kl{RefinedC} are one step removed. Both use undecidable logics, falling back
-to Rocq for manual proof. For \intro{Frama-C}, the logic is a Hoare logic,
+to Rocq for manual proof. For \kl{Frama-C}, the logic is a Hoare logic,
 not \kl(logic){separation}, whereas in \kl{RefinedC}, the logic is an \kl{Iris} instance.
 
 \intro{Frama-C}~\cite{pascal2012frama} has a smaller annotation overhead, though its lack of support for
@@ -279,7 +279,7 @@ The former is necessary for increasing expressiveness and reducing the
 
 \subsection{Gillian-C}
 
-\kl{Gillian}~\sidecite{santos2020gillian}, is a symbolic execution library
+\intro{Gillian}~\sidecite{santos2020gillian}, is a symbolic execution library
 which supports both bounded whole-program execution (by inlining functions
 calls to a certain depth) and compositional execution (of function
 \kl{pre-} and \kl{postconditions}). It supports reasoning in both
@@ -337,7 +337,7 @@ slow down verification by adding more annotations.
 
 % https://dardinier.me/slides/tutorial_POPL25.pdf
 
-Viper~\sidecite{muller2016viper}, uses a similar IL-based approach for symbolic
+\intro{Viper}~\sidecite{muller2016viper}, uses a similar IL-based approach for symbolic
 execution, but uses a variant of \kl{separation logic}, implicit dynamic frames
 (IDF)~\sidecite{smans2012implicit}, designed for \emph{object-based} languages.
 The heap-model is fixed: it maps object-field pairs to values. Objects are
@@ -346,7 +346,7 @@ explicit de-allocation (conceptually, objects could remain allocated). Its
 expressive logic supports user-defined recursive predicates, fractional
 permissions, magic wands, and quantified permissions (which inspired the
 initial scheme for iterated predicates in \kl{CN}). Like Gillian, the core
-approach behind Viper has been proven sound~\sidecite{dardinier2025formal}.
+approach behind \kl{Viper} has been proven sound~\sidecite{dardinier2025formal}.
 
 Arrays representing memory (and pointers with offsets into them) can be
 encoded, but pointer arithmetic and byte-level reasoning is not directly
@@ -358,19 +358,19 @@ and output arguments as the result (of the functions). However, most of the
 time assertions must be self-framing (include all permissions to evaluate the
 heap accesses in the assertion).
 
-Viper has the VerCors~\sidecite{blom2017vercors} front-end which supports
+\kl{Viper} has the VerCors~\sidecite{blom2017vercors} front-end which supports
 annotations on OpenCL/OpenMP/C code. \sidetextcite{blom2017vercors} say
 `Support for basic features of the C and C++ languages works similar to the
 verification of those features in Java'. Programs are annotated with
 specifications and are then `encoded into the internal format of VerCors,
 called COL, which is transformed in several steps into the input language of
-Viper'~\sidecite{oorschot2024first}. VerCors models pointer using a
+\kl{Viper}'~\sidecite{oorschot2024first}. VerCors models pointer using a
 block-offset scheme~\sidecite{haak2026verifying}.
 
-Viper is also forked to support \emph{gradual} verification with
-C0~\sidecite{divincenzo2025gradual} (a safe subset of C designed for
-education). The idea behind gradual verification is to soundly and efficiently
-support incomplete specifications by proving as much as is possible statically,
+\kl{Viper} is also forked by \intro{Gradual C0}~\sidecite{divincenzo2025gradual}.
+C0 is a safe subset of C designed for education, and `gradual'
+describes their approach to verification: soundly and efficiently
+supporting incomplete specifications by proving as much as is possible statically,
 and then inserting run-time checks for the remainder.
 \sidetextcite{zimmerman2024sound} note that `IDF is particularly well-suited
 for gradual specifications [because it] allows specification of heap values
@@ -384,10 +384,10 @@ symbolic execution library. It demonstrates its feasibility with front-ends for
 C (twice as fast as Gillian-C) and Rust, and, at the time of writing, an
 experimental proof-of-concept one for \kl{CN}.
 Soteria-\kl{CN}\sidenote{\url{https://github.com/soteria-tools/soteria-cn}} uses
-\kl{MuCore}, and can be up to 50x faster than \kl{CN} on small tests cases for
+the same modified \kl{Core} as \kl{CN}, and can be up to 50x faster than \kl{CN} on small tests cases for
 singly- and doubly-linked lists. The speed-up seems to \emph{increase} with the
 size of the program, though \kl(CN){iterated predicates}, inductive datatypes and
-\kl(CN){pure functions} are unsupported, so bigger and more representative
+pure \kl(CN){functions} are unsupported, so bigger and more representative
 examples may not be so impressive.
 
 Soteria-C uses Cerberus' Ail rather than Core, because Ail retains more
@@ -555,7 +555,7 @@ Whilst this approach produced a successful paper, it also over-fitted \kl{CN}.
 More concretely, it meant that we had accrued significant technical (see below)
 and design debt (see~\cref{chap:inform-impl}), which hindered specifying and
 verifying simpler and more conventional examples, such as those now in the
-\kl{CN tutorial}~\cite{pulte2024tutorial}.
+CN tutorial~\cite{pulte2024tutorial}.
 
 % Many of the features mentioned in~\cref{chap:inform-impl} might have been
 % anticipated earlier, for example, unifying the syntax for
@@ -610,7 +610,7 @@ This was verbose and error-prone, so we changed the
 elaboration\sidenote{\href{https://github.com/rems-project/cerberus/commit/772173d6432c86b029fd1bb993b8dc83b80c96c0}{Cerberus
 772173d6}} and \kl{CN}\sidenote{\href{https://github.com/rems-project/cerberus/commit/186e4e42a75cad2222d441ce608fc1dc84cc7b98}{Cerberus
 186e4e42}} correspondingly, resulting in duplicated effort. Had we spent some
-time looking at small sample \k{Core} programs, and testing out a formalism on
+time looking at small sample \kl{Core} programs, and testing out a formalism on
 it, we might have anticipated the issue sooner.
 
 \subsection{Error reporting}
