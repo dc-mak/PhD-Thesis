@@ -69,31 +69,31 @@ amount of noise to the formalisation and implementation.
 
 \section{Automatic unfolding scheme for logical functions}\label{sec:auto-unfold-functions}
 
-One of the strange parts of working with \kl{CN} is that \kl{predicate
+One of the strange parts of working with \kl{CN} is that \kl(CN){predicate
 definitions} can be (with a flag) \intro{automatically unfolded} but not \kl{logical
 functions}, even though both may be
 recursive.\sidenote{\href{https://github.com/rems-project/cerberus/issues/483}{Cerberus\#483}.}
 As such there is separate and cumbersome annotation to manually unfold a
 \kl[logical function]{function}.
 
-The way the implementation determines whether to unfold a \kl{predicate} is
+The way the implementation determines whether to unfold a \kl(CN){predicate} is
 to always unfold it if there is no top-level if, or to check if the condition
 or its negation is entailed before unfolding the corresponding branch.
 
 However, thanks to the formalisation, we can see the implementation's strategy
 conflates orthogonal considerations. In the formalisation
-(\cref{fig:typing-res-pat}), including the elaboration rules
+(\cref{fig:typing-res-pat}), including the \kl(CN){elaboration} rules
 (\cref{fig:elab-fold}), (un)folding predicates does not require % chktex 36
 calling the SMT solver, but determining which branch of an ordered-disjunction
 to check does.
 
 This suggests that it is fine to loosen the restrictions on branching in
-\kl{predicate definitions} (\S\ref{sec:restriction-branching}), and that the
+\kl(CN){predicate definitions} (\S\ref{sec:restriction-branching}), and that the
 approach of ``unfold until you reach a condition for which neither it nor its
 negation are entailed'' would work for \kl{logical functions} too.
 
 Please note that with automatic constraint-based unfolding, it is
-possible for users to \kl{define predicates} which make \kl{CN}
+possible for users to \kl(CN){define predicates} which make \kl{CN}
 diverge.\sidenote{\href{https://github.com/rems-project/cerberus/issues/451}{Cerberus\#451}.}
 I propose a solution to this in~\fancyref{sec:pred-defn-checks}.
 
@@ -124,10 +124,10 @@ With the formalisation, I can explain why that restriction is unnecessary, and
 shed light on how to lift it.
 
 Restricting the surface syntax is unnecessary because the syntax is orthogonal
-to the internal representation of \kl{predicate definitions}. The key insight
+to the internal representation of \kl(CN){predicate definitions}. The key insight
 here is that lifting this feature would not add any extra expressive power,
 because users can (and do) clunkily work around it by manually defining an
-auxiliary \kl{predicate} each time they wish to use an \kl{ordered-disjunction}
+auxiliary \kl(CN){predicate} each time they wish to use an \kl{ordered-disjunction}
 anywhere which is not first and at the top-level.
 
 The same orthogonality also gives us options on how to lift the restriction. If
@@ -140,14 +140,14 @@ produces less technical debt.
 \section{Removing the pointer first restriction on predicates}\label{sec:rm-ptr-first}
 
 Another awkward \kl{CN} restriction is requiring the first argument to a
-\kl{predicate} to be a pointer. This is usually fine because it would be
+\kl(CN){predicate} to be a pointer. This is usually fine because it would be
 strange to speak of ownership without a pointer, but sometimes the pointer is
 derived from elsewhere (a global base pointer, but changing indices), or
 sometimes the pointer is in a record and that is the easiest thing to pass
 in.\sidenote{\href{https://github.com/rems-project/cerberus/issues/303}{Cerberus\#303}.}
 
 With the formalisation, we can see lifting this restriction would hinder
-\kl{CN}'s ability to infer indices when handling \kl{iterated predicates}
+\kl{CN}'s ability to infer indices when handling \kl(CN){iterated predicates}
 (\S\ref{subsec:synth-indices}). But, given that \kl{CN} does not infer those
 anyway,\sidenote{See note~\ref{sn:new-inf-statics}.} we do not lose automation
 or expressiveness.\sidenote{It will not increase expressiveness either, because
@@ -158,7 +158,7 @@ users currently can and do just use a dummy parameter.}
 Syntax is part of the user-interface of \kl{CN}, and as such it is subject to
 strong constraints, strong scrutiny and strong opinions.
 
-Currently, \kl{logical (ghost) functions} and \kl{predicates} are separated
+Currently, \kl{logical (ghost) functions} and \kl(CN){predicates} are separated
 (represented by different OCaml types) in the implementation. This is with good
 reason: the pure parts are shipped off to an SMT solver, but the \kl{heap}
 parts are handled by \kl{resource inference}. However, \kl{CN} also enforces
@@ -168,7 +168,7 @@ confusing,\sidenote{\href{https://github.com/rems-project/cerberus/issues/288}{C
 This could be remedied by unifying the two syntaxes and using another method to
 enforcing the distinction between the pure and \kl{heap}
 worlds.\sidenote{\href{https://github.com/rems-project/cerberus/issues/304}{Cerberus\#304}.}
-Exposing the monad implicit in the \kl{predicate} syntax as a type constructor
+Exposing the monad implicit in the \kl(CN){predicate} syntax as a type constructor
 would achieve both; whilst this is theoretically elegant, it could be too
 complicated for users.
 
@@ -182,7 +182,7 @@ language and the \kl{CN} implementation. It will demonstrate the challenges of
 \emph{not} using \kl{ResCore}, because \kl{MiniC} is an imperative,
 expression-based language with implicit \kl{resource passing}. The latter means the
 inference cannot be specified separately, whereas the former complicates typing
-early returns and \kl{join-points}. It will also demonstrate the challenges which
+early returns and join-points. It will also demonstrate the challenges which
 seem to be inherent to designing a type system for a C-like language.
 
 \section{MiniC and MiniCN}

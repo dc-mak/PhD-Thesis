@@ -14,7 +14,7 @@ and each construct serves many purposes; the \kl{kernel}'s grammar of types is
 more traditional and each construct only serves one purpose.
 
 In this chapter, I present the relevant parts of \kl{CN}'s syntax of
-\kl{predicate} definitions and assertions, and the \kl{kernel}'s syntax of types and
+\kl(CN){predicate definitions} and assertions, and the \kl{kernel}'s syntax of \kl(kernel){types} and
 terms, with a particular focus on \kl{resource terms}. Since the \kl{CN}
 implementation requires users to manually unfold recursive \kl{pure functions}, I do
 not discuss this feature, and assume any relevant constraints have been
@@ -25,7 +25,7 @@ typing rules for SMT terms.
 
 \cref{fig:surface-cn-syntax} shows the grammar of \kl{CN}'s surface syntax.
 Note that \sm{[[spec]]} may terminate with a \sm{[[return term]]}, as required by
-predicate definitions, or it may not (represented here with a \sm{[[cdot]]}) as
+\kl(CN){predicate definitions}, or it may not (represented here with a \sm{[[cdot]]}) as
 required by function specifications.
 
 \begin{figure*}[tpb]
@@ -151,7 +151,7 @@ I will explain why I factored out \sm{[[pred_term]]} and \sm{[[ipred_term]]} in
         \cnipred{}\cnafterlastrule{}
     }%
     \endgroup%
-    \caption{\kl{Kernel CN} \kl{predicate} and \kl{iterated predicate} terms (without
+    \caption{\kl{Kernel CN} \kl(kernel){predicate} and \kl(kernel){iterated predicate} terms (without
         output arguments) and types (with output arguments). The formalisation
         is set up with some syntactic sugar (marked with \sm{\mathsf{S}}) to make
         the meanings of these constructs more intuitive.}\label{fig:kernel-ipred}
@@ -219,7 +219,7 @@ such terms.
 \cref{fig:prepost-to-kernel} shows the setup for desugaring \kl{CN} types into
 \kl{Kernel CN}. It either starts with the C functions, which map their
 parameters into computational variables in \kl{function types} (\UserFuncToFun), or
-with \kl{predicate definitions}, which map their parameters into essentially a
+with \kl(kernel){predicate definitions}, which map their parameters into essentially a
 \sm{\lambda}-abstraction over a resource type (\UserPredToRes). To be clear, this
 is merely quantifying over pure (SMT) terms in the type, rather than any
 higher-order assertions about the shape of the heap.
@@ -247,8 +247,8 @@ surface syntax which allows ifs to be placed only at the top-level of a
 predicate (\S\ref{sec:restriction-branching}).
 
 The monadic binding \cninline{take id = ..} is always translated into a logical % chktex 26
-quantification over the output argument of \kl{(iterated)} \kl{predicates}
-(\UserSpecToArgTake). Because all the \kl{predicate definitions} are guaranteed to
+quantification over the output argument of \kl(kernel predicate){(iterated)} \kl(kernel){predicates}
+(\UserSpecToArgTake). Because all the \kl(CN){predicate definitions} are guaranteed to
 be \kl{precise}, all instantiations for logical quantifiers can be inferred
 (\S\ref{sec:precise-assertion-inferring}).
 
@@ -260,9 +260,9 @@ be \kl{precise}, all instantiations for logical quantifiers can be inferred
         desugaring is similar, and thus omitted.}\label{fig:precond-to-kernel}
 \end{figure*}
 
-Desugaring predicate definitions is similar (\cref{fig:pred-to-kernel}).
+Desugaring \kl(CN){predicate definitions} is similar (\cref{fig:pred-to-kernel}).
 Remember that \sm{[[ spec ]]} is used in two contexts, inside a \kl{pre-} or
-\kl{postcondition} where a return is not allowed, and in a \kl{predicate definition}
+\kl{postcondition} where a return is not allowed, and in a \kl(CN){predicate definition}
 where a return is allowed. To handle this uniformly, the desugaring uses
 an \sm{[[ opt_ident ]]} which is \sm{[[ None ]]} when no return is expected, and
 an identifier \sm{[[ y ]]}, when a return is expected (either at the top-level
@@ -279,14 +279,14 @@ resource type grammar (\UserSpecToResIf). As before, the monadic binding
 \cninline{take id = ..} is always translated into a logical % chktex 26
 quantification over the output argument of the (iterated) predicate
 (\UserSpecToResTake). That identifier is used to bind the output argument of
-a \kl{predicate} (\UserSpecToResPred) or an \kl{iterated predicate}
+a \kl(CN){predicate} (\UserSpecToResPred) or an \kl(CN){iterated predicate}
 (\UserSpecToResIPred).
 
 \begin{figure*}[tp]
     \small
     \raggedright{}
     \cndefnUserXXSpecXXToXXRes{}
-    \caption{\kl{CN} to \kl{Kernel CN} \kl{user-defined predicate}
+    \caption{\kl{CN} to \kl{Kernel CN} \kl(kernel){user-defined predicate}
         desugaring.}\label{fig:pred-to-kernel}
 \end{figure*}
 
@@ -295,7 +295,7 @@ a \kl{predicate} (\UserSpecToResPred) or an \kl{iterated predicate}
 Having covered types, the second piece of the formalisation is (program) terms,
 the grammar for which is a \kl{let-normal} form of the \kl{Core} grammar
 (\cref{fig:pure-core-grammar,fig:effectful-core-grammar}). By \intro{let-normal}, I
-mean \kl{A-normal}~\sidecite{flanagan1993essence} form closed under
+mean \intro{A-normal}~\sidecite{flanagan1993essence} form closed under
 substitution.
 
 Specifically, the grammar syntactically stratifies values and
@@ -313,7 +313,7 @@ This simplifies presenting and working with the type system in the following way
         (\cref{fig:core-ub-typing}).
     \item \textbf{Control flow}. Here too, we would like to use
         checking rules, to sidestep the need to synthesise
-        least-upper bound types for \kl{join-points} after all \kl{Core}
+        least-upper bound types for join-points after all \kl{Core}
         \coreinline{if}-expressions (or require annotations on them). This
         comes with the cost of a combinatorial explosion in typing all
         subsequent expressions.
@@ -386,7 +386,7 @@ I omitted the constructs related to C's loose evaluation order\sidenote{%
 \end{itemize}
 
 I will show in \fancyref{chap:kernel-alternative} that the presence of
-\kl{join-points} and early returns in sub-expressions seems to make it difficult to
+join-points and early returns in sub-expressions seems to make it difficult to
 avoid some sort of normalisation (and associated control flow explosion) in the
 type system.
 
@@ -534,7 +534,7 @@ and eliminating that type requires the user for which branch to do so.
 The following terms are all \kl{operations on predicates}.
 \begin{itemize}
     \item \sm{[[ fold _rest : pred ]]}. This supports folding the
-        definitions of a user-defined recursive predicate.
+        definitions of a \kl(kernel){user-defined recursive predicate}.
     \item \sm{[[ explode ( _rest ) ]]} and \sm{[[ implode ( _rest, tag ) ]]}.
          These constructs split and combine ownership of a struct to and from
         ownership of its members, respectively.

@@ -7,7 +7,7 @@ verification tool for C \emph{can} be at this stage. I will start with my brief
 and informal comparison between \kl{CN} and similar tools, based on my
 experience of verifying \kl{pKVM}'s simpler early allocator, in \kl{CN},
 \kl{VeriFast}~\cite{jacobs2011verifast} and
-\kl{Frama-C}~\cite{baudin2021dogged}. I will also discuss a \kl{RefinedC}
+\kl{Frama-C}~\cite{pascal2012frama}. I will also discuss a \kl{RefinedC}
 verification of the same, which was completed by the
 developers~\cite{sammler2021refinedc}. I will not discuss
 VST~\cite{appel2011verified}, due to lack of time and expertise for a fair
@@ -23,7 +23,7 @@ criticisms are much easier to concede. Given our goal of targeting kernel
 programmers, we as academics want industry adoption for these tools, in which
 case taking we need to take industry feedback seriously.%
 \margincite{jacobs2011verifast}%
-\margincite{baudin2021dogged}%
+\margincite{pascal2012frama}%
 \margincite{sammler2021refinedc}%
 \margincite{appel2011verified}%
 \margincite{pulte2023cn}%
@@ -80,9 +80,9 @@ calling the \cinline{clear_page} function in between.
 
 \subsection{Early allocator in VeriFast}
 
-The verification of the early allocator in \kl{VeriFast} is similar to the
+The verification of the early allocator in \intro{VeriFast}~\sidecite{jacobs2011verifast} is similar to the
 \kl{CN} one. The main difference is that since \kl{VeriFast} does not support
-\kl{iterated separating conjunction}, it may require lemmas to manipulate the
+\kl(CN){iterated separating conjunction}, it may require lemmas to manipulate the
 inductive predicates involved instead. \kl{VeriFast} supports non-precise
 assertions (\S\ref{subsec:precise-assertion}) as well, but does not support
 ordinary disjunction for impure assertions for the same reason \kl{CN} does
@@ -97,7 +97,7 @@ regular loop-invariants are supported too.
 
 \cfile[fontsize=\footnotesize,breaklines,lastline=13,highlightlines={2,3,7,8}]{code/verifast_early_alloc.c}
 
-If \kl{VeriFast} does not support \kl{iterated separating conjunctions}, then how
+If \kl{VeriFast} does not support \kl(CN){iterated separating conjunctions}, then how
 does it support the indexing in this example without lemmas? The answer lies in
 a surprising difference between how \kl{VeriFast} handles the semantically
 equivalent subscripting \cinline{e1[e2]} and \cinline{*(e1 + e2)}.\sidenote{\url{https://github.com/verifast/verifast/issues/259}} % chktex 36
@@ -214,9 +214,8 @@ of features required for verifying real-world code, such as the following.
     \item Expressive/accurate pointer provenance (it has basic support).
     \item \kl{UB} or unspecified values for uninitialised reads.
 \end{itemize}
-
 Reflecting more broadly, what lessons can we apply to \kl{CN} from this brief
-comparison? We see that \kl{separation logic}, \kl{moded} \kl{recursive
+comparison? We see that \kl{separation logic}, \kl{moded} \kl(CN){recursive
 predicates}, \kl(CN){lemmas}, \kl{pre-} and \kl{postconditions}, loop
 invariants, \kl{proof annotations}, even the use of a subset of \kl(CN){C as a
 proof language}, seem to come with the terrain of verifying C code. \kl{CN}'s
@@ -228,7 +227,7 @@ verifications, and in fact enabled runtime testing of assertions with
 its speed, visibility into the proof state and interactive replay to make
 failed proofs less painful to debug.
 
-\kl{CN}'s decision to support \kl{iterated separating conjunctions} reduces the
+\kl{CN}'s decision to support \kl(CN){iterated separating conjunctions} reduces the
 need for lemmas and heuristics as \kl{VeriFast} uses, but does not eliminate
 it, especially because inferring indices slows down verification. Automating
 the \emph{common cases} of indexing, \kl(CN){predicate} unfolding, and
@@ -240,11 +239,11 @@ novices.
 \subsection{Early allocator in Frama-C and RefinedC}
 
 Whereas \kl{VeriFast} is most similar to \kl{CN}, \kl{Frama-C} and
-RefinedC are one step removed. Both use undecidable logics, falling back
-to Rocq for manual proof. For Frama-C, the logic is a Hoare logic,
-not \kl(logic){separation}, whereas in RefinedC, the logic is an Iris instance.
+\kl{RefinedC} are one step removed. Both use undecidable logics, falling back
+to Rocq for manual proof. For \intro{Frama-C}, the logic is a Hoare logic,
+not \kl(logic){separation}, whereas in \kl{RefinedC}, the logic is an \kl{Iris} instance.
 
-Frama-C has a smaller annotation overhead, though its lack of support for
+\intro{Frama-C}~\cite{pascal2012frama} has a smaller annotation overhead, though its lack of support for
 \kl{separation logic} means the end guarantee is weaker than with the other tools.
 It works by translating C programs into CIL~\sidecite{necula2002cil}. Its Hoare
 logic verifier, WP, uses CIL as a front-end, and is parametric in the
@@ -255,9 +254,9 @@ assertion checks, which amongst other things, can be used to error on
 uninitialised reads. Frama-C was noticeably slower than \kl{CN} for the
 early allocator (3.5s).
 
-\kl{RefinedC} is implemented inside Rocq atop \kl{Iris}, making its
-\kl[TCB]{trusted computing base} (TCB) the smallest out of the tools mentioned
-so far. However, its TCB also includes its implicit, \adhoc{} semantics for C
+\intro{RefinedC}~\sidecite{sammler2021refinedc} is implemented inside Rocq atop \kl{Iris}, making its
+\intro[TCB]{trusted computing base (TCB)} the smallest out of the tools mentioned
+so far. However, its \kl{TCB} also includes its implicit, \adhoc{} semantics for C
 based on the \emph{Caesium} kernel, over which its typing and automation
 framework \emph{Lithium} operates. The rules are intended to be heuristic
 rather than \kl{decidable}, with the main mode of operation inside a Rocq
@@ -288,7 +287,7 @@ over-approximate (OX) and under-approximate (UX) styles for proof and
 bug-finding respectively~\sidecite{loow2024compositional}. The assertion
 language is parametric: library-users provide `core predicates', and Gillian
 provides predicate transformers, existential quantification and \kl{separating
-conjunction}. Predicate transformers allow support for an Iris-style
+conjunction}. Predicate transformers allow support for an \kl{Iris}-style
 construction of state, with exclusive ownership, fractional permissions,
 deallocation, partial maps and user-defined recursive predicates. For OX,
 there are no restrictions on predicates, but for UX, to support specification
@@ -300,7 +299,7 @@ The approach has been proven sound~\sidecite{loow2025compositional}.
 
 Note that, \kl{CN}'s syntax, in addition to enforcing mode correctness via
 variable scoping, guides the instantiation of existential variables (which
-guaranteed to be \kl{output arguments} of some \kl{predicate}), and the order
+guaranteed to be \kl{output arguments} of some \kl(CN){predicate}), and the order
 of consuming resources from the context. Gillian instead opts for a more
 traditional \kl{separation logic} syntax, and infers the order for consuming
 resources automatically~\sidecite{loow2024matching}.
@@ -387,7 +386,7 @@ experimental proof-of-concept one for \kl{CN}.
 Soteria-\kl{CN}\sidenote{\url{https://github.com/soteria-tools/soteria-cn}} uses
 \kl{MuCore}, and can be up to 50x faster than \kl{CN} on small tests cases for
 singly- and doubly-linked lists. The speed-up seems to \emph{increase} with the
-size of the program, though \kl{iterated predicates}, inductive datatypes and
+size of the program, though \kl(CN){iterated predicates}, inductive datatypes and
 \kl(CN){pure functions} are unsupported, so bigger and more representative
 examples may not be so impressive.
 
@@ -724,15 +723,15 @@ implementation-related error reporting \emph{explicit in the formalism}.
 
 \subsection{Elaborate with care}
 
-Elaboration and large-scale program transformations such as A-normalisation can
+Elaboration and large-scale program transformations such as \kl{A-normalisation} can
 affect the accuracy of source locations. On top of this, if handled without
 care, generated variables can also end up not associated to any source location
 the user wrote, and can be difficult to interpret in a counter-example. \kl{CN}
-used to A-normalise, but does not any
+used to \kl{A-normalise}, but does not any
 more,\sidenote{\href{https://github.com/rems-project/cerberus/commit/21808139bda2ee320756c71eb22dbd57d0986f97}{Commit
 21808139}.} because it was difficult to relate such variables to \kl{Core}
 expressions. The situation has improved a bit with more helpful auto-generated
-names and no A-normalising, but the solution is \adhoc{}, and the gap between
+names and no \kl{A-normalising}, but the solution is \adhoc{}, and the gap between
 \kl{Core} and C still remains.
 
 Whilst I have some ideas on how to improve the situation,\sidenote{Low-hanging
@@ -986,7 +985,7 @@ Source location information is the cornerstone of a useful error
 message, without which an error is close to useless. Unfortunately, early
 versions of \kl{CN} did not give this crucial data its due, leading to an
 incredibly poor user experience. This is all the more disappointing because
-within the OCaml ecosystem, the \kl{Menhir} parser generator makes getting this
+within the OCaml ecosystem, the \intro{Menhir} parser generator makes getting this
 sort of thing right a lot easier than one might initially
 expect~\sidecite{pottier2016reachability}.
 
@@ -1044,9 +1043,9 @@ the user, and the developer who has to debug it later. Hence, missing source
 location information is preferable, \textbf{so long as it documents where in
 the implementation code} the missing location comes from. Here is an example,
 were a \kl{resource request} has failed. Below is an error message which says that
-\kl{ownership} of a local is not available at function exit. This means that either
-some \kl(user-defined){predicate} is not being unfolded enough, or that a
-function claimed \kl{ownership} without returning it. Ideally, the error would
+\kl[points-to]{ownership} of a local is not available at function exit. This means that either
+some \kl(CN user-defined){predicate} is not being unfolded enough, or that a
+function claimed \kl[points-to]{ownership} without returning it. Ideally, the error would
 point to where this local was declared, where it disappeared, and the
 definition of that field of in that struct. In the absence of all that
 information, it is safer to (a) not attempt to display any location at all or
@@ -1101,7 +1100,7 @@ Of course, it is better to fill these and the remainder (593) manually, as I
 demonstrated for one
 case.\sidenote{\href{https://github.com/rems-project/cerberus/issues/245}{Cerberus\#245}.}
 Details of how best to do so are in the \kl{Menhir} manual, along with
-examples and links to how \kl{CompCert} uses it for its C parser (proof that
+examples and links to how CompCert uses it for its C parser (proof that
 the approach can be scaled). For the cases I did not auto-generate, I
 output a message which says that an error message is missing for the state
 (identified by a number), and that it can be added in the stated file. In any

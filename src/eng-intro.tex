@@ -168,7 +168,7 @@ The GCC built-in \cinline{__builtin_choose_expr} happens to take two
 expressions as its arguments, but in general this is not the case. For example,
 \cinline[breaklines,breakafter=_]{__builtin_types_compatible_p} takes two
 \emph{types} as its argument. Such built-ins require editing the parser and
-elaboration to support, and cannot be abstracted easily.
+\kl(Cerberus){elaboration} to support, and cannot be abstracted easily.
 
 Lastly, \cinline{BUILD_BUG_ON_ZERO} uses the expression to try to construct an
 anonymous struct with a bit-field of that size; since 0-width bit-fields are
@@ -602,7 +602,7 @@ to propagate.
 
 \subsection{Physical to virtual address}
 
-As mentioned earlier, the original \kl(CN){iterated ownership} for the (free)
+As mentioned earlier, the original \kl[iterated points-to]{iterated ownership} for the (free)
 pages was claimed via the \emph{physical} address. This was inconsequential
 because no code read or wrote to the pages. However, after the update, the code
 was reading and writing the intrusive, doubly-linked list nodes in the pages,
@@ -645,11 +645,12 @@ parameter was reified (and ignored) in the code.
 \subsection{Indexing and signed bit-vector division}
 
 The main \kl(CN){predicate} of the \kl{buddy allocator} claims contiguous
-\kl{iterated ownership} of page metadata, and \emph{sparse} \kl{iterated
-ownership} of the free pages themselves (determined by the metadata, \eg{}
+\kl[iterated points-to]{iterated ownership} of page metadata, and \emph{sparse}
+\kl[iterated points-to]{iterated ownership}
+of the free pages themselves (determined by the metadata, \eg{}
 \cinline{refcount == 0}). The \kl{output arguments} of these two are arrays.
 
-The \kl(predicate){iteration} (and the resulting \kl{output argument} array)
+The \kl(CN predicate){iteration} (and the resulting \kl{output argument} array)
 can be indexed in two different ways. One, it could be indexed starting from a
 `virtual index' of 0, with virtual address 0 as the base pointer. Or two, it
 could be indexed identically to the metadata, with virtual address of physical
@@ -798,7 +799,7 @@ the original proof. Part of this was just human inconsistency, part was
 two syntactic limitations of an earlier version of \kl{CN}. The first was that
 in that in top-level definitions, one could write \cninline{sizeof<struct
 hyp_page>}, but not in the specifications. The second was that step sizes in
-\kl{iterated predicates} must be integer literals (rather than \cninline{sizeof<>}
+\kl(CN){iterated predicates} must be integer literals (rather than \cninline{sizeof<>}
 expressions). This was exacerbated by the fact that the size of \cinline{struct
 hyp_page} shrank between the versions from 32 to 4, and the size of its
 \cinline{.order} field shrank from \cinline{u32} to \cinline{u8}.
@@ -830,10 +831,10 @@ appropriate range constraints. The values for these constraints lives in a
 separate struct, which, without ghost parameters and arguments, must be passed
 via pointer (and then asserted to not change, which is easy to forget and
 painful to debug). However, the same struct also contains
-\kl(iterated){ownership} of the per-order free list array, which contains the \emph{other}
-parameter of the function. Using that parameter requires \kl{ownership}, and so
+\kl[iterated points-to]{ownership} of the per-order free list array, which contains the \emph{other}
+parameter of the function. Using that parameter requires \kl[points-to]{ownership}, and so
 if one is not careful, naively adding an extra parameter can lead to a claiming
-\kl{ownership} of the same location twice.\sidenote{See
+\kl[points-to]{ownership} of the same location twice.\sidenote{See
 \href{https://github.com/rems-project/cn-pKVM-buddy-allocator-case-study/commit/3363734d706a90a4674c44fa36dd0babcf93b084}{commit
 3363734}.} Spotting this error requires some deep familiarity with \kl{CN}.
 Ghost arguments have since been implemented by Dimitrios Economou.
@@ -883,7 +884,7 @@ integers into bit-vectors (\S\ref{sec:integers-bitvectors}).
 
 \paragraph{Accurate source location information is paramount, especially in the
 presence of elaboration and auto-generated variables.} Though \kl{Cerberus}'
-elaboration is compositional, this does not mean that accurate and helpful error
+\kl(Cerberus){elaboration} is compositional, this does not mean that accurate and helpful error
 messages come for free. For example, it is very helpful to relate source
 location of generated variables to that of the expressions they are
 binding.\sidenote{\href{https://github.com/rems-project/cerberus/issues/270}{Cerberus\#270}.}
