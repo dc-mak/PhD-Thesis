@@ -143,7 +143,7 @@ just \emph{shifts} the attack
 surface,\sidenote{\url{https://googleprojectzero.blogspot.com/2020/02/mitigations-are-attack-surface-too.html}}
 and also increases fragmentation.
 
-Similar to \kl{GKI}, the proposed solution is to standardise the hypervisor.
+Similar to GKI, the proposed solution is to standardise the hypervisor.
 There is already a mature hypervisor inside the Linux kernel: the Kernel-based
 Virtual Machine (KVM)\@. It lets a host kernel dynamically allocate virtual
 machines for guests, and protects the host from them. However, initially, it
@@ -243,7 +243,7 @@ subtle, dynamically checked rules (see caption). Whilst contrived, any C
 function which happens to have exception handling and retry behaviour, and be
 longer than the height of a programmer's screen, could make the same error.
 \kl{Cerberus} handles C features such as mutable and potentially aliasing
-variables, and the myriad other \kl{undefined} or \kl{unspecified} behaviours,
+variables, and the myriad other \kl{undefined} or unspecified behaviours,
 \eg{} loose evaluation order and coercions respectively, by making them
 all \emph{explicit} in \kl{Core}'s syntax.
 
@@ -264,7 +264,7 @@ all \emph{explicit} in \kl{Core}'s syntax.
 \kl{Cerberus} elaborates C into \intro{Core}, a not-too-large calculus where
 each construct is designed to capture some peculiarity of C. It is split into
 two fragments, a \kl(Core){pure fragment} (\cref{fig:pure-core-grammar}) and an
-\intro(Core){effectful one} (\cref{fig:effectful-core-grammar}); the former is
+\kl(Core){effectful one} (\cref{fig:effectful-core-grammar}); the former is
 embedded into the latter.
 
 The \kl(Core){pure fragment} forbids memory operations, but
@@ -273,7 +273,7 @@ does include the effect of undefined behaviour explicitly with the
 things like implicit type conversions or bounded arithmetic. As visible from the
 grammar, the pure part is very much a first-order functional language with
 recursive functions, with some C-specific constructs such as pointer
-arithmetic on arrays/members and specified/unspecified/integer values.
+arithmetic on arrays/members and \kl{specified/unspecified}/integer values.
 
 \begin{figure*}[tp]
     \ContinuedFloat*
@@ -285,7 +285,7 @@ arithmetic on arrays/members and specified/unspecified/integer values.
         \cncpat{}\cninterrule{}
         \cnctor{}\cnafterlastrule{}
     }
-    \caption{The \kl{pure fragment of Core}.}\label{fig:pure-core-grammar}
+    \caption{The \intro{pure fragment of Core}.}\label{fig:pure-core-grammar}
 \end{figure*}
 
 \begin{figure*}[tp]
@@ -298,7 +298,7 @@ arithmetic on arrays/members and specified/unspecified/integer values.
         \cncmemop{}\cninterrule{}
         \cncaction{}\cnafterlastrule{}
     }
-    \caption{The \kl{effectful fragment of Core}.}\label{fig:effectful-core-grammar}
+    \caption{The \intro{effectful fragment of Core}.}\label{fig:effectful-core-grammar}
 \end{figure*}
 
 The \kl(Core){effectful fragment} supports memory operations, sequencing constraints,
@@ -460,7 +460,7 @@ local variables.
 In \kl{Core}, the pointer value passed into the function, and the mutable storage
 for it, are separated syntactically. The parameters have type
 \coreinline{loaded pointer}, where \coreinline{loaded t} is either a
-\coreinline{Specified(v:t)} or an \coreinline{Unspecified} value
+\kl{\coreinline{Specified(v:t)}} or an \intro{\coreinline{Unspecified}} value % chktex 36
 (an option monad for potentially uninitialised values read from memory). The
 result of the function has type \coreinline{eff (loaded t)} where
 \coreinline{eff t} is a value of type \coreinline{t} produced with effects
@@ -547,7 +547,7 @@ Next is getting the pointer for the C function to be called; elsewhere, lines
 
 The first argument is \cinline{xs->tail}. In Core, that is represented by a
 \coreinline{load} of \cinline{&xs}, a case-split on the loaded value
-(\kl{UB} if it is \coreinline{Unspecified}), a \coreinline[breaklines]{member_shift},
+(\kl{UB} if it is \kl{\coreinline{Unspecified}}), a \coreinline[breaklines]{member_shift},
 and then another \coreinline{load}. Elsewhere, lines 71\textemdash{}81
 are bound to \coreinline{a_454}.
 
@@ -596,7 +596,7 @@ Elsewhere, those lines are bound to \coreinline{a_479}.
 
 In C, assignments can be used as expressions. In the jargon of the standard,
 any loads used to evaluate the operands form a \emph{value computation}, but
-the stores do not: they are classed as \intro{side effects}.\sidenote{%
+the stores do not: they are classed as side effects.\sidenote{%
 §5.1.2.3\#2: [\ldots] Evaluation of an expression in general includes both
 value computations and initiation of side effects.}\label{sn:side-effect} As
 per~\textcite[p61, p66, p99]{memarian2022cerberus}, \emph{``intuitively, a Core action
@@ -758,7 +758,7 @@ when should it be used?
 Revisiting~\cref{fig:dead-code}, imagine a type system where contexts
 \sm{\Gamma} are either \sm{\cdot} or \sm{\Gamma, \{\, x \mid \phi (x) \,\}}, and
 \sm{\phi} represents some constraint on \sm{x}. In particular, we are not
-accumulating \kl{path conditions} in the context, just the variables and their
+accumulating path conditions in the context, just the variables and their
 subset types. We would like to prove that function \mintinline{py}{gt_zero}
 satisfies its postcondition, \sm{\{\, \mathsf{ret} \mid \mathsf{ret} > 0 \,\}}
 without raising an exception.
@@ -845,7 +845,7 @@ between synthesis and checking (\cref{fig:simple-bidir}).
     \caption{Simple \intro{bidirectional} type system, adapted
     from~\cite{dunfield2021bidir}.  Note that it splits the traditional
     $\Gamma \vdash e : T$ judgement, into two mutually recursive judgements,
-    one for \intro[synthesis]{synthesising} a type and one for checking a type.
+    one for \intro[synthesis]{synthesising} a type and one for \intro{checking} a type.
     %
     % Here, introduction forms for $\cnkw{unit}$ and $\rightarrow$
     % (namely $\cnkw{()}$ and $\lambda x.\ e$ respectively) check their types;
@@ -931,7 +931,7 @@ These allow the programmer to elide explicit deallocation, by automatically
 inserting such a call when the resource goes out of scope. Modelling that would
 require \kl{weakening}, and make resource types \intro{affine}.
 
-For completeness, a \intro{relevant} logic is one which supports
+For completeness, a relevant logic is one which supports
 \kl{contraction} and \kl{exchange} but not \kl{weakening}. In practice this
 means relevant assumptions may not be implicitly dropped, but may be used one
 or more time.
@@ -1254,20 +1254,20 @@ powerset monad, very natural.
         &\llbracket \mathsf{if}\ t\ \mathsf{then}\ e\ \mathsf{else}\ e' \rrbracket \\
         &\: = \lambda a.\  \left( t \wedge \llbracket e \rrbracket a \right) \vee \left( \neg \; t \wedge \llbracket e' \rrbracket a \right)
     \end{align*}
-    \caption{Monadic syntax for separation logic, along with a translation into the traditional presentations. Pure
-        terms are denoted by $t$, and monadic expression are denoted with $e$.}\label{fig:monad-sl}
+    \caption{\intro{Monadic syntax} for separation logic, along with a translation into the traditional presentations. Pure
+        terms are denoted by $t$, and \kl{monadic} expression are denoted with $e$.}\label{fig:monad-sl}
 \end{marginfigure}
 
 This notational transformation turns \emph{mode correctness} into
 \emph{variable scoping}, when one interprets let-bindings \sm{\mathsf{let\ x} = e;
-e'} as monadic bindings inside a covariant powerset monad. It also enforces the
+e'} as \kl{monadic} bindings inside a covariant powerset monad. It also enforces the
 disjointness of computational values and the shape of the heap mentioned
 earlier with the \sm{\mathsf{if}\ t\ \mathsf{then}\ e\ \mathsf{else}\ e'}
 construct. Thus, all logical quantifiers can be \emph{inferred} without
 backtracking, and branching assertions can be checked similarly:
 check \sm{e} if you can can prove \sm{t}, or check \sm{e'} if you can prove \sm{\neg\;t}.
 
-\section{\kl[iterated]{Iterated} separating conjunctions to handle arrays}\label{sec:it-array}
+\section{Iterated separating conjunctions to handle arrays}\label{sec:it-array}
 
 C programmers use arrays a lot, particularly with computed index (\ie{}
 `random') access, rather than following a particular traversal pattern.

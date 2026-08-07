@@ -16,7 +16,7 @@ more traditional and each construct only serves one purpose.
 In this chapter, I present the relevant parts of \kl{CN}'s syntax of
 \kl(CN){predicate definitions} and assertions, and the \kl{kernel}'s syntax of \kl(kernel){types} and
 terms, with a particular focus on \kl{resource terms}. Since the \kl{CN}
-implementation requires users to manually unfold recursive \kl{pure functions}, I do
+implementation requires users to manually unfold recursive pure \kl(CN){functions}, I do
 not discuss this feature, and assume any relevant constraints have been
 placed into the elaborated \kl{ResCore} program. I also omit
 typing rules for SMT terms.
@@ -67,16 +67,16 @@ required by function specifications.
         }
         \end{minipage}
     \end{tabular}
-    \caption{On the left, CN syntax for function specifications and predicate
-        definitions. On the right, \kl{Kernel CN} function and return types.
-        \cref{fig:prepost-to-kernel} shows the translation from the former to
-        the latter.}\label{fig:func-pred-def}
+    \caption{On the left, \kl{CN} syntax for \kl(CN){function specifications}
+        and \kl(CN){predicate definitions}. On the right, \kl{Kernel CN}
+        \intro(type){function} and \intro{return types}. \cref{fig:prepost-to-kernel} shows the
+        translation from the former to the latter.}\label{fig:func-pred-def}
 \end{figure*}
 
 Recall specifications are defined within the
 scope of either C function parameters, or of predicate parameters.
-\cref{fig:func-pred-def} shows this; it also shows the grammar of \intro{function
-types} \sm{[[ fon ]]} which represent both \kl{pre-} and \kl{postconditions}, and \intro{return
+\cref{fig:func-pred-def} shows this; it also shows the grammar of \kl{function
+types} \sm{[[ fon ]]} which represent both \kl{pre-} and \kl{postconditions}, and \kl{return
 types} \sm{[[ ret ]]}, which represent \kl{postconditions}. The structure of the types
 makes explicit the implicit scoping of the surface syntax. Function parameters
 \sm{[[ct]] [[id]]} are mapped to \sm{[[ pi x : to_base ( ct ) .: fon ]]}.
@@ -105,15 +105,15 @@ represents in more familiar, type-theoretic terms.
 
 Before I explain this mapping, there is one more key component to discuss:
 \emph{\kl{resource types}}. As seen in~\cref{fig:kernel-res}, they are separation
-logic assertions. The constructs are standard, except for the \emph{ordered}
-disjunction, which I use to avoid backtracking during type-checking.
+logic assertions. The constructs are standard, except for the \intro{\emph{ordered}
+disjunction}, which I use to avoid backtracking during type-checking.
 
 \begin{figure*}
     \small
     \grammartabularSTY{%
         \cnres{}\cnafterlastrule{}
     }
-    \caption{\kl{Kernel CN} \kl{resource types}, a \kl{linear} type for
+    \caption{\kl{Kernel CN} \intro{resource types}, a \kl{linear} type for
         \kl{separation logic} assertions.}\label{fig:kernel-res}
 \end{figure*}
 
@@ -152,16 +152,16 @@ I will explain why I factored out \sm{[[pred_term]]} and \sm{[[ipred_term]]} in
     }%
     \endgroup%
     \caption{\kl{Kernel CN} \kl(kernel){predicate} and \kl(kernel){iterated predicate} terms (without
-        output arguments) and types (with output arguments). The formalisation
-        is set up with some syntactic sugar (marked with \sm{\mathsf{S}}) to make
-        the meanings of these constructs more intuitive.}\label{fig:kernel-ipred}
+        output arguments) and \kl(kernel){types} (with output arguments). The formalisation
+        is set up with some syntactic sugar (marked with \sm{\mathsf{S}}) for \intro{points-to}
+        and \kl{iterated points-to} to make the reading of these constructs more intuitive.}\label{fig:kernel-ipred}
 
 \end{figure*}
 
-\section{Desugaring \kl{CN} types into kernel types}\label{sec:desugaring}
+\section{Desugaring CN types into kernel types}\label{sec:desugaring}
 
 Before presenting the rules for desugaring \kl{CN} types into \kl{Kernel CN}
-\kl(kernel){types}, I will first illustrate them informally with an
+\intro(kernel){types}, I will first illustrate them informally with an
 example C function and its CN specification.
 
 \begin{figure}[h]
@@ -171,9 +171,9 @@ example C function and its CN specification.
 
 The function takes an integer pointer as an argument, increments the
 pointee, and then returns the incremented value. Its specification requires
-read-write ownership of the argument pointer (line 2), asserts the pointee is
+\kl{read-write ownership} of the argument pointer (line 2), asserts the pointee is
 strictly less than the maximum for signed integers (line 3), and ensures
-read-write ownership (line 4) where the return value is equal to the new
+\kl{read-write ownership} (line 4) where the return value is equal to the new
 pointee (line 5) and that the new pointee is equal to the old one incremented
 by one (line 6).
 
@@ -211,8 +211,8 @@ All judgements in the formalisation which have a natural \kl{bidirectional}
 (\S\ref{sec:bidir-subtyping}) interpretation have the information they are
 synthesising highlighted with a \colorbox{pink!30}{light pink} background. The
 formalisation will refer to \sm{[[term]]}, \sm{[[iguard]]}, \sm{[[ptrt]]}, \sm{[[iarg]]},
-\sm{[[oarg]]} (and later, \sm{[[alloct]]}). These are all simply aliases for pure
-(SMT) terms, with names suggestive of their roles in different contexts.
+\sm{[[oarg]]} (and later, \sm{[[alloct]]}). These are all simply aliases for \intro{pure
+(SMT) terms}, with names suggestive of their roles in different contexts.
 \intro{Base types}, represented by \sm{[[ base_type ]]} are simply the types of
 such terms.
 
@@ -286,7 +286,7 @@ a \kl(CN){predicate} (\UserSpecToResPred) or an \kl(CN){iterated predicate}
     \small
     \raggedright{}
     \cndefnUserXXSpecXXToXXRes{}
-    \caption{\kl{CN} to \kl{Kernel CN} \kl(kernel){user-defined predicate}
+    \caption{\kl{CN} to \kl{Kernel CN} \intro(kernel){user-defined predicate}
         desugaring.}\label{fig:pred-to-kernel}
 \end{figure*}
 
@@ -302,9 +302,9 @@ Specifically, the grammar syntactically stratifies values and
 expressions from which we would like to \emph{synthesise} type information, and
 statements against which we would like to \emph{check} a
 given type. This applies to both pure and effectful fragments, leading to a
-four-fold distinction in the \kl{let-normal} form of the grammar. Pure values
-expressions are sub-terms of both pure statements and effectful expressions; in
-turn, both of those are sub-terms of effectful expressions.
+four-fold distinction in the \kl{let-normal} form of the grammar. \kl{Pure values} and
+\kl(pure){expressions} are sub-terms of both \kl{pure statements} and \kl{effectful expressions}; in
+turn, both of those are sub-terms of \kl{effectful statements}.
 
 This simplifies presenting and working with the type system in the following ways.
 \begin{itemize}
@@ -390,8 +390,8 @@ join-points and early returns in sub-expressions seems to make it difficult to
 avoid some sort of normalisation (and associated control flow explosion) in the
 type system.
 
-\intro{Pure expressions} include things such as pure values, datatype values, pointer
-arithmetic for arrays (in \kl{de facto}, not \kl{ISO}) and struct/union
+\intro{Pure expressions} include things such as \kl{pure values}, datatype values, pointer
+arithmetic for arrays (for \kl{de facto}, not \kl{ISO} C) and struct/union
 members, boolean negation, binary operations and relations, function calls and
 assertions. \intro{Pure statements} are shown in~\cref{fig:kernel-pstmt}. They include
 pure expressions as sub-terms. They classify the pure constructs which must be
@@ -405,12 +405,12 @@ checked, such as \coreinline{undef}.
     \caption{\kl{Pure statements} in ResCore.}\label{fig:kernel-pstmt}
 \end{figure}
 
-\intro{Effectful expressions} (\cref{fig:kernel-expr}), include pure expressions,
-memory actions, memory operations, C function calls and Core procedure
+\intro{Effectful expressions} (\cref{fig:kernel-expr}), include \kl(kernel){pure expressions},
+\kl{memory actions}, \kl{memory operations}, C function calls and Core procedure
 calls.\sidenote{I explain the \kl{Core} constructs, including
 \coreinline{run}, and the distinction between
 \coreinline{pcall} and \coreinline{ccall}, in~\cref{sec:core-grammar}.}
-Argument lists are \sm{[[spine]]}s, which are lists
+\intro{Argument lists} are \sm{[[spine]]}s, which are lists
 of \sm{[[ret_term]]}s/\sm{[[spine_elem]]}s.
 
 \begin{figure}[htp]
@@ -424,7 +424,7 @@ of \sm{[[ret_term]]}s/\sm{[[spine_elem]]}s.
     \caption{\kl{Effectful expressions} in \kl{ResCore}.}\label{fig:kernel-expr}
 \end{figure}
 
-\kl{Effectful statements} (\cref{fig:kernel-stmt}) include \kl{return terms}, \kl{pure
+\intro{Effectful statements} (\cref{fig:kernel-stmt}) include \kl{return terms}, \kl{pure
 statements}, bound \kl{effectful expressions}, standard conditional and
 pattern-matching constructs and the \coreinline{run} operator.
 
@@ -459,7 +459,7 @@ how to feasibly and gradually transition the most subtle and complex parts of
 proof-assistant (\fancyref{sec:better-foundations}).
 
 The key concept which makes this possible is to include \kl{explicit (linearly
-typed) terms} for both resources \emph{and operations on them} in the grammar of
+typed) terms} for both \kl(type){resources} \emph{and \kl(predicate){operations} on them} in the grammar of
 \kl{ResCore}. Though this is not a new
 concept~\sidecite{xi1999dependent,cui2005ats,ahmed2007l3}, its application in a
 separation logic settings appears to be so, because these sorts of
@@ -512,7 +512,7 @@ In \kl{Kernel CN}, these \intro{resource terms} serve many purposes:
 \end{figure*}
 
 \cref{fig:res-terms} shows the \kl{resource terms} of \kl{ResCore}. There are
-\emph{several} side conditions for each of the operations the terms represent,
+\emph{several} side conditions for each of the \kl(predicate){operations} the terms represent,
 which I will show in \fancyref{sec:typing-res-terms}, but for now it suffices
 to explain just the intuition. Variables \sm{[[ r ]]} allow the formalisation to
 name (in patterns) and refer (terms) to any \kl{resource type} in the \kl(resource){context}
@@ -531,7 +531,7 @@ Notably, \kl{ordered-disjunction} \emph{types} can be introduced by \emph{any}
 resource term, and eliminated by any resource pattern. This means introducing
 and eliminating that type requires the user for which branch to do so.
 
-The following terms are all \kl{operations on predicates}.
+The following terms are all \intro{operations on predicates}.
 \begin{itemize}
     \item \sm{[[ fold _rest : pred ]]}. This supports folding the
         definitions of a \kl(kernel){user-defined recursive predicate}.

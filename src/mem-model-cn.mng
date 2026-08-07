@@ -1,5 +1,5 @@
 % vim: ft=tex
-\chapter{CN-VIP}\label{chap:cn-vip}
+\chapter{CN-VIP}\label{chap:cn-vip}\phantomintro{CN-VIP}
 
 % chktex-file 25
 
@@ -50,7 +50,7 @@ base pointer \sm{[[yp]]}. The \kl{points-to} is indexed by the new C type
 Alongside the \kl{iterated points-to}, the \kl{return type} also mentions
 \sm{[[Alloc (yp.id) ( ( yp . addr,  inj pval2 ) )]]}. Though this looks
 similar to the constraint (and records the same bounds information), this is a
-\kl(allocation){token} which is proof of \emph{liveness} of the allocation, and also
+\intro(allocation){token} which is proof of \emph{liveness} of the allocation, and also
 \kl(allocation){permission} to deallocate the newly created allocation.
 
 In \ActionKillDynamic{}, all the \kl(type){resources} are consumed rather than
@@ -91,7 +91,7 @@ requires that all non-padding bytes are not-\coreinline{Unspecified}; this
 prevents loading from uninitialised memory and is checked by premise 3, but is
 otherwise as one would expect.
 
-I have implemented (but not formalised) memory operations to support casting
+I have implemented (but not formalised) \kl{memory operations} to support casting
 between bytes and \cinline{unsigned
 char}.\sidenote{\href{https://github.com/rems-project/cn/commit/95c9a40b9e4184ad37519fe116678b877cbc6720}{CN\#95c9a40b}.}
 The cast from bytes forbids casting the \coreinline{Unspecified} value; the
@@ -145,7 +145,7 @@ required of bytes, yields an elegant and expressive solution, upon which the
 user can encode complex usage patterns for unions.
 
 The solution is tripartite. First, represent \kl[points-to]{ownership} of a union as
-\k[points-to]l{ownership} of an array of bytes. Second, require a transformation of the
+\kl[points-to]{ownership} of an array of bytes. Second, require a transformation of the
 \kl{resource context} to permit reads and writes to a particular member. Third,
 record that the member came from a union in a \kl(padding){new token} in
 the resource context. In this manner, an array of bytes acts as a least upper
@@ -391,10 +391,10 @@ Only a few steps are needed to update the formalisation presented in
 \fancyref{chap:kernel-soundness} to use \kl{CN-VIP}.
 
 \begin{enumerate}
-    \item Extend the configuration of the dynamic semantics to be a step
-        relation between abstract \emph{\kl{states}} and expressions, rather than
-        just \emph{\kl{heaps}} and expressions.
-    \item Extend the heap typing rules to incorporate the newly added
+    \item Extend the configuration of the dynamic semantics to carry
+        the \kl{allocation history} alongside \kl{heaps} and expressions.
+        Define the \intro{state} to be the pair of the first two.
+    \item Extend the \kl{heap typing} rules to incorporate the newly added
         allocation history, \sm{[[ Alloc ]]} and
         \sm{[[Padding < ct , member >]]} tokens.
     \item Update the proof of soundness for \kl{resource term} reduction and
@@ -452,7 +452,7 @@ rule for \sm{\cnkw{kill}} (\cref{fig:mem-model-dyn-create-kill}).
 
 With the exception of threading through the \kl{allocation history}, the rules
 for loads and stores are unchanged. The rules for converting \kl[points-to]{ownership} of
-objects into \kl[iterated points-to]{iterated ownership} of memory bytes and vice versa are
+objects into \kl[iterated points-to]{iterated ownership} of \kl{memory bytes} and vice versa are
 \kl{predicate operations}, much like the ones for manipulating structs and
 fixed-length arrays. The rules for \sm{\cnkw{memcpy}} and \sm{\cnkw{memcmp}}
 are also as expected.
@@ -472,14 +472,14 @@ provided as evidence (\cref{fig:mem-model-dyn-ptr-relop}).
     \onlyUseRules{\cndefnOpXXMemop{}}{%
         \cndruleOpXXMemopXXRelXXBinop{}
     }
-    \caption{Memory operations involving pointers perform a bounds check using
+    \caption{\kl{Memory operations} involving pointers perform a bounds check using
         the SMT solver and supplied pointers, and a liveness check based on
         evidence from the supplied resource term and the heap.}\label{fig:mem-model-dyn-ptr-relop}
 \end{figure*}
 
 \subsection{State typing}
 
-\kl{State typing} is a generalisation of \kl{heap typing}
+\intro{State typing} is a generalisation of \kl{heap typing}
 (\S\ref{sec:heap-types}) to include the append-only \kl{allocation history}.
 
 First, the \kl{allocation history} needs to be ``well-constrained'':
@@ -504,7 +504,7 @@ checks the \kl{heap} exactly as before.
     \footnotesize%
     \raggedright%
     \cndefnHeapPP{}%
-    \caption{Definition of \kl(state){heap typing} in the presence of an
+    \caption{Definition of \intro(state){heap typing} in the presence of an
         \kl{allocation history}: substitute the latter into the \kl{heap} and
         the \kl{normalised resource context}, and proceed as
         before.}\label{fig:heap2-typing}
@@ -512,7 +512,7 @@ checks the \kl{heap} exactly as before.
 
 \subsection{Updating the soundness proof}
 
-Recall that I defined \kl{resource term reduction} and
+Recall that I defined \kl{resource term} reduction and
 \kl(resource){pattern-matching} in a big-step style (\S\ref{sec:heap-types}).
 Whilst this intertwines the proofs for progress and type preservation, its
 advantage of modularity pays off now.
@@ -520,14 +520,14 @@ advantage of modularity pays off now.
 The new constructs such as non-deterministic pointer equality, \sm{\cnkw{alloc}},
 dynamic \sm{\cnkw{kill}}, \sm{\cnkw{memcpy}},
 \sm{\cnkw{memcmp}}, \cinline{copy_alloc_id}, and the conversions to and
-from memory bytes, are just additional cases in the proof, the rest are merely
+from \kl{memory bytes}, are just additional cases in the proof, the rest are merely
 updates.
 
 The updates are small because the additional constraints on the \kl{allocation
 history} are easy to link across the static and dynamic semantics by the
 definition of \kl{allocation history typing}. The bounds and liveness checks
 are similarly easy to link across the static and dynamic semantics by the
-definition of \kl(state){heap typing}.
+new definition of \kl(state){heap typing}.
 
 The updated theorem statements are as below: the main differences is the use of
 \kl{state typing}, and the \kl{logical context} \sm{[[L0]] = [[allocv : id_map ]]}.
@@ -539,7 +539,7 @@ or \kl{synthesise} (\sm{[[ cdot ; L0 ; N ; nR |- res_term <= res ]]}), and
 \kl{well-typed states} (\sm{[[ alloct ; h <= N ; nR ]]}), there exists a
 \kl{resource value} (\sm{[[ res_val ]]}), \kl(normalised){context} (\sm{[[ nR' ]]})
 and \kl{heap} (\sm{[[ h' ]]}), such that: the \kl(resource){value} is well-typed
-(\sm{[[ cdot ; L0 ; N ; nR' |- res_val <= res ]]}); the \kl{heap is well-typed}
+(\sm{[[ cdot ; L0 ; N ; nR' |- res_val <= res ]]}); the \kl(state){heap is well-typed}
 (\sm{[[ alloct |- h' <= nR' ]]}), and for all frame-\kl{heaps} (\sm{[[ f ]]}), the
 \kl{resource term} reduces to the \kl{resource value} without affecting the
 frame-\kl{heap} (\sm{[[ alloct | < h + f ; res_term > ||v < h' + f ; res_val > ]]}).
@@ -590,11 +590,11 @@ operations} in the \kl{Cerberus} \kl(Cerberus){elaboration}.
 
 Pointers to C types can be converted to and from pointers to bytes, but as
 values, bytes are new, neither pointer nor integer. Thus the soundness of the
-existing integer and pointer memory operations are unaffected by their
+existing integer and pointer \kl{memory operations} are unaffected by their
 introduction.
 
 Load and stores do deal with values, converting to and from their
-representation as memory bytes. The introduction of bytes in \kl{CN-VIP} may
+representation as \kl{memory bytes}. The introduction of bytes in \kl{CN-VIP} may
 raise concerns about increasing expressiveness beyond what is possible
 \kl{VIP}, because bytes capture more information. In actuality, \kl{CN-VIP}
 bytes are \sm{\sim} related to \kl{VIP} \cinline{char} as follows:
@@ -625,7 +625,7 @@ changes to the source program, by threading pointers through and using them in
 \margintoc%
 %
 In this chapter, I discuss the impact of transitioning the \kl{CN} test
-and tutorial suite to using \kl{CN-VIP}. I finish with a discussion on how
+and tutorial~\sidecite{pulte2024tutorial} suite to using \kl{CN-VIP}. I finish with a discussion on how
 future work could use the principles uncovered by \kl{CN-VIP} to make
 it and \kl{CN} overall more trustworthy.
 
@@ -740,7 +740,7 @@ backwards-compatible manner. For new features, I added new tests (a mix of
 positive and negative ones), separate from the existing regression suite.
 
 To quantify the impact of \kl{CN-VIP} on existing code, I used the (over 200)
-\kl{CN tutorial} examples. As the
+CN tutorial~\sidecite{pulte2024tutorial} examples. As the
 \href{https://github.com/rems-project/cn-tutorial/commit/9ee153e74d1b0fbdcb2802f2186d211ab6b2343b}{`Add
 support for VIP} commit demonstrates, out of roughly 185 small,
 ``working'' test cases, only 7 had to be updated.\sidenote{A limitation of the
@@ -767,7 +767,7 @@ decrementing rather than catching \kl{UB}, I amended the code to to sidestep
 \subsection{Non-deterministic pointer equality}\label{subsec:update-non-det-ptr-eq}
 
 The other set of examples were the approximately 81 C files (114 including
-headers) used in the \kl{CN tutorial} itself. Of these, 7 were intentionally broken in
+headers) used in the CN tutorial~\sidecite{pulte2024tutorial} itself. Of these, 7 were intentionally broken in
 non-\kl{CN-VIP} ways for pedagogical reasons, which I manually checked
 remained so after the switch. Another 4 were intentionally without
 annotations, of which 3 started to fail verification earlier because of
@@ -793,9 +793,9 @@ in a queue; thus, they need to be valid for dereferencing (not \kl{one-past}),
 hence ruling out the possibility that they could have equal addresses and
 differing \kl{provenances}.
 
-\section{\kl(CN){Lemma} proofs within C}\label{sec:lemma-proof-c}
+\section{Lemma proofs within C}\label{sec:lemma-proof-c}
 
-The \kl{CN tutorial} queue example requires the use of \kl(CN){lemmas} to prove the
+The CN tutorial~\sidecite{pulte2024tutorial} queue example requires the use of \kl(CN){lemmas} to prove the
 appropriate facts for popping and pushing. I did not write the implementation
 for these examples, but I did verify them, including proofs of \kl(CN){lemmas} using C
 as a tactic language, with the caveat they do not have or check a termination
@@ -880,7 +880,7 @@ reason about the bit manipulations done by the \kl{buddy allocator} in
 \kl{pKVM} (\S\ref{chap:buddy}). It supports exporting pure facts involving
 datatypes too.
 
-This feature was extended by Amy Yin to support exporting and proving \kl(CN){lemmas}
+This feature was extended by Amy Yin~\sidecite{yin2025translating} to support exporting and proving \kl(CN){lemmas}
 involving resources. Because of \kl{CN}'s aim (\S\ref{sec:cn-goals}) to behave
 like a decidable type system rather than a program logic, there will always be
 limits to the expressiveness of the type system, and the degree of automation
@@ -896,7 +896,7 @@ based on that.
 However, \kl{Iris} requires an operational semantics over which to prove the basic
 primitives sound, on top of which other rules are defined. Note that the
 current resource \kl(CN){lemma} export and proof mechanism sidesteps this issue and
-focuses on translating \kl(logical){function} and \kl(CN){predicate definitions}
+focuses on translating \kl(CN){function} and \kl(CN){predicate definitions}
 and \kl(CN){lemma} statements.
 
 Another impediment is that \kl{Iris} is an \kl{affine} separation logic, whereas we
