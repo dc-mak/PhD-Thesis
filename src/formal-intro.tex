@@ -41,7 +41,7 @@ systematically, using a \kl{bidirectional} approach. A type system will also
 need automation to not burden the programmer with proving obvious things.
 Similar to VeriFast~\sidecite{jacobs2011verifast},
 Gillian-C~\sidecite{santos2020gillian}, and
-Frama-C~\sidecite{kirchner2015frama}, \kl{CN} enlists SMT solvers to help. A
+\kl{Frama-C}~\sidecite{pascal2012frama}, \kl{CN} enlists SMT solvers to help. A
 type system must also terminate, even with SMT solver, so \kl{CN} restricts the
 expressiveness of the assertion language and SMT queries. Lastly, to track and
 manage resources in C, the type system needs to be substructural.
@@ -57,8 +57,8 @@ not require proof terms for the logical properties (by construction, all
 entailments fall are decidable). \kl{Kernel CN} is a \kl{bidirectional} type
 system for \intro{ResCore}, a \kl{let-normal} version of \kl{Core}.
 
-I also formalise two related elaboration algorithms: one for quantifier
-instantiations, one for \kl{iterated} predicate indices. I do so to explain the
+I also formalise two related \kl(CN){elaboration} algorithms: one for quantifier
+instantiations, one for \kl(kernel){iterated} predicate indices. I do so to explain the
 \emph{principles} of \kl{resource inference}, since the implementation
 frequently changes; I have not embarked on any proofs for either scheme.
 
@@ -73,7 +73,7 @@ relates to \kl{Core} by example.
 In~\fancyref{chap:kernel-statics}, I explain the \kl{Kernel CN} typing rules
 for \kl{ResCore}. It lacks inference and so is simpler to prove sound. Since it
 handles the majority of C, the entire system is very large; I will only discuss
-the main features. I also show the aforementioned elaboration algorithms, which
+the main features. I also show the aforementioned \kl(CN){elaboration} algorithms, which
 infer the information assumed by \kl{Kernel CN}.
 
 In~\fancyref{chap:kernel-soundness}, I discuss the key definitions, lemmas and
@@ -233,7 +233,7 @@ it suffices to say it captures real-world C.
 
 \kl{Cerberus} is vital for \kl{CN} because it expresses this executable
 semantics in a \emph{relatively simple first-order functional language},
-\kl{Core}, via a \kl{compositional} elaboration.
+\kl{Core}, via a \kl{compositional} \kl(Cerberus){elaboration}.
 
 This drastically simplifies many tricky parts of C. \kl{Cerberus} handles
 the strange scoping and control flow (of jumping \emph{into} a loop) of
@@ -428,7 +428,7 @@ thread-local reductions.}
 Reaching the same \coreinline{save} via a \coreinline{run} 
 is more complicated. Like a \coreinline{pcall}, it evaluates its arguments
 into values and looks up the label \sm{\cnnt{id}}. The \sm{\mathrm{labelmap}} is
-precomputed on a per-procedure basis by \kl{Cerberus} during elaboration.
+precomputed on a per-procedure basis by \kl{Cerberus} during \kl(Cerberus){elaboration}.
 Unlike \coreinline{pcall}, the result of the lookup is \emph{a context}
 \sm{C_{\cnnt{id}}} and an expression \sm{E_{\cnnt{id}}}. It substitutes the values
 for the parameters in \sm{E_\cnnt{id}}, \emph{discards the current context} \sm{C},
@@ -450,7 +450,7 @@ only returns from the first two and not the last.}
 \section{Elaboration example: list append}\label{sec:append-core}
 
 I will use the linked integer list append function from~\cref{fig:append-c},
-as an demonstration of Cerberus' elaboration into \kl{Core}.
+as an demonstration of Cerberus' \intro(Cerberus){elaboration} into \kl{Core}.
 
 The first thing it does it declare its parameters. In C, these are mutable
 local variables.
@@ -468,7 +468,7 @@ result of the function has type \coreinline{eff (loaded t)} where
 
 \corefile[firstline=3, lastline=4]{code/append_plain.core}
 
-To keep the C function elaboration \kl{compositional}, especially for early returns,
+To keep the C function \kl(Cerberus){elaboration} \kl{compositional}, especially for early returns,
 \kl{Cerberus} adds a single \coreinline{save}
 expression to declare a return label (here, \coreinline{ret_430}) \emph{at the
 end of each procedure}. Any part of the procedure may thus \emph{forward jump}
@@ -491,7 +491,7 @@ takes an integer (for constraining the alignment of the
 resulting pointer), and a C type. \coreinline{Ivalignof(τ)} is an
 integer value constructor which carries a C type τ; in C, the
 alignment of a type is an implementation-defined value and using an abstract
-constructor allows the elaboration to be agnostic of such choices.
+constructor allows the \kl(Cerberus){elaboration} to be agnostic of such choices.
 
 Binding constructs \coreinline{let strong} and \coreinline{let weak}
 (monadically) bind effectful values, and sequence their effects. In this
@@ -559,7 +559,7 @@ of \cinline{&ys}. Elsewhere, lines 83\textendash{}84 bound to
 
 \corefile[firstline=83, lastline=84]{code/append_plain.core}
 
-Finally, the elaboration of the function call itself performs a large amount of
+Finally, the \kl(Cerberus){elaboration} of the function call itself performs a large amount of
 run-time type checking; in the general case this supports calling variadic
 functions via function pointers, but for this example, because the function is
 (a) known at compile time, and (b) not variadic, it simplifies to the below.
@@ -621,9 +621,9 @@ return label \coreinline{ret_430} mentioned earlier.
 
 \subsection{Discussion}\label{subsec:elab-discussion}
 
-A few things are noteworthy about the Core elaboration:
+A few things are noteworthy about the \kl{Core} \kl(Cerberus){elaboration}:
 \begin{itemize}
-    \item The elaboration is \intro{compositional}: each function, block,
+    \item The \kl(Cerberus){elaboration} is \intro{compositional}: each function, block,
         statement and expression is elaborated in isolation, based only
         on its parts, and follows the structure of the original C program.
     \item Each variable (function argument, local, and global) is uniformly
@@ -638,7 +638,7 @@ A few things are noteworthy about the Core elaboration:
 
 \kl{Compositionality} is just as important, as the \kl{Core} being a
 first-order functional language. This makes it straightforward transport
-annotations on C source, via the elaboration, to annotations on \kl{Core}.
+annotations on C source, via the \kl(Cerberus){elaboration}, to annotations on \kl{Core}.
 
 If \kl{Cerberus} elaborated C into a dataflow graph instead,
 such transporting might be difficult. Function pre- and postconditions would
@@ -652,7 +652,7 @@ In practice, this requires a good amount of engineering to accomplish
 
 Another challenge is distance between C and \kl{Core}. Reporting SMT assertion
 failures in terms of what the user wrote is difficult when it mentions
-variables introduced by the elaboration, or when the assertion itself is
+variables introduced by the \kl{Cerberus}{elaboration}, or when the assertion itself is
 introduced by \kl{CN} (\S\ref{sec:counter-ex}).
 
 This concludes the background related to \kl{Cerberus}; I will now discuss the
@@ -661,7 +661,7 @@ background related to the \kl{CN} type system.
 \section{Decidable refinements for retrofitting and counter-examples}\label{sec:decidable-refinements}
 
 \kl{Core} already has a straightforward \kl{bidirectional} type system which
-\kl{Cerberus} uses as a sanity check for the \kl{elaboration}. It has not been
+\kl{Cerberus} uses as a sanity check for the \kl(Cerberus){elaboration}. It has not been
 used for a proof of soundness, which would just be a sanity check on the
 dynamic semantics.
 
@@ -741,7 +741,7 @@ program variables).
 \section{Bidirectionality for taming subtyping}\label{sec:bidir-subtyping}
 
 With \kl{liquid types}, we can use an SMT solver to automate tedious proofs.
-However, implications induce a subtyping relation in such a type system, which
+However, implications induce a \kl{subtyping} relation in such a type system, which
 means we have a \emph{subsumption rule}, as shown in~\cref{fig:subsumption}. As
 presented, the rule is \emph{not} syntax-directed, and so raises the question:
 when should it be used?
@@ -752,7 +752,7 @@ when should it be used?
                 {\Gamma \vdash e \mathrel{{:}} \{\, x \mid \phi' (x) \,\}}
   \end{mathpar}
   \caption{Subsumption rule using for a system with subset types and logical
-      implication \sm{\Rightarrow} as the subtyping relation.}\label{fig:subsumption}
+      implication \sm{\Rightarrow} as the \intro{subtyping} relation.}\label{fig:subsumption}
 \end{marginfigure}
 
 Revisiting~\cref{fig:dead-code}, imagine a type system where contexts
@@ -1276,8 +1276,8 @@ traversal in C does not match the order of traversal in the predicate, or
 access to the middle of the array is required, then a user needs to use lemmas
 to massage the available assumptions into a usable form.
 
-\kl{CN} implements \kl{iterated separating conjunctions}, henceforth refered as
-\intro{iterated predicates}, inspired by \sidetextcite{muller2016automatic},
+\kl{CN} implements \kl(CN){iterated separating conjunctions}, henceforth referred as
+\intro(kernel){iterated predicates}, inspired by \sidetextcite{muller2016automatic},
 but with restrictions to ensure only quantifier-free SMT queries. They are
 introduced and eliminated as follows.
 \begin{itemize}

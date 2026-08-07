@@ -14,7 +14,7 @@ Recall the \kl{Core} operators for expressing most control-flow:
 \sm{\cnkw{run}} and \sm{\cnkw{save}}, first presented
 in~\fancyref{sec:core-grammar}.
 
-These very general constructs are used by \kl{Cerberus}' elaboration into
+These very general constructs are used by \kl{Cerberus}' \kl(Cerberus){elaboration} into
 \kl{Core} to support a variety of control flow constructs: loops (\cinline{continue},
 \cinline{break}, iteration), \cinline{switch}es (\cinline{case}s, fall-through and \cinline{default}s), labels, and
 \cinline{goto}.
@@ -794,28 +794,28 @@ First the code declares a recursive structure:
 \cinline{struct node} contains one \cinline{struct node*} called
 \cinline{next}.
 
-The first \kl(CN){predicate} asserts \kl{ownership} of \cninline{front}, binds
+The first \kl(CN){predicate} asserts \kl[points-to]{ownership} of \cninline{front}, binds
 the pointee to \cninline{F}, and then calls \cninline{List_Next_Seg} with
 \cninline{front}, \cninline{F.next}, and \cninline{back}. In turn, that
 \kl(CN){predicate} checks whether \cninline{front} and \cninline{back} are equal,
 \coreinline{return}ing if so, and recursing on \cninline{next} and \cninline{back} on the
 original \kl(CN){predicate} if not. If not for \kl{CN}'s syntax limitations
-(\fancyref{sec:restriction-branching}), the two \kl(predicate){definitions} could be combined
+(\fancyref{sec:restriction-branching}), the two \kl(CN predicate){definitions} could be combined
 into one. Though the \kl(CN){predicate} is unusual, it is derived from an example
 written by a user, and is a priori a sensible
 definition (for non-empty list segments).\sidenote{\href{https://github.com/rems-project/cerberus/issues/451}{Cerberus\#451}}
 
 \cfile[firstline=23,highlightlines={25-27}]{code/diverge.c} % chktex 8
 
-The \kl(predicate){definitions} are problematic because they can be used in a context which
+The \kl(CN predicate){definitions} are problematic because they can be used in a context which
 causes \kl{CN} to diverge. Using \cinline{List_Seg(front, back)} % chktex 36
 with \cinline{RW(back)} causes the \kl{auto-unfolding} mechanism to loop. % chktex 36
-This is because the \cinline{List_Seg} \kl(CN){predicate} included \kl(CN){ownership} of
+This is because the \cinline{List_Seg} \kl(CN){predicate} included \kl[points-to]{ownership} of
 \cinline{front}, and so by the time \kl{CN} symbolically evaluates the
 condition in \cinline{List_Next_Seg}, it deduces
 \cinline{!ptr_eq(front, back)} and recurses. This introduces new % chktex 36
-\kl(CN){ownership} for \cinline{front->next}; the condition is guaranteed to always be
-false in a context with \kl(CN){ownership} of \cinline{back}.
+\kl[points-to]{ownership} for \cinline{front->next}; the condition is guaranteed to always be
+false in a context with \kl[points-to]{ownership} of \cinline{back}.
 
 The root of the problem is the combination of automatically deriving logical
 facts based on the \kl{resource context}, and the \kl{auto-unfolding} scheme for
@@ -869,7 +869,7 @@ modularised the structure of, and updates to the proof of soundness.
 I then explained how I implemented \kl{CN-VIP},
 and its effect on the annotation and performance overhead of \kl{CN}.
 At the end, I discussed how I fed back insights from the theory to improve performance,
-and outlined the development of new features such as support for \kl{lemmas} and
+and outlined the development of new features such as support for \kl(CN){lemmas} and
 better foundations for \kl{CN}.
 
 Lastly, in~\arefpart{engineering}, I showed that a verification tool for
@@ -929,9 +929,9 @@ already covered in detail the direction of more trustworthiness in
     \item \textbf{Perform a `mem2reg' pass on \kl{Core}.} Representing stack
         variables whose address is not taken as resources is unnecessary.
         Transforming memory actions on such locations into immutable \kl{Core}
-        variables and expressions, akin to the \kl{LLVM} memory-to-register
+        variables and expressions, akin to the LLVM memory-to-register
         pass (mem2reg), would reduce the amount of \kl{resource inference},
-        \kl{bounds checking}, disjointness reasoning required of the \kl{SMT} solver.
+        \kl{bounds checking}, disjointness reasoning required of the SMT solver.
         \begin{itemize}
             \item Implemented in
                 \href{https://github.com/rems-project/cerberus/pull/1003}{Cerberus\#1003}.

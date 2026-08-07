@@ -679,7 +679,7 @@ This leads to even more options.
         user-defined \cinline{memcpy}. It would also complicate preserving
         \kl{provenance} via \cinline{memcpy}.\sidenote{Ideally,
             \cinline{memcpy} has a simple specification dealing with
-            \kl{iterated ownerships} of bytes, and leave handling structured
+            \kl{iterated points-tos} of bytes, and leave handling structured
             values and \kl(type){resources} (and the accompanying polymorphism) to
             other parts of the type system.}
     \item \textbf{Add an extra constructor to the SMT representation of
@@ -969,10 +969,10 @@ will learn constraints: either from creating new allocations, or from
 tokens} \cninline{Alloc}.
 
 For the latter, \cninline{Alloc} takes an \kl{allocation ID} as an argument,
-unlike \kl[ownership]{\cninline{RW}/\cninline{W}} and \kl{user-defined
+unlike \kl[points-to]{\cninline{RW}/\cninline{W}} and \kl(CN){user-defined
 predicates} which are restricted to pointers only.
 
-Unlike pointer disjointness facts based on \kl[ownership]{\coreinline{RW}/\cninline{W}}, I do
+Unlike pointer disjointness facts based on \kl[points-to]{\coreinline{RW}/\cninline{W}}, I do
 not derive \kl{allocation or ID} disjointness facts from
 multiple allocation tokens, since there has been no need for it
 yet.\sidenote{The only rule which needs to know whether two \kl{provenances} are
@@ -1153,16 +1153,16 @@ recovered from bytes if all non-\sm{@\mathsf{empty}} \kl{provenances} agree with
 other, which is not a monotonic operation.
 
 The choice of bytes feeds two birds with one scone because it also hints at how
-to support unions ergonomically in \kl{CN}. \kl{Ownership} of a union gives
-\kl{ownership} of an array of bytes, and this array can be transformed to and from
-\kl{ownership} of each of its fields, and a \kl{token representing ownership
+to support unions ergonomically in \kl{CN}. \kl[points-to]{Ownership} of a union is
+\kl[iterated points-to]{ownership} of an array of bytes, and this array can be transformed to and from
+\kl[points-to]{ownership} of each of its fields, and a \kl{token representing ownership
 of the padding}.\sidenote{\kl{Cerberus} does not currently support switching on
 endianness, so I match its default big-endianness, which is also suitable for
 verifying \kl{pKVM} on Arm}
 
 Consider a \cinline[breaklines]{union u { int x; uintptr_t y; int *p z; }}.
-\kl{Ownership} \cninline{take u = RW<union u>(p)} would mean \cninline{u: array byte}. % chktex 36
-If one wishes to write or read a field, then the \kl{ownership} would need to
+\kl[points-to]{Ownership} \cninline{take u = RW<union u>(p)} would mean \cninline{u: array byte}. % chktex 36
+If one wishes to write or read a field, then the \kl[points-to]{ownership} would need to
 be transformed into \cninline{take z = RW<int*>(member_shift(p,z))}, and % chktex 36
 \kl{padding resource} \cninline[breaklines]{take p = Padding<union u, z>(p)}, % chktex 36
 along with constraints relating byte array \cninline{u} to integer \cninline{z}

@@ -59,7 +59,7 @@ base pointer: \sm{[[ res_term | kill < dyn > ( pval ) ]]}. The length of the
 allocation is obtained from the type of the \kl{resource term}, which must be a
 pair of an \kl{iterated points-to} of bytes, and an \kl{allocation token}. The
 length of the allocation \sm{[[ oarg . len ]]}, obtained from the \kl{allocation
-token's} output argument, allows the rule to check the \kl{ownership} of the
+token's} output argument, allows the rule to check the \kl[points-to]{ownership} of the
 entire allocation has been returned without gaps. This is done in premise 4,
 where the SMT solver is asked to prove a quantified formula (which, unlike
 assuming a quantified formula, is decidable). The base address of the
@@ -74,12 +74,12 @@ a unit value.
 
 Note that the rules for loads and stores are unchanged. In particular,
 \kl{permission to read or write} a location is enough to deduce its enclosing
-allocation is live.\sidenote{\kl{Ownership} of out-of-bounds resources is
+allocation is live.\sidenote{\kl[points-to]{Ownership} of out-of-bounds resources is
 equivalent to \sm{\mathsf{false}}.}
 
 So how does one load or store arbitrary C types from dynamically
 allocated memory? Via new \kl{predicate operations} to convert between
-\kl{ownership} at an arbitrary C type, and \kl{ownership} of its representation
+\kl[points-to]{ownership} at an arbitrary C type, and \kl[points-to]{ownership} of its representation
 as an array of bytes (\cref{fig:cnvip-to-from-bytes}). Converting \emph{to} the byte
 representation consumes a \kl{points-to} at any C type, and produces an \kl{iterated
 points-to} at an array of bytes. Note that the initialisation status is
@@ -95,8 +95,8 @@ I have implemented (but not formalised) memory operations to support casting
 between bytes and \cinline{unsigned
 char}.\sidenote{\href{https://github.com/rems-project/cn/commit/95c9a40b9e4184ad37519fe116678b877cbc6720}{CN\#95c9a40b}.}
 The cast from bytes forbids casting the \coreinline{Unspecified} value; the
-cast to bytes is guaranteed to fit within 8 bits by an updated \kl{Cerberus
-elaboration}, by wrapping the value appropriately.
+cast to bytes is guaranteed to fit within 8 bits by an updated \kl{Cerberus}
+\kl(Cerberus){elaboration}, by wrapping the value appropriately.
 
 \begin{figure*}[tp]
     \small
@@ -105,8 +105,8 @@ elaboration}, by wrapping the value appropriately.
         \cndrulePredOpsXXToXXBytes{},
         \cndrulePredOpsXXFromXXBytes{}
     }
-    \caption{\kl{Kernel CN} typing rules for converting \kl{iterated ownership}
-        of bytes to and from \kl{ownership} of other C types.}\label{fig:cnvip-to-from-bytes}
+    \caption{\kl{Kernel CN} typing rules for converting \kl[iterated points-to]{iterated ownership}
+        of bytes to and from \kl[points-to]{ownership} of other C types.}\label{fig:cnvip-to-from-bytes}
 \end{figure*}
 
 \section{Unions and padding}\label{sec:unions-padding}
@@ -144,8 +144,8 @@ model} lens, by noticing that what is required of unions is similar to what is
 required of bytes, yields an elegant and expressive solution, upon which the
 user can encode complex usage patterns for unions.
 
-The solution is tripartite. First, represent \kl{ownership} of a union as
-\kl{ownership} of an array of bytes. Second, require a transformation of the
+The solution is tripartite. First, represent \kl[points-to]{ownership} of a union as
+\k[points-to]l{ownership} of an array of bytes. Second, require a transformation of the
 \kl{resource context} to permit reads and writes to a particular member. Third,
 record that the member came from a union in a \kl(padding){new token} in
 the resource context. In this manner, an array of bytes acts as a least upper
@@ -182,16 +182,16 @@ and then updates the byte array with the byte representation of the pointee.
         \cinline{memcmp}.}\label{fig:cnvip-memcpy-memcmp}
 \end{figure*}
 
-The typing rules for \cinline{memcpy} require \kl{iterated ownership} of two
+The typing rules for \cinline{memcpy} require \kl[iterated points-to]{iterated ownership} of two
 contiguous arrays of \kl{memory bytes} of length \sm{n}; it returns
-\kl(iterated){ownership} of both, with the constraint that the value of the
+\kl[iterated points-to]{ownership} of both, with the constraint that the value of the
 destination (first) is equal to that of the source (second). The iterations
 must be contiguous and of the same length to express the equality constraint on
 the values correctly.
 
-The typing rules for \cinline{memcmp} require \kl{iterated ownership} of two
+The typing rules for \cinline{memcmp} require \kl[iterated points-to]{iterated ownership} of two
 contiguous arrays of \kl{memory bytes} of length \sm{n}; like \cinline{memcpy}, it
-returns \kl(iterated){ownership} of both, but unlike
+returns \kl[iterated points-to]{ownership} of both, but unlike
 \cinline{memcpy}, none of the bytes being compared must be
 \coreinline{Unspecified}, and the returned value is not straightforward to
 specify, because the concise or obvious specification would use quantifiers.
@@ -230,14 +230,14 @@ The effectful version of member shifting, is actually only used by its CHERI
 switch, and is not relevant to capturing the ISO rule.
 
 Instead, \kl{Cerberus} enforces the checks required by the \kl{ISO} rule via
-the elaboration. If strict pointer arithmetic is enabled, the member shift
+the \kl(Cerberus){elaboration}. If strict pointer arithmetic is enabled, the member shift
 guarded by the \kl{memory operation} \sm{\cnkw{PtrValidForDeref}}. This
 ensures the initial pointer is strictly in bounds of a live allocation for a
 given C type; any subsequent shifts at that C type are thus guaranteed to
 remain in bounds.
 
 Similarly, the effectful, \kl{ISO} version of array shifting is controlled by
-the same switch; the elaboration only uses the \kl{memory operation} if strict
+the same switch; the \kl(Cerberus){elaboration} only uses the \kl{memory operation} if strict
 pointer arithmetic is enabled, and uses the \kl{pure Core expression}
 otherwise.
 
@@ -252,7 +252,7 @@ I discuss the implementation in~\cref{sec:impl-array-member-shift}.
         construct (one which is already supported by \kl{Cerberus} and
         \kl{CN}).
     \item \kl{ISO} member shifts are not handled directly, because they
-        do not show up as such in the elaboration. Instead, the rules
+        do not show up as such in the \kl(Cerberus){elaboration}. Instead, the rules
         for \MemopPtrValidForDeref{} and \MemopPtrUnsureForDeref{} allow the
         \kl{ResCore} program to reflect the presence or absence of a live and
         sufficiently large allocation in the resource context into the returned
@@ -343,7 +343,7 @@ whether each argument is in bounds of the same live allocation.
 % with standard C toolchains. However, when used within \kl{CN}, the new C type
 % enables supporting roundtrip casts at the cost of a few more casts; for now
 % these must be inserted manually by the programmer, but it is possible to tweak
-% the \kl{Cerberus} elaboration to insert some of them automatically.
+% the \kl{Cerberus} \kl(Cerberus){elaboration} to insert some of them automatically.
 %
 % Remember, the idea is that the new C type will allow \kl{CN} to track the
 % representation of integers more precisely than in \kl{VIP} which uses a
@@ -451,8 +451,8 @@ rule for \sm{\cnkw{kill}} (\cref{fig:mem-model-dyn-create-kill}).
 \end{figure*}
 
 With the exception of threading through the \kl{allocation history}, the rules
-for loads and stores are unchanged. The rules for converting \kl{ownership} of
-objects into \kl{iterated ownership} of memory bytes and vice versa are
+for loads and stores are unchanged. The rules for converting \kl[points-to]{ownership} of
+objects into \kl[iterated points-to]{iterated ownership} of memory bytes and vice versa are
 \kl{predicate operations}, much like the ones for manipulating structs and
 fixed-length arrays. The rules for \sm{\cnkw{memcpy}} and \sm{\cnkw{memcmp}}
 are also as expected.
@@ -460,7 +460,7 @@ are also as expected.
 \kl{Pointer operations}, including casts and \cinline[breaklines]{copy_alloc_id}, do
 not extend the \kl{allocation history}, but do require the \kl{heap} to check
 whether the supplied or resulting pointers belong to live allocations. They are
-agnostic of whether it is \kl{ownership} or an \sm{\cnkw{Alloc}} token is
+agnostic of whether it is \kl[points-to]{ownership} or an \sm{\cnkw{Alloc}} token is
 provided as evidence (\cref{fig:mem-model-dyn-ptr-relop}).
 
 \begin{figure*}
@@ -586,7 +586,7 @@ representation, critical for supporting dynamic memory allocation and unions.
 For the formalisation, I only support these transformation at the \kl(type){resource}
 level, but for the implementation, I went further, and added explicit casting
 to and from bytes and integers at the value level, as new \kl{memory
-operations} in the \kl{Cerberus elaboration}.
+operations} in the \kl{Cerberus} \kl(Cerberus){elaboration}.
 
 Pointers to C types can be converted to and from pointers to bytes, but as
 values, bytes are new, neither pointer nor integer. Thus the soundness of the
@@ -702,9 +702,9 @@ the effect of derived constraints, and the complexity of the check itself.
 
 The above two facts combined suggest a possible remedy: if any bounds checks
 can be replaced with checks in the \kl{resource context}, then it may offer a
-substantial speed-up. Since \kl{ownership} of a pointer is sufficient (but not
+substantial speed-up. Since \kl[points-to]{ownership} of a pointer is sufficient (but not
 necessary) to deduce bounds checks, we can replace some of them with checks in
-the \kl{resource context} for \kl{ownership}.
+the \kl{resource context} for \kl[points-to]{ownership}.
 
 In particular, for member and array shifts, this is a good strategy, because
 often the shifting is done just before loading, for which ownership needs to be
@@ -725,7 +725,7 @@ practice, we have observed that, \emph{not} automatically deriving disjointness
 constraints can speed-up verification
 significantly.\sidenote{\url{https://github.com/rems-project/cn-pKVM-hyp-allocator/pull/13}}
 
-It is possible to optimise further, for example, the \kl{Core} elaboration
+It is possible to optimise further, for example, the \kl{Core} \kl(Cerberus){elaboration}
 performs a \coreinline{PtrValidForDeref} check before every
 \coreinline{member_shift}, and so the checks on the \coreinline{member_shift}
 itself are technically redundant. Though perhaps a bit fragile, such facts
@@ -773,9 +773,9 @@ remained so after the switch. Another 4 were intentionally without
 annotations, of which 3 started to fail verification earlier because of
 \kl{CN-VIP} related reasons (member shifting on a pointer not guaranteed to be
 non-\cinline{NULL}). Of the remaining 70 C files (103 including headers), only
-2 predicate definitions (in headers) and 2 \kl{lemmas} needed updating. The latter
-followed from the former because the \kl{lemmas} inlined the definitions of
-the \kl(user-defined){predicates}.
+2 predicate definitions (in headers) and 2 \kl(CN){lemmas} needed updating. The latter
+followed from the former because the \kl(CN){lemmas} inlined the definitions of
+the \kl(CN user-defined){predicates}.
 
 % \inputminted[fontsize=\footnotesize,breaklines,firstline=108]{diff}{code/add_support_for_vip.patch}
 
@@ -783,8 +783,8 @@ All those updates were related to excluding the \kl{non-deterministic
 case in pointer equality} in the queue example (\S\ref{chap:example-queue}).
 
 Specifically, because the implementation for the pop operation, and the C proof
-of an induction \kl{lemma} to verify the push operation, both used C's
-\kl(non-det){pointer equality}, the \kl(user-defined){predicates} for it needed
+of an induction \kl(CN){lemma} to verify the push operation, both used C's
+\kl(non-det){pointer equality}, the \kl(CN user-defined){predicates} for it needed
 to constrain the relevant pointers to ensure address equality implied pointer
 equality. This is enough to assuage \kl{CN-VIP} that the
 \kl(ptr-eq){non-deterministic} case is impossible. The constraint is sensible
@@ -793,11 +793,11 @@ in a queue; thus, they need to be valid for dereferencing (not \kl{one-past}),
 hence ruling out the possibility that they could have equal addresses and
 differing \kl{provenances}.
 
-\section{\kl{Lemma} proofs within C}\label{sec:lemma-proof-c}
+\section{\kl(CN){Lemma} proofs within C}\label{sec:lemma-proof-c}
 
-The \kl{CN tutorial} queue example requires the use of \kl{lemmas} to prove the
+The \kl{CN tutorial} queue example requires the use of \kl(CN){lemmas} to prove the
 appropriate facts for popping and pushing. I did not write the implementation
-for these examples, but I did verify them, including proofs of \kl{lemmas} using C
+for these examples, but I did verify them, including proofs of \kl(CN){lemmas} using C
 as a tactic language, with the caveat they do not have or check a termination
 metric on recursive C functions.
 
@@ -815,7 +815,7 @@ inscrutable \kl{counter-examples}.
 
 Let \cinline{snoc} be the \kl(CN){function} which adds an element to the back
 of a list. It is recursive, and so will require \kl[CN statement]{hints}
-from the user to prove facts about it. The \kl{lemma} for popping (below)
+from the user to prove facts about it. The \kl(CN){lemma} for popping (below)
 states that the head and the tail of a \cinline{snoc}'d list is the head of the
 original list, and the \cinline{snoc} of the original tail. A limitation of the
 syntax \textemdash{} the inability to have an assertion about a
@@ -825,17 +825,17 @@ handle on the \kl{logical values} of their \kl(arg){output}.
 
 \cfile[fontsize=\footnotesize,breaklines,highlightlines={2-12}]{code/queue_pop_lemma.h} % chktex 8
 
-The \kl{lemma} for pushing however (seen in the diff above), is more
-interesting, because it requires induction on a \kl{user-defined predicate},
+The \kl(CN){lemma} for pushing however (seen in the diff above), is more
+interesting, because it requires induction on a \kl(CN){user-defined predicate},
 rather than a \kl{logical} (\kl{ghost}) data-structure. It says that if you
 have ownership of a list segment from pointers \cinline{front} to \cinline{p},
-and \kl{ownership} of node \cinline{struct queue_cell} at \cinline{p}, then you
+and \kl[points-to]{ownership} of node \cinline{struct queue_cell} at \cinline{p}, then you
 can reinterpret that as ownership of a larger queue from \cinline{front} to
 \cinline{p->next}, and interpret the \kl{logical} queue it represents as a
 \cinline{snoc} of the original queue and \cinline{p->first}.
 
-The \kl{lemma} proved here includes an extra parameter and constraint on line
-10 as a sanity check at the call site. It also includes \kl{ownership} of the
+The \kl(CN){lemma} proved here includes an extra parameter and constraint on line
+10 as a sanity check at the call site. It also includes \kl[points-to]{ownership} of the
 last node on line 11, which turns out to be necessary to prove the constraint
 on line 14.
 
@@ -848,25 +848,25 @@ it can be seen as traversing the queue until the base case and adding the extra
 
 \begin{marginfigure}
     \cfile[fontsize=\footnotesize,breaklines,highlightlines={1-15}]{code/queue_aux.h} % chktex 8
-    \caption{\cninline{QueueAux} \kl(user-defined){predicate} which states
+    \caption{\cninline{QueueAux} \kl(CN user-defined){predicate} which states
         ownership of a linked list of \cinline{queue_cell}s from
         \cninline{front} inclusive to \cninline{back} exclusive. The
-        \kl{ownership} for \cinline{back} is not included because that needs to
+        \kl[points-to]{ownership} for \cinline{back} is not included because that needs to
         be claimed earlier for constant time updates.}\label{fig:queue-aux-def}
 \end{marginfigure}
 
-To be clear: \emph{this C \kl{lemma} or proof is not intended to be executed at
+To be clear: \emph{this C \kl(CN){lemma} or proof is not intended to be executed at
 runtime}. Indeed that would defeat the point of a queue with a pointer to the
 back for constant time pushing. Instead, it demonstrates that there is a class
-of resource \kl{lemmas} that are provable without appeal to the underlying
+of resource \kl(CN){lemmas} that are provable without appeal to the underlying
 {memory object model}.
 
-\section{\kl{Lemma} proofs in a proof-assistant}\label{sec:lemma-prover}
+\section{\kl(CN){Lemma} proofs in a proof-assistant}\label{sec:lemma-prover}
 
 In our use so far, the only use case that falls outside the aforementioned
-class of \kl{lemmas} it to work around the limitations of using the
+class of \kl(CN){lemmas} it to work around the limitations of using the
 \kl{decidable fragment of SMT theories}, \eg{} the mismatch between the
-finite arrays represented by \kl{iterated predicates}, and the total maps used
+finite arrays represented by \kl(CN){iterated predicates}, and the total maps used
 in \kl{decidable SMT theories} (\cref{fig:byte-array-eq-lemma}).
 
 % Using that, it would be possible to build support on merging array values.
@@ -874,32 +874,32 @@ in \kl{decidable SMT theories} (\cref{fig:byte-array-eq-lemma}).
 % rule them out and say they will never come up.
 
 \kl{CN} already has a mechanism, implemented by Thomas Sewell, for exporting
-\kl{lemmas} about pure facts to Rocq; this was used extensively in an earlier
+\kl(CN){lemmas} about pure facts to Rocq; this was used extensively in an earlier
 version \textemdash{} with integers instead of bit-vectors \textemdash{} to
 reason about the bit manipulations done by the \kl{buddy allocator} in
 \kl{pKVM} (\S\ref{chap:buddy}). It supports exporting pure facts involving
 datatypes too.
 
-This feature was extended by Amy Yin to support exporting and proving \kl{lemmas}
+This feature was extended by Amy Yin to support exporting and proving \kl(CN){lemmas}
 involving resources. Because of \kl{CN}'s aim (\S\ref{sec:cn-goals}) to behave
 like a decidable type system rather than a program logic, there will always be
 limits to the expressiveness of the type system, and the degree of automation
 which is pragmatic.
 
-At the same time, we would like the logic used for proving \kl{lemmas} to be
+At the same time, we would like the logic used for proving \kl(CN){lemmas} to be
 consistent with the (intent of the) OCaml implementation, to prevent users from
 bypassing verification errors with a lemma. An obvious candidate for this is
-the Iris~\sidecite{jung2018iris} framework in Rocq, which allows users to
+the \intro{Iris}~\sidecite{jung2018iris} framework in Rocq, which allows users to
 define their own notion of resources and inherit many powerful proof rules
 based on that.
 
-However, Iris requires an operational semantics over which to prove the basic
+However, \kl{Iris} requires an operational semantics over which to prove the basic
 primitives sound, on top of which other rules are defined. Note that the
-current resource \kl{lemma} export and proof mechanism sidesteps this issue and
-focuses on translating \kl(logical){function} and \kl{predicate definitions}
-and \kl{lemma} statements.
+current resource \kl(CN){lemma} export and proof mechanism sidesteps this issue and
+focuses on translating \kl(logical){function} and \kl(CN){predicate definitions}
+and \kl(CN){lemma} statements.
 
-Another impediment is that Iris is an \kl{affine} separation logic, whereas we
+Another impediment is that \kl{Iris} is an \kl{affine} separation logic, whereas we
 would like to work in a \kl{linear} setting, for which the work
 of~\sidetextcite{bizjak2019iron} might be useful.
 
@@ -908,13 +908,13 @@ significant duplication of work (it is already implemented in \kl{Cerberus})
 and difficult (in particular the highly non-compositional rules for
 \sm{\cnkw{run}}/\sm{\cnkw{save}} and weak sequencing). The effort and risk is large
 and clear, but the reward is not so. Supporting \kl(type){resourceful}
-\kl{lemmas} seems to pull on a thread which drags with it all of \kl{Cerberus}.
+\kl(CN){lemmas} seems to pull on a thread which drags with it all of \kl{Cerberus}.
 Is there an alternative?
 
 We considered using a ``faithful subset'' of \kl{Core} to make the project
 feasible, but how this would work, or integrate into the current project, was
 very unclear. We also considered just continuing with pen-and-paper proofs of
-soundness for richer logic, but the would just duplicate Iris, in a more
+soundness for richer logic, but the would just duplicate \kl{Iris}, in a more
 error-prone manner.
 
 This impasse can be broken with a few observations:
@@ -922,20 +922,20 @@ This impasse can be broken with a few observations:
     \item Currently, \kl(type){resources} and \kl(resource){contexts} are
         defined and interpreted only with respect to a chosen \kl{memory object
         model}.
-    \item A \kl{lemma} is a purely ghost state operation (a ``view shift'' in Iris
+    \item A \kl(CN){lemma} is a purely ghost state operation (a ``view shift'' in \kl{Iris}
         terminology), and so would entail proving that the
         \emph{interpretation} of the sub-\kl{heap} it consumes is the same as
         the \emph{interpretation} of the sub-\kl{heap} it produces.
 \end{itemize}
 
-With this, a \kl{lemma} is sound if the interpretations of its \kl{pre-} and
+With this, a \kl(CN){lemma} is sound if the interpretations of its \kl{pre-} and
 \kl{postconditions} are equal. The interpretations are defined to be exactly as
 in \fancyref{sec:linking}.
 
 \section{Better foundations for CN}\label{sec:better-foundations}
 
 If \kl{CN} \emph{users} should be prevented from introducing unsoundness via
-\kl{lemmas}, should \kl{CN} \emph{implementers} be treated similarly
+\kl(CN){lemmas}, should \kl{CN} \emph{implementers} be treated similarly
 for the implementation itself?
 
 Putting all of \kl{Core} and its dynamic semantics inside Rocq would be
@@ -985,7 +985,7 @@ A more realistic and gradual approach is to instrument the \kl{CN}
 implementation, but to record a tree of traces of the \kl{resource context}.
 Each event would correspond to a transition between pairs of \kl{CN-VIP}
 abstract \kl{states}, corresponding to one \kl{resource term}, upon which an
-Iris instantiation could be defined and proven sound. The instantiation could
+\kl{Iris} instantiation could be defined and proven sound. The instantiation could
 then be used to construct proofs that each path through the tree of events is
 sound. The traces would need to include logical facts proved using the solver,
 since those would turn into assumptions or proof obligations in Rocq. Indeed,

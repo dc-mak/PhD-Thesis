@@ -723,7 +723,7 @@ explained in~\cref{sec:precise-assertion-inferring,sec:monadic-syntax}).
     \caption{Increment a signed integer via a pointer in CN.}\label{fig:owned-incr}
 \end{figure}
 
-For working with arrays, we write \intro{iterated} predicates as
+For working with arrays, we write \intro(CN){iterated predicates} as
 \cninline{take arr = each (u64 i; .. ) { RW(p) };}. % chktex 26 chktex 37 chktex 36
 
 \kl{CN} can also handle (in a limited fashion, see~\cref{sec:decidable-refinements})
@@ -733,7 +733,7 @@ about the elements of an array. Within the \cninline{RW},
 \cninline{array_shift(p,i)} is the specification language % chktex 36
 equivalent of pointer arithmetic \cinline{&p[i]}. Within the function body,
 a \intro{CN statement}, \cninline{focus RW<int>, 0u64;},
-is a proof hint which tells \kl{CN} which index of the \kl{iterated}
+is a proof hint which tells \kl{CN} which index of the \kl(CN RW){iterated}
 \cninline{RW} we wish to read or write.
 
 \begin{figure}[h]
@@ -743,7 +743,7 @@ is a proof hint which tells \kl{CN} which index of the \kl{iterated}
         CN.}\label{fig:owned-array}
 \end{figure}
 
-\kl{Iterated} predicates are powerful because they support random access
+\kl(CN){Iterated predicates} are powerful because they support random access
 (recursive predicates fix the order of traversal).~\cref{fig:init-arr-rev}
 shows how \kl{CN} can transform an array of uninitialised values
 (\cninline{W}s) from the \kl{precondition}, into an array of initialised values
@@ -852,7 +852,7 @@ My contributions in this part include:
         (\S\ref{chap:kernel-statics}).
     \item A formalisation of two inference algorithms used by \kl{CN}, one for inferring
         instantiations of logical (ghost) quantifiers and one for inferring
-        indices for \kl{iterated} predicates (\S\ref{sec:elaboration}).
+        indices for \kl(kernel){iterated predicates} (\S\ref{sec:elaboration}).
     \item A proof of soundness of \kl{Kernel CN}, including a novel, modular
         heap definition in the \kl{ResCore} dynamic semantics
         (\S\ref{chap:kernel-soundness}).
@@ -890,7 +890,7 @@ My contributions in this part include:
         semantics (\S\ref{sec:cn-vip-soundness}).
     \item A walk-through of the implementation of \kl{CN-VIP}, along with the
         approach required to integrate it smoothly (\S\ref{chap:impl-cnvip}).
-    \item A roadmap on the integration of mechanised, sound resourceful \kl{lemmas}
+    \item A roadmap on the integration of mechanised, sound resourceful \kl(CN){lemmas}
         into \kl{CN} inspired by the design of \kl{CN-VIP}
         (\S\ref{sec:better-foundations}).
 \end{itemize}
@@ -1076,22 +1076,22 @@ queue.
         \cnpredXXname{}\cninterrule{}
         \cninit{}\cnafterlastrule{}
     }
-    \caption{Idealised syntax of CN, modified (from the implementation) for
+    \caption{Idealised syntax of \kl{CN}, modified (from the implementation) for
         presentation: I use {\footnotesize$[[Owned<Init,ct>]]$} and
         {\footnotesize$[[Owned<Uninit,ct>]]$} instead of \cninline{RW<τ>} and
         \cninline{W<τ>} respectively; after \cninline{ensures}, I use the
         identifier $y$ to bind \cninline{return} value; I bind arbitrary
         {\footnotesize $[[spec]]$} with \cninline{take}, instead of just
-        (\kl{iterated}) predicates; and I allow \cninline{if}s anywhere,
-        instead of just the outermost level of a \kl{predicate}
+        (\kl(CN predicate){iterated}) \kl(CN){predicates}; and I allow \cninline{if}s anywhere,
+        instead of just the outermost level of a \kl(CN){predicate}
         definition.}\label{fig:cn-grammar}
 \end{figure*}
 
 An idealised syntax for \kl{CN} is shown in~\cref{fig:cn-grammar}.
 
 A file for \kl{CN} is a C file with top-level definitions of annotated C
-functions, (separation logic) \kl{predicate} definitions, (mathematical)
-\kl{function} definitions, and \kl{datatype} definitions.
+functions, (separation logic) \kl(CN){predicate} definitions, (mathematical)
+\kl(CN){function} definitions, and \kl{datatype} definitions.
 
 In such a file, a C \kl{function} definition introduces the identifiers for its
 arguments into the scope of its \kl{precondition} (preceded by
@@ -1113,7 +1113,7 @@ postconditions are \sm{[[spec]]}s, with an explicit terminator `\sm{[[cdot]]}'.
 
 \kl{CN} \kl[resource term]{resource}s are either applications \sm{[[a ( iargs )]]} of a
 predicate \sm{[[ a ]]} to logical/SMT arguments \sm{[[ iargs ]]}, or
-iterated predicates of the form
+\kl(CN){iterated predicates} of the form
 
 \sm{[[ each (base_type x; iguard) { a ( array_shift <ct>(yp , x) , iargs ) }]]}. % chktex 25
 
@@ -1137,7 +1137,7 @@ in~\cref{fig:cn-grammar}) representing the ability to read-and-write/write an
 initialised/uninitialised location on the heap; an \cninline{Alloc} representing
 (permission to free) an allocation; or a user-defined predicate.
 
-\kl{CN} \kl{predicate}s are defined with
+\kl{CN} \kl(CN){predicate}s are defined with
 \sm{[[ predicate base_type id( base_type1 id1 , .. , base_typek idk) { spec }]]} % chktex 25
 where \sm{[[spec]]} must terminate with a \sm{[[return term]]}. First is a
 return \intro{base type} \sm{[[base_type]]}, then a name \sm{[[id]]}, and a list of % chktex 25
@@ -1154,7 +1154,7 @@ pointers to the front and back for constant time push and pop operations. I
 verify memory safety and functional correctness.
 
 I owe the idea, C implementation and initial proof structure for this example
-to Benjamin Pierce; the final proofs and \kl{lemmas} involved are my work. The
+to Benjamin Pierce; the final proofs and \kl(CN){lemmas} involved are my work. The
 example has two limitations. First, \cinline{malloc} and \cinline{free} are not
 supported, and so are stubbed as trusted functions. Second, the syntax for
 predicates does not allow for non-top-level-ifs, so it defines a new predicate
@@ -1182,11 +1182,11 @@ and pointer to \cinline{next} node.
 
 \cfile[breaklines,firstline=28,lastline=36]{code/queue_headers.h}
 
-After that, we define \kl{CN} \kl{predicates} to relate the shape of the queues
+After that, we define \kl{CN} \kl(CN){predicates} to relate the shape of the queues
 in the C heap to the logical \kl{CN} values that they represent. Henceforth, I
 shall abuse terminology by speaking of values `returned' by \kl{CN}
-\kl{predicates}; these are just implicit output arguments
-(\S\ref{sec:monadic-syntax}). The \kl{predicates} also capture the invariants of
+\kl(CN){predicates}; these are just implicit output arguments
+(\S\ref{sec:monadic-syntax}). The \kl(CN){predicates} also capture the invariants of
 the queue. In~\cref{fig:queue-heap-shape} is a diagram of the shape of the
 heap, the C types, and the structure of the predicates.
 
@@ -1248,7 +1248,7 @@ heap, the C types, and the structure of the predicates.
 
 \end{tikzpicture}
 \end{center}
-\caption{Pointer diagram for the queue \kl{predicates}. Nodes represent
+\caption{Pointer diagram for the queue \kl(CN){predicates}. Nodes represent
     values, and arrows represent \emph{owned} pointer links. It starts with
     \cinline{struct queue*} value `queue' at the top (in light blue),
     representing the QueuePtr\_At predicate. From there are two cases, as in the
@@ -1356,10 +1356,10 @@ which is equal to \cninline[breaklines]|Cons {head:x, tail: Nil{}}| is equal to
 \cninline|snoc(Nil{}, x)|. This is because \cninline{snoc} is a % chktex 36
 a recursive function, and thus must be unfolded manually.
 
-In the non-singleton case, we need to manually apply a \kl{lemma}, one which says
+In the non-singleton case, we need to manually apply a \kl(CN){lemma}, one which says
 \cninline{snoc} commutes with \cninline{cons}. At the time, \kl{CN} could only
 pass logical (ghost) values by passing a resource and then binding its return
-values.  So, even though the \kl{lemma} is a pure fact, to state it, we must thread
+values.  So, even though the \kl(CN){lemma} is a pure fact, to state it, we must thread
 through resources, as shown below. The resources are preserved exactly, only
 the pure constraints on line 10\textendash{}12 are meaningful.
 
@@ -1396,11 +1396,11 @@ of this longer segment, is the \cninline{snoc} of the first two values.
 
 % \cfile[breaklines,lastline=11,highlightlines={2-10}]{code/queue_push.c} % chktex 8
 
-\section{Proofs of \kl{lemmas}}
+\section{Proofs of \kl(CN){lemmas}}
 
-\kl{CN} has in-progress support for export and proofs of resourceful \kl{lemmas},
+\kl{CN} has in-progress support for export and proofs of resourceful \kl(CN){lemmas},
 which could be combined with recently added support for ghost arguments and
-planned support for ghost returns, to support \kl{lemmas} which state pure facts
-(\S\ref{sec:lemma-prover}). However, as it turns out, for some \kl{lemmas}, such as
+planned support for ghost returns, to support \kl(CN){lemmas} which state pure facts
+(\S\ref{sec:lemma-prover}). However, as it turns out, for some \kl(CN){lemmas}, such as
 the ones shown here, it is possible to give a proof in terms of a C function
 (\S\ref{sec:lemma-proof-c}).

@@ -36,8 +36,8 @@ richer grammar of resources: this makes defining predicates to represent tagged
 unions more succinct, and allows for opening predicates in more cases.
 
 Along with the type system, I briefly discuss a formalisation of two different
-\kl{elaboration} algorithms: one for inferring quantifier instantiations, one for
-inferring indices for \kl{iterated predicates}. Note that precise inference
+\kl(CN){elaboration} algorithms: one for inferring quantifier instantiations, one for
+inferring indices for \kl(kernel){iterated predicates}. Note that precise inference
 scheme used by \kl{CN}'s implementation is frequently
 changing,\sidenote{See
     \href{https://github.com/rems-project/cerberus/commit/7c2c0a364a4373e4eb109f32d01cc9584f51e81f}{Ceberus 7c2c0a36},
@@ -113,7 +113,7 @@ The contexts for the static semantics consist of four parts: (1) \sm{[[ C ]]}
 containing the \intro{computational variables} from the \kl{Core} program; (2) \sm{[[ L ]]}
 containing purely \intro{logical variables} mentioned in \kl(CN){specifications}; (3) \sm{[[ N ]]},
 the \intro{constraint context}, containing a list of (non-quantified) SMT constraints;
-and (4) \sm{[[R]]} a \kl{linear context} containing \kl(type){resources}.
+and (4) \sm{[[R]]} a \kl{linear} \kl(resource){context} containing \kl(type){resources}.
 I assume a \kl{constraint context} of only non-quantified constraints because users
 are required to manually instantiate quantified constraints.
 
@@ -130,7 +130,7 @@ pointer, records. Each C type \sm{[[ ct ]]} is mapped to a corresponding base ty
 \textemdash{} for example, \sm{[[ to_base ( int * ) ]] = [[ loc ]]}.
 
 \kl{Logical terms} are variously referred to as \sm{[[term]]}, \sm{[[iguard]]} for boolean
-index guards of \kl{iterated predicates}, \sm{[[ptr]]} for pointers, \sm{[[iarg]]} for
+index guards of \kl(CN){iterated predicates}, \sm{[[ptr]]} for pointers, \sm{[[iarg]]} for
 \kl{input arguments},  \sm{[[oarg]]} for \kl{output arguments}, and later,
 \sm{[[alloct]]} for constraints about the allocation history.
 
@@ -243,7 +243,7 @@ pattern. To simplify matters, I assume all patterns are complete.
         terms.}\label{fig:typing-res-term-synth}
 \end{figure*}
 
-Typing resource terms requires the addition of an extra \kl{linear context}
+Typing resource terms requires the addition of an extra \kl{linear} \kl(resource){context}
 \sm{[[ R ]]} of \kl(type){resources}.%
 % I will start with the \kl{synthesising}
 % judgements first, and move on to checking judgements after.
@@ -273,10 +273,10 @@ Several features are noteworthy.
 \end{itemize}
 
 For \sm{\cnkw{Owned}} predicates, the input is the pointer, and the
-output will be the pointee; for \kl{user-defined predicates}, the input is
+output will be the pointee; for \kl(CN){user-defined predicates}, the input is
 their arguments, and output is their return values. I defer explanation of
 \sm{\cnkw{Alloc}} and \sm{\cnkw{Padding}} predicates until
-\fancyref{chap:cn-vip}. Only \kl{user-defined predicates} can be folded, so
+\fancyref{chap:cn-vip}. Only \kl(kernel){user-defined predicates} can be folded, so
 \sm{\cnkw{Owned}}, \sm{\cnkw{Alloc}} and \sm{\cnkw{Padding}}
 are excluded (by using \sm{{id}} instead of \sm{\alpha}).
 
@@ -432,7 +432,7 @@ and the address of the \kl{permission} are symbolically equal (premise 3), and
 \kl{read-write permission}. Stores are similar, but with extra checks on
 the stored value (premise 3). Note that the stored value is placed in the
 return type. Lastly, the rule for \sm{\cnkw{kill}} is the converse of the
-one for \sm{\cnkw{create}}: it \emph{consumes} the \kl{ownership} and
+one for \sm{\cnkw{create}}: it \emph{consumes} the \kl{points-to} and
 \kl{allocation token} for a location (premise 2), checks that the addresses and
 allocations being considered are the same (premises 3 and 4) and
 \kl{synthesises} a \kl{return type} with no resources.
@@ -612,7 +612,7 @@ rule, its condition or its negation must be entailed, after which the
 corresponding branch is destructed against the same pattern. In the case of
 \kl{under-determined} conditions, only the wildcard or variable pattern will
 match. For the latter, the pattern only destructs when the type is a
-\kl{predicate} and the nested pattern destructs against the definition of
+\kl(kernel){predicate} and the nested pattern destructs against the definition of
 that predicate (with the arguments substituted).
 
 \section{Effectful statements}\label{sec:eff-stmt}
@@ -647,17 +647,17 @@ not return from \sm{\cnkw{run}}, and so the \kl{synthesised}
 
 \section{Elaboration}\label{sec:elaboration}
 
-I have also formalised an elaboration system as part of \kl{Kernel CN}. When I
+I have also formalised an \kl(CN){elaboration} system as part of \kl{Kernel CN}. When I
 wrote it, \kl{CN} required users to manually fold and unfold all
-\kl(user-defined){predicates}, but inferred indices for \kl{iterated
+\kl(CN user-defined){predicates}, but inferred indices for \kl(CN){iterated
 predicates} automatically. Now, \kl{CN} automatically folds and unfolds
-\kl{non-recursive predicates} with a single clause, and requires users to state
-which indices can be moved in and out of any \kl{iterated predicates} in the
+non-recursive \kl(CN){predicates} with a single clause, and requires users to state
+which indices can be moved in and out of any \kl(CN){iterated predicates} in the
 context.\sidenote{See
 \href{https://github.com/rems-project/cerberus/commit/7c2c0a364a4373e4eb109f32d01cc9584f51e81f}{Ceberus
 7c2c0a36}.} Instantiations for logical quantifiers continue to be inferred.
 
-The goal of elaboration is to take a well-formed \kl{ResCore} program, without
+The goal of \intro(CN){elaboration} is to take a well-formed \kl{ResCore} program, without
 \kl{explicit resources terms} or quantifier instantiations, and return the same
 program with those pieces filled in, such that it would pass the aforementioned
 typing rules (if it succeeds). I have no proof of this, so I do not claim the
@@ -700,12 +700,12 @@ Name & Judgement & Figure (Section) \\
 \\
 \bottomrule
 \end{tabular}
-\caption{Summary of elaboration judgements presented and their sections; the
+\caption{Summary of \kl(CN){elaboration} judgements presented and their sections; the
     full list of judgements can be found in~\cref{sec:metavars-grammar}
     and all their rules can be found in~\cref{sec:elab-system}.}\label{tab:elab-judgements}
 \end{table*}
 
-\cref{tab:elab-judgements} presents only a slice of the elaboration to
+\cref{tab:elab-judgements} presents only a slice of the \kl(CN){elaboration} to
 highlight the key judgements; the full system is in~\fancyref{sec:elab-system}.
 
 \textsc{Oarg*} reads as follows: given an output parameter \sm{[[y]]},
@@ -737,7 +737,7 @@ annotated \kl{synthesising} \kl(resource){term}, when morally it is a
     \onlyUseRules{\cndefnElabXXExpr{}}{%
         \cndruleElabXXExprXXFold{}
     }
-    \caption{\kl{Kernel CN} elaboration rule for manually folding
+    \caption{\kl{Kernel CN} \kl(CN){elaboration} rule for manually folding
         predicates.}\label{fig:elab-fold}
 \end{figure}
 
@@ -749,7 +749,7 @@ will result in the updated \kl{resource context} \sm{[[nR']]}.
 
 \textsc{Req*}'s rules (\S\ref{subsec:app-synth-indices}) encode a linear search
 of the \kl{resource context}, \kl{synthesising} \kl{predicate operations}
-(\S\ref{sec:synth-predops}) on \kl{(iterated)} \kl{predicates} in the context to
+(\S\ref{sec:synth-predops}) on \kl(kernel){(iterated)} \kl(kernel){predicates} in the context to
 construct the requested \sm{[[pred_ipred]]}.
 
 \textsc{Req*} is sufficient for all other placements of \kl{resource terms}
@@ -784,10 +784,10 @@ the program.
 
 \subsection{Normalised resource contexts}\label{sec:norm-ctxt-res}
 
-To specify \kl{elaboration}, I define and use \intro{normalised} \kl{resource
+To specify \kl(CN){elaboration}, I define and use \intro{normalised} \kl{resource
 contexts}, signified with an underlined \sm{[[ nR ]]}, containing only
 \kl{normalised} \kl{resource types}. A \kl{normalised resource} is either an
-\kl{(iterated)} \kl{predicate}, or an \kl{under-determined
+\kl(kernel){(iterated)} \kl(kernel){predicate}, or an \kl{under-determined
 resource}. I call it \kl{normalised} because (with the appropriate terms and
 pattern-matching), any \kl{resource context} can be manipulated into such a
 \kl{normal form}. This means it is simple to specify lookups in the context: if
@@ -823,7 +823,7 @@ syntax (\S\ref{sec:monadic-syntax}).
 \kl{Synthesising} an \kl{output argument} from an equality constraint
 (\OargReturn) is just taking the right-hand-side of the equality.
 
-\kl{Synthesising} an \kl{output argument} from a \kl{predicate} (\OargPred)
+\kl{Synthesising} an \kl{output argument} from a \kl(kernel){predicate} (\OargPred)
 involves using the \textsc{Req*} judgement to do a linear search of the context
 to find an exact match and obtain an \kl{output argument}.
 
@@ -856,7 +856,7 @@ two \kl{resource terms}, the second output argument and the second updated
         %\cndruleOargXXIfXXTrue{},
         \cndruleOargXXIfXXUndet{}
     }
-    \caption{Select \kl{Kernel CN} rules for an elaboration pass which given
+    \caption{Select \kl{Kernel CN} rules for an \kl(CN){elaboration} pass which given
         contexts and a resource type, infers \kl{proof terms} and logical
         quantifier instantiations satisfying those types.}\label{fig:elab-res-oarg}
 \end{figure*}
@@ -866,7 +866,7 @@ two \kl{resource terms}, the second output argument and the second updated
 
 Inferring indices was possible, and relatively straightforward, because of the
 requirement that every predicate had as its first input argument a pointer \sm{p},
-and that every \kl{iteration} over index \sm{[[i]]} of such predicates had as its first
+and that every \kl(kernel predicate){iteration} over index \sm{[[i]]} of such predicates had as its first
 argument \sm{[[ array_shift < ct > ( ptrt1 , i ) ]]}. Given this, inferring an
 index (for either \sm{\cnkw{break}}ing or \sm{\cnkw{glue}}ing) reduces to
 \sm{[[ i = ( ptrt2 - ptrt1 ) / sizeof ct ]]} where \sm{[[ ptr2 ]]} is the pointer in
@@ -875,7 +875,7 @@ the first argument of the requested predicate. This is made precise in
 
 The judgement \sm{[[ N |- r : norm_res -? pred_ipred ~> res_diff ]]} says that
 given a \kl{constraint context}, a \kl{normalised} resource, and a request for
-a \kl{predicate} \kl{(iterated)}, \kl{synthesise} the `difference' between the
+a \kl(kernel){predicate} \kl(kernel){(iterated)}, \kl{synthesise} the `difference' between the
 two. As shown in~\cref{fig:res-diff-def}, the `difference' can be of four
 sorts: no difference, exact match, subset match, overlapping match; each
 requires slightly different handling (continue search, stop search, bind
@@ -900,7 +900,7 @@ from the lookup judgement (\S\ref{subsec:app-synth-indices}).
     \onlyUseRules{\cndefnResXXDiff{}}{%
         \cndruleResXXDiffXXPIXXRem{}
     }
-    \caption{Select \kl{Kernel CN} elaboration rule for inferring indices and
+    \caption{Select \kl{Kernel CN} \kl(CN){elaboration} rule for inferring indices and
         \kl{synthesising} \kl{predicate operations}.}\label{fig:res-diff-break}
 \end{figure*}
 
@@ -1003,9 +1003,9 @@ judgements, in four parts.
 \section{Heaps and their types}\label{sec:heap-types}
 
 \intro{Heaps} in the operational semantics are, slightly unusually, tree-shaped
-collections of \kl{predicates} (\cref{fig:kernel-heap-def}). The leaves of the
-tree are the \kl{built-in predicates}; the branches of the \kl{heap} are
-\kl{user-defined ones} tagged with their `run-time' definitions (resource
+collections of \kl(kernel){predicates} (\cref{fig:kernel-heap-def}). The leaves of the
+tree are the \kl(kernel){built-in predicates}; the branches of the \kl{heap} are
+\kl(kernel){user-defined ones} tagged with their `run-time' definitions (resource
 values) and a sub-heap (of the resources used by the definition).
 
 \begin{figure*}
@@ -1022,7 +1022,7 @@ values) and a sub-heap (of the resources used by the definition).
 \end{figure*}
 
 \intro{Resource values} are the subset of \kl{resource terms} which cannot
-reduce further. They help capture the idea that \kl{predicates} encapsulate
+reduce further. They help capture the idea that \kl(kernel){predicates} encapsulate
 their contents until unfolded, via \kl(resource){pattern-matching}
 (\cref{fig:kernel-unfold}), which flattens the tree-shaped heap by one level.
 The nested definition is used to destruct the rest of the
@@ -1093,7 +1093,7 @@ and \sm{[[ heap ]]} are well-typed. I use this to prove prove progress for
     \caption{Select typing rules for heaps.}\label{fig:kernel-heap-typing}
 \end{figure*}
 
-As with elaboration (\S\ref{sec:elaboration}), using \kl{normalised resource
+As with \k(CN){elaboration} (\S\ref{sec:elaboration}), using \kl{normalised resource
 contexts} does not restrict the generality of progress and type preservations
 theorems. This is because of the following lemma: if a well-typed \kl{resource
 term} is closed, then the context in which it is well-typed must be
