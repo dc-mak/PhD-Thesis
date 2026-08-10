@@ -16,6 +16,7 @@ airlines, TV broadcasters, supermarkets and many other businesses suffered the
 infamous `Blue Screen of Death' after (ironically) a faulty security update
 from cybersecurity provider CrowdStrike was released.
 
+\margincite{griffin2017legacy}%
 Even though it took only 78 minutes rectify the issue,
 the ensuing chaos and disruption lasted hours if not days, as getting
 the fix on affected machines was very
@@ -26,7 +27,7 @@ billion USD~\sidecite{fitch2024crowdstrike}.
 
 What went wrong? We start with an
 \intro{operating system} (OS), such as iOS, Windows or Ubuntu.
-It provides services to software that people use (e.g.\ timers, web browsers), in a way
+It provides services to software that people use (\eg{} timers, web browsers), in a way
 that abstracts from the details of the hardware, for
 example, the ability to respond to click from a mouse,
 or to play a sound via speakers. At the heart of the
@@ -77,15 +78,15 @@ designed this way'. Surely one might wonder if there exists a less porous
 material?
 
 So far, the answer has been no: methods for improving the reliability of such
-software are \emph{costly}, mainly in terms of expertise, but also in term of
-time and effort, with little scope for critical \emph{ongoing} maintenance.
+software are \emph{costly}, in terms of expertise,
+time, and effort, with little scope for critical \emph{ongoing} maintenance.
 This thesis' contributions would not have prevented the
 CrowdStrike incident; but the goal of research along these lines is to
 reduce the risk of similar ones henceforth.
 
 This thesis argues that the answer is now a \emph{qualified yes}. A `less
-porous material' is possible with what we know now, and not too complex
-conceptually (though novel in its application). The main challenges come due to
+porous material' is possible with current knowledge, and not too complex
+conceptually (though novel in its application). The main challenge is
 \emph{scale}. Whilst the cost of the technology is still too high for mass
 deployment, the trend is downward and should continue that way with sustained
 effort.
@@ -117,7 +118,7 @@ However, most of this is due to the success C had in meeting its initial design 
 \begin{itemize}
     \item \textbf{Portability}. C was designed to have a small set
         of defined behaviours, and leave several key choices as
-        \intro{undefined behaviour}s (UBs). This was to enable C programs to
+        \kl{undefined behaviours (UB)}. This was to enable C programs to
         exploit the advantages of different kinds of hardware to run quickly.
     \item \textbf{Simplicity}. C was designed to be concise and simple to
         compile (in one pass if need be), so it was
@@ -128,13 +129,13 @@ However, most of this is due to the success C had in meeting its initial design 
         and memory far more constrained).
 \end{itemize}
 
-As time went on, hardware became faster, by becoming more complex and so C's
-proximity to it waned~\sidecite{chisnall2018c}. However, it continued to be
+As time went on, hardware became faster by becoming more complex, and so C's
+proximity to it waned~\sidecite{chisnall2018c}. However, C continued to be
 used in performance critical code such as the Linux \kl{kernel}.
 \kl{Undefined behaviours}, originally to support portability, were
 repurposed as avenues for aggressive optimisations. Under pressure for
-faster code, simple compilation gave way to complex alias analysis and
-pointer provenance reasoning to optimise code.
+faster code, simple compilation gave way to complex pointer alias and
+provenance reasoning to optimise code.
 
 \cref{fig:ptr-from-int-ub} shows an example (derived
 from~\sidetextcite{memarian2019exploring}).%
@@ -144,11 +145,11 @@ from~\sidetextcite{memarian2019exploring}).%
     \caption{A modified version of examples
         pointer\_from\_integer\_\{1i,1ie\}.c.}\label{fig:ptr-from-int-ub}
 \end{marginfigure}
-It is not idiomatic code; rather, it is intended to surface
-the aliasing rules a compiler might be assuming. It guesses that
+It is not idiomatic code; it is intended to surface
+the aliasing assumptions of a compiler. It guesses that
 \cinline{ADDRESS_PFI_1I} is the address of a variable local to function
-\cinline{f}, and passes that guess in as an argument \cinline{f(j)}.% chktex 36
- Inside the function, it declares a local variable \cinline{i} and then creates
+\cinline{f}, and passes that guess to the function itself \cinline{f(j)}. % chktex 36
+Inside the function, it declares a variable \cinline{i} and then creates
 a pointer \cninline{p} from the argument. If this new pointer is equal to the
 address of \cinline{i}, it writes to that location (\cinline{if (p ==
 &i) *p=7;}). It then prints the value of \cinline{i}.
@@ -184,15 +185,16 @@ ambiguous, and does not always reflect \intro{de facto} C.
 Given this, the \kl{Cerberus}
 project~\sidecite{memarian2022cerberus} aims to provide a formally defined,
 executable and \emph{empirically validated} semantics of C, both \kl{ISO} and \kl{de
-facto}. I shall explain \kl{Cerberus}' particular advantages over other tools
+facto}. I shall explain \kl{Cerberus}' advantages over other tools
 in~\cref{sec:cerberus-core}.
 
-For now, it suffices to say that \kl{Cerberus} works by \emph{\kl{compositional}ly}
+For now, it suffices to say that \kl{Cerberus} works by \emph{\kl{compositionally}}
 elaborating C into \kl{Core}, an \emph{executable} first-order
 functional language. It makes explicit many subtleties of C such as
 integer promotion, loose evaluation order, and \kl{UB}.
 
-\kl{UB}s form the contract between the compiler and the programmer; this contract
+\intro{UBs} \textemdash{} undefined behaviours \textemdash{}
+form the contract between the compiler and the programmer; this contract
 is easy to violate by accident because \kl{UB}s are pervasive and subtle. Common
 examples include: signed integer over/underflow, use-after-free and double-free
 memory management errors, out-of-bounds indexing in arrays, and dereferencing a
@@ -224,7 +226,7 @@ result as \cinline{xs}.
 
 \subsection{Verification with Separation Logic}\label{sec:sep-logic-intro}
 
-To prove properties about imperative, memory manipulating programs,
+To prove properties about imperative programs,
 \kl{CN} tugs on a thread of ideas spun in the late 1960s
 by~\sidetextcite{hoare1969axiomatic} and~\sidetextcite{floyd1993assigning}.
 
@@ -237,8 +239,8 @@ from smaller proofs of \sm{C}.\sidenote{This and the following two sections rely
 heavily on the exposition of~\textcite{pichon2017hlogmodc}.}\margincite{pichon2017hlogmodc}
 
 \emph{Modularity is key}; it is enabled by the rule of constancy
-(\cref{fig:rule-of-constancy}).Using it, we can separately verify two
-complicated programs and compose them (e.g.\ sequentially), so long as they
+(\cref{fig:rule-of-constancy}). Using it, we can separately verify two
+complicated programs and compose them (\eg{} sequentially), so long as they
 refer to separate program variables.
 
 \begin{figure}[ht]
@@ -294,16 +296,15 @@ mathematical expressions (with functions \sm{f(t_1, \ldots, t_n)}) denoting valu
 in \sm{\mathbb{N}}, and may refer to stack or logical variables. Stacks are finite
 maps from program variables to \sm{\mathbb{N}}, and heaps are finite maps
 \sm{\mathbb{N} \rightharpoonup \mathbb{N}}. Informally, assertions denote a set
-of stacks-and-heap pairs. And triple denotes a proposition: if the initial stack and
+of stacks-and-heap pairs; triples denote a proposition: if the initial stack and
 heap is in the denotation of the precondition, and the program terminates, the
-then final stack and heap is in the denotation of the postcondition. This will
-be spelled out formally in~\cref{fig:cmdp-assertions,fig:simple-sep-logic-triple}.
+then final stack and heap is in the denotation of the postcondition
+(\cref{fig:cmdp-assertions,fig:simple-sep-logic-triple}).
 
 Some inference rules are shown in~\cref{fig:simple-cmd-logic}. These and
 other rules, unrelated to the heap, work well with
 standard first-order logic and its connectives, and the aforementioned rule of
-constancy. Now let us consider: would the following inference rule be useful
-for reasoning about stores to the heap?
+constancy.
 
 \begin{figure}[ht]
 \small%
@@ -334,6 +335,9 @@ for reasoning about stores to the heap?
     \kl{postcondition}s of $C$ respectively. }\label{fig:simple-cmd-logic}
 \end{figure}
 
+Now let us consider: would the following inference rule be useful
+for reasoning about stores to the heap?
+
 {\small%
 \[
     \inferrule[{[Bad-Store]}]{}{\vdash
@@ -360,19 +364,19 @@ would ensure \sm{0 = 42}.
 
 This is because, in an assertion, \emph{syntactically} different locations may
 alias \emph{semantically}: pointer assignments in one expression influence the
-state referenced in another. Early attempts to prevent this, explicitly
+state referenced in another. Early attempts to prevent this explicitly
 tracked inequality of pointers to reason about updates.
 
 {\small%
 \[
-    \inferrule[{Cumbersome-Store}]{}{\vdash
+    \inferrule[{[Cumbersome-Store]}]{}{\vdash
         \{\, \exists v.\ E_1 \mapsto v \wedge E_1 \neq E_3 \wedge E_3 \mapsto E_4 \,\}
         \; [ E_1 ] \mathbin{{:}{=}} E_2 \;
         \{\, E_1 \mapsto E_2 \wedge E_3 \mapsto E_4 \,\} }
 \]}
 
 Unfortunately, this scales poorly because it is not compositional:
-pre- and \kl{postconditions} mention \sm{E_3} and \sm{E_4} even though they are not
+\kl{pre-} and \kl{postconditions} mention \sm{E_3} and \sm{E_4} even though they are not
 mentioned in \sm{[ E_1 ] \mathbin{{:}{=}} E_2}, just to state
 the non-aliasing condition \sm{E_1 \neq E_3}, and preserve the morally disjoint
 fact \sm{E_3 \mapsto E_4} in the postcondition.%
@@ -393,8 +397,8 @@ known as the frame rule (\cref{fig:simple-sep-logic}).
 This enabled the practical pen-and-paper verification of programs with
 pointers, aliasing, and dynamic memory management. \kl{Separation logic} was
 rapidly extended to support several types of concurrency, and then mechanised
-in proof assistants~\sidecite{jung2018iris, appel2011verified}. This enabled
-complex proofs about large and subtle programs.
+in proof assistants~\sidecite{jung2018iris, appel2011verified}, which increased
+the fidelity and sophistication of the models and proofs.
 
 \subsubsection{Simple separation logic}
 
@@ -410,11 +414,11 @@ satisfy \sm{\top}, so it denotes the set of all heaps \sm{\mathsf{Heap} \eqdef
 \kl{linear}\sidenote{Following the terminology of~\textcite{krebbers2018mosel},
 I use the terms `affine' and `linear' instead of the original `intuitionistic'
 and `classical' respectively.}\margincite{krebbers2018mosel} separation
-logic, only the empty heap satisfies \sm{\cnkw{emp}}, and only the singleton heaps
+logic, only the empty heap satisfies \sm{\cnkw{emp}}, and only singleton heaps
 satisfy \sm{t \mapsto t'}.\sidenote{In an \kl{affine} setting, the conditions
     would be \sm{\mathrm{dom}(h) \supseteq \mathsf{emp}} and \sm{\mathrm{dom}(h)
 \supseteq \{\, n \,\}} respectively. Counter-intuitively, this means all
-heaps satisfy the empty heap.} Lastly, any heap \sm{h} satisfies \sm{A \ast A'}
+heaps satisfy the empty heap.} A heap \sm{h} satisfies \sm{A \ast A'}
 when it can be split into two disjoint heaps \sm{h_1} and \sm{h_2} such that \sm{h_1}
 satisfies \sm{A} and \sm{h_2} satisfies \sm{A'}.
 
@@ -460,7 +464,7 @@ It is a \emph{structural} rule, allowing any
 framing assertion \sm{A_F} to be separating-conjoined (\sm{\ast}) with a triple,
 enabling compositional program verification for commands that touch distinct
 parts of the heap, so long as they do not modify the same stack variables
-(\sm{\!\!\mod{(C)} \cap \mathrm{FV}(R) = \emptyset}).
+(\sm{\mathrm{mod}(C) \cap \mathrm{FV}(R) = \emptyset}). % chktex 35
 
 \begin{figure}[ht]
 \small%
@@ -532,7 +536,7 @@ To conclude this section, I return to the example of appending to a list,
 this time in a simple imperative language, annotated with separation logic
 assertions. To do so, we need a predicate to relate the contents of linked
 heap cells at runtime, laid out in a particular format, to a mathematical list
-\intro{ghost} value, which exists only in the specification.
+\kl{ghost value}, which exists only in the specification.
 
 \begin{figure}[h]
 \small%
@@ -560,7 +564,7 @@ can write a proof sketch (\cref{fig:append-annot}) of a version of the list
 \mintinline{text}{append} program from~\cref{fig:append-c}. Because
 \mintinline{text}{append} is recursive, we annotate it with a pre- and
 \kl{postcondition}, which we use as an induction hypothesis. The \kl{precondition}
-states we start with two disjoint heaps representing two \kl{ghost} lists,
+states we start with two disjoint heaps representing two \kl{ghost lists},
 \sm{\mathrm{list}(\mathsf{xs}, l_1)} and \sm{\mathrm{list}(\mathsf{ys}, l_2)}, and
 the \kl{postcondition} says that the value returned by this function
 (\sm{\mathsf{ret}}) represents the concatenation (\sm{@}) of the two logical lists
@@ -568,7 +572,7 @@ from the input.
 
 Under the true branch of the \mintinline{text}{if}, we have that \sm{\mathsf{xs} =
 \mathsf{NULL}} and so it represents the empty heap, meaning the return value
-and associated \kl{ghost} list is simply \sm{\mathsf{ys}} and \sm{l_2} respectively.
+and associated \kl{ghost list} is simply \sm{\mathsf{ys}} and \sm{l_2} respectively.
 Under the false branch, because \sm{\mathsf{xs} \neq \mathsf{NULL}}, we may assume
 we can unroll the definition of \sm{\mathrm{list}}, before calling
 \mintinline{text}{append} recursively on the smaller
@@ -598,8 +602,8 @@ verify \emph{pre-existing} C programs, because of the absence of three things.
 Contemporary mechanised frameworks for \kl{separation
 logic}~\sidecite{appelSF5,sammler2021refinedc,jacobs2011verifast,maksimovic2021gillian,divincenzo2025gradual}
 satisfy the second and third criteria, but approximate the first with
-an \adhoc{} implicit model of C, rather than an explicit, \emph{empirically
-validated} one.
+\adhoc{} implicit models of C, rather than explicit, \emph{empirically
+validated} ones.
 
 \subsection{CN:\ C, No bugs!}\label{sec:cn-intro}
 
@@ -617,7 +621,7 @@ then I explain how it \emph{works}.
 
 When given a C file, \kl{CN} ensures that (a) the input code is free of
 \kl{undefined behaviour}, and (b) correctly implements any specification
-written in \intro{annotations} in comments with an @ symbol \cinline{/*@..@*/}.
+written in \intro(CN){annotations} in comments with an @ symbol \cinline{/*@..@*/}.
 For easy-to-explain, modular, and parallelisable proof-checking, annotations
 are written and checked \intro{for each function}.
 
@@ -748,15 +752,14 @@ is a proof hint which tells \kl{CN} which index of the \kl(CN RW){iterated}
 shows how \kl{CN} can transform an array of uninitialised values
 (\cninline{W}s) from the \kl{precondition}, into an array of initialised values
 (\cninline{RW}s) in the \kl{postcondition}, \emph{in reverse}. All loops in
-\kl{CN} must be annotated with loop invariants; the verbose and
-confusing \cninline|{_} unchanged| syntax tells \kl{CN} that the loop does not
-mutate the function arguments.\sidenote{We need this because of difficulty with
-\fancyref{sec:inferring-frames}.}
+\kl{CN} must be annotated with loop invariants; the
+\cninline|{_} unchanged| syntax tells \kl{CN} that the loop does not
+mutate the function arguments.\sidenote{We need this verbose and confusing
+\kl(CN){annotation} because of difficulty with \fancyref{sec:inferring-frames}.}
 
-Within the loop, writing to a \cninline{W}/\cninline{RW} transforms it into a
-\cninline{RW}. We need two \cninline{focus}es: one to tell \kl{CN} take a
-\cninline{W} out of \cinline{Uninit}, and one to move a \cninline{RW} into
-\cninline{Init}.
+In the loop, writing to a \cninline{W}/\cninline{RW} transforms it into a
+\cninline{RW}. We need two \cninline{focus}es: the first to move a \cninline{W}
+out of \cinline{Uninit}, the second to move a \cninline{RW} into \cninline{Init}.
 
 \begin{figure}
     \centering
@@ -775,8 +778,8 @@ named, not positional.
 Lastly, \kl{CN} allows users to define \intro(CN){predicates}, such as the list
 predicate of~\cref{fig:list-pred}, using \cninline{RW} predicates as building
 blocks. Curiously, the syntax looks like a procedure definition for traversing
-the list (tracing the heaplet in which it resides), and constructing the ghost
-value it represents.
+the list (tracing the heaplet in which it resides), and constructing the \kl{ghost
+value} it represents.
 
 \cfile[breaklines,firstline=17,lastline=23,highlightlines={17-23}]{code/append_annot.c} % chktex 8
 
@@ -786,7 +789,7 @@ Compared to~\cref{fig:list-pred}, there are many differences:
         with a signature that takes a \cninline{pointer p}, and a
         return type \cninline{(datatype seq)}, as opposed to
         \sm{\mathrm{list}(\mathsf{p}, l)} which has two arguments.
-    \item It uses \cninline{return} statements to constrain the ghost list,
+    \item It uses \cninline{return} statements to constrain the \kl{ghost list},
         rather than \sm{l = \mathsf{NULL}} or \sm{l = {head}{:}{:}{tl}}.
     \item It uses the \cninline{take} syntax, to give names to the pointee of
         \cninline{p} (\cninline{H}) and the tail of the list \cninline{tl},
@@ -851,7 +854,7 @@ My contributions in this part include:
         \kl{separation logic}, \kl{refinement type} system for \kl{ResCore}
         (\S\ref{chap:kernel-statics}).
     \item A formalisation of two inference algorithms used by \kl{CN}, one for inferring
-        instantiations of logical (ghost) quantifiers and one for inferring
+        instantiations of \kl{logical (ghost) quantifiers} and one for inferring
         indices for \kl(kernel){iterated predicates} (\S\ref{sec:elaboration}).
     \item A proof of soundness of \kl{Kernel CN}, including a novel, modular
         heap definition in the \kl{ResCore} dynamic semantics
@@ -952,12 +955,11 @@ with an SMT backend, restricted to ensure decidable type inference.
 \item \textbf{A formalisation of the key parts of the type system.}
 \end{itemize}
 
-The formalisation proves soundness of type checking (not inference), and serves
+The formalisation proves soundness of type checking (not \kl(resource){inference}), and serves
 to increase confidence in the type system design and implementation. I wrote
 Section 4 (overview of definitions and key theorems), Appendix A (full
-definitions) and Appendix B (proof of all theorems). In this thesis, the
-respective sections are for these
-are~\cref{part:formalisation},~\cref{chap:defns}, and~\cref{chap:soundness}
+definitions) and Appendix B (proof of all theorems). In this thesis,
+these are~\cref{part:formalisation},~\cref{chap:defns}, and~\cref{chap:soundness}
 respectively.
 
 Also stated in the paper are several limitations \kl{CN} had then, many of
@@ -967,7 +969,7 @@ which I have alleviated.
     \item \emph{CN currently does not support recursive specification
             functions; these are easily added, together with a mechanism for
             users to manually unfold definitions.} This was added by Thomas
-            Sewell, but led to an inconsistent and confusing user-experience,
+            Sewell, but leads to an inconsistent and confusing user-experience,
             for which I propose a remedy in~\cref{sec:auto-unfold-functions}.
     \item \emph{CN does not currently support unions; moreover, we use a
             concrete memory object model, \ldots we plan to incorporate
@@ -989,8 +991,8 @@ which I have alleviated.
 \end{itemize}
 
 \sidetextcite{banerjee2025fulminate} describe \kl{CN}'s specification testing
-mode; they state that their contributions flow downstream from \kl{CN}'s
-restricted \kl{separation logic} syntax having a natural and readable
+mode; they state that their contributions stem from \kl{CN}'s
+restricted \kl{separation logic} syntax having a natural
 computational interpretation.
 
 \begin{itemize}
@@ -1022,17 +1024,15 @@ In \fancyref{chap:kernel-alternative}, I present a static semantics for the
 same language, to explore which complexities of a type system for C might be
 inherent, and which are specific to the approach I took.
 
-Lastly,~\sidetextcite{aamer2026code} demonstrate how one might extend
-conventional software development practice by using \kl{CN}'s rich
+Lastly,~\sidetextcite{aamer2026code} demonstrate how to augment
+conventional software development practice by using \kl{CN}'s
 specification language for runtime assertion checking, property-based testing,
-and for formal machine-checked proof. They demonstrate all this on the
+and machine-checked proof. They demonstrate all this on the
 \kl{pKVM} hyp allocator.
 
 \begin{itemize}
-    \item Numerous improvements to \kl{Fulminate}.
-    \item Support for ghost arguments to the \kl{CN} specification language,
-        Fulminate runtime testing, and \kl{CN} proof.
-    \item Improvements to \kl{CN} proof performance.
+    \item Feature and performance improvements to \kl{Fulminate} and \kl{CN} proof,
+        including support for \kl{ghost arguments}.
     \item A new property-based testing tool, Darcy, that uses SMT solvers to
         generate test inputs for complex \kl{CN} specifications.
     \item \textbf{Tree-carver tooling to filter unused parts of the large C
@@ -1042,8 +1042,8 @@ and for formal machine-checked proof. They demonstrate all this on the
     \item A demonstration of the test-driven specification's ability to find
         many specification bugs, and four bugs in the production hypervisor
         implementation.
-    \item A \kl{CN} correctness proof of the hypervisor's allocator, which
-        was made easier by incrementally writing and testing specifications
+    \item A \kl{CN} correctness proof of the hypervisor's allocator,
+        made easier by incrementally writing and testing specifications
         beforehand.
 \end{itemize}
 
@@ -1057,7 +1057,7 @@ detail \kl{CN}'s annotation syntax (excluding intra-function \kl{CN
 statement}s). Then, I present a verified implementation of an integer
 queue.
 
-\section{CN Syntax}%
+\section{CN syntax}%
 
 \begin{figure*}[tp]
     \small
@@ -1169,7 +1169,7 @@ We then define \kl(CN){functions} for computing the head of a list, the tail of 
 and adding an element to the end of the list. All are defined with
 pattern-matching, and the last one is marked with \cninline{[rec]} to allow it
 to be recursive. \kl{CN} will unfold the first two automatically, but require
-manual \kl{annotation} for the last one. All functions must be total, hence the
+manual \kl(CN){annotation} for the last one. All functions must be total, hence the
 \cninline{hd} and \cninline{tl} return \cninline{0i32} and \cninline|Nil{}|
 respectively for the \cninline|Nil{}| case.
 
@@ -1308,8 +1308,8 @@ example simple, allocations are modelled as always succeeding.
 
 We start with a C function to create an empty queue. Its specification has no
 \kl{precondition}, only a \kl{postcondition}, which specifies that the returned
-pointer is a queue as per \cninline{QueuePtr_At}, and that the logical (ghost)
-value returned by the same is \cninline|Nil{}|.
+pointer is a queue as per \cninline{QueuePtr_At}, and that the \kl{logical (ghost)
+value} returned by the same is \cninline|Nil{}|.
 
 In the C code, it allocates memory for a new \cinline{struct queue}, sets the
 front and back pointers to \cinline{NULL}, and returns a pointer to the new
@@ -1318,9 +1318,9 @@ allocation.
 \cfile[breaklines,highlightlines={2-3}]{code/queue_empty.c} % chktex 8
 
 Next, is the C function for popping from a queue. It requires that \cinline{q}
-points to a queue in memory, whose logical (ghost) value is bound to
+points to a queue in memory, whose \kl{logical (ghost) value} is bound to
 \cninline{Q}, and must be non-\cinline|Nil{}|. Its postcondition ensures that
-\cinline{q} points to a queue in memory, whose logical (ghost) value is bound
+\cinline{q} points to a queue in memory, whose \kl{logical (ghost) value} is bound
 to \cninline{Q_post}. It further ensures that \cninline{Q_post} is the tail of
 \cninline{Q} and that the \cninline{return} value is the head of \cninline{Q}.
 
@@ -1336,7 +1336,7 @@ branching on whether \cninline{q->front} is \cinline{NULL} or not.
 To access the resources and return value underneath the condition, \kl{CN}
 needs to statically prove that it is in one of the branches. In this instance,
 there is not enough information to do so, so the user instead provides
-a \cninline{split_case} \kl{annotation} to tell \kl{CN} to type check the rest of
+a \cninline{split_case} \kl(CN){annotation} to tell \kl{CN} to type check the rest of
 the function twice, once assuming the given condition, and once assuming
 its negation. The true branch reveals a contradiction between the return value
 \cinline|Nil{}| and the precondition \cninline|Q != Nil{}|,thus  % chktex 26
@@ -1358,7 +1358,7 @@ a recursive function, and thus must be unfolded manually.
 
 In the non-singleton case, we need to manually apply a \intro(CN){lemma}, one which says
 \cninline{snoc} commutes with \cninline{cons}. At the time, \kl{CN} could only
-pass logical (ghost) values by passing a resource and then binding its return
+pass \kl{logical (ghost) values} by passing a resource and then binding its return
 values.  So, even though the \kl(CN){lemma} is a pure fact, to state it, we must thread
 through resources, as shown below. The resources are preserved exactly, only
 the pure constraints on line 10\textendash{}12 are meaningful.
@@ -1396,11 +1396,11 @@ of this longer segment, is the \cninline{snoc} of the first two values.
 
 % \cfile[breaklines,lastline=11,highlightlines={2-10}]{code/queue_push.c} % chktex 8
 
-\section{Proofs of \kl(CN){lemmas}}
+\section{Proofs of lemmas}
 
 \kl{CN} has in-progress support for export and proofs of resourceful \kl(CN){lemmas},
-which could be combined with recently added support for ghost arguments and
-planned support for ghost returns, to support \kl(CN){lemmas} which state pure facts
+which could be combined with recently added support for \kl{ghost arguments} and
+planned support for \kl{ghost returns}, to support \kl(CN){lemmas} which state pure facts
 (\S\ref{sec:lemma-prover}). However, as it turns out, for some \kl(CN){lemmas}, such as
 the ones shown here, it is possible to give a proof in terms of a C function
 (\S\ref{sec:lemma-proof-c}).
