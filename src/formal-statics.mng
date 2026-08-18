@@ -7,21 +7,20 @@
 %
 I have covered a large amount of background to the type system so far:
 \kl{Core}, \kl{liquid types}, \kl{bidirectional} type systems, \kl{linear types}, \kl{precise}
-\kl{separation logic} assertions, \kl{monadic syntax} for the latter and its relation to
-kernel syntax for types, \kl{let-normalisation} and \kl{explicit resource terms} in
+\kl{separation logic} assertions, \kl{monadic syntax} for the latter, its relation to
+\kl{kernel types}, \kl{let-normalisation} and \kl{explicit resource terms} in
 \kl{ResCore}.
 
-In this chapter, I use all of the ingredients defined in the previous two
-(\fancyref{chap:formal-background}, \fancyref{chap:kernel-grammar}) to define the
-\kl{Kernel CN} type system. Some of the sections are based on my contributions
+In this chapter, I use those ingredients to define
+\kl{Kernel CN}; some of the sections are based on my contributions
 to~\textcite{pulte2023cn}.%
 
-\intro{Kernel CN} is a formalism for \kl{CN} which assumes that universal
-quantifiers are explicitly instantiated, that all existential quantifiers have
-explicit witnesses, and all \kl{resource manipulations} have \kl{linearly}
+\intro{Kernel CN} is a formalism for \kl{CN} which assumes that 
+logical (universal and existential) quantifiers are instantiated,
+and all \kl{resource manipulations} have \kl{linearly}
 typed \kl{proof terms} embedded into the program itself. It does not require
-proof terms for the logical properties, since by construction all of the
-entailments fall into (decidable) SMT fragment. \kl{Kernel CN} is a
+proof terms for the logical properties, since by construction all
+entailments fall into \kl{(decidable) SMT fragment}. \kl{Kernel CN} is a
 \kl{bidirectional} type system for \kl{ResCore}.
 
 The lack of inference makes \kl{Kernel CN} simpler to prove
@@ -33,7 +32,8 @@ Since it handles the majority of C, the entire system is very large
 There are additional minor differences between the implementation and the
 formalisation. As I mentioned in \fancyref{sec:desugaring}, the formalisation has a
 richer grammar of resources: this makes defining predicates to represent tagged
-unions more succinct, and allows for opening predicates in more cases.
+unions more succinct, and allows for opening predicates in more cases.%
+\margincite{pulte2023cn}.
 
 Along with the type system, I briefly discuss a formalisation of two different
 \kl(CN){elaboration} algorithms: one for inferring quantifier instantiations, one for
@@ -53,11 +53,11 @@ Judgement & Section & Figure\\
 \small%
 $[[ C |- pval => base_type ]]$
     &~\ref{sec:pure-val-expr}
-    &~\ref{fig:typing-pval-pexpr}
+    &~\ref{fig:typing-pval}
 \\
 $[[ C ; L ; N |- pexpr => pure_ret ]]$
    &~\ref{sec:pure-val-expr}
-   &~\ref{fig:typing-pval-pexpr}
+   &~\ref{fig:typing-pexpr}
 \\
 $[[ C ; L ; N |- pstmt <= pure_ret ]]$
    &~\ref{sec:pure-stmt}
@@ -65,7 +65,11 @@ $[[ C ; L ; N |- pstmt <= pure_ret ]]$
 \\
 $[[ C ; L ; N ; R |- res_term => res ]]$
    &~\ref{sec:typing-res-terms}
-   &~\ref{fig:typing-res-term-synth},~\ref{fig:typing-predops}
+   &~\ref{fig:typing-res-emp-var},~\ref{fig:typing-res-term-synth}
+   \\
+$[[ C ; L ; N ; R |- pred_ops => res ]]$
+   &~\ref{sec:typing-res-terms}
+   &~\ref{fig:typing-predops}
 \\
 $[[ C ; L ; N ; R |- res_term <= res ]]$
    &~\ref{sec:typing-res-terms}
@@ -114,8 +118,8 @@ containing the \intro{computational variables} from the \kl{Core} program; (2) \
 containing purely \intro{logical variables} mentioned in \kl(CN){specifications}; (3) \sm{[[ N ]]},
 the \intro{constraint context}, containing a list of (non-quantified) SMT constraints;
 and (4) \sm{[[R]]} a \kl{linear} \intro(resource){context} containing \kl(type){resources}.
-I assume a \kl{constraint context} of only non-quantified constraints because users
-are required to manually instantiate quantified constraints.
+Because users must manually instantiate quantified constraints, I
+assume the \kl{constraint context} only contains non-quantified ones.
 
 \section{Pure values and expressions}\label{sec:pure-val-expr}
 
@@ -132,30 +136,16 @@ pointer, records. Each C type \sm{[[ ct ]]} is mapped to a corresponding base ty
 \kl{Logical terms} are variously referred to as \sm{[[term]]}, \sm{[[iguard]]} for boolean
 index guards of \kl(CN){iterated predicates}, \sm{[[ptr]]} for pointers, \sm{[[iarg]]} for
 \kl{input arguments},  \sm{[[oarg]]} for \kl{output arguments}, and later,
-\sm{[[alloct]]} for constraints about the allocation history.
+\sm{[[alloct]]} for the allocation history.
 
-As seen in~\cref{fig:typing-pval-pexpr}, the rules for \kl{pure
+As seen in~\cref{fig:typing-pval}, the rules for \kl{pure
 values}\sidenote{\kl{Core} factors out representation of \kl{memory objects}
 such as integers, pointers, arrays and structs, as part of the \kl{memory
 object model}, so I have followed suit.} are plain synthesis
 judgements of the form \sm{[[ C |- pval => base_type ]]};  given \kl{computational
 context} and a \kl{pure value}, \kl{synthesise} a \kl{base type}.
 
-Building on top of this (in the same figure), the \kl{pure expression}
-\kl{synthesis} judgement is similar \sm{[[ C ; L ; N |- pexpr => pure_ret ]]}.
-Given a \kl{computational context}, a \kl{logical context}, a \kl{constraint
-context} and a \kl{pure expression}, \kl{synthesise} a \emph{pure} \kl{return type}
-(a return type without any \kl(type){resources} or
-\kl{logical variables}).
-
-The type \sm{[[pure_ret]] \mathop{{\Colon}{=}} [[ sigma y : base_type .: term /\ I ]]}
-is the \kl{Kernel CN} version of the traditional
-\sm{\left\{ \, y \in \beta \mid \mathit{ term } \, \right\}} \kl{refinement type}.
-Recall that \sm{\Sigma} binds the \kl{computational value} the
-\kl{pure values} and \kl(pure){expressions} will evaluate to, and \sm{[[term]]}
-constrains that value to be equal to lifted counterparts.
- 
-\begin{figure*}[tp]
+\begin{figure*}[p]
     \small
     \raggedright{}
     \onlyUseRules{\cndefnPureXXVal{}}{%
@@ -174,6 +164,28 @@ constrains that value to be equal to lifted counterparts.
         %\cndrulePureXXValXXCtorXXSpecified{},
         \cndrulePureXXValXXStruct{}
     }
+    \caption{Selection of \kl{Kernel CN} typing rules for \intro{pure
+        values}.}\label{fig:typing-pval}
+\end{figure*}
+
+Building on this, the \kl{pure expression}
+\kl{synthesis} judgement is similar \sm{[[ C ; L ; N |- pexpr => pure_ret ]]}
+(\cref{fig:typing-pexpr}).
+Given a \kl{computational context}, a \kl{logical context}, a \kl{constraint
+context} and a \kl{pure expression}, \kl{synthesise} a \kl{pure return type}
+(a return type without any \kl(type){resources} or
+\kl{logical variables}).
+
+The type \sm{[[pure_ret]] \mathop{{\Colon}{=}} [[ sigma y : base_type .: term /\ I ]]}
+is the \kl{Kernel CN} version of the traditional
+\sm{\left\{ \, y \in \beta \mid \mathit{ term } \, \right\}} \kl{refinement type}.
+Recall that \sm{\Sigma} binds the \kl{computational value} the
+\kl{pure values} and \kl(pure){expressions} will evaluate to, and \sm{[[term]]}
+constrains that value to be equal to lifted counterparts.
+ 
+\begin{figure*}[p]
+    \small
+    \raggedright{}
     \onlyUseRules{\cndefnPureXXExpr{}}{%
         \cndrulePureXXExprXXVal{},
         \cndrulePureXXExprXXCtorXXIvXOR{},
@@ -189,14 +201,28 @@ constrains that value to be equal to lifted counterparts.
         %\cndrulePureXXExprXXBoolXXToXXInteger{},
         %\cndrulePureXXExprXXWrapI{},
     }
-    \caption{Selection of \kl{Kernel CN} typing rules for \intro{pure values}
-        and \kl(pure){expressions}.}\label{fig:typing-pval-pexpr}
+    \caption{Selection of \kl{Kernel CN} typing rules for \kl{pure
+        expressions}.}\label{fig:typing-pexpr}
+\end{figure*}
+
+\begin{figure*}[t]
+    \small
+    \raggedright{}
+    \onlyUseRules{\cndefnPureXXStmt{}}{%
+        \cndefnPureXXStmtXXPVal{},
+        \cndefnPureXXStmtXXUB{},
+        \cndrulePureXXStmtXXIf{},
+        \cndrulePureXXStmtXXLet{}
+    }
+    \cndefnPatXXComp{}%
+    \caption{Selection of \kl{Kernel CN} typing rules for \kl{pure statements},
+    including the translation of \kl{computational patterns} into a
+    \kl{computational context} used in the \coreinline{let} rule.}\label{fig:typing-pstmt}
 \end{figure*}
 
 \section{Pure statements}\label{sec:pure-stmt}
 
-\kl{Pure statements} are typed with \kl{checking} judgements
-instead of \kl{synthesising} ones, of the form
+\kl{Pure statements} are typed with \kl{checking} judgements,
 \sm{[[ C ; L ; N |- pstmt <= pure_ret ]]}.
 Given the \kl(ctx){computational}, \kl(ctx){logical} and \kl{constraint
 contexts}, check the \kl{pure statement} satisfies this type.
@@ -218,33 +244,48 @@ The shape constraint is produced by a judgement which, given a
 produces a \kl{computational context} and a \sm{[[term]]} corresponding to the
 pattern. To simplify matters, I assume all patterns are complete.
 
-\begin{figure*}[tp]
+\begin{figure*}[t]
+    \ContinuedFloat*
     \small
     \raggedright{}
-    \onlyUseRules{\cndefnPureXXStmt{}}{%
-        \cndefnPureXXStmtXXPVal{},
-        \cndefnPureXXStmtXXUB{},
-        \cndrulePureXXStmtXXIf{},
-        \cndrulePureXXStmtXXLet{}
+    \onlyUseRules{\cndefnResXXSyn{}}{%
+      \cndruleResXXSynXXEmp{},
+      \cndruleResXXSynXXVar{},
+      \cndruleResXXSynXXVarSimp{}
     }
-    \cndefnPatXXComp{}%
-    \caption{Selection of \kl{Kernel CN} typing rules for \kl{pure statements},
-    including the translation of \kl{computational patterns} into a
-    \kl{computational context} used in the \coreinline{let} rule.}\label{fig:typing-pstmt}
+    \caption{\kl{Kernel CN} synthesising typing rules for \kl{resource
+    terms}.}\label{fig:typing-res-emp-var}
 \end{figure*}
 
+\begin{figure*}[t]
+    \ContinuedFloat{}
+    \small
+    \raggedright{}
+    \begingroup%
+    \NewCommandCopy{\origcndrule}{\cndrule}
+    \renewcommand{\cndrule}[4][]{\origcndrule[#1]{#2}{%
+    \begin{minipage}{0.65\textwidth}
+        \raggedright%
+        \leftskip2em
+        \parindent-2em
+        $#3$
+    \end{minipage}
+    }{#4}}%
+    \onlyUseRules{\cndefnResXXSyn{}}{%
+      \cndruleResXXSynXXPred{},
+      \cndruleResXXSynXXFold{}
+      %\cndruleResXXSynXXIPred{}
+      %\cndruleResXXSynXXPredOps{},
+      %\cndruleResXXSynXXSepConj{}
+    }
+    \endgroup%
+    \caption{\kl{Kernel CN} synthesising typing rules for \kl{resource
+    terms}.}\label{fig:typing-res-term-synth}
+\end{figure*}
 \section{Resource terms}\label{sec:typing-res-terms}
 
-\begin{figure*}[tp]
-    \small
-    \raggedright{}
-    \cndefnResXXSyn{}
-    \caption{\kl{Kernel CN} synthesising typing rules for resource
-        terms.}\label{fig:typing-res-term-synth}
-\end{figure*}
-
 Typing resource terms requires the addition of an extra \kl{linear} \kl(resource){context}
-\sm{[[ R ]]} of \kl(type){resources}.%
+\sm{[[ R ]]} of \kl(type){resources}. %
 % I will start with the \kl{synthesising}
 % judgements first, and move on to checking judgements after.
 For readers more familiar with program logics, the following abuse
@@ -257,7 +298,7 @@ using only structural rules as dictated by \sm{[[res_term]]}.
 
 \subsection{Synthesis for resource terms}\label{subsec:synth-res-term}
 
-As visible in~\cref{fig:typing-res-term-synth}, unsurprisingly, \sm{\cnkw{emp}}
+As visible in~\cref{fig:typing-res-emp-var}, unsurprisingly, \sm{\cnkw{emp}}
 requires an empty context, and a variable use requires a singleton context.
 Using variables also `simplifies' them by partially-evaluating
 top-level \sm{\cnkw{if}} when their conditions
@@ -272,7 +313,7 @@ Several features are noteworthy.
     \item The \kl{output argument} is \kl{synthesised} from the context.
 \end{itemize}
 
-For \sm{\cnkw{Owned}} predicates, the input is the pointer, and the
+For \sm{\cnkw{Owned}} predicates (\cref{fig:typing-res-term-synth}), the input is the pointer, and the
 output will be the pointee; for \kl(CN){user-defined predicates}, the input is
 their arguments, and output is their return values. I defer explanation of
 \sm{\cnkw{Alloc}} and \sm{\cnkw{Padding}} predicates until
@@ -285,7 +326,7 @@ are excluded (by using \sm{{id}} instead of \sm{\alpha}).
 % belong to, especially because resources can be moved between predicates.
 
 Morally, \sm{\cnkw{fold}} should be checked, because nominally different
-predicates can have the same definition.%
+predicates can have the same definition. %
 % However, in a prior version of the implementation, users were required to
 % manually fold and unfold predicates, and (by
 % accident) that annotation was placed in an effectful expression. Expressions,
@@ -296,28 +337,19 @@ predicates can have the same definition.%
 % argument, but {Kernel CN} is meant to assume no inference of instantiations
 % to logical quantifiers, \ie{} output arguments of resources.}
 However, by historical accident, \sm{\cnkw{fold}} terms are
-annotated, so that they can be used in a \kl{synthesising} position.
+used in a \kl{synthesising} position, and thus annotated.
 The \sm{\mathit{res\_term}} it carries \kl{checked} against the \emph{definition}
 (`body') of that predicate, with the \kl(argument){input} and \kl{output arguments}
-substituted in (if they are of the correct type).
+(checked and) substituted in.
 
 \subsection{Synthesis for predicate operations}\label{sec:synth-predops}
 
 \kl{Predicate operations} are also \kl{synthesising} and have their own
 judgement. And because these operations can combine more than one kind of
-\kl(type){resource}, they need to \kl{synthesise} separating conjunctions,
-so the rule for them is also synthesising.
+\kl(type){resource}, they need to \kl{synthesise} separating conjunctions.
 
-For space, I only present the rules for turning ownership of fixed-length arrays
+To save space, I present only the rules for turning ownership of fixed-length arrays
 into an iterated separating conjunctions and back (\cref{fig:typing-predops}).
-
-The first rule says that if \sm{\mathit{res\_term}} synthesises ownership of a
-fixed-length array, then the iteration of that synthesises an iterated
-separating conjunction for ownership over the indices of that array (\sm{0} to
-\sm{n-1}). The second rule does the inverse, but includes some additional checks
-to prevent two adjacent locations of the same type of different
-allocations, from being indexed by the same pointer (as required by the
-\kl{memory object model}).
 
 \begin{figure*}[tp]
     \small
@@ -330,9 +362,18 @@ allocations, from being indexed by the same pointer (as required by the
         predicate operations.}\label{fig:typing-predops}
 \end{figure*}
 
+The first rule says that if \sm{\mathit{res\_term}} synthesises ownership of a
+fixed-length array, then the iteration of that synthesises an iterated
+separating conjunction for ownership over the indices of that array (\sm{0} to
+\sm{n-1}). The second rule does the inverse, but includes some additional checks
+to prevent two adjacent locations of the same type of different
+allocations, from being indexed by the same pointer (as required by the
+\kl{memory object model}).
+
 \subsection{Checking for resource terms}\label{subsec:checking-res-terms}
 
-Some \kl{resource terms} are \kl{checked}, such as \sm{\cnkw{term}}, which
+Some \kl{resource terms} are \kl{checked} (\cref{fig:typing-res-term-check}),
+such as \sm{\cnkw{term}}, which
 represents a constraint to be proven by the SMT solver, but does not state
 which one. Similarly, existential types are also \kl{checking} because it is
 impossible to infer them in the general case.\sidenote{Consider a heap $1 \mapsto 1$, and consider that all
@@ -341,6 +382,21 @@ of $\exists x.\ 1 \mapsto 1$, $\exists x.\ x \mapsto 1$, $\exists x.\ 1 \mapsto 
 % The witness \textemdash{} carried by the {\small $\cnkw{pack}$} \textemdash{}
 % is substituted into the inner type, which is turn is used to check the inner
 % $\mathit{res\_term}$.
+\begin{figure*}[tp]
+    \small
+    \raggedright{}
+    \onlyUseRules{\cndefnResXXChk{}}{%
+        \cndruleResXXChkXXPhi{},
+        \cndruleResXXChkXXPack{},
+        %\cndruleResXXChkXXSepConj{},
+        \cndruleResXXChkXXIfXXTrue{},
+        \cndruleResXXChkXXIfXXFalse{},
+        %\cndruleResXXChkXXSwitch{}
+    }
+    \caption{Selection of \kl{Kernel CN} checking typing rules for
+        resource terms.}\label{fig:typing-res-term-check}
+\end{figure*}
+
 
 As I mentioned earlier (\S\ref{sec:res-terms}), \emph{any} \kl{resource term} can
 introduce an \kl{ordered-disjunction}, and so any \kl{resource term} can be
@@ -367,25 +423,10 @@ branch).
 \kl{Separating conjunctions} are also checked to allow for the case where an
 existential or an \kl{ordered-disjunction} are in the sub-components.
 
-\begin{figure*}[tp]
-    \small
-    \raggedright{}
-    \onlyUseRules{\cndefnResXXChk{}}{%
-        \cndruleResXXChkXXPhi{},
-        \cndruleResXXChkXXPack{},
-        %\cndruleResXXChkXXSepConj{},
-        \cndruleResXXChkXXIfXXTrue{},
-        \cndruleResXXChkXXIfXXFalse{},
-        %\cndruleResXXChkXXSwitch{}
-    }
-    \caption{Selection of \kl{Kernel CN} checking typing rules for
-        resource terms.}\label{fig:typing-res-term-check}
-\end{figure*}
-
 At any point, if the \kl(resource){term} cannot be \kl{checked} by any other
 rule, the system can switch to \kl{synthesising} a type and then comparing
 whether the two \kl(resource){types} are structurally equal, modulo SMT
-entailment (\cref{fig:typing-res-term-check}).
+entailment (\cref{fig:typing-res-term-switch}).
 
 \begin{marginfigure}
     \small
@@ -395,7 +436,7 @@ entailment (\cref{fig:typing-res-term-check}).
         terms.}\label{fig:typing-res-term-switch}
 \end{marginfigure}
 
-\section{Memory actions and pointer operations}\label{sec:kernel-mem-action-ops}
+\section{Memory actions and operations}\label{sec:kernel-mem-action-ops}
 
 As with \kl{resource terms}, \kl{memory actions} require all the contexts
 (\kl(ctx){computational}, \kl(ctx){logical}, \kl(ctx){constraint} and
@@ -404,7 +445,7 @@ As with \kl{resource terms}, \kl{memory actions} require all the contexts
 [[ C ; L ; N ; R |- res_action => ret ]].
 \]
 Given the contexts, a (\kl{resource term} annotated) \kl{memory action}
-\kl{synthesises} a return type.
+\kl{synthesises} a \kl{return type}.
 
 For readers familiar with program logics, the following abuse of notation
 may provide a helpful intuition.
@@ -414,7 +455,7 @@ is the \kl{Kernel CN} version of a proof of
 \sm{\{\, [[N]] \wedge [[R]] \,\} \, [[action]] \, \{\, y {:} [[base_type]].\ [[ret]]\, \}},
 where \sm{[[res_term]]} dictates the required structural rules.
 
-The rule for \sm{\cnkw{create}} requires no resources from the context
+The rule for \sm{\cnkw{create}} (\cref{fig:typing-mem-action}) requires no resources from the context
 \sm{[[cdot]]}, and thus only \sm{[[emp]]} as its resource term.
 Its return type speaks of \sm{y_p}, the pointer to the newly created allocation,
 which is constrained by \sm{[[term]]} as required by the C standard (omitted for brevity).
@@ -458,27 +499,34 @@ allocations being considered are the same (premises 3 and 4) and
         \cndruleActionXXStore{},
         \cndruleActionXXKillXXStatic{}
     }
-    \onlyUseRules{\cndefnMemop{}}{%
-        \cndruleMemopXXRelXXBinop{}
-    }
     \endgroup%
-    \caption{\kl{Kernel CN} typing rules for \kl{memory actions}, and a select
-        rule for typing a \kl{memory operation}. I will explain the roles of
-        $[[Alloc]]$ in \ActionCreate{} and \ActionKillStatic{}, and the
-        liveness and bounds checks used in \MemopRelBinop{}
+    \caption{\kl{Kernel CN} typing rules for \kl{memory actions}. I explain the role of
+        $[[Alloc]]$ in \ActionCreate{} and \ActionKillStatic{}
         in~\fancyref{chap:cn-vip}.}\label{fig:typing-mem-action}
 \end{figure*}
 
 Rules for typing \kl{memory operations}, \ie{} `effectful' pointer operations
 require the pointers to be in bounds of a live allocation, and \kl{synthesise}
 a \kl{return type}. There are many of them, but they
-share the same principles so it suffices to only explain one
-(\cref{fig:typing-mem-action}). Using a binary relational operator (not
+share the same principles so it suffices to only explain one (\cref{fig:typing-mem-op}).
+Using a binary relational operator (not
 equality) is only valid if both pointers are live, belong to the same
 allocation and are within the bounds of the same. The \kl{return type}
 \kl{synthesises} the result of that relational operator applied to the
 addresses of those pointers, plus any resources consumed to prove the pointer
 is live.
+
+\begin{figure}[tp]
+    \small%
+    \raggedright{}
+    \onlyUseRules{\cndefnMemop{}}{%
+        \cndruleMemopXXRelXXBinop{}
+    }%
+    \caption{Select \kl{Kernel CN} typing rule for \kl{memory operations}. I
+        explain the role of the liveness and bounds checks used in
+        \MemopRelBinop{} in~\fancyref{chap:cn-vip}.}\label{fig:typing-mem-op}
+\end{figure}
+
 
 \section{Spine judgement}\label{sec:spine-judgement}
 
