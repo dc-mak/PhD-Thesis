@@ -770,8 +770,7 @@ out of \cinline{Uninit}, the second to move a \cninline{RW} into \cninline{Init}
 
 \kl{CN} allows users to define \intro{datatypes}, such as \cninline{i32} lists, and
 recursive \kl(CN){functions}, such as \cninline{i32} list \cninline{append}, using the
-syntax \cninline{function [rec]}. Note that arguments of constructors are
-named, not positional.
+syntax \cninline{function [rec]}. Constructor arguments are named, not positional.
 
 \cfile[breaklines,firstline=6,lastline=15,highlightlines={6-8,10-15}]{code/append_annot.c} % chktex 8
 
@@ -1132,7 +1131,7 @@ predicate \sm{[[ a ]]} to logical/SMT arguments \sm{[[ iargs ]]}, or
 \end{itemize}
 
 Predicate names \sm{[[a]]} are either: \cninline{RW<τ>} / \cninline{W<τ>} (encoded
-as \sm{[[Owned<Init,ct>]]} / \sm{[[Owned<Uninit,ct>]]} in the grammar
+as \sm{[[Owned<Init,ct>]]} / \sm{[[Owned<Uninit,ct>]]}
 in~\cref{fig:cn-grammar}) representing the ability to read-and-write/write an
 initialised/uninitialised location on the heap; an \cninline{Alloc} representing
 (permission to free) an allocation; or a user-defined predicate.
@@ -1272,10 +1271,10 @@ or both are non-\cninline{NULL}. It then binds the value returned by
 \cfile[breaklines,firstline=38,lastline=46,highlightlines={39-45}]{code/queue_headers.h} % chktex 8
 
 \cninline{QueueFB} takes two pointers, \cninline{front} and \cninline{back},
-and also returns a \cninline{datatype List}. If the \cninline{front} is
+and also returns a \cninline{datatype List}. If \cninline{front} is
 \cninline{NULL}, then it returns \cninline|Nil{}|. If not, it takes ownership
 of \cninline{back} (the last cell), binds its lifted value to \cninline{B}, and
-asserts the \cninline{B.next} is \cninline{NULL}. Line 55 constrains
+asserts \cninline{B.next} is \cninline{NULL}. Line 55 constrains
 \cninline{front} and \cninline{back} pointers as required by a quirk of the
 \kl{memory object model} (see~\cref{subsec:non-det-ptr-eq,subsec:update-non-det-ptr-eq}).
 After that, it binds the return value of \cninline{QueueAux(front, back)} to % chktex 36
@@ -1372,10 +1371,10 @@ traversing the list, meaning there are two aliases to the same location.
 
 Upon entry, the function allocates a new cell and stores the new values. It
 then conditionally branches on whether or not the queue is empty, by checking
-the back pointer. By lines 41\textendash{}42, in both cases we learn whether
+the back pointer. By the assertion in \cninline{QueuePtr_At(q)} % chktex 36
+(lines 41\textendash{}42), we also learn whether
 front is \cninline{NULL}. In the true branch, both front and back pointers are
-set to the newly allocated cell. This is enough to establish the singleton case
-of the queue predicates.
+set to the newly allocated cell. This is enough to establish the singleton case.
 
 In the false branch, the function adds the cell to the back of the list, and
 then sets the queue's back pointer to point to the new cell. The ownership of
