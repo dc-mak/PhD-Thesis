@@ -120,8 +120,8 @@ disjunction}, which I use to avoid backtracking during type-checking.
 
 For ease of implementation and formalisation, we do not have branching for \kl{pre-}
 and \kl{postconditions} and \kl(type){function}/\kl{return types}. This does not affect
-expressiveness because such branching can be embedded into \kl{resource types}. Note
-that in the formalisation, the branching is not restricted to the top-level in
+expressiveness because such branching can be embedded into \kl{resource types}.
+In the formalisation, the branching is not restricted to the top-level in
 \kl(kernel){predicate definitions}, but can occur directly in \kl{function types}, and can be
 arbitrarily nested. This makes defining predicates to represent tagged unions
 more succinct, and allows for opening predicates in more cases.
@@ -130,8 +130,8 @@ more succinct, and allows for opening predicates in more cases.
 \sm{[[ pred_term ]]} and \sm{[[ipred_term]]} with output arguments,
 as seen in~\cref{fig:kernel-ipred}.
 I will explain why I factored out \sm{[[pred_term]]} and \sm{[[ipred_term]]} in
-\fancyref{sec:res-terms}. Where the surface syntax uses \cninline{RW} and
-\cninline{W}, the formalisation uses \sm{[[ Owned < Init , ct > ]]} and
+\fancyref{sec:res-terms}. Where the surface syntax uses \cninline{RW<τ>} and
+\cninline{W<τ>}, the formalisation uses \sm{[[ Owned < Init , ct > ]]} and
 \sm{[[ Owned < Uninit , ct > ]]} respectively. \sidenote{Prior versions of this
     system allowed for reading and writing \emph{partially} (and completely)
     uninitialised structs/unions. However,
@@ -151,30 +151,30 @@ I will explain why I factored out \sm{[[pred_term]]} and \sm{[[ipred_term]]} in
         \cnipred{}\cnafterlastrule{}
     }%
     \endgroup%
-    \caption{\kl{Kernel CN} \kl(kernel){predicate} and \kl(kernel){iterated predicate} terms (without
+    \caption{\kl{Kernel CN} \kl(kernel){predicate} and \kl(kernel){iterated predicate} terms (no
         output arguments) and \kl(kernel){types} (with output arguments). The formalisation
-        is set up with some syntactic sugar (marked with \sm{\mathsf{S}}) for \intro{points-to}
-        and \kl{iterated points-to} to make the reading of these constructs more intuitive.}\label{fig:kernel-ipred}
+        uses syntactic sugar (marked with \sm{\mathsf{S}}) for \intro{points-to}
+        and \kl{iterated points-to} to make the meaning of those constructs more intuitive.}\label{fig:kernel-ipred}
 
 \end{figure*}
 
 \section{Desugaring CN types into kernel types}\label{sec:desugaring}
 
-Before presenting the rules for desugaring \kl{CN} types into \kl{Kernel CN}
-\intro(kernel){types}, I will first illustrate them informally with an
-example C function and its CN specification.
+I will now explain the rules for desugaring \kl{CN} types into \kl{Kernel CN}
+\intro(kernel){types}, leading with an example C function and its \kl{CN
+specification}.
 
 \begin{figure}[h]
 \cfile[highlightlines={2-6}]{code/incr_pointer.c} % chktex 8
 \caption{Simple C increment function and its specification in \kl{CN}.}\label{fig:incr-pointer}
 \end{figure}
 
-The function takes an integer pointer as an argument, increments the
+The function takes an integer pointer, increments the
 pointee, and then returns the incremented value. Its specification requires
-\kl{read-write ownership} of the argument pointer (line 2), asserts the pointee is
+\kl{read-write ownership} of the pointer (line 2), asserts the pointee is
 strictly less than the maximum for signed integers (line 3), and ensures
 \kl{read-write ownership} (line 4) where the return value is equal to the new
-pointee (line 5) and that the new pointee is equal to the old one incremented
+pointee (line 5) and the new pointee is equal to the old one incremented
 by one (line 6).
 
 That specification desugars into the following \kl{Kernel CN} type.
@@ -241,16 +241,16 @@ Desugaring preconditions into \kl{function types} requires the \kl{postcondition
 desugared first; because that is similar to \kl{precondition} desugaring, I will
 omit it for space. Abbreviations are simply substituted into the \kl{function type}
 (\UserSpecToArgLet).\sidenote{In the implementation, for better error messages,
-they are bound to a fresh variable and constrained with an equality
-constraint.}\label{sn:abbrev} Constraints are mapped into logical implications.
+they are bound to a fresh variable and constrained with equality.}\label{sn:abbrev}
+Constraints are mapped into logical implications.
 The formalisation can handle ifs directly in the \kl{precondition}, unlike the
 surface syntax which allows ifs to be placed only at the top-level of a
 predicate (\S\ref{sec:restriction-branching}).
 
-The monadic binding \cninline{take id = ..} is always translated into a logical % chktex 26
+The monadic binding \sm{\cnkw{take}\ \cnnt{id}\ \cnkw{=}\ \ldots} is always translated into logical % chktex 26
 quantification over the output argument of \kl(kernel predicate){(iterated)} \kl(kernel){predicates}
-(\UserSpecToArgTake). Because all the \kl(CN){predicate definitions} are guaranteed to
-be \kl{precise}, all instantiations for logical quantifiers can be inferred
+(\UserSpecToArgTake). Since all \kl(CN){predicate definitions} are
+\kl{precise}, all instantiations for logical quantifiers can be inferred
 (\S\ref{sec:precise-assertion-inferring}).
 
 \begin{figure*}[tp]
@@ -307,23 +307,22 @@ four-fold distinction in the \kl{let-normal} form of the grammar. \kl{Pure value
 \kl(pure){expressions} are sub-terms of both \kl{pure statements} and \kl{effectful expressions}; in
 turn, both of those are sub-terms of \kl{effectful statements}.
 
-This simplifies presenting and working with the type system in the following ways.
+This simplifies the type system in the following ways.
 \begin{itemize}
-    \item \coreinline{undef}. In typing this, it is necessary to use a
-        checking rule, since control flow is required to not reach that point
-        (\cref{fig:core-ub-typing}).
+    \item \coreinline{undef}. We would like to use a
+        \kl{checking} rule, since it may occur inside any expression
+        at any type (\cref{fig:core-ub-typing}).
     \item \textbf{Control flow}. Here too, we would like to use
-        checking rules, to sidestep the need to synthesise
+        \kl{checking} rules, to sidestep the need to \kl{synthesise}
         least-upper bound types for join-points after all \kl{Core}
         \coreinline{if}-expressions (or require annotations on them). This
         comes with the cost of a combinatorial explosion in typing all
         subsequent expressions.
     \item \textbf{Lets}. Here, we would like to use a
-        \emph{synthesis} rule for the bound expression, which removes the
-        need for an annotation to be placed on the binder.
-    \item \textbf{Memory actions}. These are well-suited to synthesis, since
-        they manipulate the \kl{resource context} via the \kl{resource types} they
-        will synthesise.
+        \emph{\kl{synthesis}} rule for the bound expression, so the binder
+        does not need an annotation.
+    \item \textbf{Memory actions}. These are well-suited to \kl{synthesis}, since
+        they manipulate the \kl{resource context} via the \kl{resource types}.
 \end{itemize}
 
 Initial implementations of \kl{CN} did a full \kl{A-normalisation} of \kl{Core}, but this
@@ -374,7 +373,7 @@ I omitted the constructs related to C's loose evaluation order\sidenote{%
 \item It is unclear how to \kl{let-normalise} these constructs into statements
     whilst preserving their intent; nesting order is significant.
 \item If the nesting order is preserved, then the \kl{bidirectional} discipline
-    (expressions synthesise types and statements check against them) entails
+    (expressions \kl{synthesise} types and statements \kl{check} against them) entails
     nested statements must be annotated with their types. This means we need to
     know how to infer those annotations, or obtain them from the user.
 \item Supporting the constructs would also require fractional permissions.
@@ -534,75 +533,70 @@ and eliminating that type requires the user for which branch to do so.
 
 The following terms are all \intro{operations on predicates}.
 \begin{itemize}
-    \item \sm{[[ fold _rest : pred ]]}. This supports folding the
-        definitions of a \kl(kernel){user-defined recursive predicate}.
+    \item \sm{[[ fold _rest : pred ]]}. Fold
+        a \kl(kernel){user-defined recursive predicate}.
     \item \sm{[[ explode ( _rest ) ]]} and \sm{[[ implode ( _rest, tag ) ]]}.
-         These constructs split and combine ownership of a struct to and from
-        ownership of its members, respectively.
+         Split and combine \kl{ownership} of a struct to and from
+        \kl{ownership} of its members, respectively.
     \item \sm{[[ iterate ( _rest , n ) ]]} and \sm{[[ congeal ( _rest , n ) ]]}.
-        These constructs split and combine ownership of a fixed-size array from
+        Split and combine \kl{ownership} of a fixed-size array from
         and to each of its elements respectively.
     \item \sm{[[ select < _init , _member > ( _rest ) ]]} and \sm{[[ forget < _ct > ( _rest ) ]]}.
-        These constructs split and combine ownership of a union to and from
-        ownership of a member, respectively. They are related to the \kl{memory
-        object model}, and are explained further in
-        \fancyref{sec:unions-padding}.
+        Split and combine \kl{ownership} of a union to and from
+        ownership of a member, respectively (\S\ref{sec:unions-padding}).
 \end{itemize}
 
 The remaining terms are all \kl{operations on iterated predicates}.
 \begin{itemize}
-    \item \sm{[[ break ( _rest , _t ) ]]}. This indexes an iterated predicate
-        to move a predicate out of it.
-    \item \sm{[[ glue ( _rest ) ]]}. This moves a predicate back into an
-        iterated one.
+    \item \sm{[[ break ( _rest , _t ) ]]}. Move a \kl(kernel){predicate}
+        out of an \kl(kernel){iterated one}.
+    \item \sm{[[ glue ( _rest ) ]]}. Move a \kl(kernel){predicate} back into an
+        \kl(kernel){iterated one}.
     \item \sm{[[ inj ( _rest , _t , ct , _x .: _iargs ) ]]}.
-        This introduces a singleton (non-empty) iterated predicate.\sidenote{I
+        Introduce a singleton \kl(kernel){iterated predicate}.\sidenote{I
     chose a singleton introduction form rather than an empty one to enforce the
-    invariant that all iterated predicates in the typing context are guaranteed
+    invariant that all \kl(kernel){iterated predicates} in the typing context are guaranteed
     to be non-empty. I do not believe this makes a material difference to
-    soundness, but it reduces redundant lookups in the resource context, and
+    soundness, but it reduces redundant lookups in the \kl{resource context}, and
     avoids the need of inventing default values for empty arrays in the SMT
     problem. However, due to the mismatch between finite arrays in C, and total
     maps in SMT theories, the difference does seem to affect usability in the
     implementation
     (\href{https://github.com/rems-project/cerberus/issues/729}{Cerberus\#729}).}
-%TODO\@: allow empty arrays and require the array value to be put in the rather
-%term than assume default.
-    \item \sm{[[ chop ( _rest , iguard ) ]]}. This splits an iterated
-        predicate along a given index guard \sm{[[ iguard ]]}.
+    \item \sm{[[ chop ( _rest , iguard ) ]]}. Split an \kl(kernel){iterated
+        predicate} along a given \sm{[[ iguard ]]}.
     \item \sm{[[ to_bytes ( _rest ) ]]} and \sm{[[ from_bytes < _init , _ct > ( _rest ) ]]}.
-        These constructs are for converting ownership of a C type to and from
-        its byte representation. This is related to the \kl{memory object
-        model}, and is explained further \fancyref{sec:convert-bytes}.
+        Convert \kl{ownership} of a C type to and from
+        its byte representation (\S\ref{sec:convert-bytes}).
 \end{itemize}%
 As mentioned in \fancyref{sec:monadic-syntax}, to preserve decidability by not
 inferring quantified constraints, the type system does not support merging arrays.
 
-An example will help illustrate their role. Suppose we have a resource term
-
+An example will help illustrate their role. Suppose we have
+{\small%
 \begin{align*}
     r &{:} [[ *S x .: 0 =< x < n => ptrt1 |- Init - struct tag -> term ]], \text{ where }\\
     [[ ptrt1 ]] &= [[ array_shift<struct tag> (ptrt, x) ]].
-\end{align*}
+\end{align*}}
 
-This means that we have read-write ownership of an array of structs. Suppose
+This means that we have \kl{read-write ownership} of an array of structs. Suppose
 further we wish to update one member at an index \sm{i}. First we
 would use \sm{[[ break ( r, i) ]]} to obtain
-
+{\small%
 \begin{align*}
     r_1 &{:} [[ *S x .: 0 =< x < n /\ x != i => ptrt1 |- Init - struct tag -> term ]], \\
     r_2 &{:} [[ ptrt2 |- Init - struct tag -> term [ i ] ]], \text{ where }\\
     [[ ptrt2 ]] &= [[ array_shift < struct tag > ( ptrt , i ) ]].
-\end{align*}
+\end{align*}}
 
-From there, we would use \sm{[[ explode ( r2 ) ]]} to obtain read-write ownership
+From there, we would use \sm{[[ explode ( r2 ) ]]} to obtain \kl{read-write ownership}
 of all the members. To keep this example simple, assume the struct only has one
 member called \sm{[[ member ]]} and no padding.
-
+{\small%
 \begin{align*}
     r_3 &{:} [[ ptrt3 |- Init - ct -> term [ i ] . member ]], \text{ where }\\
     [[ ptrt3 ]] &= [[ member_shift < struct tag > ( ptrt2 , member ) ]].
-\end{align*}
+\end{align*}}
 
 After updating the location, we would obtain an \sm{r_3' {:}
 [[ ptrt3 |- Init - ct -> term' ]]}.
@@ -645,8 +639,8 @@ Another advantage of having \kl{explicit resource terms} in the grammar of
 represented more abstractly, whilst still precisely controlling their
 transformations according to the reduction rules of the \kl{resource terms}. This
 additional modularity, whilst a bit confusing at this stage, will be seen to
-pay off later when discussing the proof of soundness for the CN-VIP \kl{memory
-object model} (\S\ref{sec:cn-vip-soundness}).
+pay off later when discussing the proof of soundness for \kl{CN-VIP}
+(\S\ref{sec:cn-vip-soundness}).
 
 \section{Core to ResCore example}\label{sec:core-to-rescore}
 
@@ -664,8 +658,8 @@ library functions, renaming auto-generated variables for clarity.}
 
 First, it allocates storage for the
 function's argument \coreinline{&p}, and initialises it (line 4). Then it loads
-from that storage for the lvalue of the assignment, \coreinline{p2}. After
-that, it loads from the argument storage twice (\coreinline{p3} and
+from that for the lvalue of the assignment (\coreinline{p2}). After
+that, it does two loads (\coreinline{p3} and
 \coreinline{star_p}, lines 9\textendash{}10), to compute \cinline{*p} as an
 rvalue. Then it computes \cinline{*p + 1} (line 13) and checks it is within bounds for a
 \cinline{signed int} type (lines 14\textendash{}15). If not, it signals
@@ -696,8 +690,7 @@ four parts:
     \item \textbf{Computational}. \cinline{&p}, the returned pointer.
     \item \textbf{Constraints}. \cinline{term}, constraints on the returned pointer
         (\eg{} alignment). \kl{ResCore} does not have explicit syntax for
-        pattern-matching constraints, but I show it here to make it
-        clear where constraints are introduced.
+        pattern-matching constraints, but I show it here for clarity.
     \item \textbf{Logical/ghost}. \cinline{u}, an arbitrary value representing 
         the uninitialised memory at the new storage.
     \item \textbf{Resource.} \coreinline{r'}, for the produced resource. Note
@@ -743,8 +736,8 @@ bounds for the C type \cinline{signed int}.
 
 Due to \kl{A-normalisation}, the \coreinline{if} is at the top-level, and so instead
 of producing a value, the rest of the program after the \coreinline{if} is
-inlined. In the true-branch, the condition of the \coreinline{if} is implicitly
-added to the constraint context. After that, it rebinds the result to
+inlined. In both branches, the branch condition is implicitly
+added to the \kl(constraint){context}. After that, it rebinds the result to
 \coreinline{incr}, which adds an equality constraint to the context. Then, it
 updates the pointer with the incremented value. Because we know
 \coreinline{p2 == p}, this consumes the resource \coreinline{r: RW(p)(x)} % chktex 36 
@@ -758,7 +751,7 @@ returning only an empty-tuple of type unit.
 
 \corefile[firstline=23, lastline=23]{code/incr_pointer.rescore}
 
-Lastly for the true-branch, due to \kl{A-normalisation}, all the labels (and their
+Lastly for the true-branch, due to \kl{A-normalisation}, all labels (and their
 arguments) are inlined. This return value needs to satisfy the \kl{postcondition}.
 
 \begin{itemize}
