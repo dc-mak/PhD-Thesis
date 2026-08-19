@@ -6,14 +6,14 @@ Counts are `text + headers + captions`. **Own** is the prose directly under a he
 
 | Chapter | Total | Own |
 | :-- | --: | --: |
-| Introduction | **5898** | 16 |
-| Example: queues in CN | **2808** | 49 |
-| Background: Cerberus and CN design | **6988** | 32 |
-| Kernel CN: Grammar | **4283** | 161 |
-| Kernel CN: Static semantics | **3901** | 342 |
-| Kernel CN: Proof of soundness | **1523** | 169 |
+| Introduction | **5895** | 16 |
+| Example: queues in CN | **2769** | 49 |
+| Background: Cerberus and CN design | **6899** | 32 |
+| Kernel CN: Grammar | **4180** | 161 |
+| Kernel CN: Static semantics | **3864** | 319 |
+| Kernel CN: Proof of soundness | **1504** | 158 |
 | Informing implementation discussions | **1278** | 142 |
-| An alternative presentation | **2071** | 92 |
+| An alternative presentation | **2057** | 92 |
 | Memory object models, explained | **6726** | 395 |
 | CN-VIP | **3147** | 108 |
 | Epilogue on CN-VIP | **2865** | 46 |
@@ -24,20 +24,20 @@ Counts are `text + headers + captions`. **Own** is the prose directly under a he
 | Future directions | **3245** | 16 |
 | Conclusion | **1278** | 494 |
 
-| **Document total** | **61221** | |
+| **Document total** | **60917** | |
 
 ## Introduction
 
-**Chapter total: 5898** (own 16)
+**Chapter total: 5895** (own 16)
 
 | Section | Subsection | Total | Own |
 | :-- | :-- | --: | --: |
 | Context |  |  | 610 |
 | Thesis statement |  |  | 84 |
-| Background |  | 3604 | 1 |
+| Background |  | 3601 | 1 |
 |  | The C programming language |  | 847 |
 |  | Verification with Separation Logic |  | 1596 |
-|  | CN: C, No bugs! |  | 1160 |
+|  | CN: C, No bugs! |  | 1157 |
 | Contributions of this thesis |  | 1584 | 66 |
 |  | Formalisation of CN |  | 225 |
 |  | Memory object model: design, formalisation and implementation |  | 218 |
@@ -46,78 +46,78 @@ Counts are `text + headers + captions`. **Own** is the prose directly under a he
 
 ## Example: queues in CN
 
-**Chapter total: 2808** (own 49)
+**Chapter total: 2769** (own 49)
 
 | Section | Subsection | Total | Own |
 | :-- | :-- | --: | --: |
-| CN syntax |  |  | 378 |
-| Queue definitions |  |  | 784 |
+| CN syntax |  |  | 375 |
+| Queue definitions |  |  | 782 |
 | Queue implementation |  |  | 798 |
-| Proofs of lemmas |  |  | 799 |
+| Proofs of lemmas |  |  | 765 |
 
 ## Background: Cerberus and CN design
 
-**Chapter total: 6988** (own 32)
+**Chapter total: 6899** (own 32)
 
 | Section | Subsection | Total | Own |
 | :-- | :-- | --: | --: |
-| CN design goals and constraints |  |  | 977 |
-| Cerberus and Core for a usable and accurate C semantics |  |  | 267 |
-| Core grammar |  |  | 825 |
-| Elaboration example: list append |  | 1262 | 1001 |
-|  | Discussion |  | 261 |
-| Decidable refinements for retrofitting and counter-examples |  |  | 547 |
-| Bidirectionality for taming subtyping |  |  | 494 |
-| Linearity to manage (non-leaky) resources |  |  | 688 |
-| Section |  | 1108 | 516 |
-|  | Precise assertions |  | 592 |
+| CN design goals and constraints |  |  | 963 |
+| Cerberus and Core for a usable and accurate C semantics |  |  | 244 |
+| Core grammar |  |  | 828 |
+| Elaboration example: list append |  | 1228 | 970 |
+|  | Discussion |  | 258 |
+| Decidable refinements for retrofitting and counter-examples |  |  | 534 |
+| Bidirectionality for taming subtyping |  |  | 493 |
+| Linearity to manage (non-leaky) resources |  |  | 676 |
+| Section |  | 1105 | 512 |
+|  | Precise assertions |  | 593 |
 | Monadic syntax for mode-correctness |  |  | 374 |
-| Iterated separating conjunctions to handle arrays |  |  | 414 |
+| Iterated separating conjunctions to handle arrays |  |  | 422 |
 
 ## Kernel CN: Grammar
 
-**Chapter total: 4283** (own 161)
+**Chapter total: 4180** (own 161)
 
 | Section | Subsection | Total | Own |
 | :-- | :-- | --: | --: |
-| Kernel CN types |  |  | 591 |
-| Desugaring CN types into kernel types |  |  | 739 |
-| ResCore |  |  | 861 |
-| Permissions resource terms |  |  | 1041 |
-| Core to ResCore example |  |  | 890 |
+| Kernel CN types |  |  | 587 |
+| Desugaring CN types into kernel types |  |  | 722 |
+| ResCore |  |  | 846 |
+| Permissions resource terms |  |  | 987 |
+| Core to ResCore example |  |  | 877 |
 
 ## Kernel CN: Static semantics
 
-**Chapter total: 3901** (own 342)
+**Chapter total: 3864** (own 319)
 
 | Section | Subsection | Total | Own |
 | :-- | :-- | --: | --: |
-| Contexts |  |  | 67 |
-| Pure values and expressions |  |  | 259 |
-| Pure statements |  |  | 197 |
-| Resource terms |  | 684 | 64 |
-|  | Synthesis for resource terms |  | 208 |
-|  | Synthesis for predicate operations |  | 141 |
-|  | Checking for resource terms |  | 271 |
-| Memory actions and pointer operations |  |  | 420 |
-| Spine judgement |  |  | 224 |
-| Effectful values and expressions |  |  | 69 |
-| Pattern-matching |  |  | 384 |
-| Effectful statements |  |  | 128 |
-| Elaboration |  | 1127 | 543 |
+| Contexts |  |  | 65 |
+| Pure values and expressions |  |  | 280 |
+| Pure statements |  |  | 174 |
+| Resource terms |  | 647 | 56 |
+|  | Synthesis for resource terms |  | 200 |
+|  | Synthesis for predicate operations |  | 118 |
+|  | Checking for resource terms |  | 273 |
+| Memory actions and operations |  |  | 426 |
+| Spine judgement |  |  | 214 |
+| Effectful values and expressions |  |  | 73 |
+| Pattern-matching |  |  | 392 |
+| Effectful statements |  |  | 120 |
+| Elaboration |  | 1154 | 505 |
 |  | Normalised resource contexts |  | 174 |
-|  | Synthesising output arguments |  | 246 |
+|  | Synthesising output arguments |  | 311 |
 |  | Synthesising indices for iterated predicates |  | 164 |
 
 ## Kernel CN: Proof of soundness
 
-**Chapter total: 1523** (own 169)
+**Chapter total: 1504** (own 158)
 
 | Section | Subsection | Total | Own |
 | :-- | :-- | --: | --: |
 | Substitution and contexts |  |  | 359 |
-| Heaps and their types |  |  | 509 |
-| Soundness |  |  | 486 |
+| Heaps and their types |  |  | 505 |
+| Soundness |  |  | 482 |
 
 ## Informing implementation discussions
 
@@ -134,15 +134,15 @@ Counts are `text + headers + captions`. **Own** is the prose directly under a he
 
 ## An alternative presentation
 
-**Chapter total: 2071** (own 92)
+**Chapter total: 2057** (own 92)
 
 | Section | Subsection | Total | Own |
 | :-- | :-- | --: | --: |
-| MiniC and MiniCN |  |  | 250 |
-| Aliasing requires linear resources |  |  | 259 |
+| MiniC and MiniCN |  |  | 255 |
+| Aliasing requires linear resources |  |  | 254 |
 | Implicit resource terms intertwine elaboration and typing |  |  | 146 |
-| Early-returns intertwine normalising, synthesising and checking |  |  | 255 |
-| Lack of let-normalisation requires join-points |  |  | 91 |
+| Early-returns intertwine normalising, synthesising and checking |  |  | 246 |
+| Lack of let-normalisation requires join-points |  |  | 86 |
 | Discussion |  |  | 978 |
 
 ## Memory object models, explained
