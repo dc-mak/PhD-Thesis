@@ -82,8 +82,8 @@ In \fancyref{chap:cn-vip}, I explain how I integrated \kl{CN-VIP} into
 \kl{Kernel CN} by adapting the static and dynamic semantics, and proving the
 new system sound with less repeated effort than typical for a drastic change in
 the representation of pointers, integers and heaps. The key to this was the
-novel structure for \kl{heaps}, which abstracted away some details, as
-mentioned in (\fancyref{sec:heap-types}).
+novel structure for \kl{heaps} (\S\ref{sec:heap-types}), which abstracted away
+some details.
 
 In \fancyref{chap:epilogue-cn-vip}, I explain how switching to \kl{CN-VIP}
 (without \kl{round-trip} casts) impacted the annotations and performance on existing
@@ -282,6 +282,7 @@ considered to the ones which have their addresses \kl{exposed} (-ae).
 \kl{exposed}.
 
 \begin{figure}
+    \small%
 \begin{mathpar}
   \inferrule[{[PNVI-ae-udi: $\textbf{ptrFromInt}\langle\tau\rangle(x) = (@i, x)$]}]{%
       \exists{} \, i.\ A (i) = (n, a, \mathsf{alive}, \mathsf{\color{blue}{exposed}}) \wedge{} x \in{} [a \ldots a + n - 1]
@@ -327,7 +328,7 @@ i} \emph{is} \kl{exposed}, so the pointer \cinline{int *p} cast from the integer
 \cinline{j} on line 7, gets its provenance. Hence by line 8, the dereference is
 of a pointer with valid provenance and thus is \emph{not} \kl{UB}.
 
-\subsection{Udi: \kl{symbolic provenances} for \kl{one-past} pointers are
+\subsection{Udi: symbolic provenances for one-past pointers are
 disambiguated by the user}
 
 Restoring \kl{round-trip} casts for \kl{one-past} pointers requires an
@@ -343,6 +344,7 @@ continues until the \kl{symbolic provenance} is \intro{disambiguated} by the use
 (-udi), at which point its mapping is updated to only one.
 
 \begin{figure}
+    \small%
 \[
   \inferrule[{[PNVI-ae-udi: $\textbf{ptrFromInt}\langle\tau\rangle(x) = ({\color{violet}\iota}, x)$]}]{%
     \exists \, i_1.\ A(i_1) = (n_1, a_1, \mathsf{alive}, \mathsf{\color{blue}{exposed}}) \wedge x \in [a_1 \ldots a_1 + n_1] \\\\
@@ -406,7 +408,7 @@ based on what it was cast from.
 This restriction, particularly the `no intervening operation', forbids too
 many desirable \kl{low-level} idioms, such as pointer tagging.\sidenote{Programmers
 store information in the lower or upper bits of pointers by exploiting platform
-pointer alignment and addressable memory constraints respectively.} To
+pointer alignment and addressable memory constraints.} To
 support these idioms, \kl{VIP} provides a
 \cinline[breaklines]{void *copy_alloc_id(uintptr_t, void*)} % chktex 36
 primitive. This lets a programmer cast integers to pointers and annotate which
@@ -427,6 +429,7 @@ provenance, then \cinline{copy_alloc_id} can be used to give it one
 (\cref{fig:vip-copy-alloc-id}).
 
 \begin{figure}[tp]
+    \small%
 \[
   \inferrule[{[VIP: $\textbf{intFromPtr}\langle\tau\rangle((@i, x)) = \mathit{Loc}\,(@i, x)$]}]{%
     A(i) = (n, a, \mathsf{alive}) \\ x \in \mathsf{range}(\tau)%
@@ -437,6 +440,7 @@ provenance, then \cinline{copy_alloc_id} can be used to give it one
 \end{figure}
 
 \begin{marginfigure}
+    \small%
 \[
   \inferrule[{[VIP: $\textbf{arith\_bin\_op} (\oplus, x_1, x_2) = x$]}]{%
     x = \mathit{Int}\,(\mathrm{to\_int}(x_1), \mathrm{to\_int}(x_2))
@@ -528,22 +532,21 @@ provenance} is a \emph{relevant}\sidenote{A fact which must be used at least onc
 see~\cref{sec:linearity-manage-resources} for further details.} fact:
 forgetting it would enable \kl{disambiguating} in inconsistent ways.
 If the \kl{symbolic provenance} of a boundary pointer is \kl{disambiguated} with a
-\kl{memory operation} (a load, store, array offset, pointer differences, or
-kills), then subsequent operations must not assume it is ambiguous or resolved
+\kl{memory operation}, then subsequent operations must not assume it is ambiguous or resolved
 the other way. Hence, \kl{disambiguation} would need to be tracked in the
 (\kl{linear}) resource context, not the (\kl{intuitionistic}) constraint
 context.
 
-So the choice is this: either use annotations to thread \kl{symbolic
-provenance} \kl{disambiguation} in \kl{pre-} and \kl{postconditions}, or change
-the code to pass a pointer with the correct \kl{provenance} to use with
-\cinline{copy_alloc_id}, forcing eager \kl{disambiguation} and simplifying the
+So, the choice is: use annotations to thread \kl{symbolic
+provenance} \kl{disambiguation} through \kl{pre-} and \kl{postconditions}, or change
+the code to pass a pointer with the correct \kl{provenance}
+for \cinline{copy_alloc_id}, forcing eager \kl{disambiguation} and simplifying the
 implementation. I chose the latter.
 
 \subsection{Exposure tracking}
 
 \intro{Exposure tracking} is another feature that \kl{PNVI-ae-udi} has but
-\kl{VIP} does not. Remember that \kl{exposure tracking} was devised to restrict
+\kl{VIP} does not. It is used to restrict
 the number of live allocations whose \kl(allocation){IDs} could be chosen
 for the provenance of a \kl{round-trip} cast.
 
@@ -707,7 +710,7 @@ There is another possibility, which we could entertain if we also allowed
 \end{itemize}
 
 The options for supporting \kl{round-trip} casts are very similar to the
-options for supporting byte-level \kl{provenance}, even though both features
+options for supporting byte-level \kl{provenance}, even though both
 seem to support quite different \kl{low-level} C idioms. This confluence happens
 because:
 \begin{itemize}
@@ -752,7 +755,7 @@ compiler can \emph{sometimes, but not always} detect when two pointers operands
 of an equality test must have different \kl{provenances}, and so optimise the
 result to be false.
 
-\begin{figure}
+\begin{figure}[h]
     \cfile[breaklines]{code/provenance_equality_global_yx.c}
     \caption{An example C program which prints identical addresses but
         in some cases, a false result for pointer equality.}\label{fig:nd-ptr-eq-example}
@@ -761,12 +764,13 @@ result to be false.
 \phantomintro(non-det){pointer equality}%
 Therefore, when the pointers of an \cinline{==} have equal addresses but
 distinct \kl{provenances}, the result will be non-deterministically true or
-false (\cref{fig:nd-ptr-eq}). In practice, this will only happen if one of the
+false (\cref{fig:nd-ptr-eq,fig:nd-ptr-eq-rephrased}). In practice, this will only happen if one of the
 pointers is \kl{one-past}, or out-of-bounds as the result of permissive
 array/member shift, or has an \sm{@\mathsf{empty}} provenance as the result of a
 cast from an integer.
 
-\begin{figure*}
+\begin{figure*}[p]
+\small%
 \begin{mathpar}
   \begingroup%
   \mprset{vskip=1ex}
@@ -811,7 +815,8 @@ cast from an integer.
     $@\mathsf{empty}$ \kl{provenance} are highlighted in red}.}\label{fig:nd-ptr-eq}
 \end{figure*}
 
-\begin{figure}
+\begin{figure*}[p]
+    \small%
 \begin{mathpar}
   \begingroup%
   \mprset{vskip=1ex}
@@ -837,9 +842,9 @@ cast from an integer.
     \kl{symbolic provenances} $\iota$ are coloured in violet};
     \textcolor{red}{parts which break monotonicity with respect to the
     $@\mathsf{empty}$ \kl{provenance} are highlighted in red}.}\label{fig:nd-ptr-eq-rephrased}
-\end{figure}
+\end{figure*}
 
-\begin{figure*}
+\begin{figure*}[p]
 \begin{tikzcd}[cramped,sep=small]
 	& {(@i, @j)} && {\{\,\mathsf{true}\,\}} & & {\{\,\mathsf{false}\,\}} \\
 	{(@i, @\mathsf{empty})} && {(@\mathsf{empty}, @j)} \\
@@ -864,15 +869,15 @@ cast from an integer.
     arrow $\color{red}\rightdasharrow$.}\label{fig:ptr-eq-hasse}
 \end{figure*}
 
-This introduces a syntactic inconsistency between the specification language
-and C:\ in \kl{CN}'s specification language, \cninline{==} means equality of
-pointers (address and \kl{provenance}), but in C, \cinline{==} has this strange
-non-deterministic behaviour. I partly sidestep this issue by issuing a warning
-whenever users write \cninline{==} with two pointer operands in their
-specifications, directing them towards more informative (but verbose) named
-functions such as \cninline{ptr_eq}, \cninline{addr_eq}, and
-\cninline{is_null}. This warning is imperfect: it will not be triggered if, for
-example, the operands are two structs (recursively) containing pointers.
+This introduces a syntactic inconsistency between the \kl{CN} specification
+language and C:\ in the former, \cninline{==} means straightforward equality of
+pointers, but in the latter, \cinline{==} means potentially non-deterministic
+behaviour. I partly sidestep this issue by issuing a warning whenever users
+write \cninline{==} with two pointer operands in their specifications,
+directing them towards more informative (but verbose) named functions such as
+\cninline{ptr_eq}, \cninline{addr_eq}, and \cninline{is_null}. This warning is
+imperfect: it will not be triggered if, for example, the operands are two
+structs (recursively) containing pointers.
 
 Unfortunately, adapting \kl{VIP} to handle the non-deterministic
 pointer-equality rule is not straightforward. As defined in the paper and
@@ -880,21 +885,22 @@ appendix, the authors assume strict (address-only) pointer equality rule for bot
 \kl{VIP} and \kl{PNVI-ae-udi}. This means they sidestep the issue I present
 next.
 
-The issue is that, as stated, \sm{@\mathsf{empty}} \kl{provenances} do not lead to
-strictly more \kl{UB} under \kl{PNVI-ae-udi}, and the proof of soundness of
-\kl{VIP} relies on this property. The example
-in~\cref{fig:non-det-ptr-eq-problem} illustrates this problem.\sidenote{ As
-mentioned in
-\href{https://github.com/rems-project/cerberus/issues/954}{Cerberus\#954}, the
-Cerberus implementation and formalisation differ in how they treat
-\sm{(@\mathsf{empty}, a) == (@\mathsf{empty}, a)}. The Cerberus implementation
-treats it as always \sm{\mathsf{true}}, whereas the Cerberus formalisation treats
-it as always \sm{\mathsf{false}}. Both are problematic as
-per~\cref{fig:ptr-eq-hasse}, but need opposite if-conditions (\cinline{p != q} % chktex 26
-and \cinline{p == q}, respectively) for their counter-examples
-(\cref{fig:non-det-ptr-eq-problem}).}
+Theoretically, the issue is that \sm{@\mathsf{empty}} is not used
+monotonically (\cref{fig:ptr-eq-hasse}). Practically, the issue is
+that, as stated, \sm{@\mathsf{empty}} \kl{provenances} do not lead to strictly
+more \kl{UB} under \kl{PNVI-ae-udi} (\cref{fig:non-det-ptr-eq-problem}), and
+the proof of soundness of \kl{VIP} relies on this property.\sidenote{As
+    mentioned in
+    \href{https://github.com/rems-project/cerberus/issues/954}{Cerberus\#954},
+    the Cerberus implementation and formalisation differ in how they treat
+    \sm{(@\mathsf{empty}, a) == (@\mathsf{empty}, a)}. The Cerberus
+    implementation treats it as always \sm{\mathsf{true}}, whereas the Cerberus
+    formalisation treats it as always \sm{\mathsf{false}}. Both are problematic
+    as per~\cref{fig:ptr-eq-hasse}, but need opposite if-conditions (\cinline{p
+    != q}and \cinline{p == q}, respectively) for their % chktex 26
+    counter-examples (\cref{fig:non-det-ptr-eq-problem}).}
 
-\begin{figure}
+\begin{figure*}[p]
     \cfile[breaklines]{code/non-det-ptr-eq-problem.c}%
     \caption{Counter-examples to the desirable property that
     $@\mathsf{empty}$ \kl{provenance} leads to more undefined behaviour.  As is,
@@ -906,7 +912,7 @@ and \cinline{p == q}, respectively) for their counter-examples
     non-deterministic case, which allows for executing the then-branch. This
     branch has undefined behaviour because \cinline{q} has $@\mathsf{empty}$
     \kl{provenance}.}\label{fig:non-det-ptr-eq-problem}
-\end{figure}
+\end{figure*}
 
 Both examples construct two pointers, \cinline{p} and \cinline{q}, with the
 same address. In one version, both have \sm{@\mathsf{empty}} \kl{provenances}
