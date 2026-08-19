@@ -29,11 +29,12 @@ Since it handles the majority of C, the entire system is very large
 (\fancyref{chap:defns}), and so I will only discuss the main features
 (\cref{tab:judgements}).
 
+\margincite{pulte2023cn}%
 There are additional minor differences between the implementation and the
 formalisation. As I mentioned in \fancyref{sec:desugaring}, the formalisation has a
 richer grammar of resources: this makes defining predicates to represent tagged
 unions more succinct, and allows for opening predicates in more cases.%
-\margincite{pulte2023cn}.
+
 
 Along with the type system, I briefly discuss a formalisation of two different
 \kl(CN){elaboration} algorithms: one for inferring quantifier instantiations, one for
@@ -65,7 +66,7 @@ $[[ C ; L ; N |- pstmt <= pure_ret ]]$
 \\
 $[[ C ; L ; N ; R |- res_term => res ]]$
    &~\ref{sec:typing-res-terms}
-   &~\ref{fig:typing-res-emp-var},~\ref{fig:typing-res-term-synth}
+   &~\ref{fig:typing-res-term-synth}
    \\
 $[[ C ; L ; N ; R |- pred_ops => res ]]$
    &~\ref{sec:typing-res-terms}
@@ -168,15 +169,15 @@ context} and a \kl{pure value}, \kl{synthesise} a \kl{base type}.
         values}.}\label{fig:typing-pval}
 \end{figure*}
 
-Building on this, the \kl{pure expression}
-\kl{synthesis} judgement is similar \sm{[[ C ; L ; N |- pexpr => pure_ret ]]}
-(\cref{fig:typing-pexpr}).
-Given a \kl{computational context}, a \kl{logical context}, a \kl{constraint
+\kl{Pure expression}
+\kl{synthesis} is similar \sm{[[ C ; L ; N |- pexpr => pure_ret ]]}
+(\cref{fig:typing-pexpr}):
+given a \kl{computational context}, a \kl{logical context}, a \kl{constraint
 context} and a \kl{pure expression}, \kl{synthesise} a \kl{pure return type}
 (a return type without any \kl(type){resources} or
 \kl{logical variables}).
 
-The type \sm{[[pure_ret]] \mathop{{\Colon}{=}} [[ sigma y : base_type .: term /\ I ]]}
+A \intro{pure return type} \sm{[[pure_ret]] \mathop{{\Colon}{=}} [[ sigma y : base_type .: term /\ I ]]}
 is the \kl{Kernel CN} version of the traditional
 \sm{\left\{ \, y \in \beta \mid \mathit{ term } \, \right\}} \kl{refinement type}.
 Recall that \sm{\Sigma} binds the \kl{computational value} the
@@ -209,14 +210,25 @@ constrains that value to be equal to lifted counterparts.
     \small
     \raggedright{}
     \onlyUseRules{\cndefnPureXXStmt{}}{%
-        \cndefnPureXXStmtXXPVal{},
-        \cndefnPureXXStmtXXUB{},
-        \cndrulePureXXStmtXXIf{},
-        \cndrulePureXXStmtXXLet{}
+        \cndrulePureXXStmtXXPVal{},
+        \cndrulePureXXStmtXXUB{},
     }
+    \begingroup%
+    \NewCommandCopy{\origcndrule}{\cndrule}
+    \renewcommand{\cndrule}[4][]{\origcndrule[#1]{#2}{%
+    \begin{minipage}{0.65\textwidth}
+        \raggedright%
+        \leftskip2em
+        \parindent-2em
+        $#3$
+    \end{minipage}
+    }{#4}}%
+    \cndrulePureXXStmtXXIf{}
+    \cndrulePureXXStmtXXLet{}
+    \endgroup%
     \cndefnPatXXComp{}%
     \caption{Selection of \kl{Kernel CN} typing rules for \kl{pure statements},
-    including the translation of \kl{computational patterns} into a
+    including the translation of computational patterns into a
     \kl{computational context} used in the \coreinline{let} rule.}\label{fig:typing-pstmt}
 \end{figure*}
 
@@ -240,12 +252,11 @@ assuming a constraint on the \emph{shape} of its resulting value,
 and then \kl{checking} the rest of the \kl{pure statement}.
 
 The shape constraint is produced by a judgement which, given a
-\kl{computational pattern} (one inherited from Core) and a \kl{base type},
+computational pattern (one inherited from Core) and a \kl{base type},
 produces a \kl{computational context} and a \sm{[[term]]} corresponding to the
 pattern. To simplify matters, I assume all patterns are complete.
 
 \begin{figure*}[t]
-    \ContinuedFloat*
     \small
     \raggedright{}
     \onlyUseRules{\cndefnResXXSyn{}}{%
@@ -253,14 +264,6 @@ pattern. To simplify matters, I assume all patterns are complete.
       \cndruleResXXSynXXVar{},
       \cndruleResXXSynXXVarSimp{}
     }
-    \caption{\kl{Kernel CN} synthesising typing rules for \kl{resource
-    terms}.}\label{fig:typing-res-emp-var}
-\end{figure*}
-
-\begin{figure*}[t]
-    \ContinuedFloat{}
-    \small
-    \raggedright{}
     \begingroup%
     \NewCommandCopy{\origcndrule}{\cndrule}
     \renewcommand{\cndrule}[4][]{\origcndrule[#1]{#2}{%
@@ -271,17 +274,13 @@ pattern. To simplify matters, I assume all patterns are complete.
         $#3$
     \end{minipage}
     }{#4}}%
-    \onlyUseRules{\cndefnResXXSyn{}}{%
-      \cndruleResXXSynXXPred{},
+      \cndruleResXXSynXXPred{}
       \cndruleResXXSynXXFold{}
-      %\cndruleResXXSynXXIPred{}
-      %\cndruleResXXSynXXPredOps{},
-      %\cndruleResXXSynXXSepConj{}
-    }
     \endgroup%
-    \caption{\kl{Kernel CN} synthesising typing rules for \kl{resource
-    terms}.}\label{fig:typing-res-term-synth}
+    \caption{\kl{Kernel CN} synthesising typing rules for
+        \kl{resource terms}.}\label{fig:typing-res-term-synth}
 \end{figure*}
+
 \section{Resource terms}\label{sec:typing-res-terms}
 
 Typing resource terms requires the addition of an extra \kl{linear} \kl(resource){context}
@@ -298,7 +297,7 @@ using only structural rules as dictated by \sm{[[res_term]]}.
 
 \subsection{Synthesis for resource terms}\label{subsec:synth-res-term}
 
-As visible in~\cref{fig:typing-res-emp-var}, unsurprisingly, \sm{\cnkw{emp}}
+As visible in~\cref{fig:typing-res-term-synth}, unsurprisingly, \sm{\cnkw{emp}}
 requires an empty context, and a variable use requires a singleton context.
 Using variables also `simplifies' them by partially-evaluating
 top-level \sm{\cnkw{if}} when their conditions
@@ -313,7 +312,7 @@ Several features are noteworthy.
     \item The \kl{output argument} is \kl{synthesised} from the context.
 \end{itemize}
 
-For \sm{\cnkw{Owned}} predicates (\cref{fig:typing-res-term-synth}), the input is the pointer, and the
+For \sm{\cnkw{Owned}} predicates, the input is the pointer, and the
 output will be the pointee; for \kl(CN){user-defined predicates}, the input is
 their arguments, and output is their return values. I defer explanation of
 \sm{\cnkw{Alloc}} and \sm{\cnkw{Padding}} predicates until
@@ -362,10 +361,10 @@ into an iterated separating conjunctions and back (\cref{fig:typing-predops}).
         predicate operations.}\label{fig:typing-predops}
 \end{figure*}
 
-The first rule says that if \sm{\mathit{res\_term}} synthesises ownership of a
-fixed-length array, then the iteration of that synthesises an iterated
-separating conjunction for ownership over the indices of that array (\sm{0} to
-\sm{n-1}). The second rule does the inverse, but includes some additional checks
+\PredOpsIterate{} says that if \sm{\mathit{res\_term}} \kl{synthesises} \kl{points-to} for a
+fixed-length array, then \sm{\cnkw{iterate}}-ing that \kl{synthesises} \kl{iterated
+points-to} over its indices.
+\PredOpsCongeal{} does the inverse, but includes some additional checks
 to prevent two adjacent locations of the same type of different
 allocations, from being indexed by the same pointer (as required by the
 \kl{memory object model}).
@@ -539,14 +538,6 @@ The process for checking all the uses is the same; the straightforward
 specification of these rules (\cref{fig:typing-spine}) is the pay-off for
 desugaring (\S\ref{sec:desugaring}) the \kl{CN} types into \kl{kernel types}.
 
-\begin{figure*}[tp]
-    \small
-    \raggedright{}
-    \cndefnSpine{}
-    \caption{\kl{Kernel CN} typing rules for function
-        spines.}\label{fig:typing-spine}
-\end{figure*}
-
 The judgement for typing \kl{spines} is \sm{[[ C ; L ; N ; R |- param_spine :: fon >> subs ; ret ]]},
 which means that given the contexts, a list of parameter-argument pairs and a
 \kl{function type}, produce a substitution \sm{[[ subs ]]} and a \kl{return type} \sm{[[ ret ]]}.
@@ -559,15 +550,15 @@ and checking the rest of the \kl{spine}. The resulting substitution is then exte
 with the same.\sidenote{Building the substitution this way, rather than
 `tail-recursively', made it easier to prove properties about it by induction
 (\S\ref{sec:sub-ctxts}).}\label{sn:tail-rec-sub} Constraints in the type are
-checked with the SMT solver. \kl{Resource terms} are checked with only part of
+checked with the SMT solver. \kl{Resource terms} are checked with part of
 the \kl{resource context}; the rest of the \kl{spine} is checked with the remainder.
 \kl{Function types} do not dependent on \kl{resource variables}, but function
-bodies do, so substitutions must also be extended with \kl{resource terms}.
+bodies do, so substitutions must also include \kl{resource terms}.
 
 \section{Effectful values and expressions}\label{sec:eff-val-expr}
 
 \kl{Spine} typing is used for typing \sm{\cnkw{ccall}} and \sm{\cnkw{pcall}}
-(effectful) Core expressions (\cref{fig:typing-ret-terms}). The
+(\cref{fig:typing-ret-terms}). The
 judgement for this is \sm{[[ C ; L ; N ; R |- expr => ret ]]}, which says that
 given the contexts and an \kl{effectful expression}, \kl{synthesise} a
 \kl{return type}. Both lookup a \kl{function type} for the
@@ -577,6 +568,14 @@ are explicitly enumerated.} and \kl{synthesise} the \kl{return type}
 % difference that (a) the judgement $[[ C ; L ; N ; R |- < ret_terms > <= ret ]]$
 % is checking and (b) the return type must be mapped to its dual function type
 % before using the spine judgement.
+
+\begin{figure*}[tp]
+    \small
+    \raggedright{}
+    \cndefnSpine{}
+    \caption{\kl{Kernel CN} typing rules for function
+        spines.}\label{fig:typing-spine}
+\end{figure*}
 
 \begin{figure*}[tp]
     \small
@@ -616,7 +615,7 @@ complicated by the fact that \kl{return types} are dependent on
         types.}\label{fig:typing-ret-pat}
 \end{figure*}
 
-\intro[computational pattern]{\PatRetComp{}} \kl{synthesises} a \kl{computational context} \sm{[[ C1 ]]} and
+\PatRetComp{} \kl{synthesises} a \kl{computational context} \sm{[[ C1 ]]} and
 a representative \sm{[[ term1 ]]} of the expected shape. The former extends both
 the input and output context; the latter is substituted into the rest of the
 \kl{return type} for the recursive call.\sidenote{Similar to substitutions (see
@@ -663,6 +662,16 @@ match. For the latter, the pattern only destructs when the type is a
 \kl(kernel){predicate} and the nested pattern destructs against the definition of
 that predicate (with the arguments substituted).
 
+\begin{figure*}[tp]
+    \small
+    \raggedright{}
+    \onlyUseRules{\cndefnStmt{}}{%
+        \cndruleStmtXXLet{},
+        \cndruleStmtXXRun{}
+    }
+    \caption{Select \kl{Kernel CN} typing rules for effectful statements.}\label{fig:typing-stmt}
+\end{figure*}
+
 \section{Effectful statements}\label{sec:eff-stmt}
 
 With \kl{pattern-matching} in hand, I can explain the typing rules for \kl{effectful
@@ -683,16 +692,6 @@ not return from \sm{\cnkw{run}}, and so the \kl{synthesised}
 \kl(return){type} is expected to be false, and it \kl{checks} against any
 \kl(return){type}.
 
-\begin{figure*}[tp]
-    \small
-    \raggedright{}
-    \onlyUseRules{\cndefnStmt{}}{%
-        \cndruleStmtXXLet{},
-        \cndruleStmtXXRun{}
-    }
-    \caption{Select \kl{Kernel CN} typing rules for effectful statements.}\label{fig:typing-stmt}
-\end{figure*}
-
 \section{Elaboration}\label{sec:elaboration}
 
 I have also formalised an \kl(CN){elaboration} system as part of \kl{Kernel CN}. When I
@@ -701,8 +700,7 @@ wrote it, \kl{CN} required users to manually fold and unfold all
 predicates} automatically. Now, \kl{CN} automatically folds and unfolds
 non-recursive \kl(CN){predicates} with a single clause, and requires users to state
 which indices can be moved in and out of any \kl(CN){iterated predicates} in the
-context.\sidenote{See
-\href{https://github.com/rems-project/cerberus/commit/7c2c0a364a4373e4eb109f32d01cc9584f51e81f}{Ceberus
+context.\sidenote{\href{https://github.com/rems-project/cerberus/commit/7c2c0a364a4373e4eb109f32d01cc9584f51e81f}{Ceberus
 7c2c0a36}.} Instantiations for logical quantifiers continue to be inferred.
 
 The goal of \intro(CN){elaboration} is to take a well-formed \kl{ResCore} program, without
@@ -712,7 +710,10 @@ typing rules (if it succeeds). I have no proof of this, so I do not claim the
 following rules meet this goal. Instead, I present it to clarify the principles
 behind \kl{CN}'s implementation.
 
-\begin{table*}
+\cref{tab:elab-judgements} presents only a slice of the \kl(CN){elaboration} to
+highlight the key judgements; the full system is in~\fancyref{sec:elab-system}.
+
+\begin{table*}[tp]
 \small%
 \begin{tabular}{lp{0.85\textwidth}cc}
 \toprule
@@ -753,33 +754,31 @@ Name & Judgement & Figure (Section) \\
     and all their rules can be found in~\cref{sec:elab-system}.}\label{tab:elab-judgements}
 \end{table*}
 
-\cref{tab:elab-judgements} presents only a slice of the \kl(CN){elaboration} to
-highlight the key judgements; the full system is in~\fancyref{sec:elab-system}.
+I will present the \kl(CN){elaboration} judgements in a top-down manner,
+starting with \textsc{Elab\_Expr*}, which reads: given the
+(\kl{normalised}) contexts \sm{[[C ; L ; N ; nR]]}, and \kl{ResCore}
+\kl{effectful expression} \sm{[[expr]]},  synthesise bindings
+\sm{[[res_bind]]}, \kl[effectful expression]{\sm{[[expr']]}}, \kl{return type}
+\sm{[[ret]]}, and leftover \kl{(normalised) resource context} \sm{[[nR']]}.
 
-\textsc{Oarg*} reads as follows: given an output parameter \sm{[[y]]},
-\kl{constraint context} \sm{[[N]]}, a \kl{resource context} \sm{[[nR]]}, and a
-\kl{resource type} \sm{[[res]]}, \kl{synthesise} a series of bindings
-\sm{[[res_bind]]} for a \kl{resource term} \sm{[[res_term]]} and \kl{output argument}
-\sm{[[oarg]]} which will result in the updated \kl{resource context} \sm{[[nR']]}.
-The variable \sm{[[y]]} represents the output of the \kl(type){resource}, it
-is threaded through only for the \OargIfUndet{} rule
-(\cref{fig:elab-res-oarg}), when we learn nothing new about the \kl{output
-argument} and so just return it instead.
+\cref{fig:elab-fold} shows the \ElabExprFold{} rule of that judgement; it
+explains what \kl{CN} does under the hood when it sees a \kl{CN annotation} for
+manually folding a \kl(CN){predicate}, represented as \sm{\cnkw{fold\_annot}}.
+It finds the definition of the \kl(CN){predicate}, \kl{synthesises} the
+\kl{output argument} and the updated (via \sm{[[res_bind]]} and
+\sm{[[res_term]]}) \kl{(normalised) resource context}, using the \textsc{Oarg*}
+judgement (\S\ref{subsec:synth-oargs}), and then \kl{synthesises} the
+\sm{[[pred]]} \kl{resource type} and \sm{\cnkw{fold}} \kl{resource term} as
+\sm{[[expr']]}.
 
-\textsc{Oarg*} \kl{synthesises} a \kl{checking} \kl{resource term}, however,
-the main place this judgement is used (by historical accident) is in a
-\kl{synthesis} position (\cref{fig:elab-fold}). As mentioned earlier
-(\S\ref{subsec:synth-res-term}), this is why \sm{\cnkw{fold}} is an
-annotated \kl{synthesising} \kl(resource){term}, when morally it is a
-\kl{checking} \kl(resource){term}.
+\textsc{Oarg*} \kl{synthesises} a \kl{checking} \kl{resource term}, however, by
+historical accident, \kl{CN annotation} for folding \kl(CN){predicates} is
+modelled inside the \kl{synthesising} \kl{effectful expression}. As mentioned
+earlier (\S\ref{subsec:synth-res-term}), this is why \sm{\cnkw{fold}} is an
+annotated \kl{synthesising} \kl(resource){term}, instead of a \kl{checking}
+\kl(resource){term}.
 
-\textsc{Oarg*} is used in \ElabExprFold, in~\cref{fig:elab-fold}. The
-\textsc{Elab\_Expr*} judgement is similar to the \textsc{Oarg*} judgement, but
-\kl{synthesising} a \kl{return type} instead of a \kl{resource type} and
-\kl{output argument}, and an elaborated \kl{ResCore} expression containing the
-\sm{\cnkw{fold}} \kl{resource term}.
-
-\begin{figure}[htp]
+\begin{figure}[h]
     \small
     \raggedright{}
     \onlyUseRules{\cndefnElabXXExpr{}}{%
@@ -789,28 +788,27 @@ annotated \kl{synthesising} \kl(resource){term}, when morally it is a
         predicates.}\label{fig:elab-fold}
 \end{figure}
 
-\textsc{Req*} reads as follows: given a \kl{constraint context} \sm{[[N]]},
-a \kl(normalised){resource context} \sm{[[nR]]}, and a \kl{resource request}
-\sm{[[ pred_ipred ]]}, \kl{synthesise} a series of bindings \sm{[[res_bind]]} for a
-\kl{resource term} \sm{[[res_term]]} and \kl{output argument} \sm{[[oarg]]} which
-will result in the updated \kl{resource context} \sm{[[nR']]}.
+All other placements of \kl{resource terms} (\kl{memory actions}, \kl{memory
+operations}, and \kl{spines}) do not need the generality of \textsc{Oarg*};
+they need only satisfy a request for \sm{[[pred_ipred]]}, using \kl{predicate
+operations} (\S\ref{sec:synth-predops}). In these cases \textemdash{} \eg{}
+\sm{\cnkw{load}} in~\cref{fig:elab-action}, and \kl{spines}
+in~\cref{fig:elab-spine} \textemdash{} \textsc{Req*} is sufficient. There, the
+\kl{output argument} is used only in \kl{return types}.\sidenote{The
+\kl{synthesised} \kl{return types} are used in turn to \kl{synthesise}
+\kl(return){patterns} to maintain the invariant that the \kl{resource context}
+is always \kl{normalised}.} The important parts are the \kl{synthesised}
+\kl{resource terms} and bindings.
 
-\textsc{Req*}'s rules (\S\ref{subsec:app-synth-indices}) encode a linear search
-of the \kl{resource context}, \kl{synthesising} \kl{predicate operations}
-(\S\ref{sec:synth-predops}) on \kl(kernel){(iterated)} \kl(kernel){predicates} in the context to
-construct the requested \sm{[[pred_ipred]]}.
+\textsc{Req*} reads: given a \kl{constraint context} \sm{[[N]]}, a
+\kl(normalised){resource context} \sm{[[nR]]}, and a \kl{resource request}
+\sm{[[ pred_ipred ]]}, \kl{synthesise} bindings \sm{[[res_bind]]}
+for a \kl{resource term} \sm{[[res_term]]} and \kl{output argument}
+\sm{[[oarg]]}, and leftover \kl{(normalised) resource context}
+\sm{[[nR']]}. Its rules (\S\ref{subsec:app-synth-indices}) encode a linear
+search of the \kl{resource context}.
 
-\textsc{Req*} is sufficient for all other placements of \kl{resource terms}
-(\kl{memory actions}, \kl{memory operations}, and \kl{spines}). I show the rule
-for \sm{\cnkw{load}}s in~\cref{fig:elab-action}, and the same for
-\kl{spines} in~\cref{fig:elab-spine}. In these cases we see that the output
-argument is used only in return types\sidenote{The \kl{synthesised} \kl{return
-types} are used in turn to \kl{synthesise} patterns to maintain the
-invariant that the \kl{resource context} is always \kl{normalised}.} and
-that the \kl{resource terms} and bindings are the important additions into
-the program.
-
-\begin{figure}[htp]
+\begin{figure*}[tp]
     \small
     \raggedright{}
     \onlyUseRules{\cndefnElabXXAction{}}{%
@@ -818,9 +816,9 @@ the program.
     }
     \caption{Select \kl{Kernel CN} elaboration rule for \kl{memory
         actions}.}\label{fig:elab-action}
-\end{figure}
+\end{figure*}
 
-\begin{figure*}[htp]
+\begin{figure*}[tp]
     \small
     \raggedright{}
     \onlyUseRules{\cndefnElabXXSpine{}}{%
@@ -829,6 +827,7 @@ the program.
     \caption{\kl{Kernel CN} elaboration rule for instantiating a logical
         quantifier when elaborating a function call \kl{spine}.}\label{fig:elab-spine}
 \end{figure*}
+
 
 \subsection{Normalised resource contexts}\label{sec:norm-ctxt-res}
 
@@ -840,7 +839,7 @@ resource}. I call it \kl{normalised} because (with the appropriate terms and
 pattern-matching), any \kl{resource context} can be manipulated into such a
 \kl{normal form}. This means it is simple to specify lookups in the context: if
 I need \sm{b \ast c} but the context has \sm{\{\; x {:} (a \ast b) , y {:} (c
-\ast d) \}} then how should I proceed? Do I lookup \sm{b} and \sm{c} individually?
+\ast d) \;\}} then how should I proceed? Do I lookup \sm{b} and \sm{c} individually?
 Together? Swapped? How do I handle the case where one is a sub-\kl(type){resource} of
 another in the context? I avoid these questions and simply require that all
 rules which use \kl(type){resource} lookup preserve normality as an invariant. This
@@ -859,7 +858,19 @@ context, carefully retaining `leftover' resources from a lookup.
 
 \subsection{Synthesising output arguments}\label{subsec:synth-oargs}
 
-The \textsc{Oarg*} judgement (\cref{fig:elab-res-oarg}) for \kl{synthesising}
+\textsc{Oarg*} (\cref{fig:elab-res-oarg}) reads as follows: given an output
+parameter \sm{[[y]]}, \kl{constraint context} \sm{[[N]]}, a \kl{resource
+context} \sm{[[nR]]}, and a \kl{resource type} \sm{[[res]]}, \kl{synthesise} a
+bindings \sm{[[res_bind]]} for a \kl{resource term} \sm{[[res_term]]}
+and \kl{output argument} \sm{[[oarg]]} and leftover \kl{(normalised) resource
+context} \sm{[[nR']]}.
+
+The variable \sm{[[y]]} represents the output of the \kl(type){resource}, it is
+threaded through only for the \OargIfUndet{} rule (\cref{fig:elab-res-oarg}),
+when we learn nothing new about the \kl{output argument} and so just return it
+instead.
+
+The \textsc{Oarg*} judgement  for \kl{synthesising}
 \kl{resource terms} and \kl{output arguments} relies on the fact that the more
 flexible \kl{Kernel CN} types (\cref{fig:kernel-res}) have come from a
 translation (\cref{fig:pred-to-kernel}) of the intentionally rigid surface
@@ -876,7 +887,7 @@ involves using the \textsc{Req*} judgement to do a linear search of the context
 to find an exact match and obtain an \kl{output argument}.
 
 \kl{Synthesising} an \kl{output argument} from an \kl{under-determined
-resource} (\OargIfUndet), is similar. It also involves is using a similar
+resource} (\OargIfUndet), is similar. It also involves using a similar
 judgement (\textsc{If*}) to do a linear search of the context to find an exact
 match, but no \kl{output argument}, returning the output parameter \sm{[[ y ]]}
 instead.
@@ -955,24 +966,27 @@ from the lookup judgement (\S\ref{subsec:app-synth-indices}).
 \chapter{Kernel CN:\ Proof of soundness}%
 \label{chap:kernel-soundness}
 
-In this chapter, I discuss the key definitions, lemmas and proof sketches (the
-whole proof is in~\cref{chap:soundness}) for establishing the soundness of
-\kl{Kernel CN}. I first define an operational semantics for \kl{ResCore}, and
+\margintoc{}%
+%
+In this chapter, I discuss the key definitions, lemmas and proof sketches
+for establishing the soundness of
+\kl{Kernel CN} (full proofs in~\cref{chap:soundness}).
+I define an operational semantics for \kl{ResCore}, and
 then sketch out a straightforward, syntactic proof of type safety.\sidenote{The
-continuation-like behaviour of the \sm{\cnkw{run}} and \sm{\cnkw{save}} operators
+continuation-like behaviour of the $\cnkw{run}$ and $\cnkw{save}$ operators
 make it more challenging to prove soundness denotationally.} This suffices
 because \kl{ResCore} is a first-order language, and all functions and labels
-are annotated with the correct type, despite the presence of \kl{linear} types,
+are annotated, despite the presence of \kl{linear} types,
 which usually require logical relation methods.
 
 The proof is split up into three smaller proofs: a joint
-progress-and-type-preservation proof for resource term reduction, a
+progress-and-type-preservation proof for \kl{resource term} reduction, a
 progress theorem, and a type-preservation theorem.
 
 The definitions and lemmas of note in this proof are (a) the careful definition
 of \kl{substitution}, and its accompanying substitution lemma, (b) the novel
-structure of the \kl{heap}, which is unusual in that is essentially just
-separation logic predicate and, (c) the interaction between the \kl{resource
+structure of the \kl{heap} as a tree-shaped collection of
+\kl(kernel){predicates} and, (c) the interaction between the \kl{resource
 terms} and \kl{heaps}.
 
 \section{Substitution and contexts}\label{sec:sub-ctxts}
@@ -980,36 +994,38 @@ terms} and \kl{heaps}.
 I start with a \kl{substitution lemma}, which  requires assigning `context
 types' to substitutions. The first three rules for typing substitutions
 (\cref{fig:soundness-sub}) are straightforward: the empty substitution
-represents the empty context, a computational or logical substitution requires
-the substituted terms to be well-typed.
+are have type empty context, computational and logical substitutions require their
+terms to be well-typed.
 
 A resource substitution also requires its \kl(resource){term} to be well-typed.
 However, because \kl{resource terms} and \kl(resource){types} depend on
-\kl(ctx){computational} and \kl{logical variables}, scoping needs to be
-handled carefully. \kl{Resource types} in a substitution may only mention
-variables either in the contexts on the left of the turnstile, or the
-\kl(ctx){computational} and \kl{logical context} in the substitution
-type.
+\kl(ctx){computational} and \kl{logical variables}, scoping needs to be handled
+carefully. \kl{Resource types} in a substitution may only mention
+\kl(var){computational} and \kl{logical variables} either in the contexts
+on the left of the turnstile, or in the substitution type.
 
 This scoping discipline makes it easier to decompose substitutions into valid
 parts, each of which must be applied sequentially. Hence, the
 \textsc{Sub\_Chk\_Concat} rule \kl{checks} not only the first half \sm{\psi} of
 the substitution against half the context, but checks the second half
 \emph{substituted} \sm{\psi(\sigma)} against second half of the context
-\emph{substituted}, to eliminate any mention of variables from \sm{[[ C1 ]]} and
+\emph{substituted}, to eliminate any mention of variables from \sm{[[C1]]} and
 \sm{[[ L1 ]]} in \sm{[[ R'2 ]]}.
 
-\begin{figure*}[tp]
+In~\cref{sec:sub}, I use this definition to prove lemmas such as the fact that
+substitution preserves SMT results and that substitutions can be split up; the
+latter is complicated by the presence of \kl{linearity}. The key one is the
+\intro{substitution lemma} stated below.
+
+\clearpage%
+
+\begin{figure*}[t]
     \small
     \raggedright{}
     \cndefnSubsXXChk{}
     \caption{\kl{Kernel CN} substitution typing}\label{fig:soundness-sub}
 \end{figure*}
 
-In~\cref{sec:sub}, I use this definition to prove lemmas such as the fact that
-substitution preserves SMT results and that substitutions can be split up; the
-latter is complicated by the presence of \kl{linearity}. The key one is the
-\intro{substitution lemma} stated below.
 
 \begin{lemma}[Substitution lemma]
 If \sm{[[ C' ; L' ; N ; R' ]] [[|-]] J}, then
@@ -1020,7 +1036,7 @@ If \sm{[[ C' ; L' ; N ; R' ]] [[|-]] J}, then
     &[[ C ; L ; subs ( N ) ; R ]] [[|-]] [[ subs ]] ( J ).
 \end{align*}}
 
-Remember, only \kl{logical terms} \sm{[[term]]}, \kl{resource types} \sm{[[res]]} and
+Only \kl{logical terms} \sm{[[term]]}, \kl{resource types} \sm{[[res]]} and
 \kl{return types} \sm{[[ret]]} depend on \kl(ctx){computational} or \kl{logical
 variables}; base types \sm{[[base_type]]} are simple.
 
@@ -1048,15 +1064,9 @@ judgements, in four parts.
 \end{itemize}%
 \end{proof}
 
-\section{Heaps and their types}\label{sec:heap-types}
+\clearpage%
 
-\intro{Heaps} in the operational semantics are, slightly unusually, tree-shaped
-collections of \kl(kernel){predicates} (\cref{fig:kernel-heap-def}). The leaves of the
-tree are the built-in \kl(kernel){predicates}; the branches of the \kl{heap} are
-\kl(kernel){user-defined ones} tagged with their `run-time' definitions (resource
-values) and a sub-heap (of the resources used by the definition).
-
-\begin{figure*}
+\begin{figure*}[t]
     \small%
     \grammartabularSTY{%
         \cnresXXval{}\cnafterlastrule{}
@@ -1069,6 +1079,14 @@ values) and a sub-heap (of the resources used by the definition).
     \caption{\kl{ResCore} dynamics heap definition.}\label{fig:kernel-heap-def}
 \end{figure*}
 
+\section{Heaps and their types}\label{sec:heap-types}
+
+\intro{Heaps} in the operational semantics are, slightly unusually, tree-shaped
+collection of \kl(kernel){predicates} (\cref{fig:kernel-heap-def}). The leaves of the
+tree are the built-in \kl(kernel){predicates}; the branches of the \kl{heap} are
+\kl(kernel){user-defined ones} tagged with their `run-time' definitions (resource
+values) and a sub-heap (of the resources used by the definition).
+
 \intro{Resource values} are the subset of \kl{resource terms} which cannot
 reduce further. They help capture the idea that \kl(kernel){predicates} encapsulate
 their contents until unfolded, via dynamic \kl(resource){pattern-matching}
@@ -1076,9 +1094,9 @@ their contents until unfolded, via dynamic \kl(resource){pattern-matching}
 The nested definition is used to destruct the rest of the
 \kl(resource){pattern} to produce a new \kl{heap} and \kl{substitution}.
 
-\begin{figure}[htp]
+\begin{figure}[pt]
+    \ContinuedFloat*
     \small%
-    \ContinuedFloat%
     \raggedright{}
     \onlyUseRules{\cndefnSubsXXPatXXRes{}}{%
         \cndruleSubsXXPatXXResXXFold{}
@@ -1092,8 +1110,8 @@ happens, which requires splitting a heap into the \kl{footprint} of some
 \intro{footprint} of a resource value is the sub-heap containing the (iterated)
 predicates it refers to.
 
-\begin{figure}[htp]
-    \ContinuedFloat%
+\begin{figure}[p]
+    \ContinuedFloat{}
     \small%
     \raggedright{}
     \onlyUseRules{\cndefnOpXXResT{}}{%
@@ -1109,8 +1127,8 @@ this makes the definitions of dynamic \kl(resource){pattern-matching} and
 \kl{resource term} reduction more concise, at the cost of intertwining the
 usually separate proofs of progress and type preservations.
 
-\begin{figure}[htp]
-    \ContinuedFloat%
+\begin{figure}[p]
+    \ContinuedFloat{}
     \small%
     \raggedright{}
     \onlyUseRules{\cndefnOpXXFootprint{}}{%
@@ -1130,7 +1148,7 @@ these are straightforward (\cref{fig:kernel-heap-typing}), except for
 and \sm{[[ heap ]]} are well-typed. I use this to prove prove progress for
 \kl{ResCore} pattern-matching.
 
-\begin{figure*}
+\begin{figure}[p]
     \small
     \raggedright{}
     \onlyUseRules{\cndefnHeap{}}{%
@@ -1139,7 +1157,7 @@ and \sm{[[ heap ]]} are well-typed. I use this to prove prove progress for
         \cndruleHeapXXPredXXOther{}
     }
     \caption{Select typing rules for heaps.}\label{fig:kernel-heap-typing}
-\end{figure*}
+\end{figure}
 
 As with \kl(CN){elaboration} (\S\ref{sec:elaboration}), using \kl{normalised resource
 contexts} does not restrict the generality of progress and type preservations
@@ -1149,6 +1167,8 @@ term} is closed, then the context in which it is well-typed must be
 
 Using these definitions, we can state and prove \kl{progress and type
 preservation for resource terms}.
+
+\clearpage%
 
 \begin{theorem}[Progress and type preservation for resource terms]
 For all closed \kl{resource terms} (\sm{[[ res_term ]]}) which type \kl{check} or
@@ -1175,7 +1195,7 @@ The frame heap \sm{f} is necessary later for proving type preservation for
 \section{Soundness}
 
 The configuration for the operational semantics is a pair of a \kl{heap} and a
-\kl{ResCore} program. As one might expect, proving progress requires
+\kl{ResCore} program. Unsurprisingly, proving progress requires
 \fancyref{subsec:wt_values_pat_match}. \kl{Cerberus} generates all computational
 patterns and ensures they are all exhaustive, so I assume this in the proof.
 Proving well-typed patterns successfully produce substitutions is complicated
@@ -1188,9 +1208,10 @@ the type system is assuming it is in) is not exactly equal to the values it can
 match in the operational semantics (nor would we want it to be: the pattern
 \sm{[[ Cons ( x1 , x2 ) ]]} should match the value
 \sm{[[ Cons ( pval1 , Cons ( pval21 , Nil base_type ( ) ) ) ]]}).
-Hence, we must weaken the notion of equality on
-types to \sm{~} relatedness, which links the two, so that during the proof,
-we can substitute the constraint term \sm{[[ x1 :: x2 ]]} at the type-level, and
+
+Hence, I weaken the notion of equality on
+types to \sm{\sim} relatedness, which links the two, so that during the proof,
+I can substitute the constraint term \sm{[[ x1 :: x2 ]]} at the type-level, and
 maintain a link to the corresponding value.
 
 The second is that the conditions of related \kl{ordered-disjunctions} must
@@ -1199,14 +1220,16 @@ pattern-match typing and \kl{resource term} typing are consistent.
 
 \begin{theorem}[Progress for ResCore]
 If a \kl[stmt]{statement} (\sm{[[ stmt ]]}) is well-typed
-(\sm{[[ cdot ; cdot ; N ; nR |- stmt <= ret ]]}) and all \kl{computational
-patterns} in it are exhaustive, then either it is a \kl(return){value}
+(\sm{[[ cdot ; cdot ; N ; nR |- stmt <= ret ]]}) and all computational
+patterns in it are exhaustive, then either it is a \kl(return){value}
 (\sm{[[<ret_terms>]]})\sidenote{See~\cref{fig:kernel-expr,fig:typing-ret-terms}.},
 or it is unreachable, or for all \kl{well-typed heaps} (\sm{[[ h <= nR ]]}), there
 exists another \kl{heap} (\sm{[[ h' ]]}) and \kl[stmt]{statement} (\sm{[[ stmt' ]]})
 which is stepped to (\sm{[[ < _t ; h ; stmt > --> < _t ; h' ; stmt' > ]]}) in the
 dynamic semantics.
 \end{theorem}
+
+\clearpage%
 
 \begin{proof}
 Induction over the typing assumption. Full proof in~\cref{sec:progress}.

@@ -228,15 +228,7 @@ including structs and arrays, and (d) ignore iterated predicates. Using this, I
 define \kl{MiniCN} as the typing rules for \kl{MiniC} using this simplified
 specification language.
 
-\section{Aliasing requires linear resources}\label{sec:minicn-aliasing}
-
-Because syntactically different expressions may alias the same heap locations,
-the type system still needs symbolic expressions and \kl{linearity} to track
-permissions on reading and writing locations (there is no allocation and
-destruction). This is visible in the \textsc{Mini\_Prove*} judgement in
-\cref{fig:minicn-spine}, which is used to prove a specification holds.
-
-\begin{figure*}[tpb]
+\begin{figure*}[tp]
     \ContinuedFloat*
     \small%
     \raggedright%
@@ -245,6 +237,14 @@ destruction). This is visible in the \textsc{Mini\_Prove*} judgement in
     }
     \caption{Proving an $[[Owned<init, ct>]]$ specification in \kl{MiniCN}.}\label{fig:minicn-spine}
 \end{figure*}
+
+\section{Aliasing requires linear resources}\label{sec:minicn-aliasing}
+
+Because syntactically different expressions may alias the same heap locations,
+the type system still needs symbolic expressions and \kl{linearity} to track
+permissions on reading and writing locations (there is no allocation and
+destruction). This is visible in the \textsc{Mini\_Prove*} judgement in
+\cref{fig:minicn-spine}, which is used to prove a specification holds.
 
 The typing context includes: \sm{[[Vc]]} for variables (computational and
 logical), a constraint context \sm{[[Phi]]}, and a resource context \sm{[[Rc]]}.
@@ -316,7 +316,7 @@ constraints \sm{[[Phi1]]}, and updated resources \sm{[[Rc1]]}. Remember that
 defined with respect to the return value bound to \sm{[[y]]}, hence the constraint
 \sm{[[y = id1 ]]} for evaluating \sm{[[spec]]}.
 
-\begin{figure*}[tpb]
+\begin{figure}[h]
     \ContinuedFloat*
     \small%
     \raggedright%
@@ -325,40 +325,41 @@ defined with respect to the return value bound to \sm{[[y]]}, hence the constrai
     }
     \caption{\kl{MiniCN} rule for typing a \kl{MiniC} return
     expression.}\label{fig:minicn-return}
-\end{figure*}
+\end{figure}
 
 For the sake of simplicity, the \kl{synthesised} value of each sub-expression
 is represented by a fresh variable and constrained in the output constraint
-context. In the case of a return expression, the fresh variable remains
+context. For return expressions, the fresh variable remains
 unconstrained and the output context has `\sm{\mathsf{false}}' added to it, to
 allow any ancestor expression to continue typing correctly.
 
-\begin{figure*}[tpb]
+For binary operations (\cref{fig:minicn-bop}), this
+scheme recovers in the constraint context the \kl{let-normalisation} absent in the
+grammar.\sidenote{Remember, the implementation recovers this by passing around
+explicit continuations
+(\href{https://github.com/rems-project/cerberus/commit/350fefc675626dcc69c7adc9edea30ff9687b752}{commit
+350fefc6}). Another way of implementing it would be to have the type
+system's symbolic evaluation \emph{itself} specified as a non-determinism
+monad
+(\href{https://github.com/rems-project/cerberus/issues/730}{Cerberus\#730}).}
+
+\begin{figure}[h]
     \ContinuedFloat{}
     \small%
     \raggedright%
     \cnusedrule{\cndruleMiniXXExprXXBinop{}}
     \caption{\kl{MiniCN} rule for typing a \kl{MiniC} a binary operation
     expression.}\label{fig:minicn-bop}
-\end{figure*}
+\end{figure}
 
-In the case of a binary operation expression (\cref{fig:minicn-bop}), this
-scheme recovers in the constraint context the \kl{let-normalisation} absent in the
-grammar.\sidenote{Remember that the implementation this by passing around
-explicit continuations
-(\href{https://github.com/rems-project/cerberus/commit/350fefc675626dcc69c7adc9edea30ff9687b752}{commit
-350fefc6}). Another way of implementing this would be to have the type
-system's symbolic evaluation \emph{itself} specified as a non-determinism
-monad
-(\href{https://github.com/rems-project/cerberus/issues/730}{Cerberus\#730}).}
 
 \section{Lack of let-normalisation requires join-points}\label{sec:lack-let-norm}
 
-Aside from handling early-returns, avoiding \kl{let-normalisation} also necessitates
+Avoiding \kl{let-normalisation} necessitates
 constructing join-points for resource and constraint contexts
 (\cref{fig:minicn-if}).
 
-\begin{figure}[tpbh]
+\begin{figure}[th]
     \ContinuedFloat{}
     \small%
     \raggedright%
