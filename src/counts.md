@@ -6,7 +6,7 @@ Counts are `text + headers + captions`. **Own** is the prose directly under a he
 
 | Chapter | Total | Own |
 | :-- | --: | --: |
-| Introduction | **5895** | 16 |
+| Introduction | **5882** | 16 |
 | Example: queues in CN | **2769** | 49 |
 | Background: Cerberus and CN design | **6899** | 32 |
 | Kernel CN: Grammar | **4180** | 161 |
@@ -16,28 +16,28 @@ Counts are `text + headers + captions`. **Own** is the prose directly under a he
 | An alternative presentation | **2052** | 92 |
 | Memory object models, explained | **6713** | 395 |
 | CN-VIP | **3167** | 106 |
-| Epilogue on CN-VIP | **2829** | 45 |
-| Tree-carving: taming C repositories | **2608** | 125 |
-| Proof maintenance for pKVM buddy allocator | **3302** | 78 |
-| CN comparison and feedback | **4213** | 184 |
-| Lessons learned | **5087** | 57 |
+| Epilogue on CN-VIP | **2823** | 45 |
+| Tree-carving: taming C repositories | **2570** | 116 |
+| Proof maintenance for pKVM buddy allocator | **3299** | 78 |
+| CN comparison and feedback | **4194** | 184 |
+| Lessons learned | **5028** | 57 |
 | Future directions | **3245** | 16 |
 | Conclusion | **1278** | 494 |
 
-| **Document total** | **60883** | |
+| **Document total** | **60745** | |
 
 ## Introduction
 
-**Chapter total: 5895** (own 16)
+**Chapter total: 5882** (own 16)
 
 | Section | Subsection | Total | Own |
 | :-- | :-- | --: | --: |
 | Context |  |  | 610 |
 | Thesis statement |  |  | 84 |
-| Background |  | 3601 | 1 |
+| Background |  | 3588 | 1 |
 |  | The C programming language |  | 847 |
 |  | Verification with Separation Logic |  | 1596 |
-|  | CN: C, No bugs! |  | 1157 |
+|  | CN: C, No bugs! |  | 1144 |
 | Contributions of this thesis |  | 1584 | 66 |
 |  | Formalisation of CN |  | 225 |
 |  | Memory object model: design, formalisation and implementation |  | 218 |
@@ -185,7 +185,7 @@ Counts are `text + headers + captions`. **Own** is the prose directly under a he
 
 ## Epilogue on CN-VIP
 
-**Chapter total: 2829** (own 45)
+**Chapter total: 2823** (own 45)
 
 | Section | Subsection | Total | Own |
 | :-- | :-- | --: | --: |
@@ -194,27 +194,27 @@ Counts are `text + headers + captions`. **Own** is the prose directly under a he
 |  | Non-deterministic pointer equality |  | 227 |
 | Lemma proofs within C |  |  | 505 |
 | Lemma proofs in a proof-assistant |  |  | 514 |
-| Better foundations for CN |  |  | 811 |
+| Better foundations for CN |  |  | 805 |
 
 ## Tree-carving: taming C repositories
 
-**Chapter total: 2608** (own 125)
+**Chapter total: 2570** (own 116)
 
 | Section | Subsection | Total | Own |
 | :-- | :-- | --: | --: |
-| Need for tree-carving |  |  | 601 |
-| Challenging preprocessor and C features |  |  | 412 |
+| Need for tree-carving |  |  | 591 |
+| Challenging preprocessor and C features |  |  | 407 |
 | Demonstration |  |  | 231 |
-| Implementation |  |  | 1053 |
+| Implementation |  |  | 1039 |
 | Limitations and future work |  |  | 186 |
 
 ## Proof maintenance for pKVM buddy allocator
 
-**Chapter total: 3302** (own 78)
+**Chapter total: 3299** (own 78)
 
 | Section | Subsection | Total | Own |
 | :-- | :-- | --: | --: |
-| Successful update to intrusive free lists |  | 1421 | 365 |
+| Successful update to intrusive free lists |  | 1423 | 367 |
 |  | Carving and integrated the upstream code |  | 106 |
 |  | Deleting old fields |  | 121 |
 |  | Adding new fields |  | 114 |
@@ -222,54 +222,54 @@ Counts are `text + headers + captions`. **Own** is the prose directly under a he
 |  | Helper functions |  | 172 |
 |  | Indexing and signed bit-vector division |  | 254 |
 |  | Stuck in complexity |  | 115 |
-| Successful update to experimental VIP |  |  | 204 |
+| Successful update to experimental VIP |  |  | 201 |
 | Failed update to support bit-vectors |  |  | 83 |
-| Key takeaways |  | 1516 | 2 |
-|  | Features |  | 865 |
+| Key takeaways |  | 1514 | 2 |
+|  | Features |  | 863 |
 |  | Handling large changes |  | 193 |
 |  | Error messages |  | 456 |
 
 ## CN comparison and feedback
 
-**Chapter total: 4213** (own 184)
+**Chapter total: 4194** (own 184)
 
 | Section | Subsection | Total | Own |
 | :-- | :-- | --: | --: |
-| Early allocator |  | 1887 | 74 |
-|  | Early allocator in CN |  | 333 |
-|  | Early allocator in VeriFast |  | 1246 |
+| Early allocator |  | 1880 | 74 |
+|  | Early allocator in CN |  | 329 |
+|  | Early allocator in VeriFast |  | 1243 |
 |  | Early allocator in Frama-C and RefinedC |  | 234 |
-| Other symbolic execution verifiers |  | 1192 | 119 |
+| Other symbolic execution verifiers |  | 1186 | 119 |
 |  | Gillian-C |  | 477 |
 |  | Viper-based: VerCors and Gradual C0 |  | 336 |
-|  | Soteria-C |  | 260 |
-| Industry feedback |  |  | 867 |
+|  | Soteria-C |  | 254 |
+| Industry feedback |  |  | 861 |
 | Summary |  |  | 83 |
 
 ## Lessons learned
 
-**Chapter total: 5087** (own 57)
+**Chapter total: 5028** (own 57)
 
 | Section | Subsection | Total | Own |
 | :-- | :-- | --: | --: |
-| Work backwards from examples |  |  | 181 |
-| Design with a formalism |  | 1285 | 89 |
-|  | Calling conventions affect syntax |  | 125 |
-|  | Error reporting |  | 811 |
-|  | Elaborate with care |  | 260 |
-| Software engineering |  | 1656 | 45 |
+| Work backwards from examples |  |  | 172 |
+| Design with a formalism |  | 1264 | 81 |
+|  | Calling conventions affect syntax |  | 119 |
+|  | Error reporting |  | 805 |
+|  | Elaborate with care |  | 259 |
+| Software engineering |  | 1646 | 45 |
 |  | Test for any visible regressions |  | 245 |
 |  | Profile early and often, at the right level |  | 209 |
-|  | Error with pride, do not crash |  | 629 |
+|  | Error with pride, do not crash |  | 619 |
 |  | Log, do not debug |  | 284 |
 |  | Miscellaneous |  | 244 |
-| Get source locations right |  | 1548 | 74 |
+| Get source locations right |  | 1540 | 74 |
 |  | Keep the lexer and parser simple |  | 104 |
-|  | Investigate strange source locations |  | 109 |
-|  | Actually use source locations once you have them |  | 394 |
+|  | Investigate strange source locations |  | 107 |
+|  | Use source locations once you have them |  | 388 |
 |  | Write parser error messages if feasible |  | 373 |
 |  | Consider a custom pre-processor |  | 494 |
-| Process counter-examples smartly |  |  | 360 |
+| Process counter-examples smartly |  |  | 349 |
 
 ## Future directions
 

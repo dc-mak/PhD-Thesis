@@ -1,10 +1,10 @@
-So far I have focused on what it takes to build a \emph{capable} verification
-tool, a balance of expressiveness, performance and ergonomics. At several
-stages, the relevant theory was able to inform or clarify implementation
+So far, I have focused on what it takes to build a \emph{capable} verification
+tool, balancing expressiveness, performance and ergonomics. At several
+stages, the relevant theory informed or clarified implementation
 related issues, such as adding new features (\S\ref{chap:inform-impl}), or
 mitigating performance degradation (\S\ref{chap:epilogue-cn-vip}).
 
-In this part, I focus more on what it takes to build a \emph{usable}
+In this part, I focus on what it takes to build a \emph{usable}
 verification tool. Though not as theoretically intriguing or elegant, this is
 where just as much, if not more, of the difficulty lies in achieving \kl{CN}'s
 goal of enabling kernel programmers to maintain proofs on implementations
@@ -73,19 +73,17 @@ preprocessor. I also explain the downsides of inputting preprocessed C code
 into verification tools such as \kl{CN}. Lastly, I show how, by extending prior
 work significantly, I built a Clang-based tool which meets almost all the
 requirements we sought, enough to no longer be the primary bottleneck to
-verifying code in large projects. Lastly, I explain the limitations of the
-current approach (struct fields, cross-translation-unit carving), and ways this
-could be remedied in the future.
+verifying code in large projects. Lastly, I discuss the limitations of the
+current approach (struct fields, cross-translation-unit carving).
 
 \section{Need for tree-carving}
 
 \intro{Tree-carving} is inspired by the idea of tree-shaking in dynamic languages.
 Given some root functions in a C file specified by the user, a \kl{tree-carver} (a)
-copies the directory structure of all its transitive dependencies, excluding
-any unused files, and (b) within each remaining file, comments out all
+copies the directory structure of its transitive dependencies, excluding
+any unused files, and (b) within each remaining file, comments out
 functions, types, and struct/union fields not depended upon by the root
-functions. It leaves pre-existing comments, including CN specifications,
-untouched.
+functions. It does not affect pre-existing comments, including CN specifications.
 
 % It starts with the source repository for any mature C project, such as
 % \kl{pKVM}, which lives in the Linux kernel. Such repositories do not come in
@@ -110,7 +108,7 @@ untouched.
 % step in the right direction, albeit no more practicable.
 %
 % Faced with this, and the awareness of tools such as clang-format, which can
-% format complex projects of C++ code, including macros, and other Clang based
+% format complex projects of C++ code, including macros, and other Dlang based
 % tools for linting and refactoring, I developed a tool which could automate the
 % aforementioned drudgery. Analogous to tree-shaking for JIT-compiled interpreted
 % languages, I call the method \intro{tree-carving}, which given root functions
@@ -170,8 +168,8 @@ expressions as its arguments, but in general this is not the case. For example,
 \emph{types} as its argument. Such built-ins require editing the parser and
 \kl(Cerberus){elaboration} to support, and cannot be abstracted easily.
 
-Lastly, \cinline{BUILD_BUG_ON_ZERO} uses the expression to try to construct an
-anonymous struct with a bit-field of that size; since 0-width bit-fields are
+Lastly, \cinline{BUILD_BUG_ON_ZERO} uses the expression to construct an
+anonymous struct with a bit-field; since 0-width bit-fields are
 not allowed, this will trigger a build error. Bit-fields are not supported by
 \kl{Cerberus} either.
 
@@ -193,7 +191,7 @@ ignore.
 
 In other words, \emph{if parsing fails on a file, we are forced to implement
 the construct in the parser, regardless of whether or not is used later.} This
-is not an efficient use of engineering capacity. As seen above, Linux headers
+is an inefficient use of engineering capacity. Linux headers
 and macros frequently contain such constructs, so the issue persists even after
 preprocessing.
 
@@ -201,9 +199,9 @@ preprocessing.
 
 Preprocessing does not help here. Yes, unused features are not present in the
 preprocessed file, but used features lose too much information. Consider the
-\cinline{GENMASK} macro above. If expanded fully into each use site, the code
-would be littered with unsupported features. Its structure and dependency
-information, (\ie{} one part is is a compile-time check, and the other computes
+\cinline{GENMASK} macro. If expanded into each use site, the code
+would be littered with unsupported features. Its structure and dependencies
+(\ie{} one part is is a compile-time check, and the other computes
 the mask) would be lost, making it harder to know what to redefine and where.
 
 Preprocessing also corrupts source location information for
@@ -229,8 +227,8 @@ dynamically with token-pasting. Macros are not stored as part of the abstract
 syntax tree, making it unclear whether it was possible to recover their
 dependency information.
 
-Aside from the preprocessor, C features such as forward declarations, also make
-dependency analysis challenging. For example, a struct can be forward-declared,
+Aside from the preprocessor, C features, such as forward declarations, also make
+dependency analysis challenging: a struct can be forward-declared,
 be manipulated by pointers to it (in code which does not mention its fields),
 and only later have its fields defined. Struct and union fields, typedefs,
 function names, function types, types of function local variables, enums,
@@ -293,8 +291,8 @@ the macros, the \cinline{#include}, the functions and the used types.
 \section{Implementation}
 
 The existence of tools such as clang-format, which handle formatting code in
-the presence of macros, and other Clang based tools for linting and
-refactoring, led me to suspect it may be possible to build such a tool using
+the presence of macros, and other Clang-based tools for linting and
+refactoring, hinted that it might be possible to build such a tool using
 Clang.
 
 The advantages of this would be excellent performance and compatibility with
@@ -334,9 +332,9 @@ with. This is important because the options in a command can affect the macros
 enabled, their values, the paths in which headers are searched, and the
 warnings emitted by the Clang front-end. If no root functions are specified,
 the tool uses all the functions declared in the file as roots, otherwise only
-the selected roots are used. There is also an optional debug flag which will
-trace the declarations and macros traversed, with their source locations
-and their dependencies.
+the selected roots are used. There is also an optional debug flag to
+trace the traversed declarations and macros (including dependencies), with
+their source locations.
 
 With these options, the \kl{tree-carver} sets up a ClangTool instance, which is
 essentially an invocation to Clang as a user may given on the command line. The
@@ -379,10 +377,12 @@ to reproduce with other approaches short of implementing a custom preprocessor.
 The first step is to accurately capture the source range for macro definitions,
 because these can span multiple lines, and the default source ranges for macro
 definitions do not capture the range one would expect.\sidenote{The range ends
-\emph{before} the start of the last token, rather than including the end of
-it.} Doing so is straightforward with a overridden method to handle each macro
+before the start of the last token (instead of at its end).}
+Doing so is straightforward with a overridden method to handle each macro
 as it is defined. Note that the data is indexed not by the macro name, but by
 its definition range, which is guaranteed to be unique.
+
+\clearpage%
 
 \inputminted[breaklines,fontsize=\footnotesize,lastline=19]{cpp}{code/reachability_analyzer.hpp}
 
@@ -406,26 +406,14 @@ With this information, the only remaining step is figuring out which macros are
 used inside a given declaration. Fortunately, there is a
 `getPreprocessedEntitiesInRange(SourceRange)' method inside the % chktex 36
 PreprocessingRecord class, which allows one to take a declaration, query its
-source range, and then get an iterator of all the preprocessing entities in it,
+source range, and then get an iterator of its preprocessing entities,
 including macro expansions.
 
-It is not however enough to stop here, because at this stage, although the
-resulting file is a valid C program with all unnecessary lines commented out
+However, it is not enough to stop here: although the
+resulting file is a valid C program, with all unnecessary lines commented out
 (including unused headers, and unused fields), reducing thousands of lines of C
 to hundreds, the empty and commented lines in between top-level declarations,
-which may contain CN declarations, are also commented out.
-
-\inputminted[breaklines,fontsize=\footnotesize]{cpp}{code/clang_tree_carve.cpp}
-
-In this form, \kl{CN} cannot recognise them, and so they need to be recovered.
-The code to achieve this is, perhaps surprisingly, an ocamllex program, which
-encodes (at a first approximation) a finite state machine
-(\cref{fig:comment-simp-fsm}). The implementation is complicated slightly by
-the fact that in C/C++, lines terminating with a backslash may be spliced
-together with the next line, and so a line-comment may actually extend over
-multiple lines. Whilst this is not a common use of line splicing, it is heavily
-used in macro definitions. The result is the comments are simplified but things
-which are commented out stay commented out.
+which may contain CN declarations, are doubly commented out.
 
 \begin{figure}[tp]
 \begin{tikzpicture}[shorten >=1pt,node distance=2.5cm,on grid,>={Stealth[round]}]
@@ -477,6 +465,18 @@ which are commented out stay commented out.
     whitespace (WS).}\label{fig:comment-simp-fsm}
 \end{figure}
 
+\inputminted[breaklines,fontsize=\footnotesize]{cpp}{code/clang_tree_carve.cpp}
+
+In this form, \kl{CN} cannot recognise them, and so they need to be recovered.
+The code to achieve this is, perhaps surprisingly, an ocamllex program, which
+encodes (at a first approximation) a finite state machine
+(\cref{fig:comment-simp-fsm}). The implementation is complicated slightly by
+the fact that in C/C++, lines terminating with a backslash may be spliced
+together with the next line, and so a line-comment may actually extend over
+multiple lines. Whilst this is not a common use of line splicing, it is heavily
+used in macro definitions. The result is the comments are simplified but things
+which are commented out stay commented out.
+
 \section{Limitations and future work}
 
 Further input validation on the formatting of fields \emph{within} structs and
@@ -515,10 +515,12 @@ updating the verification to handle subsequent code changes.
 
 The \intro{buddy allocator} maintains a doubly-linked list of free pages (per
 order). Initially, the pointers for these were stored externally to the free
-pages, but an update\sidenote{\href{https://github.com/rems-project/linux/commit/914cde58a03cc5eef858db34687433e17d0e44be}{Linux 914cde58}.} changed it so that the pointers were stored
+pages, but an update (\href{https://github.com/rems-project/linux/commit/914cde58a03cc5eef858db34687433e17d0e44be}{Linux 914cde58})
+changed it so that the pointers were stored
 intrusively, in the free pages themselves.
 
 I found it challenging to update the verification correspondingly, mostly due
+\margincite{knowlton1965fast}\margincite{pulte2023cn}%
 to \kl{CN}'s error reporting, which I will explain later, and partly due to a
 lack of experience and resulting intuition around the code and its
 \kl(CN){predicates}. Nonetheless, with significant help, I was able to
@@ -616,8 +618,8 @@ The cleanest way to fix this was to edit the initial verification (before the
 code changes), and then replaying the subsequent work on top. This would have
 been easier had the original specifications used named conversion functions to
 switch between physical and virtual addresses (instead of inlining all
-arithmetic). More ambitiously, if the specification language had numeric
-type-classes, then conflating the two would have raised a base type error.
+arithmetic).\sidenote{More ambitiously, if the specification language had numeric
+type-classes, then conflating the two would have raised a base type error.}
 Fixing and then rebasing these changes, alongside cosmetic changes, took one
 month.
 
@@ -727,8 +729,8 @@ where necessary. This required changing:
         to indicate which allocation the new pointers should all belong to.
 \end{itemize}
 
-Given the pervasiveness of computed pointers in the code and specifications,
-the changes were extensive but straightforward. The updated verification was
+The changes were extensive, because computed pointers pervade the code and
+specifications, but straightforward. The updated verification was
 backwards compatible: it passed both with and without the flag enabled.
 
 \section{Failed update to support bit-vectors}\label{sec:buddy-failed-bv}
@@ -778,7 +780,7 @@ instead the user must figure out and maintain the dependency structure in their
 head when planning the proof, and manually select the functions to verify one
 at a time.
 
-\paragraph{Function-like macros represent real abstractions (worked-around).}
+\paragraph{Function-like macros represent abstractions (worked-around).}
 The \kl{buddy allocator} code uses function-like macros heavily to convert
 between a pointer to metadata, an index into metadata, a physical address and a
 virtual address. Ideally there would be some way of automatically converting
@@ -793,7 +795,7 @@ said, even if by hand, the benefit of defining \kl(function){CN} equivalents of
 function-like macros is worthwhile for the readability, reliability and
 maintainability it brings.
 
-\paragraph{Constant-like macros also represent real abstractions
+\paragraph{Constant-like macros represent real abstractions
 (worked-around).} I spent substantial time removing magic constants prevalent in
 the original proof. Part of this was just human inconsistency, part was
 two syntactic limitations of an earlier version of \kl{CN}. The first was that
