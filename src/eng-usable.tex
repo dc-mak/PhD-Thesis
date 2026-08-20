@@ -42,12 +42,12 @@ the middle two.
 \subsection{Early allocator in CN}
 
 The proof for the early allocator was not part of CI for \kl{CN}, and so is
-considerably out-of-date. Nevertheless, I will show and discuss a sample of the
+considerably out-of-date. Nevertheless, I will discuss a sample of the
 code and specifications, because I expect updated specifications to look
 similar.
 
 The first function is for zeroing all the bytes in a page. This is implemented
-in assembly in \kl{pKVM}, but for the purposes of comparison, I implemented a
+in assembly in \kl{pKVM}, but for the comparison, I implemented a
 version in C. The \kl{precondition} specifies that the function expects an array of
 \cninline{Bytes} (not to be confused with memory bytes from~\cref{sec:mem-bytes-use}),
 which is defined as a wrapper around
@@ -118,12 +118,12 @@ equivalent subscripting \cinline{e1[e2]} and \cinline{*(e1 + e2)}.\sidenote{\url
 
 %This could end up being a useful heuristic.
 
-This particular example was also a good lesson in how phrasing assertions
+This example was a good lesson in how phrasing assertions
 differently can lead to drastically different performance. Whilst the final
 version uses a \cninline{characters_zeroed} predicate in the postcondition,
 initially I used a more general \cninline{chars} predicate which lifts
 characters in memory to a list. In that last argument, I wrote a call to
-\cninline{create(count, item)}, a recusrive function that I % chktex 36
+\cninline{create(count, item)}, a recursive function that I % chktex 36
 defined, which creates a list of only \cninline{item} of length
 \cninline{count}.
 
@@ -178,7 +178,7 @@ the \cinline{inner} struct allows it to pass.
 \cfile[fontsize=\footnotesize,breaklines,firstline=15,lastline=15,highlightlines={14}]{code/verifast_structs.c}
 
 This strikes me as unusual because any changes to the representation of
-\cinline{struct s2} are no longer encapsulated. In \kl{CN}, (modulo padding),
+\cinline{struct s2} are no longer encapsulated. In \kl{CN}, modulo padding,
 \cinline[breaklines]|s1_inner(p, inner) <=> s2_x(&p->inner, inner.x)|, % chktex 36
 \sidenote{`s1\_inner' and `s2\_x' are auto-generated predicates, expressing
 points-to facts for struct fields.} but in \kl{VeriFast} this does not seem
@@ -207,7 +207,7 @@ the array indexing example. However, it has the downside of missing a long tail
 of features required for verifying real-world code, such as the following.
 \begin{itemize}
     \item Struct literals/initialisers.
-    \item Implicit type promotions (\eg{} from \cinline{long long} to
+    \item Implicit type promotions (\eg{} \cinline{long long} to
         \cinline{unsigned long long}).
     \item Function types in struct fields.
     \item Taking the address of local variables.
@@ -380,18 +380,18 @@ prove their core approach sound.
 \subsection{Soteria-C}
 
 Eschewing the IL approach, Soteria~\sidecite{ayoun2026soteria} is another
-symbolic execution library. It demonstrates its feasibility with front-ends for
+symbolic execution library. It has front-ends for
 C (twice as fast as Gillian-C) and Rust, and, at the time of writing, an
 experimental proof-of-concept one for \kl{CN}.
-Soteria-\kl{CN}\sidenote{\url{https://github.com/soteria-tools/soteria-cn}} uses
+Soteria-CN\sidenote{\url{https://github.com/soteria-tools/soteria-cn}} uses
 the same modified \kl{Core} as \kl{CN}, and can be up to 50x faster than \kl{CN} on small tests cases for
 singly- and doubly-linked lists. The speed-up seems to \emph{increase} with the
 size of the program, though \kl(CN){iterated predicates}, inductive datatypes and
-pure \kl(CN){functions} are unsupported, so bigger and more representative
+pure \kl(CN){functions} are unsupported, so larger and more representative
 examples may not be so impressive.
 
-Soteria-C uses Cerberus' Ail rather than Core, because Ail retains more
-of the original program structure and thus makes it easier to spot and apply
+Soteria-C uses \kl{Cerberus}' Ail rather than \kl{Core}, because Ail retains more
+of the original program structure and thus makes it easier to apply
 heuristics as optimisations.\sidenote{Though of course, it keeps implicit much
 subtlety, for example, integer promotions and evaluation order.} For example,
 \kl{Cerberus} will elaborate the \cinline{&&} operator (in Ail) to an if-expression
@@ -417,7 +417,7 @@ research stand-point, but timid from an industry stand-point, even for systems
 programmers who are willing to walk-the-talk with regards to correctness.
 
 This is borne out by feedback from BAE Systems and Galois, industry partners
-we were collaborating with on a DARPA project to verify `a fictitious airborne
+on a DARPA project to verify `a fictitious airborne
 unmanned platform that represents a notional high-consequence national security
 system' using \kl{CN} (amongst other
 tools).\sidenote{\url{https://github.com/GaloisInc/VERSE-OpenSUT}} Galois in
@@ -500,8 +500,7 @@ Based on this feedback, \kl{CN} has potential to be used widely, but needs to
 do the following:
 \begin{itemize}
     \item Learn from the Rust approach to teaching and error messages.
-    \item Experiment with syntax, to make writing specifications more
-        approachable.
+    \item Experiment with specification syntax, to make it more approachable.
     \item Explore imperative specification languages for proof.
     \item Set clear expectations around the cost and benefit and appropriate
         use-cases for verification.
@@ -510,8 +509,7 @@ do the following:
         use cases industry say they care about.
     \item Demonstrate a clear advantage over existing testing-based memory
         safety tools, with concrete examples.
-    \item Demonstrate how assistance with concurrency confers a performance
-        benefit.
+    \item Assist with concurrency to confer performance benefits.
 \end{itemize}
 
 \section{Summary}
@@ -545,14 +543,14 @@ explicitly say so are the suggestions intended to be retrospective.
 \section{Work backwards from examples}
 
 Prior to~\textcite{pulte2023cn}, \kl{CN}'s guiding test during its development
-was the \kl{pKVM} \kl{buddy allocator}. Due to its pervasive aliasing and
-computed pointer accesses, verifying the allocator made a for a novel and
+was the \kl{pKVM} \kl{buddy allocator}. Its pervasive aliasing and
+computed pointer accesses made verifying the allocator a novel and
 substantial research contribution. However, it \emph{also} limited \kl{CN}'s
 design: features were only considered and implemented insofar as they got
-\kl{CN} closer to verifying the entire allocator.
+\kl{CN} closer to verifying the allocator.
 
 Whilst this approach produced a successful paper, it also over-fitted \kl{CN}.
-More concretely, it meant that we had accrued significant technical (see below)
+We accrued significant technical (see below)
 and design debt (see~\cref{chap:inform-impl}), which hindered specifying and
 verifying simpler and more conventional examples, such as those now in the
 CN tutorial~\cite{pulte2024tutorial}.
@@ -571,21 +569,22 @@ With only slight irony, my point is that \emph{test-driven development is
 exceptionally useful when implementing a verification tool}. This bore out in
 my experience in implementing \kl{CN-VIP}: writing examples, and informally (but
 rigorously) working through how they ought to be specified, helped enormously
-in guiding my intuitions and highlighting problems early on. I conjecture a
+in guiding my intuitions and highlighting problems early on.%
+\margincite{pulte2023cn}\margincite{pulte2024tutorial} I conjecture a
 broader range of smaller examples escalating to the \kl{buddy allocator} would
 have been similarly helpful.
 
 \section{Design with a formalism}
 
-Whilst there are some changes that I think would have been difficult to
-pre-empt by more careful design at the start, for example, the change in
+Whilst there are some changes which would have been difficult to
+pre-empt initially, for example, the change in
 inference
 scheme,\sidenote{\href{https://github.com/rems-project/cerberus/commit/7c2c0a364a4373e4eb109f32d01cc9584f51e81f}{Cerberus
 7c2c0a36.} This was motivated by reducing the annotation burden for folding
 and unfolding predicates, which turned out to be heavier than the annotations
-saved by inferring indices.}, or the switch to the \kl{monadic syntax}
+saved by inferring indices.} or the switch to the \kl{monadic syntax}
 (\S\ref{sec:monadic-syntax}), there are a few design decisions which might
-have benefited from some scrutiny prior to implementation.
+have benefited from more scrutiny prior to implementation.
 
 \subsection{Calling conventions affect syntax}
 
@@ -599,14 +598,15 @@ have benefited from some scrutiny prior to implementation.
 % I suspect the wording "in preparing" is why I elaborated everything in the
 % call site.
 
-By default, \kl{Cerberus} elaborates calls to C functions by allocating and
-initialising parameters \emph{at the call site} and then \emph{passing
-pointers} to the temporary objects to the callee. This leads to very verbose
-and awkward specifications, where functions had to (a) claim ownership of their
-parameters and (b) promise they did not modify them so that the objects at the
+By default, \kl{Cerberus} elaborates C function calls by allocating
+and initialising temporary storage for parameters \emph{at the call site},
+and then \emph{passing their
+pointers} to the callee. This led to verbose
+and awkward specifications, where functions had to (a) \kl{own} their
+parameters, and (b) ensure they were unmodified, so that the objects at the
 call-site remained unaffected.
 
-This was verbose and error-prone, so we changed the
+This was tedious and error-prone, so we changed the
 elaboration\sidenote{\href{https://github.com/rems-project/cerberus/commit/772173d6432c86b029fd1bb993b8dc83b80c96c0}{Cerberus
 772173d6}} and \kl{CN}\sidenote{\href{https://github.com/rems-project/cerberus/commit/186e4e42a75cad2222d441ce608fc1dc84cc7b98}{Cerberus
 186e4e42}} correspondingly, resulting in duplicated effort. Had we spent some
@@ -630,7 +630,7 @@ the next. Within the context of \kl{CN}, the main stages are:
 
 Such a strategy is understandable, and makes the system robust because each
 phase assumes the invariants ensured by the previous, and establishes new ones.
-It also makes the implementer's job easier. However it worth remembering, the
+It also makes the implementer's job easier, but
 code is written once, read a lot, and used orders of magnitude more.
 
 The problem is that users (rightfully) expect to be able to get feedback on
@@ -646,13 +646,13 @@ even in the presence of errors from the first; it would be very impressive if
 program.
 
 This is unrealistic for \kl{CN}, because it would require substantial
-re-engineering in the \kl{Cerberus} front-end. A realistic goal
+re-engineering of \kl{Cerberus}. A realistic goal
 is to raise the lower bar of recovery, by designing each step such that
 \emph{it avoids stopping at the first error}. For example, up until relatively
 recently, \kl{CN} stopped at the first error in the first failing function,
 \emph{even though it was designed to support \kl{per-function} checking}.
 
-It should be possible to retrofit and improve \kl{CN}'s incremental
+It should be possible to improve \kl{CN}'s incremental
 error-handling, without resorting to a full rewrite of the implementation
 starting from the parser. Below, I conjecture a process which could be
 applied in an incremental way to existing projects, so the benefit is
@@ -719,11 +719,11 @@ errors for \kl{CN} in the future.
 \end{itemize}
 Though designing calculi in this way may seem like it increases the amount
 of work involved for reporting errors, in actuality, it simply makes
-implementation-related error reporting \emph{explicit in the formalism}.
+implementation choices around error reporting \emph{explicit in the formalism}.
 
 \subsection{Elaborate with care}
 
-Elaboration and large-scale program transformations such as \kl{A-normalisation} can
+Elaboration and program transformations such as \kl{A-normalisation} can
 affect the accuracy of source locations. On top of this, if handled without
 care, generated variables can also end up not associated to any source location
 the user wrote, and can be difficult to interpret in a counter-example. \kl{CN}
@@ -852,13 +852,13 @@ whereas Rust is a mainstream project. And so, I will adjust my recommendations
 accordingly.
 
 \paragraph{Use rich datatypes for errors.} \kl{CN} inherits many of Cerberus'
-error message datatypes and explanations, which quote the standard. Whilst that
-is extremely impressive, most users will not understand the \kl{standard's}
+error message datatypes and explanations, which quote the standard. Whilst
+quoting thus is impressive, most users will not understand the \kl{standard's}
 jargon (\cref{fig:lsp-extra}), and so it needs to be hidden by default, and
 eventually translated into more accessible language. The fact that these are
 represented by a datatype makes it easy to add this functionality later. It is
-better to add more information and not use it than it is to plumb that
-information through later.
+easier to add more information and not use it than it is to plumb it
+through later.
 
 \begin{figure}[htp]
     \includegraphics{figures/lsp-structs9-hover.png}
@@ -872,8 +872,8 @@ information through later.
 \paragraph{Avoid showing crashes and backtraces.} \kl{CN} does an admirable job
 on controlling the effects exposed by various parts of the code by wrapping
 most effectful operations in a typing monad. However, there are a few cases
-which result in crashes which are predictable and avoidable if the intent is
-there from the beginning. The most important reason for this is that \emph{the
+which result in crashes which are predictable and avoidable.
+The most important reason for avoiding this is that \emph{the
 output from \kl{CN} can and will be used by other tooling, to provide editor
 services and GUIs}.\sidenote{For example,
 \href{https://github.com/rems-project/cerberus/issues/286}{cn \-\-json
@@ -885,7 +885,7 @@ base, all of which can print backtraces, and make it difficult for
 tools to build on top of \kl{CN}. Whilst it is possible to work
 around this, by calling into \kl{CN} as an OCaml library instead,
 this increases the overhead of developing tooling for \kl{CN}.
-These come from a couple of sources.
+These come from two sources.
 \begin{itemize}
     \item \textbf{Unimplemented features.} These are extremely common when
         building any large project, and so this should by no means be
@@ -1010,14 +1010,14 @@ triggers documented. One such
 issue\sidenote{\href{https://github.com/rems-project/cerberus/issues/382}{Cerberus\#382}.}
 uncovered a subtle interaction between the `lexer hack' used to parse
 C11~\sidecite{jourdan2017simple}, and a token buffer feature offered by
-\kl{Menhir} for more helpful error messages. Again, the issue was mutable state
-which was accidentally shared across what should be separate, fresh instances
-of the lexer. The solution was to stage the creation of the lexer and its
-internal state, and make this explicit in its
+\kl{Menhir} for more helpful error messages. Again, the issue was mutable state,
+accidentally shared across what should have been separate, fresh instances
+of the lexer. I solved this by staging the creation of the lexer and its
+state, and making that explicit in its
 API.\sidenote{\href{https://github.com/rems-project/cerberus/commit/c970a43b7126560b229fb55c32ce22bfbc5d23f2}{Cerberus
 c970a43b}.}
 
-\subsection{Actually use source locations once you have them}
+\subsection{Use source locations once you have them}
 
 Once source locations are accurately recorded by the front-end, then it is
 important to use them in later stages. Initially, \kl{CN}'s core term type,
@@ -1048,9 +1048,8 @@ some \kl(CN user-defined){predicate} is not being unfolded enough, or that a
 function claimed \kl[points-to]{ownership} without returning it. Ideally, the error would
 point to where this local was declared, where it disappeared, and the
 definition of that field of in that struct. In the absence of all that
-information, it is safer to (a) not attempt to display any location at all or
-(b) if a dummy one must be provided, point to where in the implementation this
-dummy location originates.
+information, it is safer to (a) not attempt to display any location at all or,
+(b) provide a dummy one, which points to its origin in the implementation.
 
 \begin{minted}[fontsize=\footnotesize,linenos,numbersep=6pt,breaklines]{text}
 tests/cn/reverse.error.c:124:3: error: Missing resource for de-allocating
@@ -1186,9 +1185,8 @@ in~\sidetextcite{seidel2016dynamic}.
     \item \textbf{Unconstrained/irrelevant variables should be excluded from the
         \kl{counter-example}.} A given error will have many variables
         irrelevant to the whole program state, but the \kl{counter-example}
-        will give assignments to all of them, without saying which ones are
-        directly relevant. This makes the user work harder to filter out
-        irrelevant details.
+        will uniformly give assignments to all of them. This makes the user
+        work harder to filter out irrelevant details.
     \item \textbf{\kl{Counter-examples} should be consistent.} The
         \kl{counter-examples} are not consistent with respect to the
         irrelevant variables, and this can be confusing to the user too.
@@ -1205,7 +1203,6 @@ in~\sidetextcite{seidel2016dynamic}.
         every step leading to that}.
     \item \textbf{\kl{Counter-example} values should be small.} Large numbers
         in \kl{counter-examples} are difficult to comprehend. Ideally
-        \kl{counter-examples} would be rephrased in terms of smaller numbers
-        which are easy to read and track mentally.
+        they would be replaced with smaller, easier to read and track numbers.
 \end{itemize}
 
