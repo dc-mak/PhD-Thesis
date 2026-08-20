@@ -499,10 +499,11 @@ defns
     ret def= sigma yp : loc .: term /\ exists x : to_base ( ct ) .: pred_term1 ( x ) *o pred_term2 ( ( yp . addr , sizeof ct ) ) *o I
     term def= representable ( ct * , inj ptr ) /\ aligned ( int , inj ptr ) /\ allocv [ @ aid ] = ( addr , sizeof ct )
     alloct |- smt ( term )
-    h' def= h + { pred_term1 ( default to_base ( ct ) ) & None } + { pred_term2 ( ( addr , sizeof ct ) ) & None }
+    h1 def= { pred_term1 ( default to_base ( ct ) ) & None }
+    h2 def= { pred_term2 ( ( addr , sizeof ct ) ) & None }
     stmt def= < ptr , default to_base ( ct ), pred_term1 , pred_term2 >
     ------------------------------------------------------------------------- :: Create
-    < alloct ; h ; emp | create < ct > ( int ) > --> < alloct [ @ aid ] := ( addr , sizeof ct ) ;  h' ; stmt : ret >
+    < alloct ; h ; emp | create < ct > ( int ) > --> < alloct [ @ aid ] := ( addr , sizeof ct ) ;  h + h1 + h2 ; stmt : ret >
 
 
     addr inEnv newAlloc ( h , int1 , int2 )
